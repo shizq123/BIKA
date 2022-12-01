@@ -1,18 +1,16 @@
 UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。
 
 #感谢
-
 [wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart) <br>
 [material-components/material-components-android](https://github.com/material-components/material-components-android) <br>
 [youlookwhat/ByRecyclerView](https://github.com/youlookwhat/ByRecyclerView) <br>
 [square/retrofit](https://github.com/square/retrofit) <br>
 [bumptech/glide](https://github.com/bumptech/glide) <br>
 
-#未完成需求
+#未完成
 
     开发app的目标 apk安装包要小 图片加载不卡顿 应用不闪退 功能要齐全
 
-    检测版本更新
     修改个人信息
     修改头像
     我的消息
