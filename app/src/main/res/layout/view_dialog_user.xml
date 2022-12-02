@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_margin="20dp">
+
+        <!--头像-->
+        <RelativeLayout
+            android:id="@+id/view_user_image_layout"
+            android:layout_width="90dp"
+            android:layout_height="90dp"
+            android:layout_centerHorizontal="true"
+            >
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/view_user_image"
+                android:layout_width="70dp"
+                android:layout_height="70dp"
+                android:layout_centerInParent="true"
+                android:layout_gravity="center"
+                android:adjustViewBounds="true"
+                android:padding="1dp"
+                android:scaleType="centerCrop"
+                android:src="@drawable/placeholder_avatar_2"
+                app:shapeAppearance="@style/CircleStyle"
+                app:strokeColor="?attr/colorControlNormal"
+                app:strokeWidth="1dp" />
+
+            <ImageView
+                android:id="@+id/view_user_character"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </RelativeLayout>
+
+        <TextView
+            android:id="@+id/view_user_gender_level"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/view_user_image_layout"
+            android:layout_centerHorizontal="true"
+            android:textColor="?attr/colorOutline"
+            android:text="(a) lv1(0/0)"
+            android:textSize="12sp"/>
+
+        <TextView
+            android:id="@+id/view_user_nickname"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/view_user_gender_level"
+            android:layout_centerHorizontal="true"
+            android:text="用户名"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/view_user_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/view_user_nickname"
+            android:background="@drawable/shape_title_bg"
+            android:layout_centerHorizontal="true"
+            android:paddingTop="1dp"
+            android:paddingBottom="1.5dp"
+            android:paddingStart="3dp"
+            android:paddingEnd="3dp"
+            android:text="aaa"
+            android:textSize="12sp"/>
+
+        <TextView
+            android:id="@+id/view_user_slogan"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_below="@id/view_user_title"
+            android:textSize="14sp"/>
+
+
+    </RelativeLayout>
+</androidx.core.widget.NestedScrollView>

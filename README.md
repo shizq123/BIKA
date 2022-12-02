@@ -13,12 +13,8 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
     修改个人信息
     修改头像
-    我的消息
-    我的评论
     搜索记录
     历史记录
-    评论回复
-    评论点击爱心
     哔咔游戏详情的视频
     
     清理缓存
@@ -41,6 +37,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 #待优化
 
     注册页面 需要优化 跳转到登录页要显示注册的账号密码
+    子评论页加进度条
     主页会列表重复
     Toast,图片,UI
     应用加载时间
@@ -53,6 +50,8 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
 #服务器状态
 
+    400 1019 cannot comment 无法发表评论
+    400 1031 higher level is required 评论等级不够
     400 1004 账号密码错误
     400 1014 漫画审核中
     401 1005 unauthorized token过期

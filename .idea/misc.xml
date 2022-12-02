@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="DesignSurface">
+    <option name="filePathToZoomLevelMap">
+      <map>
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable-v24/ic_launcher_foreground.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_favorite_24.xml" value="0.2795" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_icon_bird_small.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_icon_bird_small_animated_rotate.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_icon_bird_small_animated_translate.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_launcher_background.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_launcher_background_bird.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_launcher_bird_final_background.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_person_24.xml" value="0.2055" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_search_24.xml" value="0.2055" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_settings_24.xml" value="0.2055" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/ic_splash_anim.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/drawable/splash.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_account.xml" value="0.271484375" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_collections.xml" value="0.270703125" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_comicinfo.xml" value="0.22" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_comiclist.xml" value="0.271484375" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_comicslist.xml" value="0.271484375" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_comments.xml" value="0.270703125" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_leaderboard.xml" value="0.270703125" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_login.xml" value="0.14" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_login2.xml" value="0.27117486338797814" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_main.xml" value="0.14" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_search.xml" value="0.24077868852459017" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_setting.xml" value="0.18" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_settings.xml" value="0.20765027322404372" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/activity_splash.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/content_main.xml" value="0.35280797101449274" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/content_main2.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/content_splash.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/content_splash2.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_categories.xml" value="0.25" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_first.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_first2.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_load.xml" value="0.1" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_profile.xml" value="0.27117486338797814" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_second.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_second2.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_second3.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_sigin.xml" value="0.25" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_signin.xml" value="0.22" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/fragment_signup.xml" value="0.2609289617486339" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/item_categories.xml" value="0.20765027322404372" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/item_chapter.xml" value="0.15263157894736842" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/item_comiclist.xml" value="0.25" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/item_recommend.xml" value="0.3013157894736842" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/view.xml" value="0.271484375" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/view_chip.xml" value="0.3048245614035088" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/view_dialog_bottom_sheet.xml" value="0.34692028985507245" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/view_dialog_bottom_sheet_signin.xml" value="0.15" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/layout/view_toolbar.xml" value="0.270703125" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/menu/bottom_nav_menu.xml" value="0.271484375" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/menu/bottom_nav_menu_main.xml" value="0.26833976833976836" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/menu/menu_main.xml" value="0.268359375" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/menu/toolbar_menu_main.xml" value="0.138671875" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/mipmap-anydpi-v26/ic_launcher.xml" value="0.1905" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/mipmap-anydpi-v26/ic_launcher_bird.xml" value="0.1905" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/mipmap-anydpi-v26/ic_launcher_bird_final_round.xml" value="0.214" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/app/src/main/res/mipmap-anydpi-v26/ic_launcher_round.xml" value="0.1905" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/activity_demo.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/activity_tab_bar.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_base_pager_temp.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_detail.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_form_temp.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_home.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_multi_rv.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_network.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_room1.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_tab_bar_1.xml" value="0.35280797101449274" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_tab_bar_2.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_tab_bar_3.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_tab_bar_fore.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/fragment_test_net.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/item_multiple1.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/item_multiple2.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/item_single.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/AndroidStudioProjects/BIKA/mvvmsmart_demo/src/main/res/layout/layout_toolbar.xml" value="0.18229166666666666" />
+        <entry key="..\:/Android/Sdk/platforms/android-32/data/res/drawable-watch/sym_def_app_icon.xml" value="0.214" />
+      </map>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_11" project-jdk-name="17" project-jdk-type="JavaSDK">
+    <output url="file://$PROJECT_DIR$/build/classes" />
+  </component>
+  <component name="ProjectType">
+    <option name="id" value="Android" />
+  </component>
+  <component name="SuppressKotlinCodeStyleNotification">
+    <option name="disableForAll" value="true" />
+  </component>
+</project>

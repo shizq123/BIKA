@@ -1,0 +1,57 @@
+<resources>
+    <string name="app_name">哔咔</string>
+
+    <string name="signin_email">账号</string>
+    <string name="signin_password">密码</string>
+    <string name="signup_email">哔咔登录账号 [ 0–9 a-z ._ ]</string>
+    <string name="signup_password">哔咔登录密码（8字以上）</string>
+    <string name="signup_answer">答案</string>
+    <string name="old_password">旧密码</string>
+    <string name="new_password">新密码</string>
+    <string name="input_old_password">输入旧密码</string>
+    <string name="input_new_password">输入新密码</string>
+    <string name="confirm_password">确认密码</string>
+
+    <string name="drawer_show">显示侧滑菜单</string>
+    <string name="drawer_hide">隐藏侧滑菜单</string>
+
+    <string name="action_settings">设置</string>
+    <string name="action_search">搜索</string>
+    <string name="action_games">游戏</string>
+    <string name="action_bookmark">书签</string>
+    <string name="action_sort">排序方式</string>
+    <string name="keyboard">弹出键盘</string>
+
+    <string name="sort_dd">新到旧</string>
+    <string name="sort_da">旧到新</string>
+    <string name="sort_ld">最多爱心</string>
+    <string name="sort_vd">最多指数</string>
+
+    <string name="gender_nan">绅士</string>
+    <string name="gender_nv">淑女</string>
+    <string name="gender_bot">机器人</string>
+
+    <string name="title_activity_splash">SplashActivity</string>
+    <string name="title_activity_main">MainActivity</string>
+
+    <string name="title_categories">分类</string>
+    <string name="title_profile">我的</string>
+    <string name="categories_image">categories_image</string>
+
+    <string name="slogan">这个人很神秘，什么都没有写</string>
+    <string name="level">Lv.</string>
+    <string name="comicsUploaded">上传本子总数：</string>
+    <string name="updated_at">&#160;更新</string>
+    <string name="text_TotalViews">指数：</string>
+    <string name="text_likesCount">人喜欢</string>
+    <string name="text_pagesCount">页</string>
+    <string name="text_commentsCount_start">共</string>
+    <string name="text_commentsCount_end">条评论</string>
+    <string name="text_CommentsType_game">游戏>></string>
+    <string name="text_CommentsType_comic">漫画>></string>
+
+    <string name="footer_loading">加载中，请稍候&#8230;</string>
+    <string name="footer_error">加载失败，点击重试</string>
+    <string name="footer_more">点击加载更多</string>
+    <string name="footer_end">已经到底了</string>
+</resources>

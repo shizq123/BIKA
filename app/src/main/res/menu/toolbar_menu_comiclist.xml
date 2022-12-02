@@ -1,0 +1,46 @@
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:context="com.shizq.bika.ui.main.MainActivity">
+
+    <item
+        android:id="@+id/action_sort"
+        android:icon="@drawable/ic_sort"
+        android:orderInCategory="2"
+        app:showAsAction="ifRoom"
+        android:title="@string/action_sort"
+        >
+        <menu>
+            <group android:enabled="false"
+                 android:checkableBehavior="none">
+                <item android:title="@string/action_sort"/>
+            </group>
+
+            <group android:checkableBehavior="single">
+                    <item
+                        android:id="@+id/dd"
+                        android:orderInCategory="101"
+                        android:checked="true"
+                        android:title="@string/sort_dd"
+                        app:showAsAction="never" />
+                    <item
+                        android:id="@+id/da"
+                        android:orderInCategory="102"
+                        android:title="@string/sort_da"
+                        app:showAsAction="never" />
+                    <item
+                        android:id="@+id/ld"
+                        android:orderInCategory="103"
+                        android:title="@string/sort_ld"
+                        app:showAsAction="never" />
+                    <item
+                        android:id="@+id/vd"
+                        android:orderInCategory="104"
+                        android:title="@string/sort_vd"
+                        app:showAsAction="never" />
+            </group>
+        </menu>
+
+    </item>
+
+</menu>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android">
+    <data>
+        <variable
+            name="m"
+            type="com.shizq.bika.bean.ComicListBean.Comics.Doc" />
+    </data>
+
+    <com.google.android.material.card.MaterialCardView
+        android:id="@+id/comiclist_item_container"
+        style="?attr/materialCardViewElevatedStyle"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="6dp">
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:id="@+id/comiclist_item_image"
+                android:layout_width="120dp"
+                android:layout_height="180dp"
+                android:contentDescription="@string/categories_image"
+                android:scaleType="centerCrop" />
+
+            <TextView
+                android:id="@+id/comiclist_item_title"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_toEndOf="@id/comiclist_item_image"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="@{m.title}"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/comiclist_item_booktext"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:layout_below="@id/comiclist_item_title"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_toEndOf="@id/comiclist_item_image"
+                android:text="1E305p(完)"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/comiclist_item_author"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/comiclist_item_booktext"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_toEndOf="@id/comiclist_item_image"
+                android:ellipsize="end"
+                android:maxLines="1"
+                android:text="@{m.author}"
+                android:textColor="@color/pink"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/comiclist_item_category"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/comiclist_item_author"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_toEndOf="@id/comiclist_item_image"
+                android:ellipsize="end"
+                android:maxLines="2"
+                android:text="分类123123123"
+                android:textSize="14sp" />
+
+            <ImageView
+                android:id="@+id/comiclist_item_likeimage"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_alignBottom="@id/comiclist_item_image"
+                android:layout_marginStart="4dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_marginBottom="4dp"
+                android:layout_toEndOf="@id/comiclist_item_image"
+                android:src="@drawable/ic_favorite_24" />
+
+            <TextView
+                android:id="@+id/comiclist_item_liketext"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:layout_alignBottom="@id/comiclist_item_image"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_marginBottom="4dp"
+                android:layout_toEndOf="@id/comiclist_item_likeimage"
+                android:text="1231"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/comiclist_item_clicks"
+                android:layout_width="wrap_content"
+                android:layout_height="20dp"
+                android:layout_alignBottom="@id/comiclist_item_image"
+                android:layout_marginStart="8dp"
+                android:layout_marginTop="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_marginBottom="4dp"
+                android:layout_toEndOf="@id/comiclist_item_liketext"
+                android:text="指数：123123"
+                android:textSize="14sp" />
+
+        </RelativeLayout>
+
+    </com.google.android.material.card.MaterialCardView>
+</layout>

@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="bottom"
+    android:minHeight="174dp"
+    android:orientation="vertical"
+    android:paddingLeft="16dp"
+    android:paddingTop="16dp"
+    android:paddingRight="16dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/main_drawer_modify"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@id/main_drawer_imageView_layout"
+        android:layout_alignParentEnd="true"
+        android:padding="10dp"
+        android:text="编辑"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textSize="13sp" />
+
+    <!--头像-->
+    <RelativeLayout
+        android:id="@+id/main_drawer_imageView_layout"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="8dp">
+
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/main_drawer_imageView"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_centerInParent="true"
+            android:layout_gravity="center"
+            android:adjustViewBounds="true"
+            android:padding="1dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/placeholder_avatar_2"
+            app:shapeAppearance="@style/CircleStyle"
+            app:strokeColor="?attr/colorControlNormal"
+            app:strokeWidth="1dp" />
+
+        <ImageView
+            android:id="@+id/main_drawer_character"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </RelativeLayout>
+
+    <TextView
+        android:id="@+id/main_drawer_gender"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_drawer_imageView_layout"
+        android:textColor="?attr/colorOutline"
+        android:textSize="10sp"
+        android:visibility="visible" />
+
+    <TextView
+        android:id="@+id/main_drawer_user_ver"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_drawer_imageView_layout"
+        android:layout_marginStart="4dp"
+        android:layout_toEndOf="@id/main_drawer_gender"
+        android:textColor="?attr/colorOutline"
+        android:textSize="12sp" />
+
+    <TextView
+        android:id="@+id/main_drawer_name"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_drawer_gender"
+        android:text="用户名获取中..."
+        android:textAppearance="?android:attr/textAppearanceLarge"
+        android:textSize="18sp" />
+
+
+    <TextView
+        android:id="@+id/main_drawer_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_drawer_name"
+        android:background="@drawable/shape_title_bg"
+        android:paddingStart="3dp"
+        android:paddingTop="1dp"
+        android:paddingEnd="3dp"
+        android:paddingBottom="1.5dp"
+        android:textSize="10sp"
+        android:visibility="visible" />
+
+
+    <TextView
+        android:id="@+id/main_drawer_slogan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/main_drawer_title"
+        android:text="..."
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textSize="12sp" />
+
+
+</RelativeLayout>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/sub_comments_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <!--  头布局  -->
+    <RelativeLayout
+        android:id="@+id/sub_comments_head_layout"
+        android:layout_width="match_parent"
+        android:layout_height="?attr/actionBarSize">
+
+        <ImageView
+            android:id="@+id/sub_comments_head_back"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="4dp"
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="4dp"
+            android:padding="12dp"
+            android:src="@drawable/ic_back" />
+
+        <TextView
+            android:id="@+id/sub_comments_head_title"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="4dp"
+            android:layout_toEndOf="@id/sub_comments_head_back"
+            android:text="回复"
+            android:textSize="20sp" />
+    </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/sub_comments_reply_layout"
+        android:layout_width="match_parent"
+        android:layout_height="48dp"
+        android:background="?attr/colorSurface"
+        android:layout_alignParentBottom="true">
+
+        <ImageView
+            android:id="@+id/sub_comments_reply_icon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="16dp"
+            android:src="@drawable/ic_edit" />
+
+        <TextView
+            android:id="@+id/sub_comments_reply_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_toEndOf="@id/sub_comments_reply_icon"
+            android:text="回复评论"
+            android:textColor="?attr/colorControlNormal" />
+    </RelativeLayout>
+
+    <me.jingbin.library.ByRecyclerView
+        android:id="@+id/sub_comments_rv"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_below="@id/sub_comments_head_layout"
+        android:layout_above="@id/sub_comments_reply_layout"
+        tools:listitem="@layout/item_comments" />
+
+</RelativeLayout>
+
+

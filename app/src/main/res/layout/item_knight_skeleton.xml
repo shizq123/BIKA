@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    style="?attr/materialCardViewElevatedStyle"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="3dp">
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!--头像-->
+        <RelativeLayout
+            android:id="@+id/knight_user_image_layout"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_margin="6dp">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/knight_user_image"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_centerInParent="true"
+                android:layout_gravity="center"
+                android:adjustViewBounds="true"
+                android:padding="1dp"
+                android:scaleType="centerCrop"
+                android:src="@color/by_skeleton_light_transparent"
+                app:shapeAppearance="@style/CircleStyle"/>
+
+        </RelativeLayout>
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_toEndOf="@+id/knight_user_image_layout">
+
+            <!--用户名-->
+            <LinearLayout
+                android:id="@+id/knight_user_layout"
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:layout_marginTop="8dp"
+                android:orientation="vertical">
+
+                <View
+                    android:id="@+id/knight_user_name"
+                    android:layout_width="120dp"
+                    android:layout_height="20dp"
+                    android:ellipsize="end"
+                    android:singleLine="true"
+                    android:background="@color/by_skeleton_light_transparent" />
+
+
+                <View
+                    android:id="@+id/knight_user_ver"
+                    android:layout_width="40dp"
+                    android:layout_height="16dp"
+                    android:layout_marginTop="4dp"
+                    android:text="@{@string/level + m.level}"
+                    android:background="@color/by_skeleton_light_transparent" />
+
+            </LinearLayout>
+
+            <View
+                android:id="@+id/knight_text"
+                android:layout_width="160dp"
+                android:layout_height="20dp"
+                android:layout_below="@id/knight_user_layout"
+                android:layout_marginEnd="8dp"
+                android:layout_marginBottom="8dp"
+                android:background="@color/by_skeleton_light_transparent" />
+
+        </RelativeLayout>
+    </RelativeLayout>
+</com.google.android.material.card.MaterialCardView>
+
+

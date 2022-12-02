@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
+    <item
+        android:id="@+id/menu_id_nan"
+        android:title="@string/gender_nan" />
+    <item
+        android:id="@+id/menu_id_nv"
+        android:title="@string/gender_nv" />
+    <item
+        android:id="@+id/menu_id_bot"
+        android:title="@string/gender_bot" />
+
+</menu>

@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.shizq.bika">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:name=".MyApp"
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:networkSecurityConfig="@xml/network_security_config"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".ui.splash.SplashActivity"
+            android:exported="true"
+            android:theme="@style/SplashTheme">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+        <activity android:name=".ui.account.AccountActivity"/>
+        <activity
+            android:name=".ui.main.MainActivity">
+        </activity>
+        <activity
+            android:name=".ui.history.HistoryActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.messages.MessagesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.mycomments.MyCommentsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.about.AboutActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.settings.SettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.search.SearchActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.comiclist.ComicListActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.leaderboard.LeaderboardActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.collections.CollectionsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.comment.CommentsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.comicinfo.ComicInfoActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.reader.ReaderActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.games.GamesActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.games.GameInfoActivity"
+            android:exported="false" />
+
+    </application>
+
+</manifest>
