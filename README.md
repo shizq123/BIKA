@@ -26,7 +26,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     选择网络分流
     夜间模式
     自定义夜间模式时间
-    关于页面
     
     漫画详情章节观看记录
     漫画详情章节图片观看记录
