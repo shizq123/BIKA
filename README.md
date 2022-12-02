@@ -1,6 +1,7 @@
 UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。
 
 #感谢
+
 [wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart) <br>
 [material-components/material-components-android](https://github.com/material-components/material-components-android) <br>
 [youlookwhat/ByRecyclerView](https://github.com/youlookwhat/ByRecyclerView) <br>
