@@ -39,9 +39,6 @@
             android:name=".ui.mycomments.MyCommentsActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.about.AboutActivity"
-            android:exported="false" />
-        <activity
             android:name=".ui.settings.SettingsActivity"
             android:exported="false" />
         <activity

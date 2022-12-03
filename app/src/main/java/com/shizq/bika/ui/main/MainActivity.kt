@@ -19,7 +19,6 @@ import com.shizq.bika.adapter.CategoriesAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.bean.CategoriesBean
 import com.shizq.bika.databinding.ActivityMainBinding
-import com.shizq.bika.ui.about.AboutActivity
 import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
@@ -178,9 +177,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 R.id.drawer_menu_settings -> {
                     startActivity(SettingsActivity::class.java)
                 }
-                R.id.drawer_menu_about -> {
-                    startActivity(AboutActivity::class.java)
-                }
+
             }
             true
         }
@@ -326,9 +323,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
 
                 if (!it.data.user.isPunched) {//当前用户未打卡时
                     //是否设置自动打卡
-                    if (PreferenceManager.getDefaultSharedPreferences(applicationContext)
-                            .getBoolean("setting_punch", true)
-                    ) {
+                    if (SPUtil.get(this,"setting_punch", true) as Boolean) {
                         viewModel.punch_In()
                     }
                 }

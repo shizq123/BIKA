@@ -298,8 +298,10 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                 binding.comicinfoPage.text = "${it.data.comic.pagesCount}页"
 
                 //是否收藏
-                binding.toolbar.menu.findItem(R.id.action_bookmark)
-                    .setIcon(if (it.data.comic.isFavourite) R.drawable.ic_bookmark_check else R.drawable.ic_bookmark_add)
+                if (binding.toolbar.menu.findItem(R.id.action_bookmark) != null) {
+                    binding.toolbar.menu.findItem(R.id.action_bookmark)
+                        .setIcon(if (it.data.comic.isFavourite) R.drawable.ic_bookmark_check else R.drawable.ic_bookmark_add)
+                }
 
                 //描述
                 if (!it.data.comic.description.isNullOrEmpty()){binding.comicinfoDescription.text =it.data.comic.description.trim()}
@@ -487,11 +489,14 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         viewModel.liveData_favourite.observe(this) {
             binding.comicinfoProgressbar.visibility = View.GONE
             if (it.code == 200) {
-                if (it.data.action == "favourite") {
-                    binding.toolbar.menu.findItem(R.id.action_bookmark).setIcon(R.drawable.ic_bookmark_check)
-                } else {
-                    binding.toolbar.menu.findItem(R.id.action_bookmark).setIcon(R.drawable.ic_bookmark_add)
+                if (binding.toolbar.menu.findItem(R.id.action_bookmark) != null) {
+                    if (it.data.action == "favourite") {
+                        binding.toolbar.menu.findItem(R.id.action_bookmark).setIcon(R.drawable.ic_bookmark_check)
+                    } else {
+                        binding.toolbar.menu.findItem(R.id.action_bookmark).setIcon(R.drawable.ic_bookmark_add)
+                    }
                 }
+
             } else {
                 //加载失败
                 Toast.makeText(

@@ -1,13 +1,15 @@
 package com.shizq.bika.ui.settings
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.preference.DropDownPreference
+import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
@@ -24,6 +26,7 @@ import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseResponse
 import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.utils.AppVersion
+import com.shizq.bika.utils.GlideCacheUtil
 import com.shizq.bika.utils.SPUtil
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.observers.DefaultObserver
@@ -36,34 +39,48 @@ import retrofit2.HttpException
 class SettingsPreferenceFragment : PreferenceFragmentCompat(),
     Preference.OnPreferenceChangeListener,
     Preference.OnPreferenceClickListener {
-
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.settings_preferences, rootKey)
         val setting_close: Preference? = findPreference("setting_close")//清理缓存
-        val setting_node: Preference? = findPreference("setting_node")//分流节点
+        val setting_addresses: Preference? = findPreference("setting_addresses")//分流节点
         val setting_punch: Preference? = findPreference("setting_punch")//自动打卡
         val setting_night: Preference? = findPreference("setting_night")//夜间模式
-        val setting_night_time: Preference? = findPreference("setting_night_time")//自定义夜间模式时间
         val setting_app_ver: Preference? = findPreference("setting_app_ver")//应用版本
-        val setting_app_info: Preference? = findPreference("setting_app_info")//应用信息
         val setting_change_password: Preference? =
             findPreference("setting_change_password")//修改密码
         val setting_exit: Preference? = findPreference("setting_exit")//账号退出
 
         setting_close?.onPreferenceClickListener = this
-        setting_node?.onPreferenceClickListener = this
+        setting_addresses?.onPreferenceChangeListener = this
         setting_punch?.onPreferenceChangeListener = this
-        setting_night?.onPreferenceClickListener = this
-        setting_night_time?.onPreferenceClickListener = this
+        setting_night?.onPreferenceChangeListener = this
         setting_app_ver?.onPreferenceClickListener = this
-        setting_app_info?.onPreferenceClickListener = this
         setting_change_password?.onPreferenceClickListener = this
         setting_exit?.onPreferenceClickListener = this
 
+        //自动打卡
         setting_punch as SwitchPreferenceCompat
         setting_punch.summary = if (setting_punch.isChecked) "开启" else "关闭"
 
+        //夜间模式
+        setting_night as DropDownPreference
+        setting_night.summary = setting_night.value
+
+        //当前版本
         setting_app_ver?.summary = "当前版本：${AppVersion().name()}(${AppVersion().code()})"
+
+        //节点分流
+        setting_addresses as DropDownPreference
+        val addresses = SPUtil.get(context, "addresses", "")as String
+        setting_addresses.summary= if (addresses=="addresses2") "分流二" else "分流一"//显示当前的分流
+        val addressesList: ArrayList<String> = ArrayList()
+        addressesList.add("分流一")
+        addressesList.add("分流二")
+        setting_addresses.entries=addressesList.toTypedArray()//展示当前所有分流
+        setting_addresses.entryValues=addressesList.toTypedArray()
+
+        //清理图片
+        setting_close?.summary=GlideCacheUtil.getInstance().getCacheSize(context)
 
 
     }
@@ -71,32 +88,12 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
     override fun onPreferenceClick(preference: Preference): Boolean {
         when (preference.key) {
             "setting_close" -> {
-                Toast.makeText(activity, "功能为未实现", Toast.LENGTH_SHORT).show()
-                return true
-            }
-            "setting_node" -> {
-                Toast.makeText(activity, "功能为未实现", Toast.LENGTH_SHORT).show()
-
-                return true
-            }
-            "setting_night" -> {
-                Toast.makeText(activity, "功能为未实现", Toast.LENGTH_SHORT).show()
-
-                return true
-            }
-            "setting_night_time" -> {
-                Toast.makeText(activity, "功能为未实现", Toast.LENGTH_SHORT).show()
-
+                GlideCacheUtil.getInstance().clearImageAllCache(context)
+                preference.summary="0.0Byte"
+                Toast.makeText(activity, "清理完成", Toast.LENGTH_SHORT).show()
                 return true
             }
 
-            "setting_app_info" -> {
-                val intent = Intent()
-                intent.action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                intent.data = Uri.parse("package:" + activity?.packageName)
-                activity?.startActivity(intent)
-                return false
-            }
 
             "setting_change_password" -> {
 
@@ -197,7 +194,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                     MaterialAlertDialogBuilder(it)
                         .setTitle("你确定要退出登录吗")
                         .setPositiveButton("确定") { dialog, which ->
-//                                MmkvUtils.putSet("token", "")
                             SPUtil.remove(MyApp.contextBase, "token")
                             startActivity(Intent(activity, AccountActivity::class.java))
                             activity?.finish()
@@ -219,6 +215,30 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                 // TODO 一个小bug 开关会影响toolbar颜色变化
                 preference as SwitchPreferenceCompat
                 preference.summary = if (value as Boolean) "开启" else "关闭"
+                return true
+            }
+            "setting_addresses" -> {
+                value as String
+                preference as DropDownPreference
+                preference.value = value
+                preference.summary = value
+
+                SPUtil.put(context, "addresses", if(value=="分流二") "addresses2" else "addresses1")
+                return true
+            }
+            "setting_night" -> {
+                value as String
+                preference as DropDownPreference
+                preference.summary = value
+                preference.value = value
+                AppCompatDelegate.setDefaultNightMode(
+                    when (value) {
+                        "开启"->AppCompatDelegate.MODE_NIGHT_YES
+                        "关闭"->AppCompatDelegate.MODE_NIGHT_NO
+                        "跟随系统"->AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                        else->AppCompatDelegate.MODE_NIGHT_NO
+                    }
+                )
                 return true
             }
         }

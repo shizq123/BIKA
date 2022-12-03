@@ -47,12 +47,6 @@
                 android:title="设置"
                 android:checkable="true"
                 app:showAsAction="ifRoom"/>
-            <item
-                android:id="@+id/drawer_menu_about"
-                android:icon="@drawable/ic_about"
-                android:title="关于"
-                android:checkable="true"
-                app:showAsAction="ifRoom"/>
         </menu>
     </item>
 </menu>

@@ -1,4 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-
+    <string-array name="settings_night">
+        <item>跟随系统</item>
+        <item>关闭</item>
+        <item>开启</item>
+    </string-array>
 </resources>
