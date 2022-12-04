@@ -24,10 +24,6 @@ public class SearchRepository {
         new InsertAsyncTask(searchDao).execute(search);
     }
 
-    public void updateSearch(Search... search) {
-        new UpdateAsyncTask(searchDao).execute(search);
-    }
-
     public void deleteSearch(Search... search) {
         new DeleteAsyncTask(searchDao).execute(search);
     }
@@ -47,21 +43,6 @@ public class SearchRepository {
         @Override
         protected Void doInBackground(Search... search) {
             searchDao.insertSearch(search);
-            return null;
-        }
-
-    }
-
-    static class UpdateAsyncTask extends AsyncTask<Search, Void, Void> {
-        private SearchDao searchDao;
-
-        UpdateAsyncTask(SearchDao searchDao) {
-            this.searchDao = searchDao;
-        }
-
-        @Override
-        protected Void doInBackground(Search... search) {
-            searchDao.updateSearch(search);
             return null;
         }
 

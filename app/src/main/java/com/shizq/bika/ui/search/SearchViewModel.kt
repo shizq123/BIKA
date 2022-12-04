@@ -42,10 +42,6 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
         searchRepository.insertSearch(*search)
     }
 
-    fun updateSearch(vararg search: Search?) {
-        searchRepository.updateSearch(*search)
-    }
-
     fun deleteSearch(vararg search: Search?) {
         searchRepository.deleteSearch(*search)
     }

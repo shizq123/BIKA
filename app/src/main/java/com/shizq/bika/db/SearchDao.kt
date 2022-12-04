@@ -8,9 +8,6 @@ interface SearchDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertSearch(vararg search: Search?)
 
-    @Update
-    fun updateSearch(vararg search: Search?)
-
     @Delete
     fun deleteSearch(vararg search: Search?)
 
