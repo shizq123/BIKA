@@ -2,7 +2,7 @@
     <style name="SplashTheme" parent="Theme.SplashScreen">
 <!--        未来添加动态矢量图Icon-->
 <!--        <item name="android:windowSplashScreenAnimatedIcon">@drawable/ic_splash_anim</item>-->
-        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+<!--        <item name="android:windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>-->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="postSplashScreenTheme">@style/AppTheme</item>
     </style>

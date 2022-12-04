@@ -8,7 +8,7 @@
     </style>
 
     <style name="SplashTheme" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+<!--        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>-->
         <item name="android:statusBarColor">@android:color/transparent</item>
         <item name="postSplashScreenTheme">@style/AppTheme</item>
     </style>
