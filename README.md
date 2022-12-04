@@ -18,7 +18,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
     修改个人信息
     修改头像
-    搜索记录
     历史记录
     哔咔游戏详情的视频
     
