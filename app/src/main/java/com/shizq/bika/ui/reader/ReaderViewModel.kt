@@ -4,6 +4,8 @@ import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ComicsPictureBean
+import com.shizq.bika.db.History
+import com.shizq.bika.db.HistoryRepository
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
@@ -38,6 +40,16 @@ class ReaderViewModel(application: Application) : BaseViewModel(application) {
                 }
 
             })
+    }
+
+    private val historyRepository: HistoryRepository = HistoryRepository(application)
+    //通过 漫画的id查询
+    fun getHistory(): List<History>{
+        return historyRepository.getHistory(bookId)
+    }
+
+    fun updateHistory(vararg history: History?) {
+        historyRepository.updateHistory(*history)
     }
 
 }

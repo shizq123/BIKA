@@ -42,12 +42,12 @@
             app:icon="@drawable/ic_widgets"
             app:key="setting_app_ver"
             app:summary="当前版本"
-            app:title="应用版本" />
+            app:title="检查更新" />
 
         <Preference
             app:icon="@drawable/ic_applications"
             app:key="setting_app_info"
-            app:summary="跳转到系统设置查看应用信息"
+            app:summary="在系统设置上查看应用信息"
             app:title="应用信息" >
             <intent
                 android:action="android.settings.APPLICATION_DETAILS_SETTINGS"

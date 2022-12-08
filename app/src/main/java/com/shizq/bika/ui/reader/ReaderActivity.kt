@@ -11,6 +11,8 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.ReaderAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityReaderBinding
+import com.shizq.bika.db.History
+import com.shizq.bika.db.Search
 
 //阅读漫画页
 class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
@@ -62,6 +64,7 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
                 binding.readerInclude.toolbar.title = it.data.ep.title
                 binding.readerLoadLayout.visibility = View.GONE//隐藏加载进度条页面
                 mAdapter.addData(it.data.pages.docs)
+                binding.pageNumber.text=it.data.pages.total.toString()
 
                 if (it.data.pages.pages == it.data.pages.page) {
                     binding.readerRv.loadMoreEnd()//没有更多数据
@@ -97,6 +100,34 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
         binding.readerLoadError.visibility = if (show) View.GONE else View.VISIBLE
         binding.readerLoadText.text = string
         binding.readerLoadLayout.isEnabled = !show
+    }
+
+    override fun onPause() {
+        super.onPause()
+        //保存历史记录
+        val historyList=viewModel.getHistory()
+        if (historyList.isNotEmpty()) {
+            val history = History(
+                System.currentTimeMillis(),
+                historyList[0].title,
+                historyList[0].fileServer,
+                historyList[0].path,
+                historyList[0].comic_or_game,
+                historyList[0].author,
+                historyList[0].comic_or_game_id,
+                historyList[0].sort,
+                historyList[0].epsCount,
+                historyList[0].pagesCount,
+                historyList[0].finished,
+                historyList[0].likeCount,
+                historyList[0].ep, //TODO 这里更新章节
+                historyList[0].page //TODO 这里更新页数
+            )
+            history.id = historyList[0].id
+            //这个进行更新 //更新好象要主键
+            viewModel.updateHistory(history)//更新记录
+
+        }
     }
 
 }

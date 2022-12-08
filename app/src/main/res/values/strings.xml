@@ -20,6 +20,7 @@
     <string name="action_games">游戏</string>
     <string name="action_bookmark">书签</string>
     <string name="action_sort">排序方式</string>
+    <string name="action_delete">全部删除</string>
     <string name="keyboard">弹出键盘</string>
 
     <string name="sort_dd">新到旧</string>

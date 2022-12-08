@@ -10,7 +10,6 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
@@ -24,6 +23,7 @@ import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.games.GamesActivity
+import com.shizq.bika.ui.history.HistoryActivity
 import com.shizq.bika.ui.leaderboard.LeaderboardActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.search.SearchActivity
@@ -155,9 +155,9 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         binding.mainNavView.setNavigationItemSelectedListener {
             binding.mainNavView.setCheckedItem(it)
             when (it.itemId) {
-//                R.id.drawer_menu_history -> {
-//                    startActivity(HistoryActivity::class.java)
-//                }
+                R.id.drawer_menu_history -> {
+                    startActivity(HistoryActivity::class.java)
+                }
                 R.id.drawer_menu_bookmark -> {
                     val intent = Intent(this@MainActivity, ComicListActivity::class.java)
                     intent.putExtra("tag", "favourite")

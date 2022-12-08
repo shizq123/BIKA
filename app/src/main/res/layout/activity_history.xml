@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
-<layout xmlns:android="http://schemas.android.com/apk/res/android">
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
 
@@ -14,10 +15,18 @@
         android:fitsSystemWindows="true">
 
         <include
-            android:id="@+id/collections_include"
+            android:id="@+id/history_include"
             layout="@layout/view_toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
+
+        <me.jingbin.library.ByRecyclerView
+            android:id="@+id/history_rv"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>

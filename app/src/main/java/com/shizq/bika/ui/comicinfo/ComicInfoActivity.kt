@@ -20,6 +20,7 @@ import com.shizq.bika.adapter.RecommendAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComicinfoBinding
 import com.shizq.bika.databinding.ViewChapterFooterViewBinding
+import com.shizq.bika.db.History
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.reader.ReaderActivity
@@ -36,7 +37,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
 
     private lateinit var mAdapterChaper: ChapterAdapter
-    private lateinit var chaperFooterBinding : ViewChapterFooterViewBinding
+    private lateinit var chaperFooterBinding: ViewChapterFooterViewBinding
     private lateinit var mAdapterRecommend: RecommendAdapter
 
     private lateinit var popupView: View
@@ -83,7 +84,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         binding.appbarlayout.addLiftOnScrollListener { elevation, backgroundColor ->
             //判断appbar滑动状态 显示隐藏标题
             if (elevation > 0) {
-                binding.toolbar.title = title
+                binding.toolbar.title = viewModel.title
             } else {
                 binding.toolbar.title = ""
             }
@@ -103,13 +104,15 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
         //漫画章节
         mAdapterChaper = ChapterAdapter()
-//        binding.comicInfoChapterList.isRefreshEnabled=false
+        binding.comicInfoChapterList.isNestedScrollingEnabled = false
         binding.comicInfoChapterList.layoutManager = LinearLayoutManager(this)
         binding.comicInfoChapterList.adapter = mAdapterChaper
-        chaperFooterBinding = DataBindingUtil.inflate(LayoutInflater.from(this), R.layout.view_chapter_footer_view,
-            binding.comicInfoChapterList.parent as ViewGroup, false)
+        chaperFooterBinding = DataBindingUtil.inflate(
+            LayoutInflater.from(this), R.layout.view_chapter_footer_view,
+            binding.comicInfoChapterList.parent as ViewGroup, false
+        )
         binding.comicInfoChapterList.addFooterView(chaperFooterBinding.root)
-        chaperFooterBinding.chapterFooterLayout.isEnabled=false
+        chaperFooterBinding.chapterFooterLayout.isEnabled = false
         //漫画推荐
         val lm = LinearLayoutManager(this)
         lm.orientation = LinearLayoutManager.HORIZONTAL
@@ -249,8 +252,8 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
                 //漫画封面图片
                 if (imageurl == "") {
-                    fileserver=it.data.comic.thumb.fileServer
-                    imageurl=it.data.comic.thumb.path
+                    fileserver = it.data.comic.thumb.fileServer
+                    imageurl = it.data.comic.thumb.path
                     GlideApp.with(this)
                         .load(
                             GlideUrlNewKey(
@@ -304,7 +307,9 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                 }
 
                 //描述
-                if (!it.data.comic.description.isNullOrEmpty()){binding.comicinfoDescription.text =it.data.comic.description.trim()}
+                if (!it.data.comic.description.isNullOrEmpty()) {
+                    binding.comicinfoDescription.text = it.data.comic.description.trim()
+                }
 
                 //漫画标签 分类 合集 去重
                 val tags = mutableListOf<String>()
@@ -403,9 +408,58 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                         .into(popupImage)
 
                     StatusBarUtil.hide(this@ComicInfoActivity)
-                    mPopupWindow.showAtLocation(this@ComicInfoActivity.window.decorView, Gravity.BOTTOM, 0, 0)
+                    mPopupWindow.showAtLocation(
+                        this@ComicInfoActivity.window.decorView,
+                        Gravity.BOTTOM,
+                        0,
+                        0
+                    )
 
                     dia.dismiss()
+                }
+
+                //记录历史
+                val historyList=viewModel.getHistory()
+                if (historyList.isNotEmpty()) {
+                    val history = History(
+                        System.currentTimeMillis(),
+                        historyList[0].title,
+                        historyList[0].fileServer,
+                        historyList[0].path,
+                        historyList[0].comic_or_game,
+                        historyList[0].author,
+                        historyList[0].comic_or_game_id,
+                        historyList[0].sort,
+                        historyList[0].epsCount,
+                        historyList[0].pagesCount,
+                        historyList[0].finished,
+                        historyList[0].likeCount,
+                        historyList[0].ep,
+                        historyList[0].page
+                    )
+                    history.id = historyList[0].id
+                    //这个进行更新 //更新好象要主键
+                    viewModel.updateHistory(history)//更新搜索记录
+
+                } else {
+                    val history = History(
+                        System.currentTimeMillis(),
+                        viewModel.title.toString(),
+                        fileserver,
+                        imageurl,
+                        "comic",
+                        viewModel.author.toString(),
+                        viewModel.bookId.toString(),
+                        "",
+                        "",
+                        "",
+                        false,
+                        "",
+                        "",
+                        ""
+                    )
+                    //这个进行更新 //更新好象要主键
+                    viewModel.insertHistory(history)//添加搜索记录
                 }
 
 
@@ -437,15 +491,15 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
                 if (it.data.eps.pages == it.data.eps.page) {
                     //总页数等于当前页数 不显示加载布局
-                    chaperFooterBinding.chapterFooterLayout.isEnabled=false
+                    chaperFooterBinding.chapterFooterLayout.isEnabled = false
                     chaperFooterBinding.chapterFooterText.setText(R.string.footer_end)
                 } else {
-                    chaperFooterBinding.chapterFooterLayout.isEnabled=true
+                    chaperFooterBinding.chapterFooterLayout.isEnabled = true
                     chaperFooterBinding.chapterFooterText.setText(R.string.footer_more)
                 }
 
             } else {
-                chaperFooterBinding.chapterFooterLayout.isEnabled=true
+                chaperFooterBinding.chapterFooterLayout.isEnabled = true
                 chaperFooterBinding.chapterFooterText.setText(R.string.footer_error)
 
             }
@@ -491,9 +545,11 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
             if (it.code == 200) {
                 if (binding.toolbar.menu.findItem(R.id.action_bookmark) != null) {
                     if (it.data.action == "favourite") {
-                        binding.toolbar.menu.findItem(R.id.action_bookmark).setIcon(R.drawable.ic_bookmark_check)
+                        binding.toolbar.menu.findItem(R.id.action_bookmark)
+                            .setIcon(R.drawable.ic_bookmark_check)
                     } else {
-                        binding.toolbar.menu.findItem(R.id.action_bookmark).setIcon(R.drawable.ic_bookmark_add)
+                        binding.toolbar.menu.findItem(R.id.action_bookmark)
+                            .setIcon(R.drawable.ic_bookmark_add)
                     }
                 }
 
@@ -517,7 +573,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
             startActivity(intent)
         }
         chaperFooterBinding.chapterFooterLayout.setOnClickListener {
-            chaperFooterBinding.chapterFooterLayout.isEnabled=false
+            chaperFooterBinding.chapterFooterLayout.isEnabled = false
             chaperFooterBinding.chapterFooterText.setText(R.string.footer_loading)
             viewModel.getChapter()
         }
@@ -529,6 +585,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         popupView.setOnClickListener {
             mPopupWindow.dismiss()
         }
-    }
 
+
+    }
 }

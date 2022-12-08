@@ -18,7 +18,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
     修改个人信息
     修改头像
-    历史记录
     哔咔游戏详情的视频
     
     漫画详情章节观看记录
@@ -42,6 +41,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     漫画详情页面
     回退键
     设置页太乱
+    历史记录需要优化
     更改密码 需要添加进度条
     列表滑动有卡顿 后续优化
     优化activity 转成fragment

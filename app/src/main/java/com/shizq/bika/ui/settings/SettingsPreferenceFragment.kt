@@ -1,15 +1,14 @@
 package com.shizq.bika.ui.settings
 
 import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.preference.DropDownPreference
-import androidx.preference.ListPreference
 import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.SwitchPreferenceCompat
@@ -21,6 +20,7 @@ import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
 import com.shizq.bika.MyApp
 import com.shizq.bika.R
+import com.shizq.bika.bean.UpdateBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseResponse
@@ -29,6 +29,8 @@ import com.shizq.bika.utils.AppVersion
 import com.shizq.bika.utils.GlideCacheUtil
 import com.shizq.bika.utils.SPUtil
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.core.Observer
+import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.observers.DefaultObserver
 import io.reactivex.rxjava3.schedulers.Schedulers
 import okhttp3.MediaType
@@ -71,16 +73,16 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
 
         //节点分流
         setting_addresses as DropDownPreference
-        val addresses = SPUtil.get(context, "addresses", "")as String
-        setting_addresses.summary= if (addresses=="addresses2") "分流二" else "分流一"//显示当前的分流
+        val addresses = SPUtil.get(context, "addresses", "") as String
+        setting_addresses.summary = if (addresses == "addresses2") "分流二" else "分流一"//显示当前的分流
         val addressesList: ArrayList<String> = ArrayList()
         addressesList.add("分流一")
         addressesList.add("分流二")
-        setting_addresses.entries=addressesList.toTypedArray()//展示当前所有分流
-        setting_addresses.entryValues=addressesList.toTypedArray()
+        setting_addresses.entries = addressesList.toTypedArray()//展示当前所有分流
+        setting_addresses.entryValues = addressesList.toTypedArray()
 
         //清理图片
-        setting_close?.summary=GlideCacheUtil.getInstance().getCacheSize(context)
+        setting_close?.summary = GlideCacheUtil.getInstance().getCacheSize(context)
 
 
     }
@@ -89,11 +91,15 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
         when (preference.key) {
             "setting_close" -> {
                 GlideCacheUtil.getInstance().clearImageAllCache(context)
-                preference.summary="0.0Byte"
+                preference.summary = "0.0Byte"
                 Toast.makeText(activity, "清理完成", Toast.LENGTH_SHORT).show()
                 return true
             }
 
+            "setting_app_ver" -> {
+                checkUpdates()
+                return true
+            }
 
             "setting_change_password" -> {
 
@@ -223,7 +229,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                 preference.value = value
                 preference.summary = value
 
-                SPUtil.put(context, "addresses", if(value=="分流二") "addresses2" else "addresses1")
+                SPUtil.put(context, "addresses", if (value == "分流二") "addresses2" else "addresses1")
                 return true
             }
             "setting_night" -> {
@@ -233,10 +239,10 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                 preference.value = value
                 AppCompatDelegate.setDefaultNightMode(
                     when (value) {
-                        "开启"->AppCompatDelegate.MODE_NIGHT_YES
-                        "关闭"->AppCompatDelegate.MODE_NIGHT_NO
-                        "跟随系统"->AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                        else->AppCompatDelegate.MODE_NIGHT_NO
+                        "开启" -> AppCompatDelegate.MODE_NIGHT_YES
+                        "关闭" -> AppCompatDelegate.MODE_NIGHT_NO
+                        "跟随系统" -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                        else -> AppCompatDelegate.MODE_NIGHT_NO
                     }
                 )
                 return true
@@ -259,7 +265,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
             }.asJsonObject.toString()
         )
         val headers = BaseHeaders("users/password", "PUT").getHeaderMapAndToken()
-
         RetrofitUtil.service.changePasswordPUT(body, headers)
             .compose { upstream ->
                 upstream.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
@@ -318,25 +323,74 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                 val oldPassword: TextInputEditText? = dia.findViewById(R.id.new_password)
                 val newPasswordLayout: TextInputLayout? = dia.findViewById(R.id.old_password)
                 val newPassword: TextInputEditText? = dia.findViewById(R.id.confirm_password_layout)
-                val confirmPasswordLayout: TextInputLayout? = dia.findViewById(R.id.new_password_layout)
+                val confirmPasswordLayout: TextInputLayout? =
+                    dia.findViewById(R.id.new_password_layout)
                 val confirmPassword: TextInputEditText? = dia.findViewById(R.id.confirm_password)
 
                 oldPassword?.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-                    override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
-                    override fun afterTextChanged(s: Editable) { oldPasswordLayout?.isErrorEnabled = false }
+                    override fun beforeTextChanged(
+                        s: CharSequence,
+                        start: Int,
+                        count: Int,
+                        after: Int
+                    ) {
+                    }
+
+                    override fun onTextChanged(
+                        s: CharSequence,
+                        start: Int,
+                        before: Int,
+                        count: Int
+                    ) {
+                    }
+
+                    override fun afterTextChanged(s: Editable) {
+                        oldPasswordLayout?.isErrorEnabled = false
+                    }
                 })
 
                 newPassword?.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-                    override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
-                    override fun afterTextChanged(s: Editable) { newPasswordLayout?.isErrorEnabled = false }
+                    override fun beforeTextChanged(
+                        s: CharSequence,
+                        start: Int,
+                        count: Int,
+                        after: Int
+                    ) {
+                    }
+
+                    override fun onTextChanged(
+                        s: CharSequence,
+                        start: Int,
+                        before: Int,
+                        count: Int
+                    ) {
+                    }
+
+                    override fun afterTextChanged(s: Editable) {
+                        newPasswordLayout?.isErrorEnabled = false
+                    }
                 })
 
                 confirmPassword?.addTextChangedListener(object : TextWatcher {
-                    override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
-                    override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
-                    override fun afterTextChanged(s: Editable) { confirmPasswordLayout?.isErrorEnabled = false }
+                    override fun beforeTextChanged(
+                        s: CharSequence,
+                        start: Int,
+                        count: Int,
+                        after: Int
+                    ) {
+                    }
+
+                    override fun onTextChanged(
+                        s: CharSequence,
+                        start: Int,
+                        before: Int,
+                        count: Int
+                    ) {
+                    }
+
+                    override fun afterTextChanged(s: Editable) {
+                        confirmPasswordLayout?.isErrorEnabled = false
+                    }
                 })
 
 
@@ -359,7 +413,9 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                 if (confirmPassword?.text.toString().trim().isEmpty()) {
                     confirmPasswordLayout?.isErrorEnabled = true
                     confirmPasswordLayout?.error = "确认密码不能为空！"
-                } else if (confirmPassword?.text.toString().trim() != newPassword?.text.toString().trim()) {
+                } else if (confirmPassword?.text.toString().trim() != newPassword?.text.toString()
+                        .trim()
+                ) {
                     confirmPasswordLayout?.isErrorEnabled = true
                     confirmPasswordLayout?.error = "确认密码与新密码不符！"
                 }
@@ -369,7 +425,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                     && confirmPassword?.text.toString().trim().isNotEmpty()
                     && newPassword?.text.toString().trim().isNotEmpty()
                     && newPassword?.text.toString().trim().length >= 8
-                    && (confirmPassword?.text.toString().trim() == newPassword?.text.toString().trim())
+                    && (confirmPassword?.text.toString().trim() == newPassword?.text.toString()
+                        .trim())
                 ) {
                     changePassword(
                         oldPassword?.text.toString().trim(),
@@ -381,5 +438,45 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
             }
 
         }
+    }
+
+    fun checkUpdates() {
+        RetrofitUtil.service_update.updateGet()
+            .compose { upstream ->
+                upstream.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+            }
+            .subscribe(object : Observer<UpdateBean> {
+                override fun onNext(t: UpdateBean) {
+                    if (t != null) {
+                        if (t.code > AppVersion().code()) {
+                            context?.let {
+                                MaterialAlertDialogBuilder(it)
+                                    .setTitle("新版本 v${t.name}")
+                                    .setMessage(t.des)
+                                    .setPositiveButton("更新") { _, _ ->
+                                        val intent = Intent()
+                                        intent.action = "android.intent.action.VIEW"
+                                        intent.data = Uri.parse(t.url)
+                                        startActivity(intent)
+                                    }
+                                    .setNegativeButton("取消", null)
+                                    .show()
+                            }
+                        } else {
+                            Toast.makeText(activity, "您当前已经是最新版本", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(activity, "检查更新失败，请稍后再试", Toast.LENGTH_SHORT).show()
+                    }
+
+                }
+
+                override fun onError(e: Throwable) {
+                    Toast.makeText(activity, "检查更新失败，请稍后再试", Toast.LENGTH_SHORT).show()
+                }
+
+                override fun onSubscribe(d: Disposable) {}
+                override fun onComplete() {}
+            })
     }
 }

@@ -7,6 +7,8 @@ import com.shizq.bika.bean.ActionBean
 import com.shizq.bika.bean.ChapterBean
 import com.shizq.bika.bean.ComicInfoBean
 import com.shizq.bika.bean.RecommendBean
+import com.shizq.bika.db.History
+import com.shizq.bika.db.HistoryRepository
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
@@ -143,4 +145,19 @@ class ComicInfoViewModel(application: Application) : BaseViewModel(application) 
 
             })
     }
+
+    private val historyRepository: HistoryRepository = HistoryRepository(application)
+
+    //通过 漫画的id查询
+    fun getHistory(): List<History>{
+        return historyRepository.getHistory(bookId)
+    }
+
+    fun updateHistory(vararg history: History?) {
+        historyRepository.updateHistory(*history)
+    }
+    fun insertHistory(vararg history: History?) {
+        historyRepository.insertHistory(*history)
+    }
+
 }

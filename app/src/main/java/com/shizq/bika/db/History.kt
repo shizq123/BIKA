@@ -6,6 +6,9 @@ import androidx.room.PrimaryKey
 
 @Entity
 class History(
+    @ColumnInfo(name = "time")
+    var time: Long = 0,
+
     @ColumnInfo(name = "title")
     var title: String,
 
@@ -44,8 +47,7 @@ class History(
 
     @ColumnInfo(name = "page")//观看到第几页
     var page: String,
-
-) {
+){
     @PrimaryKey(autoGenerate = true)
-    var id: Long = 0
+    var id:Long=0
 }
