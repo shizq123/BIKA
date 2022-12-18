@@ -89,6 +89,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                 binding.toolbar.title = ""
             }
         }
+        binding.comicinfoBtnRead.hide()
 
         //PopupWindow 用来显示图片大图
         popupView = View.inflate(this@ComicInfoActivity, R.layout.view_popup_image, null)
@@ -487,7 +488,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         viewModel.liveData_chapter.observe(this) {
             if (it.code == 200) {
                 mAdapterChaper.addData(it.data.eps.docs)
-                binding.comicinfoBtnRead.visibility = View.VISIBLE
+                binding.comicinfoBtnRead.show()
 
                 if (it.data.eps.pages == it.data.eps.page) {
                     //总页数等于当前页数 不显示加载布局
