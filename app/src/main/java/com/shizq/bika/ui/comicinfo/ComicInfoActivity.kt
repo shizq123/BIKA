@@ -379,18 +379,9 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                     .into(dialog_image)
                 //头像框
                 GlideApp.with(this@ComicInfoActivity)
-                    .load(
-                        if (!it.data.comic._creator.character.isNullOrEmpty()) {
-                            //https://pica-web.wakamoment.tk/ 网站失效 替换到能用的
-                            it.data.comic._creator.character.replace(
-                                "pica-web.wakamoment.tk",
-                                "pica-pica.wikawika.xyz"
-                            )
-                        } else {
-                            ""
-                        }
-                    )
+                    .load(if (it.data.comic._creator.character.isNullOrEmpty()) "" else it.data.comic._creator.character)
                     .into(dialog_character)
+
                 //dialog view 头像点击事件
                 dialog_image_layout.setOnClickListener { v ->
                     GlideApp.with(v)

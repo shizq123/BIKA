@@ -278,11 +278,8 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                         )
                 }
                 if (it.data.user.character != null) { //头像框 新用户没有
-                    //https://pica-web.wakamoment.tk/ 部分头像框不显示是因为网址失效了,把它替换到能用的网址
-                    character=it.data.user.character.replace(
-                        "pica-web.wakamoment.tk",
-                        "pica-pica.wikawika.xyz"
-                    )
+
+                    character=it.data.user.character
                     GlideApp.with(this@MainActivity)
                         .load(character)
                         .into(

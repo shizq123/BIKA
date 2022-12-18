@@ -48,17 +48,7 @@ class CommentsAdapter: BaseBindingAdapter<CommentsBean.Comments.Doc, ItemComment
 
             //头像框
             GlideApp.with(holder.itemView)
-                .load(
-                    if (!bean._user.character.isNullOrEmpty()) {
-                        //https://pica-web.wakamoment.tk/ 网站失效 替换到能用的
-                        bean._user.character.replace(
-                            "pica-web.wakamoment.tk",
-                            "pica-pica.wikawika.xyz"
-                        )
-                    } else {
-                        ""
-                    }
-                )
+                .load(if (bean._user.character.isNullOrEmpty()) "" else bean._user.character )
                 .into(binding.commentsUserCharacter)
 
         } else {

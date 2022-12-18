@@ -363,17 +363,7 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
 
         //头像框
         GlideApp.with(this)
-            .load(
-                if (!t._user.character.isNullOrEmpty()) {
-                    //https://pica-web.wakamoment.tk/ 网站失效 替换到能用的
-                    t._user.character.replace(
-                        "pica-web.wakamoment.tk",
-                        "pica-pica.wikawika.xyz"
-                    )
-                } else {
-                    ""
-                }
-            )
+            .load(if (t._user.character.isNullOrEmpty()) "" else t._user.character)
             .into(dialog_character)
 
         dia = MaterialAlertDialogBuilder(this).setView(dialog_view)

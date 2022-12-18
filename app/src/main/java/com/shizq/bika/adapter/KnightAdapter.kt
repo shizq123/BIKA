@@ -28,15 +28,7 @@ class KnightAdapter : BaseBindingAdapter<KnightBean.Users, ItemKnightBinding>(R.
             .into(binding.knightUserImage)
         //头像框
         GlideApp.with(holder.itemView)
-            .load(
-                //https://pica-web.wakamoment.tk/ 网站失效 替换到能用的
-                if (!bean.character.isNullOrEmpty())
-                    bean.character.replace(
-                        "pica-web.wakamoment.tk",
-                        "pica-pica.wikawika.xyz"
-                    )
-                else ""
-            )
+            .load(if (bean.character.isNullOrEmpty()) "" else bean.character)
             .into(binding.knightUserCharacter)
 
         holder.addOnClickListener(R.id.knight_user_image_layout)

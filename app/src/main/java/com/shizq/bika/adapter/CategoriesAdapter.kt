@@ -1,5 +1,4 @@
 package com.shizq.bika.adapter
-
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
@@ -23,12 +22,7 @@ class CategoriesAdapter :
                 //判断是否是手动添加的数据
                 if (bean.imageRes == null) {
                     //哔咔服务器问题 需自行修改图片请求路径
-                    GlideUrlNewKey(
-                        bean.thumb.fileServer.replace(
-                            "https://wikawika.xyz/static/",
-                            "https://s3.picacomic.com"
-                        ) , bean.thumb.path
-                    )
+                    GlideUrlNewKey("https://s3.picacomic.com", bean.thumb.path)
                 } else {
                     bean.imageRes
                 }

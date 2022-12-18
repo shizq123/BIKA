@@ -23,12 +23,9 @@
                 android:layout_centerInParent="true"
                 android:layout_gravity="center"
                 android:adjustViewBounds="true"
-                android:padding="1dp"
                 android:scaleType="centerCrop"
                 android:src="@drawable/placeholder_avatar_2"
-                app:shapeAppearance="@style/CircleStyle"
-                app:strokeColor="?attr/colorControlNormal"
-                app:strokeWidth="1dp" />
+                app:shapeAppearance="@style/CircleStyle" />
 
             <ImageView
                 android:id="@+id/view_user_character"

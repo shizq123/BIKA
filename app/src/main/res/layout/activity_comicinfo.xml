@@ -231,11 +231,9 @@
                             android:layout_height="48dp"
                             android:layout_gravity="center"
                             android:scaleType="centerCrop"
-                            android:padding="1dp"
                             android:src="@drawable/placeholder_avatar_2"
                             app:shapeAppearance="@style/CircleStyle"
-                            app:strokeColor="?attr/colorControlNormal"
-                            app:strokeWidth="1dp" />
+                            />
 
                         <LinearLayout
                             android:layout_width="match_parent"

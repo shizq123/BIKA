@@ -2,7 +2,6 @@ package com.shizq.bika.ui.splash
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import androidx.core.splashscreen.SplashScreen
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -82,7 +81,7 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
         }
     }
 
-    fun showProgressBar(show: Boolean,string: String){
+    private fun showProgressBar(show: Boolean, string: String){
         binding.loadProgressBar.visibility=if (show)View.VISIBLE else View.GONE
         binding.loadError.visibility=if (show)View.GONE else View.VISIBLE
         binding.loadText.text = string

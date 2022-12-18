@@ -142,15 +142,7 @@ class LeaderboardKnightFragment :
 
             //头像框
             GlideApp.with(view.context)
-                .load(
-                    if (!data.character.isNullOrEmpty())
-                    //https://pica-web.wakamoment.tk/ 网站失效 替换到能用的
-                        data.character.replace(
-                            "pica-web.wakamoment.tk",
-                            "pica-pica.wikawika.xyz"
-                        )
-                    else ""
-                )
+                .load(if (data.character.isNullOrEmpty()) "" else data.character)
                 .into(character)
 
             dia = MaterialAlertDialogBuilder(view.context).setView(this@LeaderboardKnightFragment.v)

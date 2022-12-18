@@ -25,7 +25,6 @@
                 android:layout_centerInParent="true"
                 android:layout_gravity="center"
                 android:adjustViewBounds="true"
-                android:padding="1dp"
                 android:scaleType="centerCrop"
                 android:src="@color/by_skeleton_light_transparent"
                 app:shapeAppearance="@style/CircleStyle"/>
