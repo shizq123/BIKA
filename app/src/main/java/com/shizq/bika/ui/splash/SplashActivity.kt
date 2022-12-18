@@ -49,15 +49,10 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
                 //查看是否有默认节点 没有就存一个
 
 
-                //保存两个dns地址
+                //保存两个host地址
                 SPUtil.put(this,"addresses1",initBean.addresses[0])
                 SPUtil.put(this,"addresses2",initBean.addresses[1])
 
-                if ((SPUtil.get(this, "addresses", "") as String) == "addresses2") {
-                    SPUtil.put(this, "addresses", "addresses2")
-                } else {
-                    SPUtil.put(this, "addresses", "addresses1")
-                }
 
                 //检查是否有token 没有就进行登录 显示登录提示框
                 if (SPUtil.get(this,"token", "") == "") {

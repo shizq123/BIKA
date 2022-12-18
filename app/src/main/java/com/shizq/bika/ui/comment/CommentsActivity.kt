@@ -80,7 +80,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         setSupportActionBar(binding.commentsInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true);
 
-        binding.commentsRv.isRefreshEnabled=false //禁止下拉刷新
+        binding.commentsRv.isRefreshEnabled = false //禁止下拉刷新
         binding.commentsRv.layoutManager = LinearLayoutManager(this)
         adapter_v2 = CommentsAdapter()
         binding.commentsRv.adapter = adapter_v2
@@ -109,7 +109,8 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         mPopupWindow.isClippingEnabled = false
 
         //子评论 bottomSheetDialog
-        sub_comments_view = View.inflate(this@CommentsActivity, R.layout.view_bottom_sub_comments, null)
+        sub_comments_view =
+            View.inflate(this@CommentsActivity, R.layout.view_bottom_sub_comments, null)
         bottomSheetDialog = BottomSheetDialog(this)
         bottomSheetDialog.setContentView(sub_comments_view)
 
@@ -125,7 +126,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         dialog_layout.layoutParams = params
 
         //子评论 recyclerview
-        sub_comments_rv.isRefreshEnabled=false //禁止下拉刷新
+        sub_comments_rv.isRefreshEnabled = false //禁止下拉刷新
         sub_comments_rv.layoutManager = LinearLayoutManager(this)
         adapter_sub = CommentsAdapter()
         sub_comments_rv.adapter = adapter_sub
@@ -140,7 +141,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
     }
 
     private fun getWindowHeight(): Int {
-        return resources.displayMetrics.heightPixels-50.dp
+        return resources.displayMetrics.heightPixels - 50.dp
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -152,19 +153,23 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
 
     private fun initListener() {
         binding.commentsRv.setOnItemClickListener { v, position ->
-            dialog_send_sub_comments.setTitleText("回复 " + adapter_v2.getItemData(position)._user.name)
-            dialog_send_sub_comments.show()
+            if (adapter_v2.getItemData(position)._user != null) {
+                dialog_send_sub_comments.setTitleText("回复 " + adapter_v2.getItemData(position)._user.name)
+                dialog_send_sub_comments.show()
+            }
         }
         binding.commentsRv.setOnItemChildClickListener { view, position ->
-            val id= view.id
-            val data =adapter_v2.getItemData(position)
-            if (id == R.id.comments_name||id == R.id.comments_image_layout) { showUserDialog(data) }
+            val id = view.id
+            val data = adapter_v2.getItemData(position)
+            if (id == R.id.comments_name || id == R.id.comments_image_layout) {
+                    showUserDialog(data)
+            }
             //点赞
             if (id == R.id.comments_like_layout) {
-                viewModel.likePosition=position//保存当前要点赞的position
-                viewModel.likeCommentsId=adapter_v2.getItemData(position).id//保存当前要点赞的position
+                viewModel.likePosition = position//保存当前要点赞的position
+                viewModel.likeCommentsId = adapter_v2.getItemData(position).id//保存当前要点赞的position
                 viewModel.commentsLike()
-                binding.commentsProgressbar.visibility=View.VISIBLE
+                binding.commentsProgressbar.visibility = View.VISIBLE
             }
             //评论
             if (id == R.id.comments_sub_layout) {
@@ -184,9 +189,9 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                     data.totalComments,
                     true
                 )
-                viewModel.data=bean
+                viewModel.data = bean
                 viewModel.commentsId = data._id
-                viewModel.likePosition=position//暂存打开哪个主评论的position
+                viewModel.likePosition = position//暂存打开哪个主评论的position
                 viewModel.subPage = 0
 
                 val list_sub_comments: ArrayList<CommentsBean.Comments.Doc> = ArrayList()
@@ -206,13 +211,16 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
             }
         }
         sub_comments_rv.setOnItemChildClickListener { view, position ->
-            val id= view.id
-            val data =adapter_sub.getItemData(position)
-            if (id == R.id.comments_name||id == R.id.comments_image_layout) { showUserDialog(data) }
+            val id = view.id
+            val data = adapter_sub.getItemData(position)
+            if (id == R.id.comments_name || id == R.id.comments_image_layout) {
+                showUserDialog(data)
+            }
             //点赞
             if (id == R.id.comments_like_layout) {
-                viewModel.likeSubPosition=position//保存当前要点赞的position
-                viewModel.likeSubCommentsId=adapter_sub.getItemData(position)._id//保存当前要点赞的position
+                viewModel.likeSubPosition = position//保存当前要点赞的position
+                viewModel.likeSubCommentsId =
+                    adapter_sub.getItemData(position)._id//保存当前要点赞的position
                 viewModel.subCommentsLike()
             }
 
@@ -328,16 +336,16 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                 adapter_v2.clear()
                 viewModel.page = 0
                 viewModel.requestComment()
-            }else if(it.code == 400 ){
-                if(it.error=="1019"){
+            } else if (it.code == 400) {
+                if (it.error == "1019") {
                     //cannot comment
-                    Toast.makeText(this,"等级不够不能发送评论",Toast.LENGTH_SHORT).show()
-                }else if (it.error=="1031"){
+                    Toast.makeText(this, "等级不够不能发送评论", Toast.LENGTH_SHORT).show()
+                } else if (it.error == "1031") {
                     //higher level is required
-                    Toast.makeText(this,"等级不够不能发送评论",Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "等级不够不能发送评论", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                Toast.makeText(this,"评论发送失败 ${it.message}",Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "评论发送失败 ${it.message}", Toast.LENGTH_SHORT).show()
             }
         }
         //发送子评论
@@ -347,37 +355,41 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                 adapter_sub.clear()
 
                 val list_sub_comments: ArrayList<CommentsBean.Comments.Doc> = ArrayList()
-                viewModel.data?.let { it1 -> list_sub_comments.add(it1)
+                viewModel.data?.let { it1 ->
+                    list_sub_comments.add(it1)
                     adapter_sub.addData(list_sub_comments)
                 }
 
-                viewModel.subPage=0
+                viewModel.subPage = 0
                 viewModel.requestSubComment()
-            }else if(it.code == 400 ){
-                if(it.error=="1019"){
+            } else if (it.code == 400) {
+                if (it.error == "1019") {
                     //cannot comment
-                    Toast.makeText(this,"等级不够不能发送评论",Toast.LENGTH_SHORT).show()
-                }else if (it.error=="1031"){
+                    Toast.makeText(this, "等级不够不能发送评论", Toast.LENGTH_SHORT).show()
+                } else if (it.error == "1031") {
                     //higher level is required
-                    Toast.makeText(this,"等级不够不能发送评论",Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this, "等级不够不能发送评论", Toast.LENGTH_SHORT).show()
                 }
             } else {
-                Toast.makeText(this,"评论回复发送失败",Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "评论回复发送失败", Toast.LENGTH_SHORT).show()
 
             }
         }
 
         //子评论 分页列表加载更多的接口
-        sub_comments_rv.setOnLoadMoreListener{ viewModel.requestSubComment() }
+        sub_comments_rv.setOnLoadMoreListener { viewModel.requestSubComment() }
 
         //评论点赞
         viewModel.liveData_comments_like.observe(this) {
-            binding.commentsProgressbar.visibility=View.GONE
+            binding.commentsProgressbar.visibility = View.GONE
             if (it.code == 200) {
                 //  设置要局部刷新的position及payload
-                adapter_v2.refreshNotifyItemChanged(viewModel.likePosition, it.data.action=="like")
+                adapter_v2.refreshNotifyItemChanged(
+                    viewModel.likePosition,
+                    it.data.action == "like"
+                )
             } else {
-                Toast.makeText(this,"点击爱心失败",Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "点击爱心失败", Toast.LENGTH_SHORT).show()
 
             }
         }
@@ -386,21 +398,30 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         viewModel.liveData_sub_comments_like.observe(this) {
             if (it.code == 200) {
                 //  设置要局部刷新的position及payload
-                adapter_sub.refreshNotifyItemChanged(viewModel.likeSubPosition, it.data.action=="like")
+                adapter_sub.refreshNotifyItemChanged(
+                    viewModel.likeSubPosition,
+                    it.data.action == "like"
+                )
 
-                if(viewModel.commentsId==adapter_sub.data[viewModel.likeSubPosition]._id){
+                if (viewModel.commentsId == adapter_sub.data[viewModel.likeSubPosition]._id) {
                     //因为第一条数据是手动添加的，所以在这判断是否第一条数据 ，如果是就把主评论也更新
-                    adapter_v2.refreshNotifyItemChanged(viewModel.likePosition, it.data.action=="like")
+                    adapter_v2.refreshNotifyItemChanged(
+                        viewModel.likePosition,
+                        it.data.action == "like"
+                    )
                 }
             } else {
-                Toast.makeText(this,"点击爱心失败",Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "点击爱心失败", Toast.LENGTH_SHORT).show()
 
             }
         }
 
     }
 
-    fun showUserDialog(t: CommentsBean.Comments.Doc) {
+    private fun showUserDialog(t: CommentsBean.Comments.Doc) {
+        if (t._user == null) {
+            return
+        }
         dialog_gender_level.text = "${
             when (t._user.gender) {
                 "m" -> "(绅士)"

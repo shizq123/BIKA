@@ -89,7 +89,6 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                 binding.toolbar.title = ""
             }
         }
-        binding.comicinfoBtnRead.hide()
 
         //PopupWindow 用来显示图片大图
         popupView = View.inflate(this@ComicInfoActivity, R.layout.view_popup_image, null)

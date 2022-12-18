@@ -5,4 +5,15 @@
         <item>关闭</item>
         <item>开启</item>
     </string-array>
+
+    <string-array name="settings_app_channel">
+        <item>分流一</item>
+        <item>分流二</item>
+        <item>分流三</item>
+    </string-array>
+    <string-array name="settings_app_channel_values">
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
 </resources>

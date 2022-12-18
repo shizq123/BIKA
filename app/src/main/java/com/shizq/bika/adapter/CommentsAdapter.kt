@@ -115,10 +115,10 @@ class CommentsAdapter: BaseBindingAdapter<CommentsBean.Comments.Doc, ItemComment
             binding.commentsSubText.text = "共${bean.commentsCount}条回复"//回复数
         }
 
-        holder.addOnClickListener(R.id.comments_name);
-        holder.addOnClickListener(R.id.comments_image_layout);
-        holder.addOnClickListener(R.id.comments_like_layout);
-        holder.addOnClickListener(R.id.comments_sub_layout);
+        holder.addOnClickListener(R.id.comments_name)
+        holder.addOnClickListener(R.id.comments_image_layout)
+        holder.addOnClickListener(R.id.comments_like_layout)
+        holder.addOnClickListener(R.id.comments_sub_layout)
     }
 
     override fun bindViewPayloads(

@@ -44,7 +44,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         setPreferencesFromResource(R.xml.settings_preferences, rootKey)
         val setting_close: Preference? = findPreference("setting_close")//清理缓存
-        val setting_addresses: Preference? = findPreference("setting_addresses")//分流节点
+        val setting_app_channel: Preference? = findPreference("setting_app_channel")//分流节点
         val setting_punch: Preference? = findPreference("setting_punch")//自动打卡
         val setting_night: Preference? = findPreference("setting_night")//夜间模式
         val setting_app_ver: Preference? = findPreference("setting_app_ver")//应用版本
@@ -53,7 +53,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
         val setting_exit: Preference? = findPreference("setting_exit")//账号退出
 
         setting_close?.onPreferenceClickListener = this
-        setting_addresses?.onPreferenceChangeListener = this
+        setting_app_channel?.onPreferenceChangeListener = this
         setting_punch?.onPreferenceChangeListener = this
         setting_night?.onPreferenceChangeListener = this
         setting_app_ver?.onPreferenceClickListener = this
@@ -71,15 +71,13 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
         //当前版本
         setting_app_ver?.summary = "当前版本：${AppVersion().name()}(${AppVersion().code()})"
 
-        //节点分流
-        setting_addresses as DropDownPreference
-        val addresses = SPUtil.get(context, "addresses", "") as String
-        setting_addresses.summary = if (addresses == "addresses2") "分流二" else "分流一"//显示当前的分流
-        val addressesList: ArrayList<String> = ArrayList()
-        addressesList.add("分流一")
-        addressesList.add("分流二")
-        setting_addresses.entries = addressesList.toTypedArray()//展示当前所有分流
-        setting_addresses.entryValues = addressesList.toTypedArray()
+        //分流
+        setting_app_channel?.summary =
+            when (SPUtil.get(context, "setting_app_channel", "2") as String) {
+                "1" -> "分流一"
+                "2" -> "分流二"
+                else -> "分流三"
+            }
 
         //清理图片
         setting_close?.summary = GlideCacheUtil.getInstance().getCacheSize(context)
@@ -223,13 +221,16 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                 preference.summary = if (value as Boolean) "开启" else "关闭"
                 return true
             }
-            "setting_addresses" -> {
+            "setting_app_channel" -> {
                 value as String
                 preference as DropDownPreference
                 preference.value = value
-                preference.summary = value
-
-                SPUtil.put(context, "addresses", if (value == "分流二") "addresses2" else "addresses1")
+                preference.summary =
+                    when (value) {
+                        "1" -> "分流一"
+                        "2" -> "分流二"
+                        else -> "分流三"
+                    }
                 return true
             }
             "setting_night" -> {

@@ -42,7 +42,8 @@
             android:layout_gravity="bottom|end"
             android:layout_margin="16dp"
             android:onClick="@{()->clickListener.Read()}"
-            android:text="开始阅读"/>
+            android:text="开始阅读"
+            android:visibility="gone"/>
 
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
