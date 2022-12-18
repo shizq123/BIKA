@@ -1,4 +1,5 @@
-UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。
+UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。<br>
+阅读器好难，等我研究研究[tachiyomi](https://github.com/tachiyomiorg/tachiyomi) :(
 
 #感谢
 
@@ -22,7 +23,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     
     漫画详情章节观看记录
     漫画详情章节图片观看记录
-    漫画观看方式
+    漫画阅读器
 
     文本复制功能 漫画评论复制
     未来添加下载
