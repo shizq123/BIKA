@@ -11,8 +11,8 @@
         <!--头像-->
         <RelativeLayout
             android:id="@+id/comments_image_layout"
-            android:layout_width="61dp"
-            android:layout_height="61dp"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
             android:layout_marginStart="6dp"
             android:layout_marginTop="6dp"
             android:layout_marginEnd="4dp">

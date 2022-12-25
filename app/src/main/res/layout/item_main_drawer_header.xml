@@ -25,8 +25,8 @@
     <!--头像-->
     <RelativeLayout
         android:id="@+id/main_drawer_imageView_layout"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
         android:layout_marginTop="24dp"
         android:layout_marginBottom="8dp">
 

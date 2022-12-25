@@ -14,8 +14,8 @@
         <!--头像-->
         <RelativeLayout
             android:id="@+id/knight_user_image_layout"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
             android:layout_margin="6dp">
 
             <com.google.android.material.imageview.ShapeableImageView
