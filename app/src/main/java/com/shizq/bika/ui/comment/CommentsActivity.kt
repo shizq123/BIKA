@@ -154,6 +154,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
     private fun initListener() {
         binding.commentsRv.setOnItemClickListener { v, position ->
             if (adapter_v2.getItemData(position)._user != null) {
+                viewModel.commentsId = adapter_v2.getItemData(position).id
                 dialog_send_sub_comments.setTitleText("回复 " + adapter_v2.getItemData(position)._user.name)
                 dialog_send_sub_comments.show()
             }
@@ -171,7 +172,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                 viewModel.commentsLike()
                 binding.commentsProgressbar.visibility = View.VISIBLE
             }
-            //评论
+            //显示更多评论
             if (id == R.id.comments_sub_layout) {
                 //解决上一条子评论重复显示的问题
                 adapter_sub.clear()
@@ -241,12 +242,12 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         }
 
         binding.commentsReplyLayout.setOnClickListener {
-            //发布评论
+            //底部发布评论栏
             dialog_send_comments.setTitleText("发表评论")
             dialog_send_comments.show()
         }
         sub_comments_reply_layout.setOnClickListener {
-            //回复评论
+            //底部回复评论栏
             dialog_send_sub_comments.setTitleText("回复 ${adapter_sub.data[0]._user.name}")
             dialog_send_sub_comments.show()
         }
