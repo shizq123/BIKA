@@ -19,6 +19,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.bean.CategoriesBean
 import com.shizq.bika.databinding.ActivityMainBinding
 import com.shizq.bika.ui.account.AccountActivity
+import com.shizq.bika.ui.apps.AppsActivity
 import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
@@ -61,7 +62,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             "推荐",
             "排行榜",
             "游戏推荐",
-//            "哔咔小程序",
+            "哔咔小程序",
             "留言板",
             "最近更新",
             "随机本子"
@@ -70,6 +71,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             R.drawable.cat_love_pica,
             R.drawable.cat_leaderboard,
             R.drawable.cat_game,
+            R.drawable.cat_love_pica,
             R.drawable.cat_forum,
             R.drawable.cat_latest,
             R.drawable.cat_random
@@ -196,18 +198,21 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     startActivity(Intent(this, GamesActivity::class.java))
                 }
                 3 -> {
+                    startActivity(Intent(this, AppsActivity::class.java))
+                }
+                4 -> {
                     val intentComments = Intent(this, CommentsActivity::class.java)
                     intentComments.putExtra("id", "5822a6e3ad7ede654696e482")
                     intentComments.putExtra("comics_games", "comics")
                     startActivity(intentComments)
                 }
-                4 -> {
+                5 -> {
                     intent.putExtra("tag", "latest")
                     intent.putExtra("title", datas.title)
                     intent.putExtra("value", datas.title)
                     startActivity(intent)
                 }
-                5 -> {
+               6 -> {
                     intent.putExtra("tag", "random")
                     intent.putExtra("title", datas.title)
                     intent.putExtra("value", datas.title)

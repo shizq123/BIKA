@@ -26,9 +26,12 @@ object RetrofitUtil {
     val service_update: ApiService by lazy {
         getRetrofit(BASE_UPDATE).create(ApiService::class.java)
     }
+    fun service_webSocket(webSocketUrl:String): ApiService{
+        return getWebSocket(webSocketUrl).create(ApiService::class.java)
+    }
 
     //BASE_URL
-    fun getRetrofit(url:String): Retrofit {
+    private fun getRetrofit(url:String): Retrofit {
         if (retrofit == null||URL!=url) {
             URL=url
             retrofit = Retrofit.Builder()
@@ -41,7 +44,7 @@ object RetrofitUtil {
         return retrofit!!
     }
 
-    fun getOkHttpClient(): OkHttpClient {
+    private fun getOkHttpClient(): OkHttpClient {
 
         val builder = OkHttpClient.Builder()
             .connectTimeout(60, TimeUnit.SECONDS)
@@ -52,4 +55,16 @@ object RetrofitUtil {
         return builder.build()
     }
 
+    private fun getWebSocket(url:String): Retrofit {
+        if (retrofit == null||URL!=url) {
+            URL=url
+            retrofit = Retrofit.Builder()
+                .baseUrl(url)
+                .client(getOkHttpClient())
+                .addConverterFactory(GsonConverterFactory.create())
+                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
+                .build()
+        }
+        return retrofit!!
+    }
 }

@@ -68,6 +68,9 @@
         <activity
             android:name=".ui.games.GameInfoActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.apps.AppsActivity"
+            android:exported="false" />
 
     </application>
 

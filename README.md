@@ -59,5 +59,8 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
 #聊天室 webSocket
 
-    2 表示重试
-    41 表示关闭
+    0 连接成功 
+    2 心跳 服务器会回复 3
+    40 连接成功
+    41 关闭聊天
+    42 消息
