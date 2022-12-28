@@ -293,4 +293,16 @@ interface ApiService {
         @Query("page") page: String,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<NotificationsBean>>
+
+    //小程序列表
+    @GET("pica-apps")
+    fun picaAppsGet(
+        @HeaderMap headers: Map<String, String>
+    ): Observable<BaseResponse<PicaAppsBean>>
+
+    //聊天室列表
+    @GET("chat")
+    fun chatListGet(
+        @HeaderMap headers: Map<String, String>
+    ): Observable<BaseResponse<ChatBean>>
 }

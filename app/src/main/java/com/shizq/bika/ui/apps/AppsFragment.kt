@@ -23,5 +23,11 @@ class AppsFragment (val str: String): BaseFragment<FragmentAppsBinding, AppsFrag
 
     override fun initData() {
 
+
+//        if (this.str == "chat") {
+//            viewModel.getChatList()
+//        } else {
+//            viewModel.getPicaApps()
+//        }
     }
 }

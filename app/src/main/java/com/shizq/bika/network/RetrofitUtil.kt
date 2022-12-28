@@ -26,9 +26,6 @@ object RetrofitUtil {
     val service_update: ApiService by lazy {
         getRetrofit(BASE_UPDATE).create(ApiService::class.java)
     }
-    fun service_webSocket(webSocketUrl:String): ApiService{
-        return getWebSocket(webSocketUrl).create(ApiService::class.java)
-    }
 
     //BASE_URL
     private fun getRetrofit(url:String): Retrofit {
@@ -53,18 +50,5 @@ object RetrofitUtil {
 //            .retryOnConnectionFailure(true)// 错误重连
             .dns(HttpDns())
         return builder.build()
-    }
-
-    private fun getWebSocket(url:String): Retrofit {
-        if (retrofit == null||URL!=url) {
-            URL=url
-            retrofit = Retrofit.Builder()
-                .baseUrl(url)
-                .client(getOkHttpClient())
-                .addConverterFactory(GsonConverterFactory.create())
-                .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
-                .build()
-        }
-        return retrofit!!
     }
 }

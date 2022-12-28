@@ -1,5 +1,4 @@
 UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。<br>
-阅读器好难，等我研究研究[tachiyomi](https://github.com/tachiyomiorg/tachiyomi) :(
 
 #感谢
 
