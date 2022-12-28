@@ -66,9 +66,9 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
                 .into(binding.itemMyCommentsUserCharacter)
         }
 
-        holder.addOnClickListener(R.id.item_my_comments_like_layout);
-        holder.addOnClickListener(R.id.item_my_comments_sub_layout);
-        holder.addOnClickListener(R.id.item_my_comments_title_layout);
+        holder.addOnClickListener(R.id.item_my_comments_like_layout)
+        holder.addOnClickListener(R.id.item_my_comments_sub_layout)
+        holder.addOnClickListener(R.id.item_my_comments_title_layout)
     }
 
     override fun bindViewPayloads(

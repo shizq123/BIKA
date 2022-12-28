@@ -36,7 +36,7 @@ class AccountActivity : BaseActivity<ActivityAccountBinding,AccountViewModel>() 
     override fun onBackPressed() {
         super.onBackPressed()
         //只有一级所以就不判断了 只有注册页面会返回到登录页 登录页返回是退出应用
-        supportActionBar?.setTitle("登录")
+        supportActionBar?.title = "登录"
         supportActionBar?.setDisplayHomeAsUpEnabled(false)
     }
 }

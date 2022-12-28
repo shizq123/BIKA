@@ -200,7 +200,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                         .setPositiveButton("确定") { dialog, which ->
                             SPUtil.remove(MyApp.contextBase, "token")
                             startActivity(Intent(activity, AccountActivity::class.java))
-                            activity?.finish()
+                            activity?.finishAffinity()
                         }
                         .setNegativeButton("取消", null)
                         .show()
