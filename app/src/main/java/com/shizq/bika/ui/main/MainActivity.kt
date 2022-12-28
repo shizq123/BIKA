@@ -27,6 +27,7 @@ import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.ui.history.HistoryActivity
 import com.shizq.bika.ui.leaderboard.LeaderboardActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
+import com.shizq.bika.ui.notifications.NotificationsActivity
 import com.shizq.bika.ui.search.SearchActivity
 import com.shizq.bika.ui.settings.SettingsActivity
 import com.shizq.bika.utils.AppVersion
@@ -168,10 +169,10 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     startActivity(intent)
 
                 }
-//                R.id.drawer_menu_mail -> {
-//                    startActivity(MessagesActivity::class.java)
-//
-//                }
+                R.id.drawer_menu_mail -> {
+                    startActivity(NotificationsActivity::class.java)
+
+                }
                 R.id.drawer_menu_chat -> {
                     startActivity(MyCommentsActivity::class.java)
 

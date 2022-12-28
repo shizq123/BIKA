@@ -47,7 +47,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     优化activity 转成fragment
 
     子评论页加进度条
-    添加我的消息
 
 #服务器状态
 

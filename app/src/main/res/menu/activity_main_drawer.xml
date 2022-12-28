@@ -23,12 +23,12 @@
                 android:title="我的收藏"
                 android:checkable="true"
                 app:showAsAction="ifRoom"/>
-<!--            <item-->
-<!--                android:id="@+id/drawer_menu_mail"-->
-<!--                android:icon="@drawable/ic_mail"-->
-<!--                android:title="我的消息"-->
-<!--                android:checkable="true"-->
-<!--                app:showAsAction="ifRoom"/>-->
+            <item
+                android:id="@+id/drawer_menu_mail"
+                android:icon="@drawable/ic_mail"
+                android:title="我的消息"
+                android:checkable="true"
+                app:showAsAction="ifRoom"/>
             <item
                 android:id="@+id/drawer_menu_chat"
                 android:icon="@drawable/ic_chat_24"

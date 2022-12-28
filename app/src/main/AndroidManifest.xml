@@ -33,7 +33,7 @@
             android:name=".ui.history.HistoryActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.messages.MessagesActivity"
+            android:name=".ui.notifications.NotificationsActivity"
             android:exported="false" />
         <activity
             android:name=".ui.mycomments.MyCommentsActivity"

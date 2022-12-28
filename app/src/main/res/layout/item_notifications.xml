@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <import type="com.shizq.bika.utils.TimeUtil" />
+
+        <import type="android.view.View" />
+
+        <variable
+            name="m"
+            type="com.shizq.bika.bean.NotificationsBean.Notifications.Doc" />
+    </data>
+
+    <RelativeLayout
+        android:id="@+id/comments_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!--头像-->
+        <RelativeLayout
+            android:id="@+id/item_notifications_image_layout"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:layout_marginStart="6dp"
+            android:layout_marginBottom="6dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="4dp">
+
+            <com.google.android.material.imageview.ShapeableImageView
+                android:id="@+id/item_notifications_user_image"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_centerInParent="true"
+                android:layout_gravity="center"
+                android:adjustViewBounds="true"
+                android:scaleType="centerCrop"
+                android:src="@drawable/placeholder_avatar_2"
+                app:shapeAppearance="@style/CircleStyle" />
+
+            <ImageView
+                android:id="@+id/item_notifications_user_character"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent" />
+        </RelativeLayout>
+
+    <RelativeLayout
+        android:id="@+id/item_notifications_cover_layout"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="4dp"
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:layout_marginEnd="6dp"
+        android:layout_alignParentEnd="true">
+        <ImageView
+            android:id="@+id/item_notifications_cover"
+            android:layout_width="64dp"
+            android:layout_height="64dp"
+            android:visibility="gone"/>
+    </RelativeLayout>
+
+        <TextView
+            android:id="@+id/item_notifications_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:layout_toEndOf="@+id/item_notifications_image_layout"
+            android:layout_toStartOf="@+id/item_notifications_cover_layout"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="@{m.title}"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <!--内容-->
+        <TextView
+            android:id="@+id/comments_content_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_below="@id/item_notifications_title"
+            android:layout_marginTop="4dp"
+            android:layout_toEndOf="@+id/item_notifications_image_layout"
+            android:layout_toStartOf="@+id/item_notifications_cover_layout"
+            android:text="@{m.content}"
+            android:textSize="16sp" />
+
+        <!--时间-->
+        <TextView
+            android:id="@+id/item_notifications_time"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:layout_below="@id/comments_content_text"
+            android:layout_toEndOf="@+id/item_notifications_image_layout"
+            android:layout_toStartOf="@+id/item_notifications_cover_layout"
+            android:layout_marginBottom="12dp"
+            android:text="@{TimeUtil.B(m.created_at)}"
+            android:textColor="?attr/colorOutline"
+            android:textSize="12sp" />
+
+
+    </RelativeLayout>
+
+</layout>
