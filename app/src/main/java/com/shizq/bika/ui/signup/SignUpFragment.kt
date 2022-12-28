@@ -371,22 +371,37 @@ class SignUpFragment : BaseFragment<FragmentSignupBinding, SignUpViewModel>() {
                 // 注册成功 保存账号密码
 //                MmkvUtils.putSet("username", viewModel.email.toString())
 //                MmkvUtils.putSet("password", viewModel.password.toString())
-                SPUtil.put(context,"username", viewModel.email.toString())
-                SPUtil.put(context,"password", viewModel.password.toString())
+                SPUtil.put(context, "username", viewModel.email.toString())
+                SPUtil.put(context, "password", viewModel.password.toString())
                 // 提示是否继续登录
                 MaterialAlertDialogBuilder(activity as AppCompatActivity)
                     .setTitle("注册成功是否继续登录")
                     .setPositiveButton("确定") { dialog, which ->
                         // TODO 需要优化 添加 自动登录 或者 跳转到登录页（登录页要显示注册的账号密码）
 //                        Navigation.findNavController(activity as AppCompatActivity,R.id.login_fcv).navigateUp()
-                        Navigation.findNavController(activity as AppCompatActivity,R.id.login_fcv).navigate(R.id.action_signUpFragment_to_signInFragment)
+                        Navigation.findNavController(activity as AppCompatActivity, R.id.login_fcv)
+                            .navigate(R.id.action_signUpFragment_to_signInFragment)
 
                     }
-                    .setNegativeButton("取消"){ dialog, which ->
-
-                    }
+                    .setNegativeButton("取消",null)
                     .show()
 
+            } else if (it.code == 400 && it.error.equals("1008")) {
+                binding.signupUsernameLayout.isErrorEnabled = true
+                binding.signupUsernameLayout.error = "邮箱已存在！"
+                MaterialAlertDialogBuilder(activity as AppCompatActivity)
+                    .setTitle("注册失败")
+                    .setMessage("邮箱已存在！")
+                    .setPositiveButton("确定", null)
+                    .show()
+            } else if (it.code == 400 && it.error.equals("1009")) {
+                binding.signupNicknameLayout.isErrorEnabled = true
+                binding.signupNicknameLayout.error = "昵称已存在！"
+                MaterialAlertDialogBuilder(activity as AppCompatActivity)
+                    .setTitle("注册失败")
+                    .setMessage("昵称已存在！")
+                    .setPositiveButton("确定", null)
+                    .show()
             } else {
                 //注册失败提示网络错误
                 MaterialAlertDialogBuilder(activity as AppCompatActivity)
@@ -399,6 +414,7 @@ class SignUpFragment : BaseFragment<FragmentSignupBinding, SignUpViewModel>() {
                     .setNegativeButton("取消", null)
                     .show()
             }
+
         }
 
     }

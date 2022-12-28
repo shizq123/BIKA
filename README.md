@@ -35,7 +35,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 #待优化
 
     注册页面 需要优化 跳转到登录页要显示注册的账号密码
-    子评论页加进度条
     主页会列表重复
     Toast,图片,UI
     应用加载时间
@@ -47,11 +46,16 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     列表滑动有卡顿 后续优化
     优化activity 转成fragment
 
+    子评论页加进度条
+    添加我的消息
+
 #服务器状态
 
     400 1019 cannot comment 无法发表评论
     400 1031 higher level is required 评论等级不够
     400 1004 账号密码错误
+    400 1008 email is already exist 邮箱已存在
+    400 1009 name is already exist 名称已存在
     400 1014 漫画审核中
     401 1005 unauthorized token过期
     404 1007 not found 找不到数据

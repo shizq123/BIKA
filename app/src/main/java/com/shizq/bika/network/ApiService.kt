@@ -187,7 +187,6 @@ interface ApiService {
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<CommentsBean>>
 
-    //{"content": "cy"}
     //发送评论 游戏与漫画的评论
     @POST("{comics_games}/{id}/comments")
     fun seedCommentsPost(
@@ -281,13 +280,14 @@ interface ApiService {
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ActionBean>>
 
+    //我的评论
     @GET("users/my-comments")
     fun myCommentsGet(
         @Query("page") page: String,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<MyCommentsBean>>
 
-    //消息通知 没收到过 还不能处理 所以功能实现不了
+    //消息通知
     @GET("users/notifications")
     fun notificationsGet(
         @Query("page") page: String,
