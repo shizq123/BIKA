@@ -22,6 +22,7 @@ class ComicInfoViewModel(application: Application) : BaseViewModel(application) 
     var chapterPage = 0
     var creatorId: String = ""
     var chapterTotal: Int = 1
+    var creator:ComicInfoBean.Comic.Creator? =null
 
     val liveData_info: MutableLiveData<BaseResponse<ComicInfoBean>> by lazy {
         MutableLiveData<BaseResponse<ComicInfoBean>>()
@@ -55,6 +56,7 @@ class ComicInfoViewModel(application: Application) : BaseViewModel(application) 
                 override fun onSuccess(baseResponse: BaseResponse<ComicInfoBean>) {
                     creatorId = baseResponse.data.comic._creator._id
                     author = baseResponse.data.comic.author
+                    creator=baseResponse.data.comic._creator
                     // 请求成功
                     liveData_info.postValue(baseResponse)
                 }

@@ -4,11 +4,7 @@ import android.annotation.SuppressLint
 import android.content.Intent
 import android.os.Bundle
 import android.view.*
-import android.widget.ImageView
-import android.widget.PopupWindow
-import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.chip.Chip
@@ -26,6 +22,7 @@ import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.reader.ReaderActivity
 import com.shizq.bika.utils.*
 import com.shizq.bika.widget.SpacesItemDecoration
+import com.shizq.bika.widget.UserViewDialog
 
 /**
  * 漫画详情
@@ -35,26 +32,11 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
     var fileserver: String = ""
     var imageurl: String = ""
 
-
     private lateinit var mAdapterChaper: ChapterAdapter
     private lateinit var chaperFooterBinding: ViewChapterFooterViewBinding
     private lateinit var mAdapterRecommend: RecommendAdapter
 
-    private lateinit var popupView: View
-    private lateinit var popupImage: ImageView
-    private lateinit var mPopupWindow: PopupWindow
-
-    //dialog view id
-    private lateinit var dia: AlertDialog
-    private lateinit var v: View
-    private lateinit var dialog_image_layout: View
-    private lateinit var dialog_image: ImageView
-    private lateinit var dialog_character: ImageView
-    private lateinit var dialog_gender_level: TextView
-    private lateinit var dialog_name: TextView
-    private lateinit var dialog_title: TextView
-    private lateinit var dialog_slogan: TextView
-
+    private lateinit var userViewDialog: UserViewDialog
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_comicinfo
@@ -90,17 +72,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
             }
         }
 
-        //PopupWindow 用来显示图片大图
-        popupView = View.inflate(this@ComicInfoActivity, R.layout.view_popup_image, null)
-        popupImage = popupView.findViewById(R.id.popup_image)
-        mPopupWindow = PopupWindow(
-            popupView,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            true
-        )
-        mPopupWindow.isOutsideTouchable = true
-        mPopupWindow.isClippingEnabled = false
+        userViewDialog=UserViewDialog(this)
 
         //漫画章节
         mAdapterChaper = ChapterAdapter()
@@ -134,15 +106,6 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         viewModel.getChapter()
         viewModel.getRecommend()
 
-        //dialog view id
-        v = View.inflate(this, R.layout.view_dialog_user, null)
-        dialog_image_layout = v.findViewById(R.id.view_user_image_layout)
-        dialog_image = v.findViewById(R.id.view_user_image)
-        dialog_character = v.findViewById(R.id.view_user_character)
-        dialog_gender_level = v.findViewById(R.id.view_user_gender_level)
-        dialog_name = v.findViewById(R.id.view_user_nickname)
-        dialog_title = v.findViewById(R.id.view_user_title)
-        dialog_slogan = v.findViewById(R.id.view_user_slogan)
     }
 
     //toolbar菜单
@@ -169,20 +132,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
     inner class ClickListener {
         fun Image() {
             //封面图片
-            if (imageurl != "") {
-                GlideApp.with(this@ComicInfoActivity)
-                    .load(GlideUrlNewKey(fileserver, imageurl))
-                    .placeholder(R.drawable.placeholder_avatar_2)
-                    .into(popupImage)
-
-                StatusBarUtil.hide(this@ComicInfoActivity)
-                mPopupWindow.showAtLocation(
-                    this@ComicInfoActivity.window.decorView,
-                    Gravity.BOTTOM,
-                    0,
-                    0
-                )
-            }
+            userViewDialog.PopupWindow(fileserver, imageurl)
         }
 
         fun Author() {
@@ -228,9 +178,9 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
         fun CreatorLayout() {
             //上传者信息
-            dia = MaterialAlertDialogBuilder(this@ComicInfoActivity).setView(v).show()
-            dia.setOnDismissListener { (v.parent as ViewGroup).removeView(v) }//用完必须销毁 不销毁报错
-
+            if (viewModel.creator != null) {
+                userViewDialog.showUserDialog(viewModel.creator!!)
+            }
         }
 
         fun Read() {
@@ -346,67 +296,6 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                         .into(binding.comicinfoCreatorAvatar)
                 } else {
                     binding.comicinfoCreatorAvatar.setImageResource(R.drawable.placeholder_avatar)
-                }
-
-                //dialog view 赋值
-                dialog_gender_level.text = "${
-                    when (it.data.comic._creator.gender) {
-                        "m" -> "(绅士)"
-                        "f" -> "(淑女)"
-                        else -> "(机器人)"
-                    }
-                } Lv.${it.data.comic._creator.level}"
-                dialog_name.text = it.data.comic._creator.name
-                dialog_title.text = it.data.comic._creator.title
-                if (it.data.comic._creator.slogan.isNullOrBlank()) {
-                    dialog_slogan.setText(R.string.slogan)
-                } else {
-                    dialog_slogan.text = it.data.comic._creator.slogan
-                }
-                //头像
-                GlideApp.with(this@ComicInfoActivity)
-                    .load(
-                        if (it.data.comic._creator.avatar != null) {
-                            GlideUrlNewKey(
-                                it.data.comic._creator.avatar.fileServer,
-                                it.data.comic._creator.avatar.path
-                            )
-                        } else {
-                            R.drawable.placeholder_avatar_2
-                        }
-                    )
-                    .placeholder(R.drawable.placeholder_avatar_2)
-                    .into(dialog_image)
-                //头像框
-                GlideApp.with(this@ComicInfoActivity)
-                    .load(if (it.data.comic._creator.character.isNullOrEmpty()) "" else it.data.comic._creator.character)
-                    .into(dialog_character)
-
-                //dialog view 头像点击事件
-                dialog_image_layout.setOnClickListener { v ->
-                    GlideApp.with(v)
-                        .load(
-                            if (it.data.comic._creator.avatar != null) {
-                                GlideUrlNewKey(
-                                    it.data.comic._creator.avatar.fileServer,
-                                    it.data.comic._creator.avatar.path
-                                )
-                            } else {
-                                R.drawable.placeholder_avatar_2
-                            }
-                        )
-                        .placeholder(R.drawable.placeholder_avatar_2)
-                        .into(popupImage)
-
-                    StatusBarUtil.hide(this@ComicInfoActivity)
-                    mPopupWindow.showAtLocation(
-                        this@ComicInfoActivity.window.decorView,
-                        Gravity.BOTTOM,
-                        0,
-                        0
-                    )
-
-                    dia.dismiss()
                 }
 
                 //记录历史
@@ -568,15 +457,6 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
             chaperFooterBinding.chapterFooterText.setText(R.string.footer_loading)
             viewModel.getChapter()
         }
-
-        mPopupWindow.setOnDismissListener {
-            //恢复状态栏
-            StatusBarUtil.show(this@ComicInfoActivity)
-        }
-        popupView.setOnClickListener {
-            mPopupWindow.dismiss()
-        }
-
 
     }
 }

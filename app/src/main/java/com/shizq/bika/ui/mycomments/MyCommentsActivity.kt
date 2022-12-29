@@ -2,19 +2,14 @@ package com.shizq.bika.ui.mycomments
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.Gravity
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.PopupWindow
 import android.widget.TextView
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CommentsAdapter
@@ -25,25 +20,14 @@ import com.shizq.bika.databinding.ActivityMyCommentsBinding
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import com.shizq.bika.ui.games.GameInfoActivity
 import com.shizq.bika.utils.*
+import com.shizq.bika.widget.UserViewDialog
 import me.jingbin.library.ByRecyclerView
 
 class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsViewModel>() {
     lateinit var mAdapter: MyCommentsAdapter
     lateinit var adapter_sub: CommentsAdapter
 
-    private lateinit var dia: AlertDialog
-    private lateinit var dialog_view: View
-    private lateinit var dialog_image_layout: View
-    private lateinit var dialog_image: ImageView
-    private lateinit var dialog_character: ImageView
-    private lateinit var dialog_gender_level: TextView
-    private lateinit var dialog_name: TextView
-    private lateinit var dialog_title: TextView
-    private lateinit var dialog_slogan: TextView
-
-    private lateinit var popupView: View
-    private lateinit var popupImage: ImageView
-    private lateinit var mPopupWindow: PopupWindow
+    private lateinit var userViewDialog: UserViewDialog
 
     private lateinit var bottomSheetDialog: BottomSheetDialog
     private lateinit var sub_comments_view: View
@@ -69,27 +53,7 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
         mAdapter = MyCommentsAdapter()
         binding.myCommentsRv.adapter = mAdapter
 
-        //dialog 用户view id
-        dialog_view = View.inflate(this, R.layout.view_dialog_user, null)
-        dialog_image_layout = dialog_view.findViewById(R.id.view_user_image_layout)
-        dialog_image = dialog_view.findViewById(R.id.view_user_image)
-        dialog_character = dialog_view.findViewById(R.id.view_user_character)
-        dialog_gender_level = dialog_view.findViewById(R.id.view_user_gender_level)
-        dialog_name = dialog_view.findViewById(R.id.view_user_nickname)
-        dialog_title = dialog_view.findViewById(R.id.view_user_title)
-        dialog_slogan = dialog_view.findViewById(R.id.view_user_slogan)
-
-        //PopupWindow显示大图片
-        popupView = View.inflate(this, R.layout.view_popup_image, null)
-        popupImage = popupView.findViewById(R.id.popup_image)
-        mPopupWindow = PopupWindow(
-            popupView,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            true
-        )
-        mPopupWindow.isOutsideTouchable = true
-        mPopupWindow.isClippingEnabled = false
+        userViewDialog= UserViewDialog(this)
 
         //        //子评论 bottomSheetDialog
         sub_comments_view = View.inflate(this, R.layout.view_bottom_sub_comments, null)
@@ -215,13 +179,13 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
 
         sub_comments_rv.setOnItemClickListener { v, position ->
             if (position != 0) {
-                showUserDialog(adapter_sub.getItemData(position))
+                userViewDialog.showUserDialog(adapter_sub.getItemData(position)._user,sub_comments_view)
             }
         }
         sub_comments_rv.setOnItemChildClickListener { view, position ->
             val id= view.id
             val data =adapter_sub.getItemData(position)
-            if (id == R.id.comments_name||id == R.id.comments_image_layout) { showUserDialog(data) }
+            if (id == R.id.comments_name||id == R.id.comments_image_layout) {  userViewDialog.showUserDialog(data._user,sub_comments_view) }
             //点赞
             if (id == R.id.comments_like_layout) {
                 viewModel.likeSubPosition=position//保存当前要点赞的position
@@ -244,13 +208,6 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
 
         }
 
-        mPopupWindow.setOnDismissListener {
-            //恢复状态栏
-            StatusBarUtil.show(this)
-        }
-        popupView.setOnClickListener {
-            mPopupWindow.dismiss()
-        }
         sub_comments_back.setOnClickListener {
             bottomSheetDialog.dismiss()
         }
@@ -328,81 +285,6 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
                 Toast.makeText(this,"点击爱心失败",Toast.LENGTH_SHORT).show()
 
             }
-        }
-    }
-
-    fun showUserDialog(t: CommentsBean.Comments.Doc) {
-        dialog_gender_level.text = "${
-            when (t._user.gender) {
-                "m" -> "(绅士)"
-                "f" -> "(淑女)"
-                else -> "(机器人)"
-            }
-        } Lv.${t._user.level}"
-        dialog_name.text = t._user.name
-        dialog_title.text = t._user.title
-        if (t._user.slogan.isNullOrBlank()) {
-            dialog_slogan.setText(R.string.slogan)
-        } else {
-            dialog_slogan.text = t._user.slogan
-        }
-        //头像
-        GlideApp.with(this)
-            .load(
-                if (t._user.avatar != null) {
-                    GlideUrlNewKey(
-                        t._user.avatar.fileServer,
-                        t._user.avatar.path
-                    )
-                } else {
-                    R.drawable.placeholder_avatar_2
-                }
-            )
-            .placeholder(R.drawable.placeholder_transparent_low)
-            .into(dialog_image)
-
-        //头像框
-        GlideApp.with(this)
-            .load(if (t._user.character.isNullOrEmpty()) "" else t._user.character)
-            .into(dialog_character)
-
-        dia = MaterialAlertDialogBuilder(this).setView(dialog_view)
-            .show()
-
-        dia.setOnDismissListener {
-            //用完必须销毁 不销毁报错
-            (dialog_view.parent as ViewGroup).removeView(dialog_view)
-        }
-
-        //dialog view 头像点击事件
-        dialog_image_layout.setOnClickListener {
-            if (t._user.avatar != null) {
-
-                GlideApp.with(it)
-                    .load(
-                        if (t._user.avatar != null) {
-                            GlideUrlNewKey(
-                                t._user.avatar.fileServer,
-                                t._user.avatar.path
-                            )
-                        } else {
-                            R.drawable.placeholder_avatar_2
-                        }
-                    )
-                    .placeholder(R.drawable.placeholder_avatar_2)
-                    .into(popupImage)
-
-                StatusBarUtil.hide(this)
-                //PopupWindow会被BottomSheetDialog的view覆盖 解决办法用BottomSheetDialog的view替换this.window.decorView
-                mPopupWindow.showAtLocation(
-                    sub_comments_view,
-                    Gravity.BOTTOM,
-                    0,
-                    0
-                )
-
-            }
-            dia.dismiss()
         }
     }
 }
