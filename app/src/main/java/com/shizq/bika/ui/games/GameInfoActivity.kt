@@ -3,10 +3,7 @@ package com.shizq.bika.ui.games
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.view.Gravity
-import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.Toast
@@ -27,6 +24,7 @@ import com.shizq.bika.widget.SpacesItemDecoration
 class GameInfoActivity : BaseActivity<ActivityGameInfoBinding, GameInfoViewModel>() {
     private lateinit var mAdapter: GameScreenshotAdapter
     var gameLink: String = ""
+    var videoLink: String = ""
 
     private lateinit var popupView: View
     private lateinit var popupImage: ImageView
@@ -91,10 +89,27 @@ class GameInfoActivity : BaseActivity<ActivityGameInfoBinding, GameInfoViewModel
 
     }
 
+    //toolbar菜单
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu_gameinfo, menu)
+        return true
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
                 finish()
+            }
+            R.id.action_video -> {
+                //先实现功能 后面优化
+                if (videoLink != "") {
+                    val intent = Intent()
+                    intent.action = "android.intent.action.VIEW"
+                    intent.data = Uri.parse(videoLink)
+                    startActivity(intent)
+                } else {
+                    Toast.makeText(this,"没有视频介绍",Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -136,6 +151,7 @@ class GameInfoActivity : BaseActivity<ActivityGameInfoBinding, GameInfoViewModel
                     )
                 )
                 gameLink = it.data.game.androidLinks[0]
+                videoLink = if (it.data.game.videoLink.isNullOrEmpty()) "" else it.data.game.videoLink
                 binding.gameBtnDownload.visibility = View.VISIBLE
                 //标题
                 binding.gameTitle.text = it.data.game.title
