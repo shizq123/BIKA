@@ -94,7 +94,7 @@ class NotificationsActivity : BaseActivity<ActivityNotificationsBinding, Notific
     override fun initViewObservable() {
         viewModel.liveData.observe(this) {
             if (it.code == 200) {
-                if (it.data.notifications.pages == Integer.valueOf(it.data.notifications.page)) {
+                if (it.data.notifications.pages <= Integer.valueOf(it.data.notifications.page)) {
                     //总页数等于当前页数 显示后面没有数据
                     binding.notificationsRv.loadMoreEnd()
                 } else {

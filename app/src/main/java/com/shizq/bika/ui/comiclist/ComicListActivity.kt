@@ -220,7 +220,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             if (it.code == 200) {
                 binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
                 mComicListAdapter.addData(it.data.comics.docs)
-                if (it.data.comics.pages == it.data.comics.page) {
+                if (it.data.comics.pages <= it.data.comics.page) {
                     binding.comiclistRv.loadMoreEnd()//没有更多数据
                 } else {
                     binding.comiclistRv.loadMoreComplete()//加载成功

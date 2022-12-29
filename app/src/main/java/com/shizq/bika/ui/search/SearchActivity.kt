@@ -93,12 +93,13 @@ class SearchActivity : BaseActivity<ActivitySearchBinding, SearchViewModel>() {
 
                     binding.searchTagsList.addView(chip)
                     chip.setOnClickListener {
-                        val search=Search(chip.text.toString())
+                        val search=Search(i)
                         viewModel.insertSearch(search)//添加搜索记录
 
                         val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
                         intent.putExtra("tag", "search")
-                        intent.putExtra("title", chip.text.toString())
+                        intent.putExtra("title", i)
+                        intent.putExtra("value", i)
                         startActivity(intent)
                     }
                 }
@@ -120,11 +121,12 @@ class SearchActivity : BaseActivity<ActivitySearchBinding, SearchViewModel>() {
 
                     binding.searchHistoryList.addView(chip)
                     chip.setOnClickListener {
-                        viewModel.insertSearch(Search(chip.text.toString()))//添加搜索记录
+                        viewModel.insertSearch(Search(i))//添加搜索记录
 
                         val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
                         intent.putExtra("tag", "search")
-                        intent.putExtra("title", chip.text.toString())
+                        intent.putExtra("title", i)
+                        intent.putExtra("value", i)
                         startActivity(intent)
                     }
                 }

@@ -79,7 +79,8 @@ class UserViewDialog(val context: AppCompatActivity) {
         }
         showUserDialog(t, context.window.decorView)
     }
-    fun showUserDialog(t: CommentsBean.User ,parentView: View) {
+
+    fun showUserDialog(t: CommentsBean.User, parentView: View) {
         if (t == null) {
             return
         }
@@ -112,6 +113,7 @@ class UserViewDialog(val context: AppCompatActivity) {
             context.window.decorView
         )
     }
+
     fun showUserDialog(t: NotificationsBean.Notifications.Doc.Sender) {
         if (t == null) {
             return
@@ -199,13 +201,15 @@ class UserViewDialog(val context: AppCompatActivity) {
         //dialog view 头像点击事件
         dialog_image_layout.setOnClickListener {
             dia.dismiss()
-            PopupWindow(fileServer(),path(),parentView)
+            PopupWindow(fileServer(), path(), parentView)
         }
     }
-    fun PopupWindow(fileserver: String,path:String ){
-        PopupWindow(fileserver,path,context.window.decorView)
+
+    fun PopupWindow(fileserver: String, path: String) {
+        PopupWindow(fileserver, path, context.window.decorView)
     }
-    fun PopupWindow(fileserver: String,path:String,parentView:View) {
+
+    fun PopupWindow(fileserver: String, path: String, parentView: View) {
 
         if (fileserver != "") {
             GlideApp.with(context)

@@ -276,8 +276,8 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                         val intent = Intent(this@ComicInfoActivity, ComicListActivity::class.java)
 //                        intent.putExtra("tag", "tags")//因为漫画标签和分类放一起了 会有标签搜不到 所以都改成搜索文字
                         intent.putExtra("tag", "search")
-                        intent.putExtra("title", chip.text.toString())
-                        intent.putExtra("value", chip.text.toString())
+                        intent.putExtra("title", i)
+                        intent.putExtra("value", i)
                         startActivity(intent)
 
                     }

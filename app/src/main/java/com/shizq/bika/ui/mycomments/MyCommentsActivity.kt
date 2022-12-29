@@ -217,7 +217,7 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
     override fun initViewObservable() {
         viewModel.liveData_comments.observe(this) {
             if (it.code == 200) {
-                if (it.data.comments.pages == Integer.valueOf(it.data.comments.page)) {
+                if (it.data.comments.pages <= Integer.valueOf(it.data.comments.page)) {
                     //总页数等于当前页数 显示后面没有数据
                     binding.myCommentsRv.loadMoreEnd()
                 } else {
