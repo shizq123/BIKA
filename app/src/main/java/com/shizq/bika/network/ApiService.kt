@@ -304,5 +304,5 @@ interface ApiService {
     @GET("chat")
     fun chatListGet(
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ChatBean>>
+    ): Observable<BaseResponse<ChatListBean>>
 }

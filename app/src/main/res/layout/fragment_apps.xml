@@ -20,33 +20,10 @@
             android:paddingEnd="6dp"
             tools:listitem="@layout/item_knight"/>
 
-        <LinearLayout
-            android:id="@+id/apps_load_layout"
+        <include
+            android:id="@+id/apps_include"
+            layout="@layout/view_load"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="visible"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <ProgressBar
-                android:id="@+id/apps_load_progressBar"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                />
-            <ImageView
-                android:id="@+id/apps_load_error"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:visibility="gone"
-                android:src="@drawable/ic_error"
-                />
-            <TextView
-                android:id="@+id/apps_load_text"
-                android:textAppearance="?attr/textAppearanceHeadline6"
-                android:layout_marginTop="8dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:gravity="center"/>
-        </LinearLayout>
+            android:layout_height="match_parent" />
     </RelativeLayout>
 </layout>

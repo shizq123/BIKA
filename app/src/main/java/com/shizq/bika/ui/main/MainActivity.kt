@@ -69,7 +69,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             "随机本子"
         )
         val cRes = arrayOf(
-            R.drawable.cat_love_pica,
+            R.drawable.placeholder_avatar_2,
             R.drawable.cat_leaderboard,
             R.drawable.cat_game,
             R.drawable.cat_love_pica,

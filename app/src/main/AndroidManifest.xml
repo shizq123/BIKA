@@ -71,6 +71,9 @@
         <activity
             android:name=".ui.apps.AppsActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.chat.ChatActivity"
+            android:exported="false" />
 
     </application>
 

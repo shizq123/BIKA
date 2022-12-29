@@ -88,9 +88,18 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
     override fun onPreferenceClick(preference: Preference): Boolean {
         when (preference.key) {
             "setting_close" -> {
-                GlideCacheUtil.getInstance().clearImageAllCache(context)
-                preference.summary = "0.0Byte"
-                Toast.makeText(activity, "清理完成", Toast.LENGTH_SHORT).show()
+                activity?.let {
+                    MaterialAlertDialogBuilder(it)
+                        .setTitle("是否清理图片缓存？")
+                        .setPositiveButton("确定") { dialog, which ->
+                            GlideCacheUtil.getInstance().clearImageAllCache(context)
+                            preference.summary = "0.0Byte"
+                            Toast.makeText(activity, "清理完成", Toast.LENGTH_SHORT).show()
+                        }
+                        .setNegativeButton("取消", null)
+                        .show()
+
+                }
                 return true
             }
 

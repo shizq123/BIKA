@@ -1,6 +1,6 @@
 package com.shizq.bika.bean
 
-data class ChatBean(
+data class ChatListBean(
     val chatList: List<Chat>
 ){
     data class Chat(
