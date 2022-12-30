@@ -84,10 +84,6 @@ abstract class BaseObserver<T> : Observer<BaseResponse<T>> {
                 baseResponse.code=ERROR.NETWORD_ERROR
                 baseResponse.message="连接失败"
                 onCodeError(baseResponse)
-            } else if (e is SSLException) {
-                baseResponse.code=ERROR.SSL_ERROR
-                baseResponse.message="证书验证失败"
-                onCodeError(baseResponse)
             } else if (e is ConnectTimeoutException) {
                 baseResponse.code=ERROR.TIMEOUT_ERROR
                 baseResponse.message="连接超时"
@@ -99,6 +95,10 @@ abstract class BaseObserver<T> : Observer<BaseResponse<T>> {
             } else if (e is UnknownHostException) {
                 baseResponse.code=ERROR.TIMEOUT_ERROR
                 baseResponse.message="主机地址未知"
+                onCodeError(baseResponse)
+            } else if (e is SSLException) {
+                baseResponse.code=ERROR.SSL_ERROR
+                baseResponse.message="证书验证失败"+e.message
                 onCodeError(baseResponse)
             } else {
 
