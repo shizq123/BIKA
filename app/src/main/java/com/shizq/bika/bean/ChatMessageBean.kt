@@ -1,7 +1,7 @@
 package com.shizq.bika.bean
 
 
-data class ChatBroadcastMessageBean(
+data class ChatMessageBean(
     val at: String,
     val audio: String,
     val avatar: String,
@@ -17,7 +17,7 @@ data class ChatBroadcastMessageBean(
     val reply: String,
     val reply_name: String,
     val title: String,
-    val type: Int,
+    val type: String,
     val unique_id: String,
     val user_id: String,
     val verified: Boolean

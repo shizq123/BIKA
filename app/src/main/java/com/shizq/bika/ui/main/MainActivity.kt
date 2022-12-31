@@ -213,7 +213,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     intent.putExtra("value", datas.title)
                     startActivity(intent)
                 }
-               6 -> {
+                6 -> {
                     intent.putExtra("tag", "random")
                     intent.putExtra("title", datas.title)
                     intent.putExtra("value", datas.title)
@@ -262,13 +262,13 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         //user信息
         viewModel.liveData_profile.observe(this) {
             if (it.code == 200) {
-                var fileServer=""
-                var path=""
-                var character=""
+                var fileServer = ""
+                var path = ""
+                var character = ""
 
                 if (it.data.user.avatar != null) {//头像
-                    fileServer=it.data.user.avatar.fileServer
-                    path=it.data.user.avatar.path
+                    fileServer = it.data.user.avatar.fileServer
+                    path = it.data.user.avatar.path
                     GlideApp.with(this@MainActivity)
                         .load(
                             GlideUrlNewKey(
@@ -285,7 +285,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 }
                 if (it.data.user.character != null) { //头像框 新用户没有
 
-                    character=it.data.user.character
+                    character = it.data.user.character
                     GlideApp.with(this@MainActivity)
                         .load(character)
                         .into(
@@ -298,21 +298,23 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 (binding.mainNavView.getHeaderView(0)
                     .findViewById(R.id.main_drawer_name) as TextView).text = name //用户名
 
-                val level=it.data.user.level//等级
+                val level = it.data.user.level//等级
                 (binding.mainNavView.getHeaderView(0)
-                    .findViewById(R.id.main_drawer_user_ver) as TextView).text ="Lv.${it.data.user.level}(${it.data.user.exp}/${exp(it.data.user.level)})"//等级
+                    .findViewById(R.id.main_drawer_user_ver) as TextView).text =
+                    "Lv.${it.data.user.level}(${it.data.user.exp}/${exp(it.data.user.level)})"//等级
 
                 (binding.mainNavView.getHeaderView(0)
                     .findViewById(R.id.main_drawer_title) as TextView).text = it.data.user.title//称号
 
                 //性别
-                val gender=it.data.user.gender
+                val gender = it.data.user.gender
                 (binding.mainNavView.getHeaderView(0)
                     .findViewById(R.id.main_drawer_gender) as TextView).text =
                     when (it.data.user.gender) {
-                    "m" -> "(绅士)"
-                    "f" -> "(淑女)"
-                    else -> "(机器人)"}
+                        "m" -> "(绅士)"
+                        "f" -> "(淑女)"
+                        else -> "(机器人)"
+                    }
 
                 //用户签名
                 val text_slogan = (binding.mainNavView.getHeaderView(0)
@@ -326,7 +328,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
 
                 if (!it.data.user.isPunched) {//当前用户未打卡时
                     //是否设置自动打卡
-                    if (SPUtil.get(this,"setting_punch", true) as Boolean) {
+                    if (SPUtil.get(this, "setting_punch", true) as Boolean) {
                         viewModel.punch_In()
                     }
                 }
@@ -336,8 +338,14 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 SPUtil.put(this, "user_path", path)
                 SPUtil.put(this, "user_character", character)
                 SPUtil.put(this, "user_name", name)
+                SPUtil.put(this, "user_birthday", it.data.user.birthday)
                 SPUtil.put(this, "user_gender", gender)
                 SPUtil.put(this, "user_level", level)
+                SPUtil.put(this, "user_exp", it.data.user.exp)
+                SPUtil.put(this, "user_slogan", it.data.user.slogan)
+                SPUtil.put(this, "user_title", it.data.user.title)
+                SPUtil.put(this, "user_id", it.data.user._id)
+                SPUtil.put(this, "user_verified", it.data.user.verified)
 
                 showProgressBar(true, "获取主页信息...")
                 viewModel.getCategories() //获得主页信息
@@ -409,18 +417,28 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         //打卡签到
         viewModel.liveData_punch_in.observe(this) {
             if (it.code == 200) {
+                //打卡成功 手动加经验来保存
+                var exp = SPUtil.get(this, "user_exp", 0) as Int
+                var level = SPUtil.get(this, "user_level", 1) as Int
+                exp += 10
+                if (exp > exp(level)) {
+                    level += 1
+                }
+                //保存
+                SPUtil.put(this, "user_level", level)
+                SPUtil.put(this, "user_exp", exp)
                 Toast.makeText(this, "自动打卡成功", Toast.LENGTH_SHORT).show()
             } else {
                 Toast.makeText(
                     this,
-                    "打卡失败code=${it.code} error=${it.error} message=${it.message}",
+                    "打卡失败message=${it.message} code=${it.code} error=${it.error}",
                     Toast.LENGTH_SHORT
                 ).show()
             }
         }
         //更新
         viewModel.liveData_update.observe(this) {
-            if (it != null&&it.code>AppVersion().code()) {
+            if (it != null && it.code > AppVersion().code()) {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("新版本 v${it.name}")
                     .setMessage(it.des)
@@ -430,7 +448,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                         intent.data = Uri.parse(it.url)
                         startActivity(intent)
                     }
-                    .setNegativeButton("取消",null)
+                    .setNegativeButton("取消", null)
                     .show()
             }
         }

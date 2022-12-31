@@ -13,8 +13,8 @@ import okhttp3.WebSocketListener;
 import okio.ByteString;
 
 public final class WebSocketManager {
-    //private final static String TAG = WebSocketManager.class.getSimpleName();
-    private final static int MAX_NUM = 5;       // 最大重连数
+
+    private final static int MAX_NUM = 2;       // 最大重连数
     private final static int MILLIS = 5000;     // 重连间隔时间，毫秒
     private static WebSocketManager mInstance = null;
 
@@ -55,7 +55,6 @@ public final class WebSocketManager {
                 mInstance = null;
             }
         } catch (Exception e) {
-            Log.e("WebSocketManager--", "release : " + e.toString());
         }
     }
 
@@ -75,8 +74,6 @@ public final class WebSocketManager {
      */
     public void connect() {
         if (isConnect()) {
-
-            Log.i("WebSocketManager--", "WebSocket 已经连接！");
             return;
         }
         client.newWebSocket(request, createListener());
@@ -114,8 +111,7 @@ public final class WebSocketManager {
         public void run() {
             if (System.currentTimeMillis() - sendTime >= HEART_BEAT_RATE) {
                 sendTime = System.currentTimeMillis();
-                boolean isSend = sendMessage("2");
-                Log.i("WebSocketManager--","心跳是否发送成功"+isSend);
+                sendMessage("2");
             }
             mHandler.postDelayed(this, HEART_BEAT_RATE); //每隔一定的时间，对长连接进行一次心跳检测
         }
@@ -156,6 +152,10 @@ public final class WebSocketManager {
             mHandler.removeCallbacksAndMessages(null);
             mHandler = null;
         }
+        if (heartBeatRunnable != null) {
+            heartBeatRunnable = null;
+        }
+        release();
     }
 
     private WebSocketListener createListener() {
@@ -240,7 +240,7 @@ public final class WebSocketManager {
                 if (receiveMessage != null) {
                     receiveMessage.onConnectFailed();
                 }
-                if (t.getMessage()!=null &&!t.getMessage().equals("") &&!t.getMessage().equals(" ") && !t.getMessage().equals("Socket closed")){
+                if ((t.getMessage()!=null ||!t.getMessage().equals("") ||!t.getMessage().equals(" ")) && !t.getMessage().equals("Socket closed")){
                     reconnect();
                 }
 
