@@ -31,9 +31,27 @@ class LeaderboardActivity : BaseActivity<ActivityLeaderboardBinding,LeaderboardV
         binding.toolbar.title = "排行榜"
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+        val h24 =LeaderboardDayFragment()
+        val d7 =LeaderboardDayFragment()
+        val d30 =LeaderboardDayFragment()
+
+        val h24Bundle=Bundle()
+        h24Bundle.putString("tt","H24")
+        h24.arguments = h24Bundle
+
+        val d7Bundle=Bundle()
+        d7Bundle.putString("tt","D7")
+        d7.arguments = d7Bundle
+
+        val d30Bundle=Bundle()
+        d30Bundle.putString("tt","D30")
+        d30.arguments = d30Bundle
 
         val tabList = listOf(
-            LeaderboardDayFragment("H24"),LeaderboardDayFragment("D7"),LeaderboardDayFragment("D30"),LeaderboardKnightFragment()
+            h24,
+            d7,
+            d30,
+            LeaderboardKnightFragment()
         )
         val tabAdapter=ViewPagerAdapter(tabList, supportFragmentManager, this.lifecycle)
         binding.leaderboardVp.apply {

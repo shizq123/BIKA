@@ -54,9 +54,20 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                         "new_connection"->{
                             liveData_connections.postValue("${json.get("connections").asString}人在线")
                         }
+                        "receive_notification"->{
+                            //42["receive_notification",{"message":"【末雪雪~】正在跟【清埜】悄悄話"}]
+                            //悄悄话
+                        }
                         "broadcast_message"->{
                             liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
 
+                        }
+                        "broadcast_image"->{
+                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+
+                        }
+                        "broadcast_audio"->{
+                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
                         }
                         else ->{
                             Log.d("-----------webSocket---text收到","消息${text.substring(2)}")

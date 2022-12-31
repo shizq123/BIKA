@@ -43,6 +43,7 @@ public final class WebSocketManager {
                 }
             }
         }
+
         return mInstance;
     }
 
@@ -58,7 +59,7 @@ public final class WebSocketManager {
         }
     }
 
-    public void init(String webSocketURL,IReceiveMessage message) {
+    public void init(String webSocketURL, IReceiveMessage message) {
         client = new OkHttpClient.Builder()
                 .writeTimeout(60, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
@@ -92,7 +93,9 @@ public final class WebSocketManager {
                 e.printStackTrace();
             }
         } else {
-
+            if (receiveMessage != null) {
+                receiveMessage.onConnectFailed();
+            }
             Log.i("WebSocketManager--", "reconnect over " + MAX_NUM + ",please check url or network");
         }
     }
@@ -145,7 +148,7 @@ public final class WebSocketManager {
     public void close() {
         if (isConnect()) {
             mWebSocket.send("41");
-            Log.i( "WebSocketManager--","WebSocket 41");
+            Log.i("WebSocketManager--", "WebSocket 41");
         }
 
         if (mHandler != null) {
@@ -163,13 +166,13 @@ public final class WebSocketManager {
             @Override
             public void onOpen(WebSocket webSocket, Response response) {
                 super.onOpen(webSocket, response);
-                Log.i("WebSocketManager--","WebSocket 打开:" + response.toString());
+                Log.i("WebSocketManager--", "WebSocket 打开:" + response.toString());
                 mWebSocket = webSocket;
                 isConnect = response.code() == 101;
                 if (!isConnect) {
                     reconnect();
                 } else {
-                    Log.i( "WebSocketManager--","WebSocket 连接成功");
+                    Log.i("WebSocketManager--", "WebSocket 连接成功");
                     if (receiveMessage != null) {
                         receiveMessage.onConnectSuccess();
                     }
@@ -230,18 +233,18 @@ public final class WebSocketManager {
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
                 super.onFailure(webSocket, t, response);
                 if (response != null) {
-                    Log.i("WebSocketManager--","WebSocket 连接失败：" + response.message());
+                    Log.i("WebSocketManager--", "WebSocket 连接失败：" + response.message());
                 }
-                Log.i( "WebSocketManager--","WebSocket 连接失败异常原因：" + t.getMessage());
+                Log.i("WebSocketManager--", "WebSocket 连接失败异常原因：" + t.getMessage());
                 isConnect = false;
                 if (mHandler != null) {
                     mHandler.removeCallbacksAndMessages(null);
                 }
-                if (receiveMessage != null) {
-                    receiveMessage.onConnectFailed();
-                }
-                if ((t.getMessage()!=null ||!t.getMessage().equals("") ||!t.getMessage().equals(" ")) && !t.getMessage().equals("Socket closed")){
-                    reconnect();
+
+                if (t.getMessage() != null) {
+                    if ((t.getMessage() != null || !t.getMessage().equals("") || !t.getMessage().equals(" ")) && !t.getMessage().equals("Socket closed")) {
+                        reconnect();
+                    }
                 }
 
             }

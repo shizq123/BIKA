@@ -17,7 +17,7 @@ data class ChatMessageBean(
     val reply: String,
     val reply_name: String,
     val title: String,
-    val type: String,
+    val type: Any,
     val unique_id: String,
     val user_id: String,
     val verified: Boolean

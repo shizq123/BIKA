@@ -9,9 +9,9 @@ import java.util.concurrent.TimeUnit
 object RetrofitUtil {
     private var retrofit: Retrofit? = null
 
-    var BASE_INFO = "http://68.183.234.72/"
+    var INFO = "http://68.183.234.72/"
     var BASE_URL = "https://picaapi.picacomic.com"
-    var BASE_UPDATE = "https://raw.githubusercontent.com/"
+    var UPDATE = "https://raw.githubusercontent.com/"
     var URL = "" //用于记录
 
 
@@ -21,10 +21,10 @@ object RetrofitUtil {
 
     // TODO 先实现效果 以后修改
     val service_init: ApiService by lazy {
-        getRetrofit(BASE_INFO).create(ApiService::class.java)
+        getRetrofit(INFO).create(ApiService::class.java)
     }
     val service_update: ApiService by lazy {
-        getRetrofit(BASE_UPDATE).create(ApiService::class.java)
+        getRetrofit(UPDATE).create(ApiService::class.java)
     }
 
     //BASE_URL

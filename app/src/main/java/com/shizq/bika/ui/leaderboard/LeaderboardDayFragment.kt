@@ -25,7 +25,7 @@ import me.jingbin.library.skeleton.BySkeleton
  * 排行榜  日榜 周榜 月榜
  */
 
-class LeaderboardDayFragment(val tt: String) :
+class LeaderboardDayFragment:
     BaseFragment<FragmentLeaderboardDayBinding, LeaderboardDayViewModel>() {
     private lateinit var adapter: ComicListAdapter2
     private lateinit var skeletonScreen : ByRVItemSkeletonScreen
@@ -45,7 +45,7 @@ class LeaderboardDayFragment(val tt: String) :
     }
 
     override fun initData() {
-        viewModel.tt = this.tt
+        viewModel.tt = arguments?.getString("tt")
 
         adapter= ComicListAdapter2()
         binding.leaderboardDayRv.layoutManager = LinearLayoutManager(context)

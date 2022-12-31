@@ -17,8 +17,8 @@ import com.shizq.bika.ui.chat.ChatActivity
 import com.shizq.bika.ui.reader.ReaderActivity
 import com.shizq.bika.utils.SPUtil
 
-class AppsFragment(val str: String) : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() {
-
+class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() {
+    private var str: String? = null
     private lateinit var mChatListAdapter: ChatListAdapter
     private lateinit var mPicaAppsAdapter: PicaAppsAdapter
 
@@ -35,10 +35,11 @@ class AppsFragment(val str: String) : BaseFragment<FragmentAppsBinding, AppsFrag
     }
 
     override fun initData() {
+        str = arguments?.getString("key")
         mChatListAdapter = ChatListAdapter()
         mPicaAppsAdapter = PicaAppsAdapter()
         binding.appsRv.layoutManager = LinearLayoutManager(context)
-        if (this.str == "chat") {
+        if (str == "chat") {
             binding.appsRv.adapter = mChatListAdapter
             viewModel.getChatList()
         } else {
@@ -52,7 +53,7 @@ class AppsFragment(val str: String) : BaseFragment<FragmentAppsBinding, AppsFrag
 
     private fun initListener() {
         binding.appsRv.setOnItemClickListener { _, position ->
-            if (this.str == "chat") {
+            if (str == "chat") {
                 val intent = Intent(activity, ChatActivity::class.java)
                 intent.putExtra("title", mChatListAdapter.getItemData(position).title)
                 intent.putExtra("url", mChatListAdapter.getItemData(position).url)

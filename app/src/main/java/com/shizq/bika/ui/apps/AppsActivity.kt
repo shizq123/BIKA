@@ -10,7 +10,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityAppsBinding
 
 //小程序
-class AppsActivity : BaseActivity<ActivityAppsBinding,AppsViewModel>() {
+class AppsActivity : BaseActivity<ActivityAppsBinding, AppsViewModel>() {
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_apps
@@ -21,19 +21,25 @@ class AppsActivity : BaseActivity<ActivityAppsBinding,AppsViewModel>() {
     }
 
     override fun initData() {
-        binding.toolbar.title="哔咔小程序"
+        binding.toolbar.title = "哔咔小程序"
         setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val tabText = listOf(
-            "聊天室",
-            "小程序"
-        )
-        val tabList = listOf(
-            AppsFragment("chat"),
-            AppsFragment("apps"),
-        )
-        val tabAdapter= ViewPagerAdapter(tabList, supportFragmentManager, this.lifecycle)
+
+        val chat = AppsFragment()
+        val apps = AppsFragment()
+
+        val chatBundle = Bundle()
+        chatBundle.putString("key", "chat")
+        chat.arguments = chatBundle
+
+        val appsBundle = Bundle()
+        appsBundle.putString("key", "apps")
+        apps.arguments = appsBundle
+
+        val tabText = listOf("聊天室", "小程序")
+        val tabList = listOf(chat, apps)
+        val tabAdapter = ViewPagerAdapter(tabList, supportFragmentManager, this.lifecycle)
         binding.appsVp.apply {
             adapter = tabAdapter
             offscreenPageLimit = 1
