@@ -64,11 +64,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
                 intent.action = "android.intent.action.VIEW"
                 intent.data = Uri.parse(
                     "${mPicaAppsAdapter.getItemData(position).url}/?token=${
-                        SPUtil.get(
-                            context,
-                            "token",
-                            ""
-                        )
+                        SPUtil.get(context, "token", "")
                     }&secret=pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
                 )
                 startActivity(intent)
@@ -93,7 +89,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
     override fun initViewObservable() {
         viewModel.liveData_chat.observe(this) {
             if (it.code == 200) {
-
+                mChatListAdapter.clear()
                 binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
                 mChatListAdapter.addData(it.data.chatList)
             } else {
@@ -108,7 +104,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
         }
         viewModel.liveData_apps.observe(this) {
             if (it.code == 200) {
-
+                mPicaAppsAdapter.clear()
                 binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
                 mPicaAppsAdapter.addData(it.data.apps)
             } else {

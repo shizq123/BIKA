@@ -13,12 +13,15 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.databinding.ActivityChatBinding
 import com.shizq.bika.network.WebSocketManager
+import com.shizq.bika.widget.UserViewDialog
 
 //聊天室
 //消息是websocket实现，消息是实时，不会留记录,网络不好会丢失消息
 class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
     private lateinit var adapter:ChatAdapter
     private lateinit var chatModelList: ArrayList<ChatMessageBean>
+
+    private lateinit var userViewDialog: UserViewDialog
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_chat
@@ -40,6 +43,8 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
         adapter= ChatAdapter(chatModelList)
         binding.chatRv.layoutManager = LinearLayoutManager(this)
         binding.chatRv.adapter = adapter
+
+        userViewDialog = UserViewDialog(this)
 
         viewModel.WebSocket()
     }
@@ -68,7 +73,6 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
         }
         viewModel.liveData_message.observe(this){
             chatModelList.add(it)
-            Log.d("----chatactivity----","${chatModelList.size}")
             adapter.notifyItemInserted(chatModelList.size-1)
 
             //加个判断 当前显示的条目是否是最后一条 是就正常加载，不是就右下角显示几条消息，类似qq

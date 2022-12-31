@@ -1,5 +1,6 @@
 package com.shizq.bika.adapter;
 
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -54,9 +55,12 @@ public class ChatAdapter extends RecyclerView.Adapter<ChatAdapter.ViewHolder> {
             if (chatModelList.get(position).getAvatar() != null && !chatModelList.get(position).getAvatar().equals("")) {
                 //拆分 利于缓存 省流量 加载更快
                 int i = chatModelList.get(position).getAvatar().indexOf("/static/");
+                Log.d("---------chatadapter---", i + "");
                 GlideApp.with(holder.itemView)
                         .load(chatModelList.get(position).getAvatar() != null && !chatModelList.get(position).getAvatar().equals("") ?
-                                new GlideUrlNewKey(chatModelList.get(position).getAvatar().substring(0, i), chatModelList.get(position).getAvatar().substring(i + 8))
+                                i > 0 ?
+                                        new GlideUrlNewKey(chatModelList.get(position).getAvatar().substring(0, i), chatModelList.get(position).getAvatar().substring(i + 8))
+                                        : chatModelList.get(position).getAvatar()
                                 : R.drawable.placeholder_avatar_2)
                         .placeholder(R.drawable.placeholder_avatar_2)
                         .into(holder.leftAvatarImage);
