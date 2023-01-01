@@ -47,7 +47,7 @@
 
             </RelativeLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
+            <me.jingbin.library.ByRecyclerView
                 android:id="@+id/chat_rv"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"

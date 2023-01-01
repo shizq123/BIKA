@@ -259,6 +259,13 @@ interface ApiService {
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ComicListBean>>
 
+    //查看用户信息
+    @POST("users/{userId}/profile")
+    fun userProfileGet(
+        @Path("userId") userId: String,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<BaseResponse<ProfileBean>>
+
     //游戏列表
     @GET("games")
     fun gamesGet(

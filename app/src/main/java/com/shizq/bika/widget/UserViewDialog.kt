@@ -10,10 +10,7 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.R
-import com.shizq.bika.bean.ComicInfoBean
-import com.shizq.bika.bean.CommentsBean
-import com.shizq.bika.bean.KnightBean
-import com.shizq.bika.bean.NotificationsBean
+import com.shizq.bika.bean.*
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.StatusBarUtil
@@ -148,6 +145,34 @@ class UserViewDialog(val context: AppCompatActivity) {
         )
     }
 
+    fun showUserDialog(t: ChatMessageBean) {
+        if (t == null) {
+            return
+        }
+        var fileServer=""
+        var path=""
+
+        if (t.avatar != null && t.avatar != "") {
+            val i: Int = t.avatar.indexOf("/static/")
+            if (i > 0){
+                fileServer=t.avatar.substring(0, i)
+                path=t.avatar.substring(i + 8)
+            }
+        }
+
+        UserDialog(
+            t.name,
+            t.title,
+            t.gender,
+            t.level,
+            " ",
+            { if (t.avatar != null) fileServer else "" },
+            { if (t.avatar != null) path else "" },
+            t.character,
+            context.window.decorView
+        )
+    }
+
     private fun UserDialog(
         name: String,
         title: String,
@@ -169,7 +194,7 @@ class UserViewDialog(val context: AppCompatActivity) {
             }
         } Lv.$level"
 
-        if (slogan.isNullOrBlank()) {
+        if (slogan.isNullOrEmpty()) {
             dialog_slogan.setText(R.string.slogan)
         } else {
             dialog_slogan.text = slogan

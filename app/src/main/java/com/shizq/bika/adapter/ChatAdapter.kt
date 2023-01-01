@@ -101,5 +101,10 @@ class ChatAdapter :
                 binding.chatContentL.setText(bean.message)
             }
         }
+
+        holder.addOnClickListener(R.id.chat_avatar_layout_l)
+        holder.addOnClickListener(R.id.chat_name_l)
+        holder.addOnClickListener(R.id.chat_message_layout_l)
+        holder.addOnLongClickListener(R.id.chat_avatar_layout_l)
     }
 }
