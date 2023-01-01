@@ -23,44 +23,58 @@
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            app:layout_behavior="@string/appbar_scrolling_view_behavior" >
+            app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
             <RelativeLayout
-            android:id="@+id/my_layout"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-                android:background="@color/skeleton"
-            android:layout_alignParentBottom="true">
-            <Button
-                android:id="@+id/send_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:text="发送"/>
-            <EditText
-                android:id="@+id/content_input"
-                android:layout_toStartOf="@id/send_btn"
+                android:id="@+id/my_layout"
                 android:layout_width="match_parent"
-                android:layout_height="wrap_content"/>
+                android:layout_height="wrap_content"
+                android:layout_alignParentBottom="true"
+                android:background="@color/skeleton">
+
+                <Button
+                    android:id="@+id/send_btn"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentEnd="true"
+                    android:text="发送" />
+
+                <EditText
+                    android:id="@+id/content_input"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_toStartOf="@id/send_btn" />
+
+            </RelativeLayout>
+
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/chat_rv"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:layout_above="@id/my_layout" />
+
+            <ImageView
+                android:id="@+id/chat_rv_bottom_btn"
+                android:layout_above="@id/my_layout"
+                android:layout_alignParentEnd="true"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_margin="16dp"
+                android:padding="8dp"
+                android:visibility="gone"
+                android:src="@drawable/ic_arrow_down"
+                android:background="@drawable/shape_chat_bg"/>
 
         </RelativeLayout>
 
-            <androidx.recyclerview.widget.RecyclerView
-                android:layout_above="@id/my_layout"
-                android:id="@+id/chat_rv"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent" />
-
-    </RelativeLayout>
-
 
         <include
-            app:layout_behavior="@string/appbar_scrolling_view_behavior"
             android:id="@+id/chat_load_include"
             layout="@layout/view_load"
-            android:visibility="gone"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:visibility="gone"
+            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
 
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/chat_progressbar"

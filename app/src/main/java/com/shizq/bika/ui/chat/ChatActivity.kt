@@ -2,10 +2,12 @@ package com.shizq.bika.ui.chat
 
 import android.annotation.SuppressLint
 import android.os.Bundle
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatAdapter
@@ -22,6 +24,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
     private lateinit var chatModelList: ArrayList<ChatMessageBean>
 
     private lateinit var userViewDialog: UserViewDialog
+    var chatRvBottom=false//false表示底部
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_chat
@@ -76,7 +79,34 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
             adapter.notifyItemInserted(chatModelList.size-1)
 
             //加个判断 当前显示的条目是否是最后一条 是就正常加载，不是就右下角显示几条消息，类似qq
-            binding.chatRv.scrollToPosition(chatModelList.size-1)
+
+
+            if (!chatRvBottom) {
+                binding.chatRv.scrollToPosition(chatModelList.size - 1)
+            }
+
+        }
+        binding.chatRv.addOnScrollListener(object : OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+
+                chatRvBottom = recyclerView.canScrollVertically(1)//判断是否到底部 false是底部
+
+                if (!chatRvBottom) {
+                    binding.chatRvBottomBtn.visibility=View.GONE
+                } else {
+                    binding.chatRvBottomBtn.visibility=View.VISIBLE
+                }
+
+            }
+
+            override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                super.onScrolled(recyclerView, dx, dy)
+            }
+        })
+        binding.chatRvBottomBtn.setOnClickListener {
+            binding.chatRvBottomBtn.visibility=View.GONE
+            binding.chatRv.scrollToPosition(chatModelList.size - 1)
         }
     }
 

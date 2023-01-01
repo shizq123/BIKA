@@ -54,5 +54,11 @@ public class TimeUtil {
         }
     }
 
+    public static String getTime() {
+        long time= System.currentTimeMillis();
+        SimpleDateFormat format = new SimpleDateFormat("HH:mm:ss");
+        return format.format(time);
+    }
+
 }
 

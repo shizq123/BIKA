@@ -55,8 +55,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                             liveData_connections.postValue("${json.get("connections").asString}人在线")
                         }
                         "receive_notification"->{
-                            //42["receive_notification",{"message":"【末雪雪~】正在跟【清埜】悄悄話"}]
-                            //悄悄话
+                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
                         }
                         "broadcast_message"->{
                             liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
