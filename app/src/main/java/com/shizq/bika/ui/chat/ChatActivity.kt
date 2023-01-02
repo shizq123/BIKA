@@ -104,6 +104,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
 
             if (id==R.id.chat_message_layout_l){
                 //消息点击事件 用于 回复
+                //判断 语音和图片不能回复
                 Toast.makeText(this,"回复-${data.message}",Toast.LENGTH_SHORT).show()
 
             }

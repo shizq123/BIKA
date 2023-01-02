@@ -7,6 +7,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.databinding.ItemChatBinding
+import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
 
@@ -92,13 +93,21 @@ class ChatAdapter :
 //            holder.chat_time_l.setText(time);
 
             if (bean.image != null && bean.image != "") {
-                //这里要处理图片
-                binding.chatContentL.setText("[有图片]")
-            } else if (bean.audio != null && bean.audio != "") {
-                //这里要处理语音
-                binding.chatContentL.setText("[有语音]")
+                binding.chatContentImageL.visibility=View.VISIBLE
+                binding.chatContentL.visibility=View.GONE
+                //图片要处理宽高问题
+                binding.chatContentImageL.setImageBitmap(Base64Util.base64ToBitmap(bean.image))
             } else {
-                binding.chatContentL.setText(bean.message)
+                binding.chatContentL.visibility=View.VISIBLE
+                binding.chatContentImageL.visibility=View.GONE
+            }
+            if (bean.audio != null && bean.audio != "") {
+                //这里要处理语音
+                binding.chatContentL.text = "[有语音]"
+            }
+
+            if (bean.message != null && bean.message != "") {
+                binding.chatContentL.text = bean.message
             }
         }
 
