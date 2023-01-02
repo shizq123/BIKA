@@ -1,7 +1,10 @@
 package com.shizq.bika.ui.chat
 
 import android.annotation.SuppressLint
+import android.media.MediaPlayer
 import android.os.Bundle
+import android.util.Base64
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -15,7 +18,11 @@ import com.shizq.bika.adapter.ChatAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChatBinding
 import com.shizq.bika.network.WebSocketManager
+import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.widget.UserViewDialog
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 //聊天室
 //消息是websocket实现，消息是实时，不会留记录,网络不好会丢失消息
@@ -105,7 +112,13 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
             if (id==R.id.chat_message_layout_l){
                 //消息点击事件 用于 回复
                 //判断 语音和图片不能回复
-                Toast.makeText(this,"回复-${data.message}",Toast.LENGTH_SHORT).show()
+                if (!data.image.isNullOrEmpty()) {
+                    userViewDialog.PopupWindow(Base64Util.base64ToBitmap(data.image))
+                } else {
+                    if (data.audio.isNullOrEmpty()){
+                        Toast.makeText(this,"回复-${data.message}",Toast.LENGTH_SHORT).show()
+                    }
+                }
 
             }
         }
@@ -119,6 +132,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
         }
 
     }
+
 
     override fun initViewObservable() {
         viewModel.liveData_connections.observe(this){

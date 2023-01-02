@@ -342,7 +342,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 SPUtil.put(this, "user_gender", gender)
                 SPUtil.put(this, "user_level", level)
                 SPUtil.put(this, "user_exp", it.data.user.exp)
-                SPUtil.put(this, "user_slogan", it.data.user.slogan)
+                SPUtil.put(this, "user_slogan", if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan)
                 SPUtil.put(this, "user_title", it.data.user.title)
                 SPUtil.put(this, "user_id", it.data.user._id)
                 SPUtil.put(this, "user_verified", it.data.user.verified)

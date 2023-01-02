@@ -1,5 +1,6 @@
 package com.shizq.bika.widget
 
+import android.graphics.Bitmap
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
@@ -149,14 +150,16 @@ class UserViewDialog(val context: AppCompatActivity) {
         if (t == null) {
             return
         }
-        var fileServer=""
-        var path=""
+        var fileServer = ""
+        var path = ""
 
         if (t.avatar != null && t.avatar != "") {
             val i: Int = t.avatar.indexOf("/static/")
-            if (i > 0){
-                fileServer=t.avatar.substring(0, i)
-                path=t.avatar.substring(i + 8)
+            if (i > 0) {
+                fileServer = t.avatar.substring(0, i)
+                path = t.avatar.substring(i + 8)
+            } else {
+                path = t.avatar
             }
         }
 
@@ -166,8 +169,8 @@ class UserViewDialog(val context: AppCompatActivity) {
             t.gender,
             t.level,
             " ",
-            { if (t.avatar != null) fileServer else "" },
-            { if (t.avatar != null) path else "" },
+            { fileServer },
+            { path },
             t.character,
             context.window.decorView
         )
@@ -202,7 +205,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         //头像
         GlideApp.with(context)
             .load(
-                if (fileServer() != "") {
+                if (path() != "") {
                     GlideUrlNewKey(fileServer(), path())
                 } else {
                     R.drawable.placeholder_avatar_2
@@ -236,7 +239,7 @@ class UserViewDialog(val context: AppCompatActivity) {
 
     fun PopupWindow(fileserver: String, path: String, parentView: View) {
 
-        if (fileserver != "") {
+        if (path != "") {
             GlideApp.with(context)
                 .load(GlideUrlNewKey(fileserver, path))
                 .placeholder(R.drawable.placeholder_avatar_2)
@@ -252,5 +255,17 @@ class UserViewDialog(val context: AppCompatActivity) {
             )
 
         }
+    }
+
+    fun PopupWindow(bitmap: Bitmap) {
+        popupImage.setImageBitmap(bitmap)
+        StatusBarUtil.hide(context)
+        //PopupWindow会被BottomSheetDialog的view覆盖 解决办法用BottomSheetDialog的view替换this.window.decorView
+        mPopupWindow.showAtLocation(
+            context.window.decorView,
+            Gravity.BOTTOM,
+            0,
+            0
+        )
     }
 }
