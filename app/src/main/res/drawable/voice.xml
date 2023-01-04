@@ -8,5 +8,4 @@
     <item android:drawable="@drawable/ic_voice_1" android:duration="200"/>
     <item android:drawable="@drawable/ic_voice_2" android:duration="200"/>
     <item android:drawable="@drawable/ic_voice_1" android:duration="200"/>
-    <item android:drawable="@drawable/ic_voice_2" android:duration="200"/>
 </animation-list>

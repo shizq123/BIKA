@@ -44,9 +44,9 @@ object RetrofitUtil {
     private fun getOkHttpClient(): OkHttpClient {
 
         val builder = OkHttpClient.Builder()
-            .connectTimeout(60, TimeUnit.SECONDS)
-            .readTimeout(60, TimeUnit.SECONDS)
-            .writeTimeout(60, TimeUnit.SECONDS)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
 //            .retryOnConnectionFailure(true)// 错误重连
             .dns(HttpDns())
         return builder.build()

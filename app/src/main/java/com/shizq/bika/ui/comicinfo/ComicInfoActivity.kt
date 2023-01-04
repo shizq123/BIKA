@@ -359,6 +359,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                         viewModel.getInfo()
                     }
                     .setNegativeButton("退出") { _, _ -> finish() }
+                    .setCancelable(false)
                     .show()
             }
         }

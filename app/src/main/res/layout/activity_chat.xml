@@ -3,7 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
-
         <variable
             name="viewModel"
             type="com.shizq.bika.ui.chat.ChatViewModel" />
@@ -26,36 +25,70 @@
             app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
             <RelativeLayout
-                android:id="@+id/my_layout"
+                android:id="@+id/chat_send_layout"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_alignParentBottom="true"
-                android:background="@color/skeleton">
-
-                <Button
-                    android:id="@+id/send_btn"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentEnd="true"
-                    android:text="发送" />
+                android:padding="10dp"
+                android:elevation="6dp"
+                android:translationZ="6dp"
+                android:background="@drawable/shape_chat_send_bg">
 
                 <EditText
-                    android:id="@+id/content_input"
+                    android:id="@+id/chat_send_content_input"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_toStartOf="@id/send_btn" />
+                    android:background="@drawable/shape_chat_bg"
+                    android:paddingStart="10dp"
+                    android:paddingEnd="10dp"
+                    android:paddingTop="6dp"
+                    android:paddingBottom="6dp"
+                    android:textSize="16sp"
+                    />
 
+                <Button
+                    style="@style/Widget.Material3.Button.TextButton"
+                    android:layout_below="@id/chat_send_content_input"
+                    android:layout_marginTop="4dp"
+                    android:id="@+id/chat_send_btn"
+                    android:layout_width="80dp"
+                    android:layout_height="48dp"
+                    android:layout_alignParentEnd="true"
+                    android:text="发送" />
+                <LinearLayout
+                    android:layout_marginTop="4dp"
+                    android:layout_below="@id/chat_send_content_input"
+                    android:layout_alignBottom="@id/chat_send_btn"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
+                    <ImageView
+                        android:id="@+id/chat_send_voice"
+                        android:layout_width="48dp"
+                        android:layout_height="wrap_content"
+                        android:padding="4dp"
+                        android:src="@drawable/ic_keyboard_voice"/>
+                    <ImageView
+                        android:id="@+id/chat_send_photo"
+                        android:layout_marginStart="4dp"
+                        android:layout_width="48dp"
+                        android:layout_height="wrap_content"
+                        android:padding="4dp"
+                        android:src="@drawable/ic_photo_camera"/>
+
+                </LinearLayout>
             </RelativeLayout>
 
             <me.jingbin.library.ByRecyclerView
                 android:id="@+id/chat_rv"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_above="@id/my_layout" />
+                android:layout_above="@id/chat_send_layout" />
 
             <ImageView
                 android:id="@+id/chat_rv_bottom_btn"
-                android:layout_above="@id/my_layout"
+                android:layout_above="@id/chat_send_layout"
                 android:layout_alignParentEnd="true"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
@@ -67,15 +100,6 @@
 
         </RelativeLayout>
 
-
-        <include
-            android:id="@+id/chat_load_include"
-            layout="@layout/view_load"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:visibility="gone"
-            app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-
         <com.google.android.material.progressindicator.LinearProgressIndicator
             android:id="@+id/chat_progressbar"
             android:layout_width="match_parent"
@@ -83,7 +107,6 @@
             android:indeterminate="true"
             android:visibility="gone"
             app:layout_behavior="@string/appbar_scrolling_view_behavior" />
-
 
     </androidx.coordinatorlayout.widget.CoordinatorLayout>
 </layout>

@@ -38,12 +38,12 @@
 
             <LinearLayout
                 android:id="@+id/chat_name_layout_l"
-                android:layout_toEndOf="@id/chat_avatar_layout_l"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
                 android:layout_marginStart="4dp"
                 android:layout_marginEnd="4dp"
+                android:layout_toEndOf="@id/chat_avatar_layout_l"
+                android:orientation="horizontal"
                 android:padding="2dp">
 
                 <TextView
@@ -53,6 +53,15 @@
                     android:layout_marginEnd="4dp"
                     android:textColor="@color/pink"
                     android:textSize="12sp" />
+
+                <ImageView
+                    android:id="@+id/chat_verified"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/verified_icon"/>
 
                 <TextView
                     android:id="@+id/chat_name_l"
@@ -65,13 +74,13 @@
             </LinearLayout>
 
             <LinearLayout
-                android:layout_toEndOf="@id/chat_avatar_layout_l"
-                android:layout_below="@id/chat_name_layout_l"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
+                android:layout_below="@id/chat_name_layout_l"
                 android:layout_marginStart="4dp"
                 android:layout_marginEnd="4dp"
                 android:layout_marginBottom="4dp"
+                android:layout_toEndOf="@id/chat_avatar_layout_l"
                 android:orientation="vertical">
 
                 <RelativeLayout
@@ -106,69 +115,66 @@
                             android:textSize="12sp"
                             android:textStyle="bold" />
 
-                        <LinearLayout
+                        <TextView
+                            android:id="@+id/chat_reply"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_margin="10dp"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:id="@+id/chat_reply"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="消息消息消息消息消息消息"
-                                android:textSize="13sp" />
-                        </LinearLayout>
+                            android:text="消息消息消息"
+                            android:textSize="13sp" />
                     </LinearLayout>
 
                     <TextView
-                        android:layout_below="@id/chat_reply_layout"
                         android:id="@+id/chat_at_l"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_reply_layout"
                         android:textColor="@color/pink"
                         android:textSize="12sp"
                         android:visibility="gone" />
 
                     <TextView
-                        android:layout_below="@id/chat_at_l"
                         android:id="@+id/chat_content_l"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_at_l"
+                        android:autoLink="web"
                         android:text="消息消息消息消息"
+                        android:textIsSelectable="true"
                         android:textSize="14sp" />
 
                     <LinearLayout
-                        android:layout_below="@id/chat_content_l"
                         android:id="@+id/chat_voice_l"
                         android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_content_l"
                         android:gravity="center_vertical"
-                        android:visibility="gone"
-                        android:layout_height="wrap_content">
+                        android:visibility="gone">
+
                         <ImageView
                             android:id="@+id/chat_voice_image_l"
                             android:layout_width="20dp"
                             android:layout_height="20dp"
-                            android:background="@drawable/voice"/>
+                            android:background="@drawable/voice" />
+
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="[语音]"/>
+                            android:text="[语音]" />
 
                         <ImageView
                             android:id="@+id/chat_voice_dian"
-                            android:layout_marginStart="4dp"
                             android:layout_width="3dp"
                             android:layout_height="3dp"
-                            android:background="#F00"
-                            />
+                            android:layout_marginStart="4dp"
+                            android:background="#F00" />
                     </LinearLayout>
 
                     <ImageView
-                        android:layout_below="@id/chat_content_l"
                         android:id="@+id/chat_content_image_l"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_content_l"
                         android:adjustViewBounds="true"
                         android:scaleType="centerInside"
                         android:visibility="gone" />

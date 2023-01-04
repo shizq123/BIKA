@@ -1,10 +1,7 @@
 package com.shizq.bika.ui.chat
 
 import android.annotation.SuppressLint
-import android.media.MediaPlayer
 import android.os.Bundle
-import android.util.Base64
-import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
@@ -12,17 +9,17 @@ import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChatBinding
 import com.shizq.bika.network.WebSocketManager
+import com.shizq.bika.utils.AndroidBug5497Workaround
 import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.widget.UserViewDialog
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+
 
 //聊天室
 //消息是websocket实现，消息是实时，不会留记录,网络不好会丢失消息
@@ -41,6 +38,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
 
     @SuppressLint("ResourceType")
     override fun initData() {
+        AndroidBug5497Workaround.assistActivity(this)
         viewModel.url= intent.getStringExtra("url").toString()+"/socket.io/?EIO=3&transport=websocket"
         binding.chatInclude.toolbar.title=intent.getStringExtra("title").toString()
         setSupportActionBar(binding.chatInclude.toolbar)
@@ -53,6 +51,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
 
         userViewDialog = UserViewDialog(this)
 
+        binding.chatProgressbar.show()
         viewModel.WebSocket()
         initListener()
     }
@@ -68,7 +67,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
                 finish()
             }
             R.id.action_setting ->{
-
+                Toast.makeText(this,"功能不支持",Toast.LENGTH_SHORT).show()
             }
 
         }
@@ -131,6 +130,22 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
             true
         }
 
+        binding.chatSendVoice.setOnClickListener {
+            Toast.makeText(this,"发送语音暂不支持",Toast.LENGTH_SHORT).show()
+        }
+        binding.chatSendPhoto.setOnClickListener {
+            Toast.makeText(this,"发送图片暂不支持",Toast.LENGTH_SHORT).show()
+        }
+        binding.chatSendBtn.setOnClickListener {
+            //发送消息
+            if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
+                //和官方一致消息不为空时才能发送
+                Toast.makeText(this,"发送消息暂不支持",Toast.LENGTH_SHORT).show()
+                viewModel.user
+
+            }
+
+        }
     }
 
 
@@ -144,6 +159,25 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
                 binding.chatRv.scrollToPosition(adapter.data.size - 1)
             }
 
+        }
+        viewModel.liveData_state.observe(this){
+            if (it=="failed"){
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("网络错误")
+                    .setMessage("是否尝试重新连接")
+                    .setPositiveButton("确定") { dialog, which ->
+                        binding.chatProgressbar.show()
+                        viewModel.WebSocket()
+                    }
+                    .setNegativeButton("退出" ){ _, _ ->
+                        finish()
+                    }
+                    .setCancelable(false)
+                    .show()
+            }
+            if (it=="success"){
+                binding.chatProgressbar.hide()
+            }
         }
 
     }

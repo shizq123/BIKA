@@ -1,13 +1,17 @@
 package com.shizq.bika.adapter
 
 import android.graphics.Bitmap
+import android.graphics.Color
 import android.graphics.drawable.AnimationDrawable
 import android.media.MediaPlayer
+import android.text.SpannableString
+import android.text.Spanned
+import android.text.style.ForegroundColorSpan
 import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.LinearLayout
+import android.widget.TextView
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
@@ -21,6 +25,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
+//聊天页面 乱
 class ChatAdapter :
     BaseBindingAdapter<ChatMessageBean, ItemChatBinding>(R.layout.item_chat) {
     override fun bindView(
@@ -32,7 +37,7 @@ class ChatAdapter :
         //设置一个回复类消息的最小宽度 类似qq
 
         if (bean.name == null && bean.user_id == null && bean.message != null) {
-            //通知 悄悄话
+            //通知（加入，踢人，悄悄话）
             binding.chatLayoutL.visibility = View.GONE
             binding.chatLayoutR.visibility = View.GONE
             binding.chatNotification.visibility = View.VISIBLE
@@ -77,19 +82,23 @@ class ChatAdapter :
                 binding.chatReplyLayout.visibility = ViewGroup.VISIBLE
                 binding.chatReplyName.text = bean.reply_name
                 if (bean.reply.length > 50) {
-                    //要改 显示两行 尾部显示...
+                    //要改 TODO  显示两行 尾部显示...
                     binding.chatReply.text = bean.reply.substring(0, 50) + "..."
                 } else {
                     binding.chatReply.text = bean.reply
                 }
-                setReplyLayout(binding.chatReplyLayout)
+
             } else {
                 binding.chatReplyLayout.visibility = ViewGroup.GONE
             }
+
             if (bean.level >= 0) {
                 //等级
                 binding.chatLevelL.text = "Lv." + bean.level
             }
+
+            binding.chatVerified.visibility = if (bean.verified) View.VISIBLE else View.GONE
+
             if (bean.at != null && bean.at != "") {
                 //艾特某人
                 binding.chatAtL.visibility = View.VISIBLE
@@ -108,24 +117,29 @@ class ChatAdapter :
 
             if (bean.image != null && bean.image != "") {
                 binding.chatContentImageL.visibility = View.VISIBLE
-                binding.chatContentL.visibility = View.GONE
                 //图片要处理宽高问题
                 setImageView(binding.chatContentImageL, Base64Util.base64ToBitmap(bean.image))
             } else {
-                binding.chatContentL.visibility = View.VISIBLE
                 binding.chatContentImageL.visibility = View.GONE
             }
             if (bean.audio != null && bean.audio != "") {
                 //这里要处理语音
-                binding.chatContentL.visibility = View.GONE
                 binding.chatVoiceL.visibility = View.VISIBLE
             } else {
-                binding.chatContentL.visibility = View.VISIBLE
                 binding.chatVoiceL.visibility = View.GONE
             }
 
             if (bean.message != null && bean.message != "") {
-                binding.chatContentL.text = bean.message
+                binding.chatContentL.visibility = View.VISIBLE
+                if (bean.event_colors != null && bean.event_colors.isNotEmpty()) {
+                    setTextViewStyles( binding.chatContentL,bean.event_colors , bean.message)
+
+                } else {
+                    binding.chatContentL.text = bean.message
+
+                }
+            } else {
+                binding.chatContentL.visibility = View.GONE
             }
         }
 
@@ -151,9 +165,9 @@ class ChatAdapter :
         //手机截图比例的图片防止占满屏
         val bitmapH = bitmap.height
         val bitmapW = bitmap.width
-        val imageMinW = 100.dp
+        val imageMinW = 150.dp
         val layoutParams = imageView.layoutParams
-        if (bitmapH > 1.5 * bitmapW) {
+        if (bitmapH > 1.7 * bitmapW) {
             layoutParams.width = imageMinW
             layoutParams.height = ViewGroup.LayoutParams.WRAP_CONTENT
         } else if (bitmapW < 1080) {
@@ -168,7 +182,7 @@ class ChatAdapter :
     }
 
     private fun playAudio(audio: String, animationDrawable: AnimationDrawable) {
-
+        // TODO 有bug 会有不播放的情况
         val mp3SoundByteArray: ByteArray = Base64.decode(audio.replace("\n", ""), Base64.DEFAULT)
 
         val tempMp3: File = File.createTempFile("audio", ".mp3")
@@ -196,8 +210,37 @@ class ChatAdapter :
 
     }
 
-    private fun setReplyLayout(view: LinearLayout) {
-        //带有回复的消息显示不正确 后面优化
-
+    //反编译源码 聊天室的彩色字体
+    private fun setTextViewStyles(textView: TextView, strArr: List<String>, str: String) {
+        textView.text=""
+        var i = 0
+        while (i < str.length) {
+            val i2 = i + 1
+            if (i2 >= str.length || !(str[i].code == 55356 || str[i].code == 55357)) {
+                val spannableString = SpannableString(str[i].toString() + "")
+                str[i]
+                spannableString.setSpan(
+                    ForegroundColorSpan(
+                        Color.parseColor(
+                            strArr[i % strArr.size]
+                        )
+                    ), 0, spannableString.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                textView.append(spannableString)
+            } else {
+                val substring = str.substring(i, i + 2)
+                val spannableString2 = SpannableString(substring + "")
+                spannableString2.setSpan(
+                    ForegroundColorSpan(
+                        Color.parseColor(
+                            strArr[i % strArr.size]
+                        )
+                    ), 0, spannableString2.length, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
+                )
+                textView.append(substring)
+                i = i2
+            }
+            i++
+        }
     }
 }

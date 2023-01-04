@@ -49,7 +49,6 @@
 
         <Preference
             app:icon="@drawable/ic_applications"
-            app:key="setting_app_info"
             app:summary="在系统设置上查看应用信息"
             app:title="应用信息" >
             <intent
@@ -59,7 +58,6 @@
 
         <Preference
             app:icon="@drawable/ic_github"
-            app:key="setting_github"
             app:summary="在GitHub上查看"
             app:title="GitHub" >
             <intent
@@ -83,6 +81,20 @@
             app:key="setting_exit"
             app:summary="退出当前账号"
             app:title="退出登录" />
+
+        <Preference
+            app:summary="FAQ"
+            app:title="常见问题" >
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="https://www.picacomic.com/faq" />
+        </Preference>
+        <Preference
+            app:title="Wiki" >
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="http://picawiki.xyz/" />
+        </Preference>
 
     </PreferenceCategory>
 </PreferenceScreen>

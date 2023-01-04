@@ -7,6 +7,7 @@
         android:id="@+id/action_video"
         android:orderInCategory="2"
         app:showAsAction="ifRoom"
+        android:visible="false"
         android:title="@string/action_video"
         />
 </menu>

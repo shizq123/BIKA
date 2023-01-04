@@ -21,26 +21,26 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
     val liveData_message: MutableLiveData<ChatMessageBean> by lazy {
         MutableLiveData<ChatMessageBean>()
     }
+    val liveData_state: MutableLiveData<String> by lazy {
+        MutableLiveData<String>()
+    }
 
     fun WebSocket(){
         webSocketManager.init(url,object : IReceiveMessage {
-            override fun onConnectSuccess() {
-                Log.d("-----------webSocket---成功","")
-            }
+            override fun onConnectSuccess() {}
 
             override fun onConnectFailed() {
-                Log.d("-----------webSocket---失败","")
+                liveData_state.postValue("failed")
             }
 
             override fun onClose() {
-                Log.d("-----------webSocket---关闭","")
+                liveData_state.postValue("close")
             }
 
             override fun onMessage(text: String) {
-                //收到消息...（一般是这里处理json）
                 Log.d("-----------webSocket---text收到",""+text)
-
                 if (text=="40"){
+                    liveData_state.postValue("success")
                     //收到消息 40 发送init
                     webSocketManager.sendMessage(user())
                 }
@@ -68,6 +68,36 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                         "broadcast_audio"->{
                             liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
                         }
+
+                        "connection_close"->{
+                            liveData_connections.postValue("${json.get("connections").asString}人在线")
+                        }
+
+//                        "set_profile"->{ //
+//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+//                        }
+//
+//                        "got_private_message"->{ //悄悄话
+//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+//                        }
+//
+//                        "change_character_icon"->{ //头像框 相关消息
+//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+//                        }
+//
+//                        "change_title"->{ // 个人title 相关消息
+//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+//                        }
+//
+                        "kick"->{ //提人
+                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+                        }
+//
+
+//
+//                        "connect"->{ //
+//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+//                        }
                         else ->{
                             Log.d("-----------webSocket---text收到","消息${text.substring(2)}")
 
@@ -80,6 +110,8 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         })
     }
 
+    //42["send_message","{\"at\":\"\",\"audio\":\"\",\"block_user_id\":\"\",\"character\":\"https:\/\/bidobido.xyz\/special\/frame-632.png\",\"email\":\"shizqhh1\",\"gender\":\"bot\",\"image\":\"\",\"level\":1,\"message\":\"🍵\",\"name\":\"why?why\",\"platform\":\"android\",\"reply\":\"\",\"reply_name\":\"\",\"title\":\"萌新\",\"type\":3,\"unique_id\":\"\",\"user_id\":\"63abf445ed45ccddf959a103\",\"verified\":false}"]
+    //42["send_message","{\"at\":\"\",\"audio\":\"\",\"block_user_id\":\"\",\"image\":\"\",\"message\":\"🍵\",\"platform\":\"android\",\"reply\":\"\",\"reply_name\":\"\",\"type\":3,\"unique_id\":\"\",}"]
     var user ={
         val fileServer= SPUtil.get(application,"user_fileServer","")
         val path= SPUtil.get(application,"user_path","")

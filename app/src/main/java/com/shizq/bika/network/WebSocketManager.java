@@ -93,10 +93,10 @@ public final class WebSocketManager {
                 e.printStackTrace();
             }
         } else {
+            //大于重连数时
             if (receiveMessage != null) {
                 receiveMessage.onConnectFailed();
             }
-            Log.i("WebSocketManager--", "reconnect over " + MAX_NUM + ",please check url or network");
         }
     }
 
@@ -233,7 +233,7 @@ public final class WebSocketManager {
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
                 super.onFailure(webSocket, t, response);
                 if (response != null) {
-                    Log.i("WebSocketManager--", "WebSocket 连接失败：" + response.message());
+                    Log.i("                      --", "WebSocket 连接失败：" + response.message());
                 }
                 Log.i("WebSocketManager--", "WebSocket 连接失败异常原因：" + t.getMessage());
                 isConnect = false;

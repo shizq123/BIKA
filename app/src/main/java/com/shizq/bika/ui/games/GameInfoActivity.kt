@@ -101,7 +101,6 @@ class GameInfoActivity : BaseActivity<ActivityGameInfoBinding, GameInfoViewModel
                 finish()
             }
             R.id.action_video -> {
-                //先实现功能 后面优化
                 if (videoLink != "") {
                     val intent = Intent()
                     intent.action = "android.intent.action.VIEW"
@@ -151,8 +150,11 @@ class GameInfoActivity : BaseActivity<ActivityGameInfoBinding, GameInfoViewModel
                     )
                 )
                 gameLink = it.data.game.androidLinks[0]
-                videoLink = if (it.data.game.videoLink.isNullOrEmpty()) "" else it.data.game.videoLink
                 binding.gameBtnDownload.visibility = View.VISIBLE
+
+                videoLink= if(it.data.game.videoLink.isNullOrEmpty()) "" else it.data.game.videoLink
+                binding.gameinfoInclude.toolbar.menu.findItem(R.id.action_video).isVisible = !it.data.game.videoLink.isNullOrEmpty()
+
                 //标题
                 binding.gameTitle.text = it.data.game.title
                 binding.gameTitle.paint.isFakeBoldText = true
