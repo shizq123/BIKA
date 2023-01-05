@@ -30,6 +30,14 @@
         <item name="android:windowExitAnimation">@anim/anim_exit_from_bottom</item>
     </style>
 
+    <style name="ChipElevated"  parent="Widget.Material3.Chip.Assist.Elevated">
+        <item name="closeIconVisible">true</item>
+    </style>
+
+    <style name="Chip"  parent="Widget.Material3.Chip.Assist">
+        <item name="closeIconVisible">true</item>
+    </style>
+
 <!--  添加parent="ThemeOverlay.Material3" 解决动态颜色不生效 -->
     <style name="InputTextMsgDialog" parent="ThemeOverlay.Material3">
         <!--        设置是否可滑动 -->

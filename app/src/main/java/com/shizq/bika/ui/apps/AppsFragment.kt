@@ -5,7 +5,6 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -14,7 +13,6 @@ import com.shizq.bika.adapter.PicaAppsAdapter
 import com.shizq.bika.base.BaseFragment
 import com.shizq.bika.databinding.FragmentAppsBinding
 import com.shizq.bika.ui.chat.ChatActivity
-import com.shizq.bika.ui.reader.ReaderActivity
 import com.shizq.bika.utils.SPUtil
 
 class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() {
@@ -58,7 +56,6 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
                 intent.putExtra("title", mChatListAdapter.getItemData(position).title)
                 intent.putExtra("url", mChatListAdapter.getItemData(position).url)
                 startActivity(intent)
-                Toast.makeText(context, "功能未实现", Toast.LENGTH_SHORT).show()
             } else {
                 val intent = Intent()
                 intent.action = "android.intent.action.VIEW"

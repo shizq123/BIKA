@@ -2,13 +2,20 @@ package com.shizq.bika.ui.chat
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.text.Editable
+import android.text.TextWatcher
+import android.util.Log
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.inputmethod.InputMethodManager
+import android.widget.LinearLayout
+import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
+import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -23,10 +30,11 @@ import com.shizq.bika.widget.UserViewDialog
 
 //聊天室
 //消息是websocket实现，消息是实时，不会留记录,网络不好会丢失消息
-class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
-    private lateinit var adapter:ChatAdapter
+class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
+    private lateinit var adapter: ChatAdapter
     private lateinit var userViewDialog: UserViewDialog
-    var chatRvBottom=false//false表示底部
+    var chatRvBottom = false//false表示底部
+    private val atUser=ArrayList<String>() //@的用户名
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_chat
@@ -39,13 +47,14 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
     @SuppressLint("ResourceType")
     override fun initData() {
         AndroidBug5497Workaround.assistActivity(this)
-        viewModel.url= intent.getStringExtra("url").toString()+"/socket.io/?EIO=3&transport=websocket"
-        binding.chatInclude.toolbar.title=intent.getStringExtra("title").toString()
+        viewModel.url =
+            intent.getStringExtra("url").toString() + "/socket.io/?EIO=3&transport=websocket"
+        binding.chatInclude.toolbar.title = intent.getStringExtra("title").toString()
         setSupportActionBar(binding.chatInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        viewModel.webSocketManager=WebSocketManager.getInstance()
+        viewModel.webSocketManager = WebSocketManager.getInstance()
 
-        adapter=ChatAdapter()
+        adapter = ChatAdapter()
         binding.chatRv.layoutManager = LinearLayoutManager(this)
         binding.chatRv.adapter = adapter
 
@@ -66,15 +75,15 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
             android.R.id.home -> {
                 finish()
             }
-            R.id.action_setting ->{
-                Toast.makeText(this,"功能不支持",Toast.LENGTH_SHORT).show()
+            R.id.action_setting -> {
+                Toast.makeText(this, "功能不支持", Toast.LENGTH_SHORT).show()
             }
 
         }
         return super.onOptionsItemSelected(item)
     }
 
-    fun initListener(){
+    fun initListener() {
         binding.chatRv.addOnScrollListener(object : OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(recyclerView, newState)
@@ -82,86 +91,148 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
                 chatRvBottom = recyclerView.canScrollVertically(1)//判断是否到底部 false是底部
 
                 if (!chatRvBottom) {
-                    binding.chatRvBottomBtn.visibility=View.GONE
+                    binding.chatRvBottomBtn.visibility = View.GONE
                 } else {
-                    binding.chatRvBottomBtn.visibility=View.VISIBLE
+                    binding.chatRvBottomBtn.visibility = View.VISIBLE
                 }
 
             }
         })
         binding.chatRvBottomBtn.setOnClickListener {
-            chatRvBottom=false
-            binding.chatRvBottomBtn.visibility=View.GONE
+            chatRvBottom = false
+            binding.chatRvBottomBtn.visibility = View.GONE
             binding.chatRv.scrollToPosition(adapter.data.size - 1)
         }
 
         binding.chatRv.setOnItemChildClickListener { view, position ->
-            val id= view.id
-            val data =adapter.getItemData(position)
-            if (id==R.id.chat_avatar_layout_l){
+
+            val id = view.id
+            val data = adapter.getItemData(position)
+            if (id == R.id.chat_avatar_layout_l) {
                 //头像点击事件 查看用户信息
                 //聊天信息携带的用户信息不全 可以进行网络获取 以后再说
                 userViewDialog.showUserDialog(data)
             }
-            if (id==R.id.chat_name_l){
+            if (id == R.id.chat_name_l) {
                 //名字点击事件 用于 @
-                Toast.makeText(this,"@${data.name}",Toast.LENGTH_SHORT).show()
+                initChipGroup(data.name)
+                //需要弹出键盘
+                showKeyboard()
             }
 
-            if (id==R.id.chat_message_layout_l){
+            if (id == R.id.chat_message_layout_l) {
+                Log.d("------------chatactivity,", "layout")
                 //消息点击事件 用于 回复
                 //判断 语音和图片不能回复
                 if (!data.image.isNullOrEmpty()) {
                     userViewDialog.PopupWindow(Base64Util.base64ToBitmap(data.image))
-                } else {
-                    if (data.audio.isNullOrEmpty()){
-                        Toast.makeText(this,"回复-${data.message}",Toast.LENGTH_SHORT).show()
+                }
+                if (!data.audio.isNullOrEmpty()) {
+                    view as RelativeLayout
+                    //遍历所有的子view 找到要进行更新ui的view
+                    for (i in 0 until view.childCount) {
+                        val v: View = view.getChildAt(i)
+                        if (v.id == R.id.chat_voice_l) {
+                            v as LinearLayout
+                            for (j in 0 until v.childCount) {
+                                val voiceView: View = v.getChildAt(j)
+                                if (voiceView.id == R.id.chat_voice_image_l) {
+                                    viewModel.playAudio(data.audio, voiceView)
+                                }
+                                if (voiceView.id == R.id.chat_voice_dian) {
+                                    voiceView.visibility = View.GONE
+                                }
+
+                            }
+                        }
                     }
                 }
 
+                if (data.audio.isNullOrEmpty() && data.image.isNullOrEmpty()) {
+//                        Toast.makeText(this,"回复-${}",Toast.LENGTH_SHORT).show()
+                    binding.chatSendContentReply.visibility = View.VISIBLE
+                    viewModel.reply=data.message
+                    viewModel.reply_name=data.name
+                    binding.chatSendContentReply.text = data.name + "：" + data.message
+                    //需要弹出键盘
+                    showKeyboard()
+                }
             }
         }
 
         binding.chatRv.setOnItemChildLongClickListener { view, position ->
-            if (view.id==R.id.chat_avatar_layout_l){
+            if (view.id == R.id.chat_avatar_layout_l) {
                 //头像点击事件 用于 @
-                Toast.makeText(this,"@${adapter.getItemData(position).name}",Toast.LENGTH_SHORT).show()
+                initChipGroup(adapter.getItemData(position).name)
+                //需要弹出键盘
+                showKeyboard()
             }
             true
         }
 
         binding.chatSendVoice.setOnClickListener {
-            Toast.makeText(this,"发送语音暂不支持",Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "发送语音暂不支持", Toast.LENGTH_SHORT).show()
         }
         binding.chatSendPhoto.setOnClickListener {
-            Toast.makeText(this,"发送图片暂不支持",Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "发送图片暂不支持", Toast.LENGTH_SHORT).show()
         }
         binding.chatSendBtn.setOnClickListener {
-            //发送消息
+            //发送消息 和官方一致消息不为空时才能发送
             if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
-                //和官方一致消息不为空时才能发送
-                Toast.makeText(this,"发送消息暂不支持",Toast.LENGTH_SHORT).show()
-                viewModel.user
+                if (atUser.size > 0) {
+                    for (name in atUser){
+                        viewModel.atname+=name.replace("@","嗶咔_")
+                    }
+                }
+                viewModel.sendMessage(binding.chatSendContentInput.text.toString())
 
+                //清空输入框
+                atUser.clear()
+                binding.chatSendAt.removeAllViews()
+                viewModel.atname=""
+                viewModel.reply=""
+                viewModel.reply_name=""
+                binding.chatSendContentInput.setText("")
+                binding.chatSendContentReply.text = ""
+                binding.chatSendContentReply.visibility = View.GONE
+                //滑动到底部
+                chatRvBottom = false
+                binding.chatRvBottomBtn.visibility = View.GONE
+                binding.chatRv.scrollToPosition(adapter.data.size - 1)
             }
-
         }
+        binding.chatSendContentInput.addTextChangedListener(object : TextWatcher {
+            override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
+            override fun afterTextChanged(s: Editable) {
+                //和官方一致消息不为空时才能发送
+                binding.chatSendBtn.isEnabled =
+                    !binding.chatSendContentInput.text.toString().trim().isNullOrBlank()
+            }
+        })
+
+        binding.chatSendContentReply.setOnCloseIconClickListener {
+            binding.chatSendContentReply.text = ""
+            binding.chatSendContentReply.visibility = View.GONE
+        }
+
+
     }
 
 
     override fun initViewObservable() {
-        viewModel.liveData_connections.observe(this){
-            binding.chatInclude.toolbar.subtitle=it
+        viewModel.liveData_connections.observe(this) {
+            binding.chatInclude.toolbar.subtitle = it
         }
-        viewModel.liveData_message.observe(this){
+        viewModel.liveData_message.observe(this) {
             adapter.addData(it)
             if (!chatRvBottom) {
                 binding.chatRv.scrollToPosition(adapter.data.size - 1)
             }
 
         }
-        viewModel.liveData_state.observe(this){
-            if (it=="failed"){
+        viewModel.liveData_state.observe(this) {
+            if (it == "failed") {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("网络错误")
                     .setMessage("是否尝试重新连接")
@@ -169,13 +240,13 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
                         binding.chatProgressbar.show()
                         viewModel.WebSocket()
                     }
-                    .setNegativeButton("退出" ){ _, _ ->
+                    .setNegativeButton("退出") { _, _ ->
                         finish()
                     }
                     .setCancelable(false)
                     .show()
             }
-            if (it=="success"){
+            if (it == "success") {
                 binding.chatProgressbar.hide()
             }
         }
@@ -183,9 +254,30 @@ class ChatActivity : BaseActivity<ActivityChatBinding,ChatViewModel>() {
     }
 
 
+    private fun initChipGroup(str:String) {
+        atUser.add("@$str")
+        binding.chatSendAt.removeAllViews()
+        for (text in atUser) {
+            val chip = layoutInflater.inflate(R.layout.item_chip_at, binding.chatSendAt, false) as Chip
+            chip.text = text
+            binding.chatSendAt.addView(chip)
+            chip.setOnClickListener {
+                atUser.remove(text)
+                binding.chatSendAt.removeView(chip)
+            }
+        }
+    }
+
+
     override fun onDestroy() {
         viewModel.webSocketManager.close()
         super.onDestroy()
+    }
+
+    private fun showKeyboard() {
+        binding.chatSendContentInput.requestFocus()
+        val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        imm.showSoftInput(binding.chatSendContentInput, 0)
     }
 
 }

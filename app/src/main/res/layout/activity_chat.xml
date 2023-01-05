@@ -34,30 +34,49 @@
                 android:translationZ="6dp"
                 android:background="@drawable/shape_chat_send_bg">
 
-                <EditText
-                    android:id="@+id/chat_send_content_input"
+                <LinearLayout
+                    android:id="@+id/chat_send_content_input_layout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:background="@drawable/shape_chat_bg"
-                    android:paddingStart="10dp"
-                    android:paddingEnd="10dp"
-                    android:paddingTop="6dp"
-                    android:paddingBottom="6dp"
-                    android:textSize="16sp"
-                    />
+                    android:orientation="vertical"
+                    android:padding="10dp"
+                    android:background="@drawable/shape_chat_bg">
+                    <com.google.android.material.chip.Chip
+                        android:id="@+id/chat_send_content_reply"
+                        style="@style/ChipElevated"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_gravity="center_vertical|start"
+                        android:layout_marginBottom="4dp"
+                        android:visibility="gone"
+                        android:ellipsize="end"
+                        app:ensureMinTouchTargetSize="false"/>
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chat_send_at"
+                        app:chipSpacing="0dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"/>
+                    <EditText
+                        android:id="@+id/chat_send_content_input"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:background="@null"
+                        android:textSize="16sp"/>
+                </LinearLayout>
 
                 <Button
                     style="@style/Widget.Material3.Button.TextButton"
-                    android:layout_below="@id/chat_send_content_input"
+                    android:layout_below="@id/chat_send_content_input_layout"
                     android:layout_marginTop="4dp"
                     android:id="@+id/chat_send_btn"
                     android:layout_width="80dp"
                     android:layout_height="48dp"
                     android:layout_alignParentEnd="true"
+                    android:enabled="false"
                     android:text="发送" />
                 <LinearLayout
                     android:layout_marginTop="4dp"
-                    android:layout_below="@id/chat_send_content_input"
+                    android:layout_below="@id/chat_send_content_input_layout"
                     android:layout_alignBottom="@id/chat_send_btn"
                     android:orientation="horizontal"
                     android:gravity="center_vertical"

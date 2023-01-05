@@ -12,6 +12,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import com.shizq.bika.MyApp
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
@@ -20,6 +21,7 @@ import com.shizq.bika.databinding.ItemChatBinding
 import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
+import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.dp
 import java.io.File
 import java.io.FileInputStream
@@ -42,13 +44,97 @@ class ChatAdapter :
             binding.chatLayoutR.visibility = View.GONE
             binding.chatNotification.visibility = View.VISIBLE
             binding.chatNotification.text = bean.message
-        } else if (bean.type.toString() == "100") {
+        } else if (bean.name != null && bean.name == SPUtil.get(MyApp.contextBase, "user_name", "") as String) {
             //我发送的消息
             binding.chatLayoutL.visibility = View.GONE
             binding.chatLayoutR.visibility = View.VISIBLE
             binding.chatNotification.visibility = View.GONE
             binding.chatNameR.text = bean.name
-            binding.chatContentR.text = bean.message
+            if (bean.character != null && bean.character != "") {
+                GlideApp.with(holder.itemView)
+                    .load(bean.character)
+                    .into(binding.chatCharacterR)
+            }
+
+            GlideApp.with(holder.itemView)
+                .load(
+                    if (bean.avatar != null && bean.avatar != "") {
+                        val i: Int = bean.avatar.indexOf("/static/")
+                        if (i > 0)
+                            GlideUrlNewKey(
+                                bean.avatar.substring(0, i),
+                                bean.avatar.substring(i + 8)
+                            )
+                        else bean.avatar
+                    } else R.drawable.placeholder_avatar_2
+
+                )
+                .placeholder(R.drawable.placeholder_avatar_2)
+                .into(binding.chatAvatarR)
+            if (bean.reply_name != null && bean.reply_name != "") {
+                binding.chatReplyLayoutR.visibility = ViewGroup.VISIBLE
+                binding.chatReplyNameR.text = bean.reply_name
+                if (bean.reply.length > 50) {
+                    //要改 TODO  显示两行 尾部显示...
+                    binding.chatReplyR.text = bean.reply.substring(0, 50) + "..."
+                } else {
+                    binding.chatReplyR.text = bean.reply
+                }
+
+            } else {
+                binding.chatReplyLayoutR.visibility = ViewGroup.GONE
+            }
+
+            if (bean.level >= 0) {
+                //等级
+                binding.chatLevelR.text = "Lv." + bean.level
+            }
+
+            binding.chatVerifiedR.visibility = if (bean.verified) View.VISIBLE else View.GONE
+
+            if (bean.at != null && bean.at != "") {
+                //艾特某人
+                binding.chatAtR.visibility = View.VISIBLE
+                binding.chatAtR.text = bean.at.replace("嗶咔_", "@")
+            } else {
+                binding.chatAtR.visibility = View.GONE
+            }
+
+            //显示时间 后面加设置显示隐藏
+//            String time = "";
+//            if (chatModelList.get(position).getPlatform() != null && !chatModelList.get(position).getPlatform().equals("")) {
+//                time = chatModelList.get(position).getPlatform();
+//            }
+//            time += " " + TimeUtil.getTime();
+//            holder.chat_time_r.setText(time);
+
+            if (bean.image != null && bean.image != "") {
+                binding.chatContentImageR.visibility = View.VISIBLE
+                //图片要处理宽高问题
+                setImageView(binding.chatContentImageR, Base64Util.base64ToBitmap(bean.image))
+            } else {
+                binding.chatContentImageR.visibility = View.GONE
+            }
+            if (bean.audio != null && bean.audio != "") {
+                //这里要处理语音
+                binding.chatVoiceR.visibility = View.VISIBLE
+            } else {
+                binding.chatVoiceR.visibility = View.GONE
+            }
+
+            if (bean.message != null && bean.message != "") {
+                binding.chatContentR.visibility = View.VISIBLE
+                if (bean.event_colors != null && bean.event_colors.isNotEmpty()) {
+                    setTextViewStyles(binding.chatContentR, bean.event_colors, bean.message)
+
+                } else {
+                    binding.chatContentR.text = bean.message
+
+                }
+            } else {
+                binding.chatContentR.visibility = View.GONE
+            }
+
         } else {
             //接收消息
             binding.chatLayoutL.visibility = View.VISIBLE
@@ -132,7 +218,7 @@ class ChatAdapter :
             if (bean.message != null && bean.message != "") {
                 binding.chatContentL.visibility = View.VISIBLE
                 if (bean.event_colors != null && bean.event_colors.isNotEmpty()) {
-                    setTextViewStyles( binding.chatContentL,bean.event_colors , bean.message)
+                    setTextViewStyles(binding.chatContentL, bean.event_colors, bean.message)
 
                 } else {
                     binding.chatContentL.text = bean.message
@@ -143,26 +229,14 @@ class ChatAdapter :
             }
         }
 
-
         holder.addOnClickListener(R.id.chat_avatar_layout_l)
         holder.addOnClickListener(R.id.chat_name_l)
         holder.addOnLongClickListener(R.id.chat_avatar_layout_l)
-
-        val animationDrawable = binding.chatVoiceImageL.background as AnimationDrawable
-        binding.chatMessageLayoutL.setOnClickListener {
-            if (bean.audio.isNullOrEmpty()) {
-                holder.addOnClickListener(R.id.chat_message_layout_l)
-            } else {
-                binding.chatVoiceDian.visibility = View.GONE
-                if (!animationDrawable.isRunning) {
-                    playAudio(bean.audio, animationDrawable)
-                }
-            }
-        }
+        holder.addOnClickListener(R.id.chat_message_layout_l)
     }
 
     private fun setImageView(imageView: ImageView, bitmap: Bitmap) {
-        //手机截图比例的图片防止占满屏
+        //手机截图比例的图片防止占满屏 TODO 小bug不影响体验 图片有不占满view情况
         val bitmapH = bitmap.height
         val bitmapW = bitmap.width
         val imageMinW = 150.dp
@@ -212,7 +286,7 @@ class ChatAdapter :
 
     //反编译源码 聊天室的彩色字体
     private fun setTextViewStyles(textView: TextView, strArr: List<String>, str: String) {
-        textView.text=""
+        textView.text = ""
         var i = 0
         while (i < str.length) {
             val i2 = i + 1

@@ -1,19 +1,32 @@
 package com.shizq.bika.ui.chat
 
 import android.app.Application
+import android.graphics.drawable.AnimationDrawable
+import android.media.MediaPlayer
+import android.util.Base64
 import android.util.Log
+import android.view.View
+import android.widget.ImageView
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
 import com.google.gson.JsonParser
+import com.shizq.bika.MyApp
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.network.IReceiveMessage
 import com.shizq.bika.network.WebSocketManager
 import com.shizq.bika.utils.SPUtil
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 
 class ChatViewModel(application: Application) : BaseViewModel(application) {
     var url = ""
     lateinit var webSocketManager: WebSocketManager
+
+    var reply: String = ""
+    var reply_name: String = ""
+    var atname: String = ""
 
     val liveData_connections: MutableLiveData<String> by lazy {
         MutableLiveData<String>()
@@ -25,8 +38,8 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         MutableLiveData<String>()
     }
 
-    fun WebSocket(){
-        webSocketManager.init(url,object : IReceiveMessage {
+    fun WebSocket() {
+        webSocketManager.init(url, object : IReceiveMessage {
             override fun onConnectSuccess() {}
 
             override fun onConnectFailed() {
@@ -38,38 +51,62 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
             }
 
             override fun onMessage(text: String) {
-                Log.d("-----------webSocket---text收到",""+text)
-                if (text=="40"){
+                Log.d("-----------webSocket---text收到", "" + text)
+                if (text == "40") {
                     liveData_state.postValue("success")
-                    //收到消息 40 发送init
-                    webSocketManager.sendMessage(user())
+
+                    val array = ArrayList<String>()
+                    array.add("init")
+                    array.add(Gson().toJson(user()))
+
+                    webSocketManager.sendMessage("42" + Gson().toJson(array))
                 }
-                if (text.substring(0,2)=="42"){
+                if (text.substring(0, 2) == "42") {
                     //收到消息 42 进行解析
                     val key = JsonParser().parse(text.substring(2)).asJsonArray[0].asString
                     val json = JsonParser().parse(text.substring(2)).asJsonArray[1].asJsonObject
 
 
-                    when(key){
-                        "new_connection"->{
+                    when (key) {
+                        "new_connection" -> {
                             liveData_connections.postValue("${json.get("connections").asString}人在线")
                         }
-                        "receive_notification"->{
-                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+                        "receive_notification" -> {
+                            liveData_message.postValue(
+                                Gson().fromJson(
+                                    json,
+                                    ChatMessageBean::class.java
+                                )
+                            )
                         }
-                        "broadcast_message"->{
-                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+                        "broadcast_message" -> {
+                            liveData_message.postValue(
+                                Gson().fromJson(
+                                    json,
+                                    ChatMessageBean::class.java
+                                )
+                            )
 
                         }
-                        "broadcast_image"->{
-                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+                        "broadcast_image" -> {
+                            liveData_message.postValue(
+                                Gson().fromJson(
+                                    json,
+                                    ChatMessageBean::class.java
+                                )
+                            )
 
                         }
-                        "broadcast_audio"->{
-                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+                        "broadcast_audio" -> {
+                            liveData_message.postValue(
+                                Gson().fromJson(
+                                    json,
+                                    ChatMessageBean::class.java
+                                )
+                            )
                         }
 
-                        "connection_close"->{
+                        "connection_close" -> {
                             liveData_connections.postValue("${json.get("connections").asString}人在线")
                         }
 
@@ -89,8 +126,13 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
 //                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
 //                        }
 //
-                        "kick"->{ //提人
-                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+                        "kick" -> { //提人
+                            liveData_message.postValue(
+                                Gson().fromJson(
+                                    json,
+                                    ChatMessageBean::class.java
+                                )
+                            )
                         }
 //
 
@@ -98,8 +140,10 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
 //                        "connect"->{ //
 //                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
 //                        }
-                        else ->{
-                            Log.d("-----------webSocket---text收到","消息${text.substring(2)}")
+                        else -> {
+                            //未知类型
+                            Log.d("-----------webSocket---text收到", "消息${text.substring(2)}")
+//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
 
                         }
                     }
@@ -110,12 +154,49 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         })
     }
 
-    //42["send_message","{\"at\":\"\",\"audio\":\"\",\"block_user_id\":\"\",\"character\":\"https:\/\/bidobido.xyz\/special\/frame-632.png\",\"email\":\"shizqhh1\",\"gender\":\"bot\",\"image\":\"\",\"level\":1,\"message\":\"🍵\",\"name\":\"why?why\",\"platform\":\"android\",\"reply\":\"\",\"reply_name\":\"\",\"title\":\"萌新\",\"type\":3,\"unique_id\":\"\",\"user_id\":\"63abf445ed45ccddf959a103\",\"verified\":false}"]
-    //42["send_message","{\"at\":\"\",\"audio\":\"\",\"block_user_id\":\"\",\"image\":\"\",\"message\":\"🍵\",\"platform\":\"android\",\"reply\":\"\",\"reply_name\":\"\",\"type\":3,\"unique_id\":\"\",}"]
-    var user ={
-        val fileServer= SPUtil.get(application,"user_fileServer","")
-        val path= SPUtil.get(application,"user_path","")
-        val character= SPUtil.get(application,"user_character","")
+    fun sendMessage(text: String) {
+        val fileServer = SPUtil.get(MyApp.contextBase, "user_fileServer", "") as String
+        val path = SPUtil.get(MyApp.contextBase, "user_path", "") as String
+        val character = SPUtil.get(MyApp.contextBase, "user_character", "") as String
+
+        val map = mutableMapOf<String, Any>()
+        map["at"] = atname
+        map["audio"] = ""
+        if (path != "") {
+            map["avatar"] = "${fileServer.replace("/static/","")}/static/$path"
+        }
+        map["block_user_id"] = ""
+        if (character != "") {
+            map["character"] = character
+        }
+        map["email"] = SPUtil.get(MyApp.contextBase, "username", "") as String
+        map["gender"] = SPUtil.get(MyApp.contextBase, "user_gender", "bot") as String
+        map["image"] = ""
+        map["level"] = SPUtil.get(MyApp.contextBase, "user_level", 1) as Int
+        map["message"] = text
+        map["name"] = SPUtil.get(MyApp.contextBase, "user_name", "") as String
+        map["reply"] = reply
+        map["reply_name"] = reply_name
+        map["title"] = SPUtil.get(MyApp.contextBase, "user_title", "") as String
+        map["type"] = 3
+        map["unique_id"] = ""
+        map["user_id"] = SPUtil.get(MyApp.contextBase, "user_id", "") as String
+        map["verified"] = SPUtil.get(MyApp.contextBase, "user_verified", false) as Boolean
+
+        val json=Gson().toJson(map)
+        val array = ArrayList<String>()
+        array.add("send_message")
+        array.add(json)
+
+        liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+        webSocketManager.sendMessage("42" + Gson().toJson(array))
+//        Log.d("---vm---","42" + Gson().toJson(array))
+    }
+
+    var user = {
+        val fileServer = SPUtil.get(application, "user_fileServer", "")
+        val path = SPUtil.get(application, "user_path", "")
+        val character = SPUtil.get(application, "user_character", "")
 
         val map = mutableMapOf(
             "birthday" to SPUtil.get(application, "user_birthday", ""),
@@ -124,7 +205,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
             "exp" to SPUtil.get(application, "user_exp", 0),
             "gender" to SPUtil.get(application, "user_gender", "bot"),
             "isPunched" to SPUtil.get(application, "setting_punch", false),
-            "level" to SPUtil.get(application, "user_level", 2),
+            "level" to SPUtil.get(application, "user_level", 1),
             "name" to SPUtil.get(application, "user_name", ""),
             "slogan" to SPUtil.get(application, "user_slogan", ""),
             "title" to SPUtil.get(application, "user_title", ""),
@@ -141,10 +222,39 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
             map["character"] = character
         }
 
-        val array=ArrayList<String>()
-        array.add("init")
-        array.add("${Gson().toJson(map)}")
-        "42"+ Gson().toJson(array)
+        map
     }
 
+    fun playAudio(audio: String, imageview: View) {
+        val voiceImage = imageview as ImageView
+        val animationDrawable = voiceImage.background as AnimationDrawable
+        if (!animationDrawable.isRunning) {
+            // TODO 有bug 会有不播放的情况
+            val mp3SoundByteArray: ByteArray =
+                Base64.decode(audio.replace("\n", ""), Base64.DEFAULT)
+
+            val tempMp3: File = File.createTempFile("audio", ".mp3")
+            val fos = FileOutputStream(tempMp3)
+            fos.write(mp3SoundByteArray)
+            fos.close()
+            val fis = FileInputStream(tempMp3)
+
+            val mediaPlayer = MediaPlayer()
+            mediaPlayer.setDataSource(fis.fd)
+            mediaPlayer.prepareAsync()
+            mediaPlayer.isLooping = false
+
+            mediaPlayer.setOnPreparedListener { player ->
+                player.start()
+                animationDrawable.start()
+            }
+
+            mediaPlayer.setOnCompletionListener { mp ->
+                mp.stop()
+                mp.release()
+                tempMp3.delete()
+                animationDrawable.stop()
+            }
+        }
+    }
 }
