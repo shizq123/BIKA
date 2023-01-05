@@ -4,7 +4,6 @@ import android.app.Application
 import android.graphics.drawable.AnimationDrawable
 import android.media.MediaPlayer
 import android.util.Base64
-import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.MutableLiveData
@@ -51,13 +50,12 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
             }
 
             override fun onMessage(text: String) {
-                Log.d("-----------webSocket---text收到", "" + text)
                 if (text == "40") {
                     liveData_state.postValue("success")
 
                     val array = ArrayList<String>()
                     array.add("init")
-                    array.add(Gson().toJson(user()))
+                    array.add(Gson().toJson(init()))
 
                     webSocketManager.sendMessage("42" + Gson().toJson(array))
                 }
@@ -65,7 +63,6 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                     //收到消息 42 进行解析
                     val key = JsonParser().parse(text.substring(2)).asJsonArray[0].asString
                     val json = JsonParser().parse(text.substring(2)).asJsonArray[1].asJsonObject
-
 
                     when (key) {
                         "new_connection" -> {
@@ -110,40 +107,14 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                             liveData_connections.postValue("${json.get("connections").asString}人在线")
                         }
 
-//                        "set_profile"->{ //
-//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
-//                        }
-//
-//                        "got_private_message"->{ //悄悄话
-//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
-//                        }
-//
-//                        "change_character_icon"->{ //头像框 相关消息
-//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
-//                        }
-//
-//                        "change_title"->{ // 个人title 相关消息
-//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
-//                        }
-//
-                        "kick" -> { //提人
+                        else -> {
+                            //未知类型
                             liveData_message.postValue(
                                 Gson().fromJson(
                                     json,
                                     ChatMessageBean::class.java
                                 )
                             )
-                        }
-//
-
-//
-//                        "connect"->{ //
-//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
-//                        }
-                        else -> {
-                            //未知类型
-                            Log.d("-----------webSocket---text收到", "消息${text.substring(2)}")
-//                            liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
 
                         }
                     }
@@ -163,7 +134,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         map["at"] = atname
         map["audio"] = ""
         if (path != "") {
-            map["avatar"] = "${fileServer.replace("/static/","")}/static/$path"
+            map["avatar"] = "${fileServer.replace("/static/", "")}/static/$path"
         }
         map["block_user_id"] = ""
         if (character != "") {
@@ -183,45 +154,45 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         map["user_id"] = SPUtil.get(MyApp.contextBase, "user_id", "") as String
         map["verified"] = SPUtil.get(MyApp.contextBase, "user_verified", false) as Boolean
 
-        val json=Gson().toJson(map)
+        val json = Gson().toJson(map)
         val array = ArrayList<String>()
         array.add("send_message")
         array.add(json)
 
-        liveData_message.postValue(Gson().fromJson(json,ChatMessageBean::class.java))
+        liveData_message.postValue(Gson().fromJson(json, ChatMessageBean::class.java))
         webSocketManager.sendMessage("42" + Gson().toJson(array))
 //        Log.d("---vm---","42" + Gson().toJson(array))
     }
 
-    var user = {
-        val fileServer = SPUtil.get(application, "user_fileServer", "")
-        val path = SPUtil.get(application, "user_path", "")
-        val character = SPUtil.get(application, "user_character", "")
+    var init = {
+        val fileServer = SPUtil.get(application, "user_fileServer", "") as String
+        val path = SPUtil.get(application, "user_path", "") as String
+        val character = SPUtil.get(application, "user_character", "") as String
 
-        val map = mutableMapOf(
-            "birthday" to SPUtil.get(application, "user_birthday", ""),
-            "characters" to ArrayList<Any>(),
-            "email" to SPUtil.get(application, "username", ""),
-            "exp" to SPUtil.get(application, "user_exp", 0),
-            "gender" to SPUtil.get(application, "user_gender", "bot"),
-            "isPunched" to SPUtil.get(application, "setting_punch", false),
-            "level" to SPUtil.get(application, "user_level", 1),
-            "name" to SPUtil.get(application, "user_name", ""),
-            "slogan" to SPUtil.get(application, "user_slogan", ""),
-            "title" to SPUtil.get(application, "user_title", ""),
-            "_id" to SPUtil.get(application, "user_id", ""),
-            "verified" to SPUtil.get(application, "user_verified", false),
+        val map = mutableMapOf<String, Any>()
 
-            )
-
-        if (fileServer != "") {
-            map["fileServer"] = fileServer
-            map["path"] = path
+        if (fileServer != ""&&path!= "") {
+            val avatarMap = mutableMapOf<String, String>()
+            avatarMap["fileServer"] = fileServer
+            avatarMap["originalName"] = "avatar.jpg"
+            avatarMap["path"] = path
+            map["avatar"] = Gson().toJson(avatarMap)
         }
+        map["birthday"] = SPUtil.get(application, "user_birthday", "") as String
         if (character != "") {
             map["character"] = character
         }
-
+        map["characters"] = ArrayList<Any>()
+        map["email"] = SPUtil.get(application, "username", "") as String
+        map["exp"] = SPUtil.get(application, "user_exp", 0) as Int
+        map["gender"] = SPUtil.get(application, "user_gender", "bot") as String
+        map["isPunched"] = SPUtil.get(application, "setting_punch", false)
+        map["level"] = SPUtil.get(application, "user_level", 1) as Int
+        map["name"] = SPUtil.get(application, "user_name", "") as String
+        map["slogan"] = SPUtil.get(application, "user_slogan", "") as String
+        map["title"] = SPUtil.get(application, "user_title", "") as String
+        map["_id"] = SPUtil.get(application, "user_id", "") as String
+        map["verified"] = SPUtil.get(application, "user_verified", false) as Boolean
         map
     }
 

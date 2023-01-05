@@ -12,7 +12,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
 #截图
 
-<img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s1.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s2.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s3.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s4.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s5.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s6.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s7.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s8.webp" width="216" height="480">
+<img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s1.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s2.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s3.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s4.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s5.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s6.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s7.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s8.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s9.webp" width="216" height="480">
 
 #未完成
 
@@ -20,14 +20,15 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
     修改个人信息
     修改头像
-    
     漫画详情章节观看记录
     漫画详情章节图片观看记录
     漫画阅读器
+    聊天室发送语音
+    聊天室发送图片
+    子评论页加进度条
+    评论举报
 
-    文本复制功能 漫画评论复制
     未来添加下载
-    未来添加聊天室
     未来适配平板
     未来添加漫画下载
     添加转场动画
@@ -45,9 +46,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     更改密码 需要添加进度条
     列表滑动有卡顿 后续优化
     优化activity 转成fragment
-
-    子评论页加进度条
-    评论举报
+    文本复制功能 漫画评论复制
 
 #服务器状态
 

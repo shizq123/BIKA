@@ -1,7 +1,7 @@
 {
-    "code": 2,
-    "name": "1.0.1",
-    "url": "https://github.com/shizq123/BIKA/releases/download/v1.0.1/bika-release.apk",
-    "des": "新增 - 清理图片缓存\n新增 - 选择网络分流\n新增 - 夜间模式\n新增 - 搜索记录\n新增 - 历史记录",
+    "code": 3,
+    "name": "1.0.2",
+    "url": "https://github.com/shizq123/BIKA/releases/download/v1.0.2/bika-release.apk",
+    "des": "新增聊天室（部分功能可用）\n新增我的消息\n修复部分图片不显示问题\n修复一些闪退BUG\n调整一些UI",
     "size": "0"
 }

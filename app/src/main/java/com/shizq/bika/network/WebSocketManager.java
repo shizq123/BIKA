@@ -148,7 +148,6 @@ public final class WebSocketManager {
     public void close() {
         if (isConnect()) {
             mWebSocket.send("41");
-            Log.i("WebSocketManager--", "WebSocket 41");
         }
 
         if (mHandler != null) {
@@ -166,7 +165,7 @@ public final class WebSocketManager {
             @Override
             public void onOpen(WebSocket webSocket, Response response) {
                 super.onOpen(webSocket, response);
-                Log.i("WebSocketManager--", "WebSocket 打开:" + response.toString());
+                Log.i("WebSocketManager--", "WebSocket 打开:" + response);
                 mWebSocket = webSocket;
                 isConnect = response.code() == 101;
                 if (!isConnect) {
@@ -233,7 +232,7 @@ public final class WebSocketManager {
             public void onFailure(WebSocket webSocket, Throwable t, Response response) {
                 super.onFailure(webSocket, t, response);
                 if (response != null) {
-                    Log.i("                      --", "WebSocket 连接失败：" + response.message());
+                    Log.i("WebSocketManager--", "WebSocket 连接失败：" + response.message());
                 }
                 Log.i("WebSocketManager--", "WebSocket 连接失败异常原因：" + t.getMessage());
                 isConnect = false;

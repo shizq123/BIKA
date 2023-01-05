@@ -140,7 +140,6 @@
                         android:layout_below="@id/chat_at_l"
                         android:autoLink="web"
                         android:text="消息消息消息消息"
-                        android:textIsSelectable="true"
                         android:textSize="14sp" />
 
                     <LinearLayout

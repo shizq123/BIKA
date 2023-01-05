@@ -4,8 +4,6 @@ import android.annotation.SuppressLint
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
-import android.util.Log
-import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -65,19 +63,19 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
         initListener()
     }
 
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.toolbar_menu_chat, menu)
-        return true
-    }
+//    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+//        menuInflater.inflate(R.menu.toolbar_menu_chat, menu)
+//        return true
+//    }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
                 finish()
             }
-            R.id.action_setting -> {
-                Toast.makeText(this, "功能不支持", Toast.LENGTH_SHORT).show()
-            }
+//            R.id.action_setting -> {
+//                Toast.makeText(this, "功能不支持", Toast.LENGTH_SHORT).show()
+//            }
 
         }
         return super.onOptionsItemSelected(item)
@@ -87,7 +85,6 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
         binding.chatRv.addOnScrollListener(object : OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(recyclerView, newState)
-
                 chatRvBottom = recyclerView.canScrollVertically(1)//判断是否到底部 false是底部
 
                 if (!chatRvBottom) {
@@ -121,7 +118,6 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
             }
 
             if (id == R.id.chat_message_layout_l) {
-                Log.d("------------chatactivity,", "layout")
                 //消息点击事件 用于 回复
                 //判断 语音和图片不能回复
                 if (!data.image.isNullOrEmpty()) {
