@@ -2,9 +2,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <PreferenceCategory
-        app:title="常规">
-
+    <PreferenceCategory app:title="常规">
         <Preference
             app:icon="@drawable/ic_close"
             app:key="setting_close"
@@ -12,14 +10,13 @@
             app:title="清理图片缓存" />
 
         <DropDownPreference
-            app:icon="@drawable/ic_list"
-            app:key="setting_app_channel"
-            app:summary="分流二"
-            app:title="选择网络分流"
             app:defaultValue="2"
             app:entries="@array/settings_app_channel"
             app:entryValues="@array/settings_app_channel_values"
-            />
+            app:icon="@drawable/ic_list"
+            app:key="setting_app_channel"
+            app:summary="分流二"
+            app:title="选择网络分流" />
 
         <SwitchPreferenceCompat
             android:defaultValue="true"
@@ -29,18 +26,16 @@
             app:title="自动签到" />
 
         <DropDownPreference
+            app:entries="@array/settings_night"
+            app:entryValues="@array/settings_night"
             app:icon="@drawable/ic_night"
             app:key="setting_night"
             app:summary="跟随系统"
-            app:entries="@array/settings_night"
-            app:entryValues="@array/settings_night"
             app:title="夜间模式" />
 
     </PreferenceCategory>
 
-    <PreferenceCategory
-        app:title="应用">
-
+    <PreferenceCategory app:title="应用">
         <Preference
             app:icon="@drawable/ic_widgets"
             app:key="setting_app_ver"
@@ -50,7 +45,7 @@
         <Preference
             app:icon="@drawable/ic_applications"
             app:summary="在系统设置上查看应用信息"
-            app:title="应用信息" >
+            app:title="应用信息">
             <intent
                 android:action="android.settings.APPLICATION_DETAILS_SETTINGS"
                 android:data="package:com.shizq.bika" />
@@ -59,7 +54,7 @@
         <Preference
             app:icon="@drawable/ic_github"
             app:summary="在GitHub上查看"
-            app:title="GitHub" >
+            app:title="GitHub">
             <intent
                 android:action="android.intent.action.VIEW"
                 android:data="https://github.com/shizq123/BIKA" />
@@ -67,9 +62,7 @@
 
     </PreferenceCategory>
 
-    <PreferenceCategory
-        app:title="账号">
-
+    <PreferenceCategory app:title="账号">
         <Preference
             app:icon="@drawable/ic_key"
             app:key="setting_change_password"
@@ -82,15 +75,25 @@
             app:summary="退出当前账号"
             app:title="退出登录" />
 
+    </PreferenceCategory>
+
+    <PreferenceCategory app:title="官方">
+        <Preference
+            app:summary="非Android端可用"
+            app:title="哔咔网页版">
+            <intent
+                android:action="android.intent.action.VIEW"
+                android:data="https://manhuabika.com/" />
+        </Preference>
         <Preference
             app:summary="FAQ"
-            app:title="常见问题" >
+            app:title="常见问题">
             <intent
                 android:action="android.intent.action.VIEW"
                 android:data="https://www.picacomic.com/faq" />
         </Preference>
-        <Preference
-            app:title="Wiki" >
+
+        <Preference app:title="Wiki">
             <intent
                 android:action="android.intent.action.VIEW"
                 android:data="http://picawiki.xyz/" />

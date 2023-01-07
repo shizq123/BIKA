@@ -24,10 +24,6 @@ class SignInViewModel(application: Application) : BaseViewModel(application) {
         MutableLiveData<BaseResponse<SignInBean>>()
     }
 
-    val liveData_profile: MutableLiveData<BaseResponse<ProfileBean>> by lazy {
-        MutableLiveData<BaseResponse<ProfileBean>>()
-    }
-
     val liveData_forgot: MutableLiveData<BaseResponse<SignInBean>> by lazy {
         MutableLiveData<BaseResponse<SignInBean>>()
     }
@@ -57,22 +53,6 @@ class SignInViewModel(application: Application) : BaseViewModel(application) {
                 override fun onCodeError(baseResponse: BaseResponse<SignInBean>) {
                     liveData_signin.postValue(baseResponse)
                 }
-            })
-    }
-
-    fun getProfile() {
-        RetrofitUtil.service.profileGet(BaseHeaders("users/profile", "GET").getHeaderMapAndToken())
-            .doOnSubscribe(this@SignInViewModel)
-            .subscribe(object : BaseObserver<ProfileBean>() {
-
-                override fun onSuccess(baseResponse: BaseResponse<ProfileBean>) {
-                    liveData_profile.postValue(baseResponse)
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<ProfileBean>) {
-                    liveData_profile.postValue(baseResponse)
-                }
-
             })
     }
 

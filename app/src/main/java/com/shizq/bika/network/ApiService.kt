@@ -95,7 +95,6 @@ interface ApiService {
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ComicListBean2>>
 
-
     //漫画列表
     @GET("comics")
     fun comicsListGet(
@@ -219,6 +218,13 @@ interface ApiService {
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ActionBean>>
 
+    //评论 举报
+    @POST("comments/{id}/report")
+    fun commentsReportPost(
+        @Path("id") id: String,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<BaseResponse<ReportBean>>
+
     //漫画详细 搜索 标签
     @GET("comics")
     fun tagsGet(
@@ -312,4 +318,11 @@ interface ApiService {
     fun chatListGet(
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ChatListBean>>
+
+    //上传头像 {"avatar":"data:image/jpeg;base64,..."} //抓包得出上传的分辨率是200*200 //聊天室抓包测试，图片其中一边的最大分辨率是800
+    @PUT("users/avatar")
+    fun avatarPUT(
+        @Body requestBody: RequestBody,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<BaseResponse<Any>>
 }

@@ -17,6 +17,7 @@ import okhttp3.MediaType
 import okhttp3.RequestBody
 
 class MainViewModel(application: Application) : BaseViewModel(application) {
+    var userId="" //用来确认账号是否已经登录
 
     val liveData_profile: MutableLiveData<BaseResponse<ProfileBean>> by lazy {
         MutableLiveData<BaseResponse<ProfileBean>>()

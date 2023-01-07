@@ -12,6 +12,10 @@ import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.luck.picture.lib.basic.PictureSelector
+import com.luck.picture.lib.config.SelectMimeType
+import com.luck.picture.lib.entity.LocalMedia
+import com.luck.picture.lib.interfaces.OnResultCallbackListener
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CategoriesAdapter
@@ -30,10 +34,8 @@ import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.notifications.NotificationsActivity
 import com.shizq.bika.ui.search.SearchActivity
 import com.shizq.bika.ui.settings.SettingsActivity
-import com.shizq.bika.utils.AppVersion
-import com.shizq.bika.utils.GlideApp
-import com.shizq.bika.utils.GlideUrlNewKey
-import com.shizq.bika.utils.SPUtil
+import com.shizq.bika.utils.*
+import com.yalantis.ucrop.UCrop
 import me.jingbin.library.skeleton.ByRVItemSkeletonScreen
 import me.jingbin.library.skeleton.BySkeleton
 
@@ -135,6 +137,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         return super.onOptionsItemSelected(item)
     }
 
+
     private fun initListener() {
         //侧滑
         binding.drawerLayout.addDrawerListener(
@@ -153,7 +156,32 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         }
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_character) as ImageView).setOnClickListener {
-            Toast.makeText(this, "功能未实现", Toast.LENGTH_SHORT).show()
+            if (viewModel.userId != "") {
+                PictureSelector.create(this)
+                    .openGallery(SelectMimeType.ofImage())
+                    .isCameraForegroundService(true)
+                    .setCropEngine { fragment, srcUri, destinationUri, dataSource, requestCode ->
+                        UCrop.of(srcUri, destinationUri, dataSource)
+                            .withAspectRatio(1f, 1f)
+                            .withMaxResultSize(200, 200)
+                            .start(fragment.requireActivity(), fragment, requestCode);
+                    }
+                    .setSelectionMode(1)
+                    .setImageEngine(GlideEngine.createGlideEngine())
+                    .forResult(object : OnResultCallbackListener<LocalMedia> {
+                        override fun onResult(result: ArrayList<LocalMedia>) {
+                            GlideApp.with(this@MainActivity)
+                                .load(result[0].path)
+                                .into(
+                                    binding.mainNavView.getHeaderView(0)
+                                        .findViewById(R.id.main_drawer_imageView) as ImageView
+                                )
+                            //这里进行网络请求 上传头像
+
+                        }
+                        override fun onCancel() {}
+                    })
+            }
         }
         binding.mainNavView.setNavigationItemSelectedListener {
             binding.mainNavView.setCheckedItem(it)
@@ -243,7 +271,6 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             }
 
         }
-        binding.mainRv.setOnLoadMoreListener { /*为了显示底部提示*/ }
         //网络重试点击事件监听
         binding.mainLoadLayout.setOnClickListener {
             skeletonScreen.show()
@@ -265,6 +292,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 var fileServer = ""
                 var path = ""
                 var character = ""
+                viewModel.userId=it.data.user._id
 
                 if (it.data.user.avatar != null) {//头像
                     fileServer = it.data.user.avatar.fileServer
@@ -342,7 +370,11 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 SPUtil.put(this, "user_gender", gender)
                 SPUtil.put(this, "user_level", level)
                 SPUtil.put(this, "user_exp", it.data.user.exp)
-                SPUtil.put(this, "user_slogan", if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan)
+                SPUtil.put(
+                    this,
+                    "user_slogan",
+                    if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan
+                )
                 SPUtil.put(this, "user_title", it.data.user.title)
                 SPUtil.put(this, "user_id", it.data.user._id)
                 SPUtil.put(this, "user_verified", it.data.user.verified)

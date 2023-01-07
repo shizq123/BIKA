@@ -65,6 +65,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                     val json = JsonParser().parse(text.substring(2)).asJsonArray[1].asJsonObject
 
                     when (key) {
+                        //broadcast_ads是广告
                         "broadcast_ads" -> {}
                         "new_connection" -> {
                             liveData_connections.postValue("${json.get("connections").asString}人在线")

@@ -15,6 +15,10 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.luck.picture.lib.basic.PictureSelector
+import com.luck.picture.lib.config.SelectMimeType
+import com.luck.picture.lib.entity.LocalMedia
+import com.luck.picture.lib.interfaces.OnResultCallbackListener
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatAdapter
@@ -23,7 +27,9 @@ import com.shizq.bika.databinding.ActivityChatBinding
 import com.shizq.bika.network.WebSocketManager
 import com.shizq.bika.utils.AndroidBug5497Workaround
 import com.shizq.bika.utils.Base64Util
+import com.shizq.bika.utils.GlideEngine
 import com.shizq.bika.widget.UserViewDialog
+import com.yalantis.ucrop.UCrop
 
 
 //聊天室
@@ -170,7 +176,26 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
             Toast.makeText(this, "发送语音暂不支持", Toast.LENGTH_SHORT).show()
         }
         binding.chatSendPhoto.setOnClickListener {
-            Toast.makeText(this, "发送图片暂不支持", Toast.LENGTH_SHORT).show()
+            PictureSelector.create(this)
+                .openGallery(SelectMimeType.ofImage())
+                .isCameraForegroundService(true)
+                .setCropEngine { fragment, srcUri, destinationUri, dataSource, requestCode ->
+                    UCrop.of(srcUri, destinationUri, dataSource)
+                        .withMaxResultSize(800, 800)
+                        .start(fragment.requireActivity(), fragment, requestCode);
+                }
+                .setSelectionMode(1)
+                .setImageEngine(GlideEngine.createGlideEngine())
+                .forResult(object : OnResultCallbackListener<LocalMedia> {
+                    override fun onResult(result: ArrayList<LocalMedia>) {
+//                        GlideApp.with(this@ChatActivity)
+//                            .load(result[0].path)
+//                            .into()
+                        //这里进行网络请求 上传头像
+
+                    }
+                    override fun onCancel() {}
+                })
         }
         binding.chatSendBtn.setOnClickListener {
             //发送消息 和官方一致消息不为空时才能发送

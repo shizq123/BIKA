@@ -1,6 +1,6 @@
 代码很烂，功能还不全 <br>
 UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。<br>
-官方app的图片会重复加载，我的修改了缓存key，加载更快更省流量
+官方app的图片会重复加载，我的修改了缓存key，加载更快更省流量 <br>
 
 #感谢
 
@@ -9,6 +9,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 [youlookwhat/ByRecyclerView](https://github.com/youlookwhat/ByRecyclerView) <br>
 [square/retrofit](https://github.com/square/retrofit) <br>
 [bumptech/glide](https://github.com/bumptech/glide) <br>
+[LuckSiege/PictureSelector](https://github.com/LuckSiege/PictureSelector) <br>
 
 #截图
 
@@ -47,6 +48,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     列表滑动有卡顿 后续优化
     优化activity 转成fragment
     文本复制功能 漫画评论复制
+    加个图片选择器apk增加了1M :(
 
 #服务器状态
 

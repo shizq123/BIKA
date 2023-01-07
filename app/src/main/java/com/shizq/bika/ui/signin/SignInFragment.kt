@@ -142,59 +142,25 @@ class SignInFragment : BaseFragment<FragmentSigninBinding, SignInViewModel>() {
                     Toast.LENGTH_SHORT
                 ).show()
 
-                viewModel.getProfile()
+                startActivity(Intent(activity, MainActivity::class.java))
+                activity?.finish()
             } else if (it.code == 400 && it.error == "1004") {
                 hideProgressBar(true)
 
                 //登录失败 账号或密码错误
-                Toast.makeText(context, "账号或密码错误", Toast.LENGTH_SHORT).show()
+                MaterialAlertDialogBuilder(activity as AppCompatActivity)
+                    .setTitle("账号或密码错误")
+                    .setPositiveButton("确定",null)
+                    .show()
 
             } else {
                 hideProgressBar(true)
-                Toast.makeText(
-                    context,
-                    "网络错误code=${it.code} error=${it.error} message=${it.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
-            }
-        }
+                MaterialAlertDialogBuilder(activity as AppCompatActivity)
+                    .setTitle("网络错误")
+                    .setMessage("code=${it.code} error=${it.error} message=${it.message}")
+                    .setPositiveButton("确定",null)
+                    .show()
 
-        //检查token 状态
-        viewModel.liveData_profile.observe(this) {
-            hideProgressBar(true)
-
-            if (it.code == 200) {
-                //token没过期 传递信息跳转到主页
-                val intent = Intent(activity, MainActivity::class.java)
-                intent.putExtra("id", it.data.user._id)
-                intent.putExtra("username", it.data.user.name)
-                intent.putExtra("title", it.data.user.title)
-                intent.putExtra("slogan", it.data.user.slogan)
-                intent.putExtra("gender", it.data.user.gender)
-                intent.putExtra("punch", it.data.user.isPunched)
-                intent.putExtra("level", it.data.user.level)
-                intent.putExtra("exp", it.data.user.exp)
-                intent.putExtra("birthday", it.data.user.birthday)
-                intent.putExtra("created_at", it.data.user.created_at)
-//                intent.putExtra("character", it.data.user.character) // 头像皮肤
-                if (it.data.user.avatar != null) {
-                    intent.putExtra("fileServer", it.data.user.avatar.fileServer)
-                    intent.putExtra("path", it.data.user.avatar.path)
-                } else {
-                    intent.putExtra("fileServer", "")
-                    intent.putExtra("path", "")
-                }
-
-//                intent.putExtra("character", it.data.user.character) //新用户没有
-
-                startActivity(intent)
-                activity?.finish()
-            } else {
-                Toast.makeText(
-                    activity,
-                    "网络错误code=${it.code} error=${it.error} message=${it.message}",
-                    Toast.LENGTH_SHORT
-                ).show()
             }
         }
 
