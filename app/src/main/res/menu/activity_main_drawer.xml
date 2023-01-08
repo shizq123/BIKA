@@ -19,7 +19,7 @@
                 app:showAsAction="ifRoom"/>
             <item
                 android:id="@+id/drawer_menu_bookmark"
-                android:icon="@drawable/ic_bookmark"
+                android:icon="@drawable/ic_bookmarks"
                 android:title="我的收藏"
                 android:checkable="true"
                 app:showAsAction="ifRoom"/>
