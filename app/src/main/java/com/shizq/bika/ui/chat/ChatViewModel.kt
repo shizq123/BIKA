@@ -13,8 +13,8 @@ import com.google.gson.JsonParser.parseString
 import com.shizq.bika.MyApp
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatMessageBean
-import com.shizq.bika.network.IReceiveMessage
-import com.shizq.bika.network.WebSocketManager
+import com.shizq.bika.network.websocket.IReceiveMessage
+import com.shizq.bika.network.websocket.WebSocketManager
 import com.shizq.bika.utils.SPUtil
 import java.io.File
 import java.io.FileInputStream
@@ -39,7 +39,8 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun WebSocket() {
-        webSocketManager.init(url, object : IReceiveMessage {
+        webSocketManager.init(url, object :
+            IReceiveMessage {
             override fun onConnectSuccess() {}
 
             override fun onConnectFailed() {

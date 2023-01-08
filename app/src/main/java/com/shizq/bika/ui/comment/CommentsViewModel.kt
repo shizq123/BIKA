@@ -206,4 +206,9 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
             })
 
     }
+
+    fun commentsReport() {
+
+
+    }
 }

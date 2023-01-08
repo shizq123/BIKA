@@ -1,4 +1,4 @@
-package com.shizq.bika.network;
+package com.shizq.bika.network.websocket;
 
 public interface IReceiveMessage {
     void onConnectSuccess();// 连接成功

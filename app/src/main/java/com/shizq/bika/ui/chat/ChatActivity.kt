@@ -24,7 +24,7 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChatBinding
-import com.shizq.bika.network.WebSocketManager
+import com.shizq.bika.network.websocket.WebSocketManager
 import com.shizq.bika.utils.AndroidBug5497Workaround
 import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.utils.GlideEngine

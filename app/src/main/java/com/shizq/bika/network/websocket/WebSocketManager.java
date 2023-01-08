@@ -1,4 +1,4 @@
-package com.shizq.bika.network;
+package com.shizq.bika.network.websocket;
 
 import android.os.Handler;
 import android.util.Log;
