@@ -2,6 +2,7 @@ package com.shizq.bika.ui.main
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
+import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.shizq.bika.MyApp
 import com.shizq.bika.base.BaseViewModel
@@ -17,7 +18,7 @@ import okhttp3.MediaType
 import okhttp3.RequestBody
 
 class MainViewModel(application: Application) : BaseViewModel(application) {
-    var userId="" //用来确认账号是否已经登录
+    var userId = "" //用来确认账号是否已经登录
 
     val liveData_profile: MutableLiveData<BaseResponse<ProfileBean>> by lazy {
         MutableLiveData<BaseResponse<ProfileBean>>()
@@ -39,7 +40,11 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
         MutableLiveData<UpdateBean>()
     }
 
-    fun getProfile(){
+    val liveData_avatar: MutableLiveData<BaseResponse<Any>> by lazy {
+        MutableLiveData<BaseResponse<Any>>()
+    }
+
+    fun getProfile() {
         RetrofitUtil.service.profileGet(BaseHeaders("users/profile", "GET").getHeaderMapAndToken())
             .doOnSubscribe(this@MainViewModel)
             .subscribe(object : BaseObserver<ProfileBean>() {
@@ -54,8 +59,9 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
 
             })
     }
+
     fun punch_In() {
-        val headers= BaseHeaders("users/punch-in", "POST").getHeaderMapAndToken()
+        val headers = BaseHeaders("users/punch-in", "POST").getHeaderMapAndToken()
         RetrofitUtil.service.punchInPOST(headers)
             .doOnSubscribe(this@MainViewModel)
             .subscribe(object : BaseObserver<PunchInBean>() {
@@ -69,15 +75,17 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
                 }
             })
     }
+
     fun getSignIn() {
         val body = RequestBody.create(
             MediaType.parse("application/json; charset=UTF-8"),
             JsonObject().apply {
-                addProperty("email", SPUtil.get(MyApp.contextBase,"username","") as String)
-                addProperty("password", SPUtil.get(MyApp.contextBase,"password","") as String)}.asJsonObject.toString()
+                addProperty("email", SPUtil.get(MyApp.contextBase, "username", "") as String)
+                addProperty("password", SPUtil.get(MyApp.contextBase, "password", "") as String)
+            }.asJsonObject.toString()
         )
-        val headers= BaseHeaders("auth/sign-in","POST").getHeaders()
-        RetrofitUtil.service.signInPost(body,headers)
+        val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
+        RetrofitUtil.service.signInPost(body, headers)
             .doOnSubscribe(this@MainViewModel)
             .subscribe(object : BaseObserver<SignInBean>() {
                 override fun onSuccess(baseResponse: BaseResponse<SignInBean>) {
@@ -91,7 +99,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun getCategories() {
-        val headers= BaseHeaders("categories","GET").getHeaderMapAndToken()
+        val headers = BaseHeaders("categories", "GET").getHeaderMapAndToken()
         RetrofitUtil.service.categoriesGet(headers)
             .doOnSubscribe(this@MainViewModel)
             .subscribe(object : BaseObserver<CategoriesBean>() {
@@ -117,6 +125,28 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
                 override fun onSubscribe(d: Disposable) {}
                 override fun onComplete() {}
 
+            })
+    }
+
+    fun putAvatar(base64Image: String) {
+        val map = mutableMapOf(
+            "avatar" to base64Image
+        )
+        val body = RequestBody.create(
+            MediaType.parse("application/json; charset=UTF-8"),
+            Gson().toJson(map)
+        )
+        val headers = BaseHeaders("users/avatar", "PUT").getHeaderMapAndToken()
+        RetrofitUtil.service.avatarPUT(body, headers)
+            .doOnSubscribe(this@MainViewModel)
+            .subscribe(object : BaseObserver<Any>() {
+                override fun onSuccess(baseResponse: BaseResponse<Any>) {
+                    liveData_avatar.postValue(baseResponse)
+                }
+
+                override fun onCodeError(baseResponse: BaseResponse<Any>) {
+                    liveData_avatar.postValue(baseResponse)
+                }
             })
     }
 }

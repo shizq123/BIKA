@@ -111,7 +111,7 @@ class ChatAdapter :
             if (bean.image != null && bean.image != "") {
                 binding.chatContentImageR.visibility = View.VISIBLE
                 //图片要处理宽高问题
-                setImageView(binding.chatContentImageR, Base64Util.base64ToBitmap(bean.image))
+                setImageView(binding.chatContentImageR, Base64Util().base64ToBitmap(bean.image))
             } else {
                 binding.chatContentImageR.visibility = View.GONE
             }
@@ -204,7 +204,7 @@ class ChatAdapter :
             if (bean.image != null && bean.image != "") {
                 binding.chatContentImageL.visibility = View.VISIBLE
                 //图片要处理宽高问题
-                setImageView(binding.chatContentImageL, Base64Util.base64ToBitmap(bean.image))
+                setImageView(binding.chatContentImageL, Base64Util().base64ToBitmap(bean.image))
             } else {
                 binding.chatContentImageL.visibility = View.GONE
             }

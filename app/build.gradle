@@ -99,9 +99,7 @@ dependencies {
     implementation "io.reactivex.rxjava3:rxjava:3.1.5"
     implementation "io.reactivex.rxjava3:rxandroid:3.0.0"
 
-    // PictureSelector 基础 (必须)
-    implementation 'io.github.lucksiege:pictureselector:v3.10.7'
-    // 图片裁剪 (按需引入)
-    implementation 'io.github.lucksiege:ucrop:v3.10.7'
+    implementation 'io.github.lucksiege:pictureselector:v3.10.7'//图片选择器
+    implementation 'io.github.lucksiege:ucrop:v3.10.7'//修剪
 
 }

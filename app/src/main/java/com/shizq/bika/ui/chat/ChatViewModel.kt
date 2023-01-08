@@ -4,11 +4,12 @@ import android.app.Application
 import android.graphics.drawable.AnimationDrawable
 import android.media.MediaPlayer
 import android.util.Base64
+import android.util.Log
 import android.view.View
 import android.widget.ImageView
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
-import com.google.gson.JsonParser
+import com.google.gson.JsonParser.parseString
 import com.shizq.bika.MyApp
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatMessageBean
@@ -61,8 +62,8 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                 }
                 if (text.substring(0, 2) == "42") {
                     //收到消息 42 进行解析
-                    val key = JsonParser().parse(text.substring(2)).asJsonArray[0].asString
-                    val json = JsonParser().parse(text.substring(2)).asJsonArray[1].asJsonObject
+                    val key = parseString(text.substring(2)).asJsonArray[0].asString
+                    val json = parseString(text.substring(2)).asJsonArray[1].asJsonObject
 
                     when (key) {
                         //broadcast_ads是广告
@@ -127,14 +128,18 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         })
     }
 
-    fun sendMessage(text: String) {
+    //发送文字 可以回复 可以@
+    //发送图片 不可以发送文字 可以回复 可以@
+    //发送语音 不可以发送文字 不可以回复 不可以@
+    //悄悄话 不能发图片和语音
+    fun sendMessage(text: String="",base64Image:String="",base64Audio:String="") {
         val fileServer = SPUtil.get(MyApp.contextBase, "user_fileServer", "") as String
         val path = SPUtil.get(MyApp.contextBase, "user_path", "") as String
         val character = SPUtil.get(MyApp.contextBase, "user_character", "") as String
 
         val map = mutableMapOf<String, Any>()
-        map["at"] = atname
-        map["audio"] = ""
+        map["at"] = if (base64Audio=="") atname else ""
+        map["audio"] = base64Audio
         if (path != "") {
             map["avatar"] = "${fileServer.replace("/static/", "")}/static/$path"
         }
@@ -142,28 +147,30 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         if (character != "") {
             map["character"] = character
         }
+
         map["email"] = SPUtil.get(MyApp.contextBase, "username", "") as String
         map["gender"] = SPUtil.get(MyApp.contextBase, "user_gender", "bot") as String
-        map["image"] = ""
+        map["image"] = base64Image
         map["level"] = SPUtil.get(MyApp.contextBase, "user_level", 1) as Int
         map["message"] = text
         map["name"] = SPUtil.get(MyApp.contextBase, "user_name", "") as String
-        map["reply"] = reply
-        map["reply_name"] = reply_name
+        map["platform"] = "android"
+        map["reply"] =if (base64Audio=="") reply else ""
+        map["reply_name"] =if (base64Audio=="")  reply_name else ""
         map["title"] = SPUtil.get(MyApp.contextBase, "user_title", "") as String
-        map["type"] = 3
+        map["type"] = if (base64Image!="") 4 else if (base64Audio!="") 5 else 3
         map["unique_id"] = ""
         map["user_id"] = SPUtil.get(MyApp.contextBase, "user_id", "") as String
         map["verified"] = SPUtil.get(MyApp.contextBase, "user_verified", false) as Boolean
 
         val json = Gson().toJson(map)
         val array = ArrayList<String>()
-        array.add("send_message")
+        array.add(if (base64Image!="") "send_image" else if (base64Audio!="") "send_audio" else "send_message")
         array.add(json)
-
         liveData_message.postValue(Gson().fromJson(json, ChatMessageBean::class.java))
+
+        Log.d("------",Gson().toJson(array))
         webSocketManager.sendMessage("42" + Gson().toJson(array))
-//        Log.d("---vm---","42" + Gson().toJson(array))
     }
 
     var init = {
@@ -178,7 +185,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
             avatarMap["fileServer"] = fileServer
             avatarMap["originalName"] = "avatar.jpg"
             avatarMap["path"] = path
-            map["avatar"] = Gson().toJson(avatarMap)
+            map["avatar"] = avatarMap
         }
         map["birthday"] = SPUtil.get(application, "user_birthday", "") as String
         if (character != "") {

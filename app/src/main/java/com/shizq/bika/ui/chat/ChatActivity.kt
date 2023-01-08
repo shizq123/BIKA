@@ -127,7 +127,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
                 //消息点击事件 用于 回复
                 //判断 语音和图片不能回复
                 if (!data.image.isNullOrEmpty()) {
-                    userViewDialog.PopupWindow(Base64Util.base64ToBitmap(data.image))
+                    userViewDialog.PopupWindow(Base64Util().base64ToBitmap(data.image))
                 }
                 if (!data.audio.isNullOrEmpty()) {
                     view as RelativeLayout
@@ -188,11 +188,13 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
                 .setImageEngine(GlideEngine.createGlideEngine())
                 .forResult(object : OnResultCallbackListener<LocalMedia> {
                     override fun onResult(result: ArrayList<LocalMedia>) {
-//                        GlideApp.with(this@ChatActivity)
-//                            .load(result[0].path)
-//                            .into()
-                        //这里进行网络请求 上传头像
-
+                        if (atUser.size > 0) {
+                            for (name in atUser){
+                                viewModel.atname+=name.replace("@","嗶咔_")
+                            }
+                        }
+                        viewModel.sendMessage(base64Image=Base64Util().getBase64(result[0].cutPath))
+                        clearInput()//清空输入框
                     }
                     override fun onCancel() {}
                 })
@@ -205,21 +207,8 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
                         viewModel.atname+=name.replace("@","嗶咔_")
                     }
                 }
-                viewModel.sendMessage(binding.chatSendContentInput.text.toString())
-
-                //清空输入框
-                atUser.clear()
-                binding.chatSendAt.removeAllViews()
-                viewModel.atname=""
-                viewModel.reply=""
-                viewModel.reply_name=""
-                binding.chatSendContentInput.setText("")
-                binding.chatSendContentReply.text = ""
-                binding.chatSendContentReply.visibility = View.GONE
-                //滑动到底部
-                chatRvBottom = false
-                binding.chatRvBottomBtn.visibility = View.GONE
-                binding.chatRv.scrollToPosition(adapter.data.size - 1)
+                viewModel.sendMessage(text=binding.chatSendContentInput.text.toString())
+                clearInput()//清空输入框
             }
         }
         binding.chatSendContentInput.addTextChangedListener(object : TextWatcher {
@@ -299,6 +288,22 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
         binding.chatSendContentInput.requestFocus()
         val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(binding.chatSendContentInput, 0)
+    }
+
+    fun clearInput(){
+        //清空输入框
+        atUser.clear()
+        binding.chatSendAt.removeAllViews()
+        viewModel.atname=""
+        viewModel.reply=""
+        viewModel.reply_name=""
+        binding.chatSendContentInput.setText("")
+        binding.chatSendContentReply.text = ""
+        binding.chatSendContentReply.visibility = View.GONE
+        //滑动到底部
+        chatRvBottom = false
+        binding.chatRvBottomBtn.visibility = View.GONE
+        binding.chatRv.scrollToPosition(adapter.data.size - 1)
     }
 
 }

@@ -160,24 +160,23 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 PictureSelector.create(this)
                     .openGallery(SelectMimeType.ofImage())
                     .isCameraForegroundService(true)
+                    .setSelectionMode(1)
+                    .setImageEngine(GlideEngine.createGlideEngine())
                     .setCropEngine { fragment, srcUri, destinationUri, dataSource, requestCode ->
                         UCrop.of(srcUri, destinationUri, dataSource)
                             .withAspectRatio(1f, 1f)
-                            .withMaxResultSize(200, 200)
-                            .start(fragment.requireActivity(), fragment, requestCode);
+                            .withMaxResultSize(200, 200) //图片压缩没官方清晰
+                            .start(fragment.requireActivity(), fragment, requestCode)
                     }
-                    .setSelectionMode(1)
-                    .setImageEngine(GlideEngine.createGlideEngine())
                     .forResult(object : OnResultCallbackListener<LocalMedia> {
                         override fun onResult(result: ArrayList<LocalMedia>) {
                             GlideApp.with(this@MainActivity)
-                                .load(result[0].path)
+                                .load(R.drawable.placeholder_avatar_2)
                                 .into(
                                     binding.mainNavView.getHeaderView(0)
                                         .findViewById(R.id.main_drawer_imageView) as ImageView
                                 )
-                            //这里进行网络请求 上传头像
-
+                            viewModel.putAvatar(Base64Util().getBase64(result[0].cutPath))
                         }
                         override fun onCancel() {}
                     })
@@ -379,9 +378,11 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 SPUtil.put(this, "user_id", it.data.user._id)
                 SPUtil.put(this, "user_verified", it.data.user.verified)
 
-                showProgressBar(true, "获取主页信息...")
-                viewModel.getCategories() //获得主页信息
-
+                if (cList.size <= 10) {
+                    //更换头像会重新加载个人信息 防止重复加载
+                    showProgressBar(true, "获取主页信息...")
+                    viewModel.getCategories() //获得主页信息
+                }
 
             } else if (it.code == 401) {
                 if (it.error == "1005") {
@@ -485,6 +486,25 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             }
         }
 
+        //上传头像
+        viewModel.liveData_avatar.observe(this) {
+            if (it.code == 200) {
+                //成功就重新获取个人信息
+                viewModel.getProfile()
+            } else {
+                Toast.makeText(this, "更换头像失败", Toast.LENGTH_SHORT).show()
+                //失败切换为原来的头像
+                val fileServer = SPUtil.get(this, "user_fileServer", "") as String
+                val path = SPUtil.get(this, "user_path", "") as String
+                GlideApp.with(this)
+                    .load(
+                        if (path != "") { GlideUrlNewKey(fileServer, path) } else R.drawable.placeholder_avatar_2
+                    )
+                    .placeholder(R.drawable.placeholder_avatar_2)
+                    .into(binding.mainNavView.getHeaderView(0)
+                        .findViewById(R.id.main_drawer_imageView) as ImageView)
+            }
+        }
     }
 
     private fun showProgressBar(show: Boolean, string: String) {
