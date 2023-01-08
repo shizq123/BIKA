@@ -47,6 +47,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     优化activity 转成fragment
     文本复制功能 漫画评论复制
     加个图片选择器apk增加了1M :(
+    图片修剪工具不是很好用 
     上传头像的锯齿较多不清晰
     搜索框
 

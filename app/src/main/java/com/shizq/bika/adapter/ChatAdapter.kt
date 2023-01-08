@@ -44,18 +44,24 @@ class ChatAdapter :
             binding.chatLayoutR.visibility = View.GONE
             binding.chatNotification.visibility = View.VISIBLE
             binding.chatNotification.text = bean.message
-        } else if (bean.name != null && bean.name == SPUtil.get(MyApp.contextBase, "user_name", "") as String) {
+        } else if (bean.name != null && bean.name == SPUtil.get(
+                MyApp.contextBase,
+                "user_name",
+                ""
+            ) as String
+        ) {
             //我发送的消息
             binding.chatLayoutL.visibility = View.GONE
             binding.chatLayoutR.visibility = View.VISIBLE
             binding.chatNotification.visibility = View.GONE
             binding.chatNameR.text = bean.name
-            if (bean.character != null && bean.character != "") {
-                GlideApp.with(holder.itemView)
-                    .load(bean.character)
-                    .into(binding.chatCharacterR)
-            }
 
+            //头像框
+            GlideApp.with(holder.itemView)
+                .load(if (bean.character != null && bean.character != "") bean.character else "")
+                .into(binding.chatCharacterR)
+
+            //头像
             GlideApp.with(holder.itemView)
                 .load(
                     if (bean.avatar != null && bean.avatar != "") {
@@ -141,23 +147,23 @@ class ChatAdapter :
             binding.chatLayoutR.visibility = View.GONE
             binding.chatNotification.visibility = View.GONE
             binding.chatNameL.text = bean.name
-            if (bean.character != null && bean.character != "") {
-                GlideApp.with(holder.itemView)
-                    .load(bean.character)
-                    .into(binding.chatCharacterL)
-            }
 
-            //拆分 利于缓存 省流量 加载更快
+            //头像框
+            GlideApp.with(holder.itemView)
+                .load(if (bean.character != null && bean.character != "") bean.character else "")
+                .into(binding.chatCharacterL)
+
+            //头像 //拆分 利于缓存 省流量 加载更快
             GlideApp.with(holder.itemView)
                 .load(
                     if (bean.avatar != null && bean.avatar != "") {
                         val i: Int = bean.avatar.indexOf("/static/")
-                        if (i > 0)
+                        if (i > 0) {
                             GlideUrlNewKey(
                                 bean.avatar.substring(0, i),
                                 bean.avatar.substring(i + 8)
                             )
-                        else bean.avatar
+                        } else bean.avatar
                     } else R.drawable.placeholder_avatar_2
 
                 )
@@ -253,35 +259,6 @@ class ChatAdapter :
         }
         imageView.layoutParams = layoutParams
         imageView.setImageBitmap(bitmap)
-    }
-
-    private fun playAudio(audio: String, animationDrawable: AnimationDrawable) {
-        // TODO 有bug 会有不播放的情况
-        val mp3SoundByteArray: ByteArray = Base64.decode(audio.replace("\n", ""), Base64.DEFAULT)
-
-        val tempMp3: File = File.createTempFile("audio", ".mp3")
-        val fos = FileOutputStream(tempMp3)
-        fos.write(mp3SoundByteArray)
-        fos.close()
-        val fis = FileInputStream(tempMp3)
-
-        val mediaPlayer = MediaPlayer()
-        mediaPlayer.setDataSource(fis.fd)
-        mediaPlayer.prepareAsync()
-        mediaPlayer.isLooping = false
-
-        mediaPlayer.setOnPreparedListener { player ->
-            player.start()
-            animationDrawable.start()
-        }
-
-        mediaPlayer.setOnCompletionListener { mp ->
-            mp.stop()
-            mp.release()
-            tempMp3.delete()
-            animationDrawable.stop()
-        }
-
     }
 
     //反编译源码 聊天室的彩色字体
