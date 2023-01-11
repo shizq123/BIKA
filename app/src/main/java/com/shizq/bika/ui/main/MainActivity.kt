@@ -106,6 +106,8 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             .count(18)// item个数
             .show()
 
+        initProfile()//显示用户信息
+
         initListener()
 
         viewModel.getUpdate()
@@ -115,6 +117,43 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             showProgressBar(true, "检查账号信息...")
             viewModel.getProfile() //先获得个人信息
         }
+    }
+
+    private fun initProfile() {
+        val fileServer = SPUtil.get(this,"user_fileServer","") as String
+        val path = SPUtil.get(this,"user_path","") as String
+        val character = SPUtil.get(this,"user_character","") as String
+        val name = SPUtil.get(this,"user_name","") as String
+        val gender = SPUtil.get(this,"user_gender","") as String
+        val level = SPUtil.get(this,"user_level",1) as Int
+
+        GlideApp.with(this@MainActivity)
+            .load(GlideUrlNewKey(fileServer, path))
+            .centerCrop()
+            .placeholder(R.drawable.placeholder_avatar_2)
+            .into(
+                binding.mainNavView.getHeaderView(0)
+                    .findViewById(R.id.main_drawer_imageView) as ImageView
+            )
+        GlideApp.with(this@MainActivity)
+            .load(character)
+            .into(
+                binding.mainNavView.getHeaderView(0)
+                    .findViewById(R.id.main_drawer_character) as ImageView
+            )
+        (binding.mainNavView.getHeaderView(0)
+            .findViewById(R.id.main_drawer_name) as TextView).text = name
+
+        (binding.mainNavView.getHeaderView(0)
+            .findViewById(R.id.main_drawer_user_ver) as TextView).text =
+            "Lv.$level(0/${exp(level)})"
+        (binding.mainNavView.getHeaderView(0)
+            .findViewById(R.id.main_drawer_gender) as TextView).text =
+            when (gender) {
+                "m" -> "(绅士)"
+                "f" -> "(淑女)"
+                else -> "(机器人)"
+            }
     }
 
     override fun onResume() {

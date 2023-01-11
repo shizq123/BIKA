@@ -25,7 +25,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     漫画阅读器
     聊天室发送语音
     子评论页加进度条
-    评论举报
 
     未来添加下载
     未来适配平板
@@ -41,7 +40,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     历史记录需要优化
     更改密码 需要添加进度条
     优化activity 转成fragment
-    文本复制功能 漫画评论复制
     图片修剪工具不是很好用 
     上传头像的锯齿较多不清晰
     搜索框
