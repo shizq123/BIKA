@@ -1,5 +1,7 @@
 package com.shizq.bika.ui.comment
 
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
@@ -9,6 +11,7 @@ import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CommentsAdapter
@@ -109,13 +112,47 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
     }
 
     private fun initListener() {
+        //评论点击事件
         binding.commentsRv.setOnItemClickListener { v, position ->
             if (adapter_v2.getItemData(position)._user != null) {
-                viewModel.commentsId = adapter_v2.getItemData(position).id
-                dialog_send_sub_comments.setTitleText("回复 " + adapter_v2.getItemData(position)._user.name)
-                dialog_send_sub_comments.show()
+                val data = adapter_v2.getItemData(position)
+                val choices = arrayOf<CharSequence>("回复", "复制", "举报")
+                MaterialAlertDialogBuilder(v.context)
+                    .setItems(choices) { dialog, which ->
+                        when (which) {
+                            0 -> {
+                                viewModel.commentsId = adapter_v2.getItemData(position).id
+                                dialog_send_sub_comments.setTitleText("回复 ${data._user.name}")
+                                dialog_send_sub_comments.show()
+                            }
+                            1 -> {
+                                val cm: ClipboardManager =
+                                    getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                                cm.setPrimaryClip(ClipData.newPlainText(null, data.content))
+                                Toast.makeText(
+                                    this,
+                                    "已复制 ${data._user.name} 的评论",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            2 -> {
+                                MaterialAlertDialogBuilder(v.context)
+                                    .setTitle("举报留言警告")
+                                    .setMessage("你确定要举报这条留言吗\n留言一但举报就无法收回的喔！！！")
+                                    .setPositiveButton("确定") { _, _ ->
+                                        binding.commentsProgressbar.visibility = View.VISIBLE
+                                        viewModel.commentsReport(data.id)
+                                    }
+                                    .setNegativeButton("取消", null)
+                                    .show()
+                            }
+                        }
+                    }
+                    .show()
+
             }
         }
+        //评论 子view 点击事件
         binding.commentsRv.setOnItemChildClickListener { view, position ->
             val id = view.id
             val data = adapter_v2.getItemData(position)
@@ -159,14 +196,48 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                 bottomSheetDialog.show()
             }
         }
+
+        //子评论 点击事件
         sub_comments_rv.setOnItemClickListener { v, position ->
-            if (position == 0) {
-                dialog_send_sub_comments.setTitleText("回复 " + adapter_sub.getItemData(position)._user.name)
-                dialog_send_sub_comments.show()
+            val data = adapter_sub.getItemData(position)
+            val choices: Array<CharSequence> = if (position == 0) {
+                arrayOf("回复", "复制", "举报")
             } else {
-                userViewDialog.showUserDialog(adapter_sub.getItemData(position)._user, sub_comments_view)
+                arrayOf("复制", "举报")
             }
+            MaterialAlertDialogBuilder(v.context)
+                .setItems(choices) { _, which ->
+                    when (choices[which]) {
+                        "回复" -> {
+                            dialog_send_sub_comments.setTitleText("回复 " + data._user.name)
+                            dialog_send_sub_comments.show()
+                        }
+                        "复制" -> {
+                            val cm: ClipboardManager =
+                                getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                            cm.setPrimaryClip(ClipData.newPlainText(null, data.content))
+                            Toast.makeText(
+                                this,
+                                "已复制 ${data._user.name} 的评论",
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        }
+                        "举报" -> {
+                            MaterialAlertDialogBuilder(v.context)
+                                .setTitle("举报留言警告")
+                                .setMessage("你确定要举报这条留言吗\n留言一但举报就无法收回的喔！！！")
+                                .setPositiveButton("确定") { _, _ ->
+                                    binding.commentsProgressbar.visibility = View.VISIBLE
+                                    viewModel.commentsReport(data.id)
+                                }
+                                .setNegativeButton("取消", null)
+                                .show()
+                        }
+                    }
+                }
+                .show()
         }
+        //子评论 子view 点击事件
         sub_comments_rv.setOnItemChildClickListener { view, position ->
             val id = view.id
             val data = adapter_sub.getItemData(position)
@@ -355,6 +426,16 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                 }
             } else {
                 Toast.makeText(this, "点击爱心失败", Toast.LENGTH_SHORT).show()
+
+            }
+        }
+
+        viewModel.liveDataCommentReport.observe(this) {
+            binding.commentsProgressbar.visibility = View.GONE
+            if (it.code == 200) {
+                Toast.makeText(this, "成功举报评论", Toast.LENGTH_SHORT).show()
+            } else {
+                Toast.makeText(this, "举报评论失败", Toast.LENGTH_SHORT).show()
 
             }
         }

@@ -5,6 +5,7 @@ import androidx.lifecycle.MutableLiveData
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ActionBean
 import com.shizq.bika.bean.CommentsBean
+import com.shizq.bika.bean.ReportBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
@@ -44,6 +45,10 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
     }
     val liveData_sub_comments_like: MutableLiveData<BaseResponse<ActionBean>> by lazy {
         MutableLiveData<BaseResponse<ActionBean>>()
+    }
+
+    val liveDataCommentReport: MutableLiveData<BaseResponse<ReportBean>> by lazy {
+        MutableLiveData<BaseResponse<ReportBean>>()
     }
 
 
@@ -207,8 +212,22 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
 
     }
 
-    fun commentsReport() {
+    fun commentsReport(commentId:String) {
+        RetrofitUtil.service.commentsReportPost(
+            commentId,
+            BaseHeaders("comments/$commentId/report", "POST").getHeaderMapAndToken()
+        )
+            .doOnSubscribe(this@CommentsViewModel)
+            .subscribe(object : BaseObserver<ReportBean>() {
+                override fun onSuccess(baseResponse: BaseResponse<ReportBean>) {
+                    liveDataCommentReport.postValue(baseResponse)
 
+                }
 
+                override fun onCodeError(baseResponse: BaseResponse<ReportBean>) {
+                    liveDataCommentReport.postValue(baseResponse)
+
+                }
+            })
     }
 }
