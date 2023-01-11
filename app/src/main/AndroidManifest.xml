@@ -18,7 +18,6 @@
 
     <!--Android 13版本适配，细化存储权限-->
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
 
     <application
         android:name=".MyApp"

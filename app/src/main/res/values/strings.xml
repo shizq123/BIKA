@@ -24,6 +24,14 @@
     <string name="action_video">视频</string>
     <string name="keyboard">弹出键盘</string>
 
+    <string name="categories_recommend">推荐</string>
+    <string name="categories_leaderboard">排行榜</string>
+    <string name="categories_game">游戏推荐</string>
+    <string name="categories_apps">哔咔小程序</string>
+    <string name="categories_forum">留言板</string>
+    <string name="categories_latest">最近更新</string>
+    <string name="categories_random">随机本子</string>
+
     <string name="sort_dd">新到旧</string>
     <string name="sort_da">旧到新</string>
     <string name="sort_ld">最多爱心</string>

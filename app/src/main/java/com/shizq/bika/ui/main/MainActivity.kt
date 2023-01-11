@@ -10,6 +10,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.luck.picture.lib.basic.PictureSelector
@@ -62,13 +63,13 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         setSupportActionBar(binding.toolbar)
 
         val cTitle = arrayOf(
-            "推荐",
-            "排行榜",
-            "游戏推荐",
-            "哔咔小程序",
-            "留言板",
-            "最近更新",
-            "随机本子"
+            R.string.categories_recommend,
+            R.string.categories_leaderboard,
+            R.string.categories_game,
+            R.string.categories_apps,
+            R.string.categories_forum,
+            R.string.categories_latest,
+            R.string.categories_random
         )
         val cRes = arrayOf(
             R.drawable.logo_round,
@@ -88,7 +89,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 false,
                 "",
                 thumb = CategoriesBean.Category.Thumb("", "", ""),
-                cTitle[index],
+                resources.getString(cTitle[index]),
                 cRes[index]
             )
             cList.add(index, category)
