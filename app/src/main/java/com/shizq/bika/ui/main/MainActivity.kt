@@ -10,7 +10,6 @@ import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
-import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.luck.picture.lib.basic.PictureSelector
@@ -21,7 +20,6 @@ import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CategoriesAdapter
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.bean.CategoriesBean
 import com.shizq.bika.databinding.ActivityMainBinding
 import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.apps.AppsActivity
@@ -42,7 +40,6 @@ import me.jingbin.library.skeleton.BySkeleton
 
 
 class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
-    private var cList = ArrayList<CategoriesBean.Category>()
     private lateinit var adapter_categories: CategoriesAdapter
     private lateinit var skeletonScreen: ByRVItemSkeletonScreen
 
@@ -62,38 +59,6 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         binding.toolbar.title = "哔咔"
         setSupportActionBar(binding.toolbar)
 
-        val cTitle = arrayOf(
-            R.string.categories_recommend,
-            R.string.categories_leaderboard,
-            R.string.categories_game,
-            R.string.categories_apps,
-            R.string.categories_forum,
-            R.string.categories_latest,
-            R.string.categories_random
-        )
-        val cRes = arrayOf(
-            R.drawable.logo_round,
-            R.drawable.cat_leaderboard,
-            R.drawable.cat_game,
-            R.drawable.cat_love_pica,
-            R.drawable.cat_forum,
-            R.drawable.cat_latest,
-            R.drawable.cat_random
-        )
-
-        for (index in 0..5) {
-            val category = CategoriesBean.Category(
-                "",
-                false,
-                "",
-                false,
-                "",
-                thumb = CategoriesBean.Category.Thumb("", "", ""),
-                resources.getString(cTitle[index]),
-                cRes[index]
-            )
-            cList.add(index, category)
-        }
         adapter_categories = CategoriesAdapter()
         binding.mainRv.layoutManager = GridLayoutManager(
             this@MainActivity,
@@ -113,20 +78,20 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
 
         viewModel.getUpdate()
 
-        if (cList.size <= 6) {
-            //防止重复添加 TODO 先解决了 后面再修改
+        if (adapter_categories.data.size < 1) {
+            //防止重复加载
             showProgressBar(true, "检查账号信息...")
             viewModel.getProfile() //先获得个人信息
         }
     }
 
     private fun initProfile() {
-        val fileServer = SPUtil.get(this,"user_fileServer","") as String
-        val path = SPUtil.get(this,"user_path","") as String
-        val character = SPUtil.get(this,"user_character","") as String
-        val name = SPUtil.get(this,"user_name","") as String
-        val gender = SPUtil.get(this,"user_gender","") as String
-        val level = SPUtil.get(this,"user_level",1) as Int
+        val fileServer = SPUtil.get(this, "user_fileServer", "") as String
+        val path = SPUtil.get(this, "user_path", "") as String
+        val character = SPUtil.get(this, "user_character", "") as String
+        val name = SPUtil.get(this, "user_name", "") as String
+        val gender = SPUtil.get(this, "user_gender", "") as String
+        val level = SPUtil.get(this, "user_level", 1) as Int
 
         GlideApp.with(this@MainActivity)
             .load(GlideUrlNewKey(fileServer, path))
@@ -331,7 +296,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 var fileServer = ""
                 var path = ""
                 var character = ""
-                viewModel.userId=it.data.user._id
+                viewModel.userId = it.data.user._id
 
                 if (it.data.user.avatar != null) {//头像
                     fileServer = it.data.user.avatar.fileServer
@@ -418,7 +383,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 SPUtil.put(this, "user_id", it.data.user._id)
                 SPUtil.put(this, "user_verified", it.data.user.verified)
 
-                if (cList.size <= 10) {
+                if (viewModel.cList().size <= 10) {
                     //更换头像会重新加载个人信息 防止重复加载
                     showProgressBar(true, "获取主页信息...")
                     viewModel.getCategories() //获得主页信息
@@ -474,9 +439,12 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             if (it.code == 200) {
                 binding.mainRv.loadMoreEnd()
                 binding.mainLoadLayout.visibility = ViewGroup.GONE
-                //TODO 有BUG 列表重复
-                cList.addAll(it.data.categories)
-                adapter_categories.addData(cList)
+                viewModel.categoriesList = viewModel.cList()
+                viewModel.categoriesList.addAll(it.data.categories)
+                if (adapter_categories.data.size < 1) {
+                    //防止重复添加
+                    adapter_categories.addData(viewModel.categoriesList)
+                }
             } else {
                 ERROR = this.ERROR_CATEGORIES
                 showProgressBar(
@@ -484,6 +452,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
                 )
             }
+
         }
 
 
@@ -538,11 +507,15 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 val path = SPUtil.get(this, "user_path", "") as String
                 GlideApp.with(this)
                     .load(
-                        if (path != "") { GlideUrlNewKey(fileServer, path) } else R.drawable.placeholder_avatar_2
+                        if (path != "") {
+                            GlideUrlNewKey(fileServer, path)
+                        } else R.drawable.placeholder_avatar_2
                     )
                     .placeholder(R.drawable.placeholder_avatar_2)
-                    .into(binding.mainNavView.getHeaderView(0)
-                        .findViewById(R.id.main_drawer_imageView) as ImageView)
+                    .into(
+                        binding.mainNavView.getHeaderView(0)
+                            .findViewById(R.id.main_drawer_imageView) as ImageView
+                    )
             }
         }
     }
