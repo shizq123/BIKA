@@ -30,7 +30,7 @@ abstract class BaseFragment<V : ViewDataBinding, VM : BaseViewModel> : Fragment(
         if (lastView == null) {
             binding =
                 DataBindingUtil.inflate(inflater, initContentView(inflater, container, savedInstanceState), container, false)
-            binding.lifecycleOwner = this
+            binding.lifecycleOwner = viewLifecycleOwner
             lastView = binding.root
         }
         return lastView
