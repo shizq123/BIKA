@@ -1,3 +1,7 @@
+[![android](https://img.shields.io/badge/android-7.0%2B-brightgreen.svg)](https://github.com/shizq123/BIKA/releases)
+[![release](https://img.shields.io/github/release/shizq123/BIKA.svg)](https://github.com/shizq123/BIKA/releases)
+[![downloads](https://img.shields.io/github/downloads/shizq123/BIKA/total.svg)](https://github.com/shizq123/BIKA/releases)
+
 代码很烂，功能还不全 <br>
 UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。<br>
 官方app的图片会重复加载，我的修改了缓存key，加载更快更省流量 <br>
