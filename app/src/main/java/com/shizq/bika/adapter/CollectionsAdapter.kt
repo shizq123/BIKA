@@ -15,17 +15,10 @@ class CollectionsAdapter (val context: Context) : RecyclerView.Adapter<Collectio
 
     private var datas= ArrayList<CollectionsBean.Collection>()
 
-    fun addNewData(data: List<CollectionsBean.Collection>) {
+    fun addData(data: List<CollectionsBean.Collection>) {
         datas.clear()
         datas.addAll(data)
         notifyDataSetChanged()
-    }
-
-    fun addData(data: List<CollectionsBean.Collection>) {
-        val count = datas.size
-        datas.addAll(datas.size, data)
-        notifyItemRangeInserted(datas.size, data.size) //局部刷新
-        notifyItemRangeChanged(datas.size, datas.size - count)
     }
 
     override fun onCreateViewHolder(viewGroup: ViewGroup, parent: Int): ViewHolder {

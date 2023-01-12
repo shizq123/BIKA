@@ -32,7 +32,7 @@ class AccountActivity : BaseActivity<ActivityAccountBinding,AccountViewModel>() 
         return super.onOptionsItemSelected(item)
     }
 
-    //返回键执行home键
+    //返回键执行home键 //TODO 需要优化 添加到 fragment中
     override fun onBackPressed() {
         super.onBackPressed()
         //只有一级所以就不判断了 只有注册页面会返回到登录页 登录页返回是退出应用

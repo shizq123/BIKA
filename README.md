@@ -38,7 +38,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 #待优化
 
     注册页面 需要优化 跳转到登录页要显示注册的账号密码
-    主页会列表重复
     回退键
     设置页太乱
     历史记录需要优化
@@ -47,6 +46,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     图片修剪工具不是很好用 
     上传头像的锯齿较多不清晰
     搜索框
+    主题切换livedata会重复加载
 
 #服务器状态
 

@@ -88,7 +88,7 @@ abstract class BaseActivity<V : ViewDataBinding, VM : BaseViewModel> : AppCompat
      * @return 生成的viewMode实例
     </T> */
     private fun <T : ViewModel> createViewModel(activity: FragmentActivity, cls: Class<T>): T {
-        return ViewModelProvider(activity).get(cls)
+        return ViewModelProvider(activity)[cls]
     }
     /**
      * 跳转页面

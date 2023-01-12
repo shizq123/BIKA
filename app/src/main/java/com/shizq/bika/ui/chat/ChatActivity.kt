@@ -31,7 +31,6 @@ import com.shizq.bika.utils.GlideEngine
 import com.shizq.bika.widget.UserViewDialog
 import com.yalantis.ucrop.UCrop
 
-
 //聊天室
 //消息是websocket实现，消息是实时，不会留记录,网络不好会丢失消息
 class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
@@ -235,6 +234,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
             binding.chatInclude.toolbar.subtitle = it
         }
         viewModel.liveData_message.observe(this) {
+            //后面要加最大消息数
             adapter.addData(it)
             if (!chatRvBottom) {
                 binding.chatRv.scrollToPosition(adapter.data.size - 1)

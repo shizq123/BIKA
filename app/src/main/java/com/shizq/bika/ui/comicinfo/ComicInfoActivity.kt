@@ -5,6 +5,7 @@ import android.content.Intent
 import android.os.Bundle
 import android.view.*
 import android.widget.Toast
+import androidx.core.view.size
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.chip.Chip
@@ -72,7 +73,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
             }
         }
 
-        userViewDialog=UserViewDialog(this)
+        userViewDialog = UserViewDialog(this)
 
         //漫画章节
         mAdapterChaper = ChapterAdapter()
@@ -101,10 +102,16 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         binding.comicinfoTotalViews.text = "指数：${viewModel.totalViews}"
 
         //网络请求
-        binding.comicinfoProgressbar.visibility = View.VISIBLE
-        viewModel.getInfo()
-        viewModel.getChapter()
-        viewModel.getRecommend()
+        if (binding.comicinfoTagslist.size < 1) {
+            //防止重复加载 判断标签数是否为0
+            binding.comicinfoProgressbar.visibility = View.VISIBLE
+            viewModel.getInfo()
+            viewModel.chapterPage = 0
+            mAdapterChaper.clear()
+            viewModel.getChapter()
+            viewModel.getRecommend()
+        }
+
 
     }
 
@@ -199,150 +206,150 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         viewModel.liveData_info.observe(this) {
             binding.comicinfoProgressbar.visibility = View.GONE
             if (it.code == 200) {
-
-                //漫画封面图片
-                if (imageurl == "") {
-                    fileserver = it.data.comic.thumb.fileServer
-                    imageurl = it.data.comic.thumb.path
-                    GlideApp.with(this)
-                        .load(
-                            GlideUrlNewKey(
-                                it.data.comic.thumb.fileServer,
-                                it.data.comic.thumb.path
+                if (binding.comicinfoTagslist.size < 1) {
+                    //漫画封面图片
+                    if (imageurl == "") {
+                        fileserver = it.data.comic.thumb.fileServer
+                        imageurl = it.data.comic.thumb.path
+                        GlideApp.with(this)
+                            .load(
+                                GlideUrlNewKey(
+                                    it.data.comic.thumb.fileServer,
+                                    it.data.comic.thumb.path
+                                )
                             )
-                        )
-                        .placeholder(R.drawable.placeholder_transparent)
-                        .into(binding.comicinfoImage)
-                }
+                            .placeholder(R.drawable.placeholder_transparent)
+                            .into(binding.comicinfoImage)
+                    }
 
 
-                //汉化组
-                if (!it.data.comic.chineseTeam.isNullOrEmpty()) {
-                    binding.comicinfoTranslator.visibility = View.VISIBLE
-                    binding.comicinfoTranslator.text = it.data.comic.chineseTeam
-                } else {
-                    binding.comicinfoTranslator.visibility = View.GONE
-                }
+                    //汉化组
+                    if (!it.data.comic.chineseTeam.isNullOrEmpty()) {
+                        binding.comicinfoTranslator.visibility = View.VISIBLE
+                        binding.comicinfoTranslator.text = it.data.comic.chineseTeam
+                    } else {
+                        binding.comicinfoTranslator.visibility = View.GONE
+                    }
 
-                //浏览量
-                binding.comicinfoTotalViews.text = "指数：${it.data.comic.viewsCount}"
+                    //浏览量
+                    binding.comicinfoTotalViews.text = "指数：${it.data.comic.viewsCount}"
 
-                //喜欢数
-                binding.comicinfoLikeText.text = "${it.data.comic.likesCount}人喜欢"
+                    //喜欢数
+                    binding.comicinfoLikeText.text = "${it.data.comic.likesCount}人喜欢"
 
-                //是否喜欢
-                binding.comicinfoLikeImage.setImageResource(if (it.data.comic.isLiked) R.drawable.ic_favorite_24 else R.drawable.ic_favorite_border_24)
+                    //是否喜欢
+                    binding.comicinfoLikeImage.setImageResource(if (it.data.comic.isLiked) R.drawable.ic_favorite_24 else R.drawable.ic_favorite_border_24)
 
-                //评论数 是否关闭评论
-                if (it.data.comic.allowComment) {
-                    binding.comicinfoComment.isClickable = true
-                    binding.comicinfoCommentText.text = "${it.data.comic.commentsCount}条评论"
-                } else {
-                    binding.comicinfoComment.isClickable = false
-                    binding.comicinfoCommentText.text = "禁止评论"
-                }
+                    //评论数 是否关闭评论
+                    if (it.data.comic.allowComment) {
+                        binding.comicinfoComment.isClickable = true
+                        binding.comicinfoCommentText.text = "${it.data.comic.commentsCount}条评论"
+                    } else {
+                        binding.comicinfoComment.isClickable = false
+                        binding.comicinfoCommentText.text = "禁止评论"
+                    }
 
-                //章节页数
-                if (it.data.comic.finished) {
-                    binding.comicinfoChapter.text = "${it.data.comic.epsCount}章(完结)"
-                } else {
-                    binding.comicinfoChapter.text = "${it.data.comic.epsCount}章"
-                }
-                binding.comicinfoPage.text = "${it.data.comic.pagesCount}页"
+                    //章节页数
+                    if (it.data.comic.finished) {
+                        binding.comicinfoChapter.text = "${it.data.comic.epsCount}章(完结)"
+                    } else {
+                        binding.comicinfoChapter.text = "${it.data.comic.epsCount}章"
+                    }
+                    binding.comicinfoPage.text = "${it.data.comic.pagesCount}页"
 
-                //是否收藏
-                if (binding.toolbar.menu.findItem(R.id.action_bookmark) != null) {
-                    binding.toolbar.menu.findItem(R.id.action_bookmark)
-                        .setIcon(if (it.data.comic.isFavourite) R.drawable.ic_bookmark_check else R.drawable.ic_bookmark_add)
-                }
+                    //是否收藏
+                    if (binding.toolbar.menu.findItem(R.id.action_bookmark) != null) {
+                        binding.toolbar.menu.findItem(R.id.action_bookmark)
+                            .setIcon(if (it.data.comic.isFavourite) R.drawable.ic_bookmark_check else R.drawable.ic_bookmark_add)
+                    }
 
-                //描述
-                if (!it.data.comic.description.isNullOrEmpty()) {
-                    binding.comicinfoDescription.text = it.data.comic.description.trim()
-                }
+                    //描述
+                    if (!it.data.comic.description.isNullOrEmpty()) {
+                        binding.comicinfoDescription.text = it.data.comic.description.trim()
+                    }
 
-                //漫画标签 分类 合集 去重
-                val tags = mutableListOf<String>()
-                tags.addAll(it.data.comic.categories)
-                tags.addAll(it.data.comic.tags)
-                for (i in tags.toSortedSet().toList()) {
-                    val chip = Chip(this@ComicInfoActivity)
-                    chip.text = i
-                    chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
-                    binding.comicinfoTagslist.addView(chip)
+                    //漫画标签 分类 合集 去重
+                    val tags = mutableListOf<String>()
+                    tags.addAll(it.data.comic.categories)
+                    tags.addAll(it.data.comic.tags)
+                    for (i in tags.toSortedSet().toList()) {
+                        val chip = Chip(this@ComicInfoActivity)
+                        chip.text = i
+                        chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
+                        binding.comicinfoTagslist.addView(chip)
 
-                    chip.setOnClickListener {
+                        chip.setOnClickListener {
 
-                        val intent = Intent(this@ComicInfoActivity, ComicListActivity::class.java)
+                            val intent =
+                                Intent(this@ComicInfoActivity, ComicListActivity::class.java)
 //                        intent.putExtra("tag", "tags")//因为漫画标签和分类放一起了 会有标签搜不到 所以都改成搜索文字
-                        intent.putExtra("tag", "search")
-                        intent.putExtra("title", i)
-                        intent.putExtra("value", i)
-                        startActivity(intent)
+                            intent.putExtra("tag", "search")
+                            intent.putExtra("title", i)
+                            intent.putExtra("value", i)
+                            startActivity(intent)
 
+                        }
+                    }
+
+                    //上传者 头像
+                    if (null != it.data.comic._creator.avatar) {
+                        GlideApp.with(this)
+                            .load(
+                                GlideUrlNewKey(
+                                    it.data.comic._creator.avatar.fileServer,
+                                    it.data.comic._creator.avatar.path
+                                )
+                            )
+                            .placeholder(R.drawable.placeholder_avatar_2)
+                            .into(binding.comicinfoCreatorAvatar)
+                    } else {
+                        binding.comicinfoCreatorAvatar.setImageResource(R.drawable.placeholder_avatar)
+                    }
+
+                    //记录历史
+                    val historyList = viewModel.getHistory()
+                    if (historyList.isNotEmpty()) {
+                        val history = History(
+                            System.currentTimeMillis(),
+                            historyList[0].title,
+                            historyList[0].fileServer,
+                            historyList[0].path,
+                            historyList[0].comic_or_game,
+                            historyList[0].author,
+                            historyList[0].comic_or_game_id,
+                            historyList[0].sort,
+                            historyList[0].epsCount,
+                            historyList[0].pagesCount,
+                            historyList[0].finished,
+                            historyList[0].likeCount,
+                            historyList[0].ep,
+                            historyList[0].page
+                        )
+                        history.id = historyList[0].id
+                        //这个进行更新 //更新好象要主键
+                        viewModel.updateHistory(history)//更新搜索记录
+
+                    } else {
+                        val history = History(
+                            System.currentTimeMillis(),
+                            viewModel.title.toString(),
+                            fileserver,
+                            imageurl,
+                            "comic",
+                            viewModel.author.toString(),
+                            viewModel.bookId.toString(),
+                            "",
+                            "",
+                            "",
+                            false,
+                            "",
+                            "",
+                            ""
+                        )
+                        //这个进行更新 //更新好象要主键
+                        viewModel.insertHistory(history)//添加搜索记录
                     }
                 }
-
-                //上传者 头像
-                if (null != it.data.comic._creator.avatar) {
-                    GlideApp.with(this)
-                        .load(
-                            GlideUrlNewKey(
-                                it.data.comic._creator.avatar.fileServer,
-                                it.data.comic._creator.avatar.path
-                            )
-                        )
-                        .placeholder(R.drawable.placeholder_avatar_2)
-                        .into(binding.comicinfoCreatorAvatar)
-                } else {
-                    binding.comicinfoCreatorAvatar.setImageResource(R.drawable.placeholder_avatar)
-                }
-
-                //记录历史
-                val historyList=viewModel.getHistory()
-                if (historyList.isNotEmpty()) {
-                    val history = History(
-                        System.currentTimeMillis(),
-                        historyList[0].title,
-                        historyList[0].fileServer,
-                        historyList[0].path,
-                        historyList[0].comic_or_game,
-                        historyList[0].author,
-                        historyList[0].comic_or_game_id,
-                        historyList[0].sort,
-                        historyList[0].epsCount,
-                        historyList[0].pagesCount,
-                        historyList[0].finished,
-                        historyList[0].likeCount,
-                        historyList[0].ep,
-                        historyList[0].page
-                    )
-                    history.id = historyList[0].id
-                    //这个进行更新 //更新好象要主键
-                    viewModel.updateHistory(history)//更新搜索记录
-
-                } else {
-                    val history = History(
-                        System.currentTimeMillis(),
-                        viewModel.title.toString(),
-                        fileserver,
-                        imageurl,
-                        "comic",
-                        viewModel.author.toString(),
-                        viewModel.bookId.toString(),
-                        "",
-                        "",
-                        "",
-                        false,
-                        "",
-                        "",
-                        ""
-                    )
-                    //这个进行更新 //更新好象要主键
-                    viewModel.insertHistory(history)//添加搜索记录
-                }
-
-
             } else if (it.code == 400 && it.error == "1014") {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("本子审核中！")
@@ -367,8 +374,13 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         //漫画章节
         viewModel.liveData_chapter.observe(this) {
             if (it.code == 200) {
-                mAdapterChaper.addData(it.data.eps.docs)
                 binding.comicinfoBtnRead.show()
+                if (it.data.eps.page == 1) {//防止重复添加
+                    mAdapterChaper.clear()
+                    mAdapterChaper.addData(it.data.eps.docs)
+                } else {
+                    mAdapterChaper.addData(it.data.eps.docs)
+                }
 
                 if (it.data.eps.pages == it.data.eps.page) {
                     //总页数等于当前页数 不显示加载布局
@@ -390,13 +402,15 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         //漫画推荐
         viewModel.liveData_recommend.observe(this) {
             if (it.code == 200) {
-                binding.comicinfoRecommend.addItemDecoration(
-                    SpacesItemDecoration(
-                        SpacesItemDecoration.px2dp(20F),
-                        it.data.comics
+                if (mAdapterRecommend.itemCount < 1) {
+                    binding.comicinfoRecommend.addItemDecoration(
+                        SpacesItemDecoration(
+                            SpacesItemDecoration.px2dp(20F),
+                            it.data.comics
+                        )
                     )
-                )
-                mAdapterRecommend.addNewData(it.data.comics)
+                    mAdapterRecommend.addNewData(it.data.comics)
+                }
             }
         }
 

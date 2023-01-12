@@ -27,7 +27,7 @@ class ComicListViewModel(application: Application) : BaseViewModel(application) 
     val liveData: MutableLiveData<BaseResponse<ComicListBean>> by lazy {
         MutableLiveData<BaseResponse<ComicListBean>>()
     }
-    val liveData_random: MutableLiveData<BaseResponse<ComicListBean2>> by lazy {
+    val liveData2: MutableLiveData<BaseResponse<ComicListBean2>> by lazy {
         MutableLiveData<BaseResponse<ComicListBean2>>()
     }
 
@@ -150,12 +150,12 @@ class ComicListViewModel(application: Application) : BaseViewModel(application) 
             .subscribe(object : BaseObserver<ComicListBean2>() {
                 override fun onSuccess(baseResponse: BaseResponse<ComicListBean2>) {
                     // 请求成功
-                    liveData_random.postValue(baseResponse)
+                    liveData2.postValue(baseResponse)
                 }
 
                 override fun onCodeError(baseResponse: BaseResponse<ComicListBean2>) {
                     // 请求成功
-                    liveData_random.postValue(baseResponse)
+                    liveData2.postValue(baseResponse)
                 }
 
             })

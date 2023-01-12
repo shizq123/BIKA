@@ -30,12 +30,14 @@ class CollectionsActivity : BaseActivity<ActivityCollectionsBinding, Collections
         setSupportActionBar(binding.collectionsInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        adapter = CollectionsAdapter(this@CollectionsActivity)
-        binding.collectionsRv.layoutManager = LinearLayoutManager(this@CollectionsActivity)
+        adapter = CollectionsAdapter(this)
+        binding.collectionsRv.layoutManager = LinearLayoutManager(this)
         binding.collectionsRv.adapter = adapter
 
         showProgressBar(true, "")
-        viewModel.getData()
+        if (adapter.itemCount < 1) {
+            viewModel.getData()
+        }
 
         //网络重试点击事件监听
         binding.collectionsLoadLayout.setOnClickListener {
@@ -58,7 +60,9 @@ class CollectionsActivity : BaseActivity<ActivityCollectionsBinding, Collections
         viewModel.liveData.observe(this) {
             if (it.code == 200) {
                 binding.collectionsLoadLayout.visibility = ViewGroup.GONE
-                adapter.addNewData(it.data.collections)
+                if (adapter.itemCount < 1) {
+                    adapter.addData(it.data.collections)
+                }
             } else {
                 showProgressBar(
                     false,

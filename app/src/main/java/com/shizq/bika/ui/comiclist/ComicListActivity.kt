@@ -239,7 +239,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             }
         }
 
-        viewModel.liveData_random.observe(this) {
+        viewModel.liveData2.observe(this) {
             skeletonScreen.hide()
             binding.comiclistRv.isEnabled = true
             if (it.code == 200) {
