@@ -272,14 +272,22 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
     private fun setSeal(seal: ArrayList<CharSequence>) {
         if (seal.size > 0) {
             viewModel.page = 0
-            mComicListAdapter.clear()
-            mComicListAdapter.notifyDataSetChanged()
-            mComicListAdapter.addSealData(seal)
             binding.comiclistRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
             binding.comiclistLoadLayout.visibility = ViewGroup.VISIBLE
             binding.comiclistLoadLayout.isEnabled = false
             showProgressBar(true, "")
-            viewModel.getComicList()
+            if (viewModel.tag.equals("random")) {
+                mComicListAdapter2.clear()
+                mComicListAdapter2.notifyDataSetChanged()
+                mComicListAdapter2.addSealData(seal)
+                viewModel.getRandom()
+            } else {
+                mComicListAdapter.clear()
+                mComicListAdapter.notifyDataSetChanged()
+                mComicListAdapter.addSealData(seal)
+                viewModel.getComicList()
+            }
+
         }
     }
 
