@@ -12,12 +12,29 @@ import com.shizq.bika.utils.GlideUrlNewKey
 //漫画列表的第一种数据类型
 class ComicListAdapter : BaseBindingAdapter<ComicListBean.Comics.Doc, ItemComiclistBinding>(R.layout.item_comiclist) {
 
+    private var dataSeal= ArrayList<CharSequence>()
+
+    fun addSealData(data: ArrayList<CharSequence>) {
+        dataSeal.clear()
+        dataSeal.addAll(data)
+        notifyDataSetChanged()
+    }
+
     override fun bindView(
         holder: BaseBindingHolder<*, *>,
         bean: ComicListBean.Comics.Doc,
         binding: ItemComiclistBinding,
         position: Int
     ) {
+        val dataIntersect= dataSeal intersect bean.categories
+        if (dataIntersect.isNotEmpty()) {
+            binding.comiclistItemContainer.visibility = View.GONE
+            binding.comiclistItemSealText.visibility = View.VISIBLE
+        } else {
+            binding.comiclistItemContainer.visibility = View.VISIBLE
+            binding.comiclistItemSealText.visibility = View.GONE
+        }
+
         if (bean.likesCount != 0) {
             binding.comiclistItemLikeimage.visibility = View.VISIBLE
             binding.comiclistItemLiketext.visibility = View.VISIBLE

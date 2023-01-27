@@ -2,10 +2,18 @@ package com.shizq.bika.ui.comiclist
 
 import android.content.Intent
 import android.os.Bundle
-import android.view.*
+import android.util.SparseBooleanArray
+import android.view.Gravity
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.PopupWindow
+import android.widget.Toast
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ComicListAdapter
@@ -24,6 +32,9 @@ import me.jingbin.library.skeleton.BySkeleton
  */
 
 class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewModel>() {
+    var tag = arrayOf<CharSequence>("禁書目錄", "生肉", "耽美花園", "重口地帶", "純愛", "偽娘哲學", "扶他樂園", "WEBTOON")
+    var tagInitial = booleanArrayOf(false, false, false, false, false, false, false, false)
+
     private lateinit var mComicListAdapter: ComicListAdapter
     private lateinit var mComicListAdapter2: ComicListAdapter2
     private lateinit var skeletonScreen: ByRVItemSkeletonScreen
@@ -55,6 +66,13 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         }
         setSupportActionBar(binding.comiclistInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
+
+        if (viewModel.tag.equals("categories")
+            || viewModel.tag.equals("search")
+            || viewModel.tag.equals("favourite")
+        ) {
+            binding.comiclistSort.visibility = View.VISIBLE
+        }
 
         //PopupWindow 用来显示图片大图
         popupView = View.inflate(this@ComicListActivity, R.layout.view_popup_image, null)
@@ -97,6 +115,70 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
     }
 
     private fun intiListener() {
+        //排序方式
+        binding.comiclistSort.setOnClickListener {
+            val popupMenu = PopupMenu(this, it)
+            if (viewModel.tag.equals("categories") || viewModel.tag.equals("search")) {
+                popupMenu.menuInflater.inflate(R.menu.toolbar_menu_comiclist, popupMenu.menu)
+            }
+            if (viewModel.tag.equals("favourite")) {
+                popupMenu.menuInflater.inflate(R.menu.toolbar_menu_comiclist2, popupMenu.menu)
+            }
+            popupMenu.show()
+            popupMenu.setOnMenuItemClickListener { item ->
+                when (item.itemId) {
+                    R.id.dd -> {
+                        item.isChecked = true
+                        setSort("dd", item.title.toString())
+                    }
+                    R.id.da -> {
+                        item.isChecked = true
+                        setSort("da", item.title.toString())
+                    }
+                    R.id.ld -> {
+                        item.isChecked = true
+                        setSort("ld", item.title.toString())
+                    }
+                    R.id.vd -> {
+                        item.isChecked = true
+                        setSort("vd", item.title.toString())
+                    }
+                }
+                true
+            }
+            popupMenu.setOnDismissListener {
+
+            }
+        }
+
+        //封印的标签
+        binding.comiclistTag.setOnClickListener {
+            MaterialAlertDialogBuilder(this)
+                .setTitle("封印")
+                .setPositiveButton("确定") { dialog, which ->
+                    val checkedItemPositions: SparseBooleanArray =
+                        (dialog as AlertDialog).listView.checkedItemPositions
+
+                    val result = ArrayList<CharSequence>()
+                    for (i in 0..tag.size) {
+                        if (checkedItemPositions.get(i)) {
+                            result.add(tag[i])
+                        }
+                    }
+
+                    setSeal(result)
+                    Toast.makeText(this, result.toString(), Toast.LENGTH_LONG).show()
+                }
+                .setNegativeButton("取消", null)
+                .setMultiChoiceItems(tag, tagInitial, null)
+                .show()
+        }
+
+        //跳转页数
+        binding.comiclistPage.setOnClickListener {
+
+        }
+
         binding.comiclistRv.setOnItemClickListener { v, position ->
             if (viewModel.tag.equals("random")) {
                 val data = mComicListAdapter2.getItemData(position)
@@ -162,49 +244,37 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         }
     }
 
-    //toolbar菜单 这方法是在onCreate之后执行 根据判断是否是随机页面来显示排序菜单
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        if (viewModel.tag.equals("categories") || viewModel.tag.equals("search")) {
-            menuInflater.inflate(R.menu.toolbar_menu_comiclist, menu)
-        }
-        if (viewModel.tag.equals("favourite")) {
-            menuInflater.inflate(R.menu.toolbar_menu_comiclist2, menu)
-        }
-        return true
-    }
-
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
                 finish()
-            }
-            R.id.dd -> {
-                item.isChecked = true
-                setSort("dd")
-            }
-            R.id.da -> {
-                item.isChecked = true
-                setSort("da")
-            }
-            R.id.ld -> {
-                item.isChecked = true
-                setSort("ld")
-            }
-            R.id.vd -> {
-                item.isChecked = true
-                setSort("vd")
             }
         }
 
         return super.onOptionsItemSelected(item)
     }
 
-    private fun setSort(sort: String) {
+    private fun setSort(sort: String, title: CharSequence) {
+        binding.comiclistSort.text = title
         if (viewModel.sort != sort) {
             viewModel.page = 0
             viewModel.sort = sort
             mComicListAdapter.clear()
             mComicListAdapter.notifyDataSetChanged()
+            binding.comiclistRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
+            binding.comiclistLoadLayout.visibility = ViewGroup.VISIBLE
+            binding.comiclistLoadLayout.isEnabled = false
+            showProgressBar(true, "")
+            viewModel.getComicList()
+        }
+    }
+
+    private fun setSeal(seal: ArrayList<CharSequence>) {
+        if (seal.size > 0) {
+            viewModel.page = 0
+            mComicListAdapter.clear()
+            mComicListAdapter.notifyDataSetChanged()
+            mComicListAdapter.addSealData(seal)
             binding.comiclistRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
             binding.comiclistLoadLayout.visibility = ViewGroup.VISIBLE
             binding.comiclistLoadLayout.isEnabled = false
