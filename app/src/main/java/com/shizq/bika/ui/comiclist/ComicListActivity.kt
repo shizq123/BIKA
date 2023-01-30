@@ -32,8 +32,80 @@ import me.jingbin.library.skeleton.BySkeleton
  */
 
 class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewModel>() {
-    var tag = arrayOf<CharSequence>("禁書目錄", "生肉", "耽美花園", "重口地帶", "純愛", "偽娘哲學", "扶他樂園", "WEBTOON")
-    var tagInitial = booleanArrayOf(false, false, false, false, false, false, false, false)
+    private var tag = arrayOf<CharSequence>(
+        "全彩",
+        "長篇",
+        "同人",
+        "短篇",
+        "圓神領域",
+        "碧藍幻想",
+        "CG雜圖",
+        "英語 ENG",
+        "生肉",
+        "純愛",
+        "百合花園",
+        "耽美花園",
+        "偽娘哲學",
+        "後宮閃光",
+        "扶他樂園",
+        "單行本",
+        "姐姐系",
+        "妹妹系",
+        "SM",
+        "性轉換",
+        "足の恋",
+        "人妻",
+        "NTR",
+        "強暴",
+        "非人類",
+        "艦隊收藏",
+        "Love Live",
+        "SAO 刀劍神域",
+        "Fate",
+        "東方",
+        "WEBTOON",
+        "禁書目錄",
+        "歐美",
+        "Cosplay",
+        "重口地帶"
+    )
+    private var tagInitial = booleanArrayOf(
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false,
+        false
+    )
 
     private lateinit var mComicListAdapter: ComicListAdapter
     private lateinit var mComicListAdapter2: ComicListAdapter2
@@ -160,9 +232,12 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                         (dialog as AlertDialog).listView.checkedItemPositions
 
                     val result = ArrayList<CharSequence>()
-                    for (i in 0..tag.size) {
+                    for (i in tag.indices) {
                         if (checkedItemPositions.get(i)) {
+                            tagInitial[i] = true//保存状态
                             result.add(tag[i])
+                        } else {
+                            tagInitial[i] = false//保存状态
                         }
                     }
 
@@ -270,23 +345,13 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
     }
 
     private fun setSeal(seal: ArrayList<CharSequence>) {
-        if (seal.size > 0) {
-            viewModel.page = 0
-            binding.comiclistRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
-            binding.comiclistLoadLayout.visibility = ViewGroup.VISIBLE
-            binding.comiclistLoadLayout.isEnabled = false
-            showProgressBar(true, "")
-            if (viewModel.tag.equals("random")) {
-                mComicListAdapter2.clear()
-                mComicListAdapter2.notifyDataSetChanged()
-                mComicListAdapter2.addSealData(seal)
-                viewModel.getRandom()
-            } else {
-                mComicListAdapter.clear()
-                mComicListAdapter.notifyDataSetChanged()
-                mComicListAdapter.addSealData(seal)
-                viewModel.getComicList()
-            }
+        if (viewModel.tag.equals("random")) {
+            mComicListAdapter2.addSealData(seal)
+            mComicListAdapter2.notifyDataSetChanged()
+
+        } else {
+            mComicListAdapter.addSealData(seal)
+            mComicListAdapter.notifyDataSetChanged()
 
         }
     }
@@ -298,6 +363,8 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             if (it.code == 200) {
                 binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
                 mComicListAdapter.addData(it.data.comics.docs)
+                viewModel.pages = it.data.comics.pages//总页数
+
                 if (it.data.comics.pages <= it.data.comics.page) {
                     binding.comiclistRv.loadMoreEnd()//没有更多数据
                 } else {
