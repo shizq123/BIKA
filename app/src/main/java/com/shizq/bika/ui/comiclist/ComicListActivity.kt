@@ -248,19 +248,23 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                 .show()
         }
 
+        //跳转页数
         binding.comiclistPage.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
                 //输入框回车键
-                if (binding.comiclistPage.text.toString() != ""){
-                    var page=binding.comiclistPage.text.toString().toInt()-1//因为网络请求时会加一，所以提前减一
-                    if (page>viewModel.pages){
+                if (binding.comiclistPage.text.toString() != "") {
+                    if (binding.comiclistPage.text.toString().toInt() == 0) {
+                        binding.comiclistPage.setText("1")
+                    }
+                    var page = binding.comiclistPage.text.toString().toInt() - 1//因为网络请求时会加一，所以提前减一
+                    if (page > viewModel.pages) {
                         //输入的页数大于当前页数时，修改成最大页数
-                        page = viewModel.pages
+                        page = viewModel.pages -1 //网络请求时会加一
                         binding.comiclistPage.setText(viewModel.pages.toString())
                     }
-                    if (viewModel.page!=page){
-                        viewModel.startpage=page//起始页数
-                        viewModel.page=page//当前页数
+                    if (viewModel.page != page) {
+                        viewModel.startpage = page//起始页数
+                        viewModel.page = page//当前页数
                         binding.comiclistRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
                         binding.comiclistLoadLayout.visibility = ViewGroup.VISIBLE
                         binding.comiclistLoadLayout.isEnabled = false
