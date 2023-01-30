@@ -17,8 +17,10 @@ import java.net.URLEncoder
 class ComicListViewModel(application: Application) : BaseViewModel(application) {
     var urlEnd: String? = null
     var tag: String? = null
+    var startpage = 0//起始页数，用于跳转页数后判断当前页数
     var page = 0//当前页数
     var pages = 1//总页数
+    var limit = 20//每页显示多少
     var sort: String = "dd"
     var value: String? = null
 

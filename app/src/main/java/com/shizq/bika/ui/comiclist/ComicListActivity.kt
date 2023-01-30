@@ -3,16 +3,14 @@ package com.shizq.bika.ui.comiclist
 import android.content.Intent
 import android.os.Bundle
 import android.util.SparseBooleanArray
-import android.view.Gravity
-import android.view.MenuItem
-import android.view.View
-import android.view.ViewGroup
+import android.view.*
 import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -26,6 +24,7 @@ import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.StatusBarUtil
 import me.jingbin.library.skeleton.ByRVItemSkeletonScreen
 import me.jingbin.library.skeleton.BySkeleton
+import kotlin.math.ceil
 
 /**
  * 漫画列表
@@ -223,7 +222,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             }
         }
 
-        //封印的标签
+        //封印的标签 筛选
         binding.comiclistTag.setOnClickListener {
             MaterialAlertDialogBuilder(this)
                 .setTitle("封印")
@@ -249,9 +248,37 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                 .show()
         }
 
-        //跳转页数
-        binding.comiclistPage.setOnClickListener {
+        binding.comiclistPage.setOnKeyListener { _, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
+                //输入框回车键
+                if (binding.comiclistPage.text.toString() != ""){
+                    var page=binding.comiclistPage.text.toString().toInt()-1//因为网络请求时会加一，所以提前减一
+                    if (page>viewModel.pages){
+                        //输入的页数大于当前页数时，修改成最大页数
+                        page = viewModel.pages
+                        binding.comiclistPage.setText(viewModel.pages.toString())
+                    }
+                    if (viewModel.page!=page){
+                        viewModel.startpage=page//起始页数
+                        viewModel.page=page//当前页数
+                        binding.comiclistRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
+                        binding.comiclistLoadLayout.visibility = ViewGroup.VISIBLE
+                        binding.comiclistLoadLayout.isEnabled = false
+                        showProgressBar(true, "")
 
+                        if (viewModel.tag.equals("random")) {
+                            mComicListAdapter2.clear()
+                            mComicListAdapter2.notifyDataSetChanged()
+                            viewModel.getRandom()
+                        } else {
+                            mComicListAdapter.clear()
+                            mComicListAdapter.notifyDataSetChanged()
+                            viewModel.getComicList()
+                        }
+                    }
+                }
+            }
+            false
         }
 
         binding.comiclistRv.setOnItemClickListener { v, position ->
@@ -317,6 +344,18 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                 )
             }
         }
+
+        binding.comiclistRv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                val layoutManager = recyclerView.layoutManager
+                if (layoutManager is LinearLayoutManager) {
+                    //获取最后一个可见item
+                    val lastItemPosition = layoutManager.findLastVisibleItemPosition().toDouble()
+                    //来显示当前页数
+                    binding.comiclistPage.setText((ceil(lastItemPosition/viewModel.limit).toInt()+viewModel.startpage).toString())
+                }
+            }
+        })
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -364,7 +403,9 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                 binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
                 mComicListAdapter.addData(it.data.comics.docs)
                 viewModel.pages = it.data.comics.pages//总页数
-
+                viewModel.limit = it.data.comics.limit//每页显示多少
+                binding.comiclistPages.text="/${it.data.comics.pages}"//显示总页数
+                binding.comiclistPage.setText(it.data.comics.page.toString())//显示页数
                 if (it.data.comics.pages <= it.data.comics.page) {
                     binding.comiclistRv.loadMoreEnd()//没有更多数据
                 } else {

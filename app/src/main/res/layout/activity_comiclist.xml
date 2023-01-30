@@ -49,11 +49,21 @@
                     android:text="封印"/>
 
                 <TextView
-                    android:id="@+id/comiclist_page"
+                    android:id="@+id/comiclist_pages"
                     android:layout_alignParentEnd="true"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="1/1000"/>
+                    android:textSize="14sp"/>
+                <EditText
+                    android:id="@+id/comiclist_page"
+                    android:layout_toStartOf="@id/comiclist_pages"
+                    android:layout_toEndOf="@id/comiclist_tag"
+                    android:background="@null"
+                    android:gravity="end"
+                    android:inputType="numberDecimal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"/>
             </RelativeLayout>
             <me.jingbin.library.ByRecyclerView
                 android:id="@+id/comiclist_rv"
