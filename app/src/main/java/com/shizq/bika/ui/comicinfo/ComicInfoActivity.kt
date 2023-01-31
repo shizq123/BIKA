@@ -269,10 +269,9 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                     }
 
                     //漫画标签 分类 合集 去重
-                    val tags = mutableListOf<String>()
-                    tags.addAll(it.data.comic.categories)
-                    tags.addAll(it.data.comic.tags)
-                    for (i in tags.toSortedSet().toList()) {
+                    val categories = mutableListOf<String>()
+                    categories.addAll(it.data.comic.categories)
+                    for (i in categories.toSortedSet().toList()) {
                         val chip = Chip(this@ComicInfoActivity)
                         chip.text = i
                         chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
@@ -284,6 +283,26 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                                 Intent(this@ComicInfoActivity, ComicListActivity::class.java)
 //                        intent.putExtra("tag", "tags")//因为漫画标签和分类放一起了 会有标签搜不到 所以都改成搜索文字
                             intent.putExtra("tag", "search")
+                            intent.putExtra("title", i)
+                            intent.putExtra("value", i)
+                            startActivity(intent)
+
+                        }
+                    }
+
+                    val tags = mutableListOf<String>()
+                    tags.addAll(it.data.comic.tags)
+                    for (i in tags.toSortedSet().toList()) {
+                        val chip = Chip(this@ComicInfoActivity)
+                        chip.text = i
+                        chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
+                        binding.comicinfoTagslist1.addView(chip)
+
+                        chip.setOnClickListener {
+
+                            val intent =
+                                Intent(this@ComicInfoActivity, ComicListActivity::class.java)
+                            intent.putExtra("tag", "tags")
                             intent.putExtra("title", i)
                             intent.putExtra("value", i)
                             startActivity(intent)

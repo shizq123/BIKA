@@ -43,7 +43,7 @@
             android:layout_margin="@dimen/fab_margin"
             android:onClick="@{()->clickListener.Read()}"
             android:text="开始阅读"
-            android:visibility="gone"/>
+            android:visibility="gone" />
 
         <androidx.core.widget.NestedScrollView
             android:layout_width="match_parent"
@@ -75,17 +75,18 @@
                             android:scaleType="centerCrop" />
 
                     </com.google.android.material.card.MaterialCardView>
+
                     <TextView
                         android:id="@+id/comicinfo_title"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="20dp"
                         android:layout_toEndOf="@id/comicinfo_image_layout"
-                        android:textIsSelectable="true"
                         android:maxLines="4"
+                        android:text="@{viewModel.title}"
+                        android:textIsSelectable="true"
                         android:textSize="20sp"
                         android:textStyle="bold"
-                        android:text="@{viewModel.title}"
                         app:autoSizeMaxTextSize="20sp"
                         app:autoSizeMinTextSize="14sp"
                         app:autoSizeTextType="uniform" />
@@ -95,15 +96,15 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_below="@id/comicinfo_title"
-                        android:textIsSelectable="true"
                         android:layout_marginStart="20dp"
                         android:layout_marginTop="4dp"
                         android:layout_toEndOf="@id/comicinfo_image_layout"
                         android:onClick="@{()->clickListener.Author()}"
                         android:text="@{viewModel.author}"
-                        android:visibility="@{viewModel.author==null||viewModel.author.length() == 0?View.GONE:View.VISIBLE}"
                         android:textColor="@color/pink"
-                        android:textSize="16sp" />
+                        android:textIsSelectable="true"
+                        android:textSize="16sp"
+                        android:visibility="@{viewModel.author==null||viewModel.author.length() == 0?View.GONE:View.VISIBLE}" />
 
                     <TextView
                         android:id="@+id/comicinfo_translator"
@@ -120,13 +121,13 @@
 
                     <TextView
                         android:id="@+id/comicinfo_totalViews"
-                        android:textIsSelectable="true"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:layout_below="@id/comicinfo_translator"
                         android:layout_marginStart="20dp"
                         android:layout_marginTop="4dp"
-                        android:layout_toEndOf="@id/comicinfo_image_layout" />
+                        android:layout_toEndOf="@id/comicinfo_image_layout"
+                        android:textIsSelectable="true" />
 
 
                 </RelativeLayout>
@@ -232,8 +233,7 @@
                             android:layout_gravity="center"
                             android:scaleType="centerCrop"
                             android:src="@drawable/placeholder_avatar_2"
-                            app:shapeAppearance="@style/CircleStyle"
-                            />
+                            app:shapeAppearance="@style/CircleStyle" />
 
                         <LinearLayout
                             android:layout_width="match_parent"
@@ -247,12 +247,12 @@
                                 android:id="@+id/comicinfo_creator_name"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:textIsSelectable="true"
                                 android:ellipsize="end"
                                 android:lines="1"
                                 android:onClick="@{()->clickListener.Creator()}"
-                                android:text="@{viewModel.liveData_info.Data.Comic._creator.name}"
                                 android:singleLine="true"
+                                android:text="@{viewModel.liveData_info.Data.Comic._creator.name}"
+                                android:textIsSelectable="true"
                                 android:textSize="16sp" />
 
                             <TextView
@@ -266,24 +266,59 @@
                 </com.google.android.material.card.MaterialCardView>
 
                 <!-- 简介 -->
-                    <TextView
-                        android:id="@+id/comicinfo_description"
+                <TextView
+                    android:id="@+id/comicinfo_description"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:autoLink="web"
+                    android:text="..."
+                    android:textIsSelectable="true" />
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginTop="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.chip.Chip
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:enabled="false"
+                        android:text="分类"
+                        app:ensureMinTouchTargetSize="false" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/comicinfo_tagslist"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="12dp"
-                        android:layout_marginEnd="12dp"
-                        android:autoLink="web"
-                        android:textIsSelectable="true"
-                        android:text="..."/>
+                        android:layout_marginStart="6dp"
+                        app:chipSpacing="2dp" />
+                </LinearLayout>
 
-
-                <!-- 标签 -->
-                <com.google.android.material.chip.ChipGroup
-                    android:id="@+id/comicinfo_tagslist"
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_margin="12dp"
-                    app:chipSpacing="2dp" />
+                    android:orientation="horizontal">
+
+                    <com.google.android.material.chip.Chip
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:enabled="false"
+                        android:text="标签"
+                        app:ensureMinTouchTargetSize="false" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/comicinfo_tagslist1"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        app:chipSpacing="2dp" />
+                </LinearLayout>
 
                 <!-- 章节 -->
                 <me.jingbin.library.ByRecyclerView
