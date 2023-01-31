@@ -5,6 +5,8 @@ import androidx.lifecycle.MutableLiveData
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ComicListBean
 import com.shizq.bika.bean.ComicListBean2
+import com.shizq.bika.db.Search
+import com.shizq.bika.db.SearchRepository
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
@@ -22,6 +24,7 @@ class ComicListViewModel(application: Application) : BaseViewModel(application) 
     var pages = 1//总页数
     var limit = 20//每页显示多少
     var sort: String = "dd"
+    var title: String? = null
     var value: String? = null
 
     var baseObservable: Observable<BaseResponse<ComicListBean>>? = null
@@ -161,5 +164,10 @@ class ComicListViewModel(application: Application) : BaseViewModel(application) 
                 }
 
             })
+    }
+
+    private val searchRepository: SearchRepository = SearchRepository(application)
+    fun insertSearch(vararg search: Search?) {
+        searchRepository.insertSearch(*search)
     }
 }

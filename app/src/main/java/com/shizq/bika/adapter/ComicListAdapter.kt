@@ -46,10 +46,10 @@ class ComicListAdapter : BaseBindingAdapter<ComicListBean.Comics.Doc, ItemComicl
         if (bean.epsCount != 0) {
             if (bean.finished) {
                 binding.comiclistItemBooktext.text =
-                    "${bean.epsCount}C/${bean.pagesCount}P(完)"
+                    "${bean.epsCount}E/${bean.pagesCount}P(完)"
             } else {
                 binding.comiclistItemBooktext.text =
-                    "${bean.epsCount}C/${bean.pagesCount}P"
+                    "${bean.epsCount}E/${bean.pagesCount}P"
             }
         } else {
             binding.comiclistItemBooktext.text = ""

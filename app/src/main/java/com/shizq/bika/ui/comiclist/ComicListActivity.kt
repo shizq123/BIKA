@@ -4,11 +4,13 @@ import android.content.Intent
 import android.os.Bundle
 import android.util.SparseBooleanArray
 import android.view.*
+import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupWindow
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
+import androidx.core.view.isVisible
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -18,6 +20,7 @@ import com.shizq.bika.adapter.ComicListAdapter
 import com.shizq.bika.adapter.ComicListAdapter2
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComiclistBinding
+import com.shizq.bika.db.Search
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
@@ -126,16 +129,11 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
 
         //接收传递的信息
         viewModel.tag = intent.getStringExtra("tag")
-        val title = intent.getStringExtra("title")
+        viewModel.title = intent.getStringExtra("title")
         viewModel.value = intent.getStringExtra("value")
 
         //toolbar
-        if (viewModel.tag.equals("search")) {
-            binding.comiclistInclude.toolbar.title = "搜索：${title}"
-        } else {
-            binding.comiclistInclude.toolbar.title = title
-        }
-        setSupportActionBar(binding.comiclistInclude.toolbar)
+        setSupportActionBar(binding.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
         if (viewModel.tag.equals("categories")
@@ -186,14 +184,40 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
     }
 
     private fun intiListener() {
+        binding.searchView.setOnKeyListener { v, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
+                //监听回车键
+                val search= Search(binding.searchView.text.toString())
+                viewModel.insertSearch(search)//添加搜索记录
+
+                viewModel.value = binding.searchView.text.toString()
+                viewModel.tag = "search"
+                viewModel.page=0
+                viewModel.startpage=0
+                mComicListAdapter.clear()
+                mComicListAdapter.notifyDataSetChanged()
+                binding.comiclistRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
+                binding.comiclistLoadLayout.visibility = ViewGroup.VISIBLE
+                binding.comiclistLoadLayout.isEnabled = false
+                showProgressBar(true, "")
+                viewModel.getComicList()
+
+            }
+            false
+        }
+
+        binding.clearText.setOnClickListener {
+            binding.searchView.setText("")
+        }
+
         //排序方式
         binding.comiclistSort.setOnClickListener {
             val popupMenu = PopupMenu(this, it)
             if (viewModel.tag.equals("categories") || viewModel.tag.equals("search")) {
-                popupMenu.menuInflater.inflate(R.menu.toolbar_menu_comiclist, popupMenu.menu)
+                popupMenu.menuInflater.inflate(R.menu.toolbar_menu_comiclist_sort, popupMenu.menu)
             }
             if (viewModel.tag.equals("favourite")) {
-                popupMenu.menuInflater.inflate(R.menu.toolbar_menu_comiclist2, popupMenu.menu)
+                popupMenu.menuInflater.inflate(R.menu.toolbar_menu_comiclist_sort2, popupMenu.menu)
             }
             popupMenu.show()
             popupMenu.setOnMenuItemClickListener { item ->
@@ -362,16 +386,40 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         })
     }
 
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu_comiclist, menu)
+
+        //toolbar菜单创建完毕后更新ui
+        if (viewModel.tag.equals("search")) {
+            binding.toolbar.menu.findItem(R.id.action_search).isVisible = false
+            binding.comiclistSearchLayout.isVisible=true
+            binding.searchView.setText(viewModel.title)
+
+        } else {
+            binding.toolbar.title = viewModel.title
+        }
+        return true
+    }
+
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
                 finish()
+            }
+            R.id.action_search ->{
+                binding.toolbar.menu.findItem(R.id.action_search).isVisible = false
+                binding.comiclistSearchLayout.isVisible=true
+                //获取焦点 弹出软键盘
+                binding.searchView.requestFocus()
+                val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                imm.showSoftInput(binding.searchView, 0)
             }
         }
 
         return super.onOptionsItemSelected(item)
     }
 
+    //排序方式
     private fun setSort(sort: String, title: CharSequence) {
         binding.comiclistSort.text = title
         if (viewModel.sort != sort) {
@@ -387,6 +435,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         }
     }
 
+    //筛选 封印
     private fun setSeal(seal: ArrayList<CharSequence>) {
         if (viewModel.tag.equals("random")) {
             mComicListAdapter2.addSealData(seal)

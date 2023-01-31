@@ -4,26 +4,10 @@
     tools:context="com.shizq.bika.ui.main.MainActivity">
 
     <item
-        android:enabled="false"
-        android:title="@string/action_sort" />
-    <item
-        android:id="@+id/dd"
-        android:orderInCategory="101"
-        android:title="@string/sort_dd"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/da"
-        android:orderInCategory="102"
-        android:title="@string/sort_da"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/ld"
-        android:orderInCategory="103"
-        android:title="@string/sort_ld"
-        app:showAsAction="never" />
-    <item
-        android:id="@+id/vd"
-        android:orderInCategory="104"
-        android:title="@string/sort_vd"
-        app:showAsAction="never" />
+        android:id="@+id/action_search"
+        android:icon="@drawable/ic_search"
+        android:orderInCategory="2"
+        app:showAsAction="ifRoom"
+        android:title="@string/action_search"
+        />
 </menu>
