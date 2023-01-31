@@ -26,6 +26,30 @@
             android:layout_height="match_parent"
             app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
+            <!--显示页数 与 跳转页数-->
+            <RelativeLayout
+                android:id="@+id/comments_page_layout"
+                android:layout_margin="6dp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+                <TextView
+                    android:id="@+id/comments_pages"
+                    android:layout_alignParentEnd="true"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"/>
+                <EditText
+                    android:id="@+id/comments_page"
+                    android:layout_toStartOf="@id/comments_pages"
+                    android:background="@null"
+                    android:gravity="end"
+                    android:inputType="numberDecimal"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textSize="14sp"/>
+            </RelativeLayout>
+
+            <!--回复栏-->
             <RelativeLayout
                 android:id="@+id/comments_reply_layout"
                 android:layout_width="match_parent"
@@ -51,9 +75,11 @@
                     android:textColor="?attr/colorControlNormal" />
             </RelativeLayout>
 
+            <!--评论列表-->
             <me.jingbin.library.ByRecyclerView
                 android:id="@+id/comments_rv"
                 android:layout_above="@id/comments_reply_layout"
+                android:layout_below="@id/comments_page_layout"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:paddingStart="6dp"

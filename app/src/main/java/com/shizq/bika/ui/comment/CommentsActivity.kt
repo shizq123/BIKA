@@ -3,12 +3,14 @@ package com.shizq.bika.ui.comment
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.os.Bundle
+import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
 import com.google.android.material.bottomsheet.BottomSheetDialog
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -22,6 +24,7 @@ import com.shizq.bika.utils.dp
 import com.shizq.bika.widget.InputTextMsgDialog
 import com.shizq.bika.widget.UserViewDialog
 import me.jingbin.library.ByRecyclerView
+import kotlin.math.ceil
 
 /**
  * 评论
@@ -112,6 +115,36 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
     }
 
     private fun initListener() {
+        //页数跳转
+        binding.commentsPage.setOnKeyListener { _, keyCode, event ->
+            if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
+                //输入框回车键
+                if (binding.commentsPage.text.toString() != "") {
+                    if (binding.commentsPage.text.toString().toInt() == 0) {
+                        binding.commentsPage.setText("1")
+                    }
+                    var page = binding.commentsPage.text.toString().toInt() - 1//因为网络请求时会加一，所以提前减一
+                    if (page > viewModel.pages) {
+                        //输入的页数大于当前页数时，修改成最大页数
+                        page = viewModel.pages -1 //网络请求时会加一
+                        binding.commentsPage.setText(viewModel.pages.toString())
+                    }
+                    if (viewModel.page != page) {
+                        viewModel.startpage = page//起始页数
+                        viewModel.page = page//当前页数
+                        binding.commentsRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
+                        binding.commentsLoadLayout.visibility = ViewGroup.VISIBLE
+                        binding.commentsLoadLayout.isEnabled = false
+
+                        adapter_v2.clear()
+                        adapter_v2.notifyDataSetChanged()
+                        viewModel.requestComment()
+
+                    }
+                }
+            }
+            false
+        }
         //评论点击事件
         binding.commentsRv.setOnItemClickListener { v, position ->
             if (adapter_v2.getItemData(position)._user != null) {
@@ -280,11 +313,28 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
             viewModel.seedSubComments(it)
         }
 
+        //评论列表滑动监听 更改显示的页数
+        binding.commentsRv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                val layoutManager = recyclerView.layoutManager
+                if (layoutManager is LinearLayoutManager) {
+                    //获取最后一个可见item
+                    val lastItemPosition = layoutManager.findLastVisibleItemPosition().toDouble()
+                    //来显示当前页数
+                    binding.commentsPage.setText((ceil(lastItemPosition/viewModel.limit).toInt()+viewModel.startpage).toString())
+                }
+            }
+        })
+
     }
 
     override fun initViewObservable() {
         viewModel.liveData_comments.observe(this) {
             if (it.code == 200) {
+                viewModel.pages = it.data.comments.pages//总页数
+                viewModel.limit = it.data.comments.limit//每页显示多少
+                binding.commentsPages.text="/${it.data.comments.pages}"//显示总页数
+                binding.commentsPage.setText(it.data.comments.page.toString())//显示页数
                 if (it.data.comments.pages <= it.data.comments.page) {
                     //总页数等于当前页数 显示后面没有数据
                     binding.commentsRv.loadMoreEnd()

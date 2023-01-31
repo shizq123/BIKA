@@ -17,7 +17,10 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
     var data: CommentsBean.Comments.Doc?=null
     var id: String? = null
     var comics_games: String? = null
-    var page = 0
+    var startpage = 0//主评论起始页数，用于跳转页数后判断当前页数
+    var page = 0//主评论当前页数
+    var pages = 1//主评论总页数
+    var limit = 20//主评论每页显示多少
     var commentsId: String? = null
     var subPage = 0
     var likePosition = -1
