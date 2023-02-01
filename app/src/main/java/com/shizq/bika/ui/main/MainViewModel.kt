@@ -20,6 +20,8 @@ import okhttp3.RequestBody
 
 class MainViewModel(application: Application) : BaseViewModel(application) {
     var userId = "" //用来确认账号是否已经登录
+    var fileServer = ""
+    var path = ""
     private val cTitle = arrayOf(
         R.string.categories_recommend,
         R.string.categories_leaderboard,
@@ -56,10 +58,6 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
 
     val liveData_update: MutableLiveData<UpdateBean> by lazy {
         MutableLiveData<UpdateBean>()
-    }
-
-    val liveData_avatar: MutableLiveData<BaseResponse<Any>> by lazy {
-        MutableLiveData<BaseResponse<Any>>()
     }
 
     var categoriesList = ArrayList<CategoriesBean.Category>()
@@ -163,28 +161,6 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
                 override fun onSubscribe(d: Disposable) {}
                 override fun onComplete() {}
 
-            })
-    }
-
-    fun putAvatar(base64Image: String) {
-        val map = mutableMapOf(
-            "avatar" to base64Image
-        )
-        val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
-            Gson().toJson(map)
-        )
-        val headers = BaseHeaders("users/avatar", "PUT").getHeaderMapAndToken()
-        RetrofitUtil.service.avatarPUT(body, headers)
-            .doOnSubscribe(this@MainViewModel)
-            .subscribe(object : BaseObserver<Any>() {
-                override fun onSuccess(baseResponse: BaseResponse<Any>) {
-                    liveData_avatar.postValue(baseResponse)
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<Any>) {
-                    liveData_avatar.postValue(baseResponse)
-                }
             })
     }
 }

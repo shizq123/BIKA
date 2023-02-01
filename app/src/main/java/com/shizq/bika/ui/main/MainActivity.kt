@@ -12,10 +12,6 @@ import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.luck.picture.lib.basic.PictureSelector
-import com.luck.picture.lib.config.SelectMimeType
-import com.luck.picture.lib.entity.LocalMedia
-import com.luck.picture.lib.interfaces.OnResultCallbackListener
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CategoriesAdapter
@@ -33,8 +29,9 @@ import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.notifications.NotificationsActivity
 import com.shizq.bika.ui.search.SearchActivity
 import com.shizq.bika.ui.settings.SettingsActivity
+import com.shizq.bika.ui.user.UserActivity
 import com.shizq.bika.utils.*
-import com.yalantis.ucrop.UCrop
+import com.shizq.bika.widget.UserViewDialog
 import me.jingbin.library.skeleton.ByRVItemSkeletonScreen
 import me.jingbin.library.skeleton.BySkeleton
 
@@ -86,15 +83,15 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
     }
 
     private fun initProfile() {
-        val fileServer = SPUtil.get(this, "user_fileServer", "") as String
-        val path = SPUtil.get(this, "user_path", "") as String
+        viewModel.fileServer = SPUtil.get(this, "user_fileServer", "") as String
+        viewModel.path = SPUtil.get(this, "user_path", "") as String
         val character = SPUtil.get(this, "user_character", "") as String
         val name = SPUtil.get(this, "user_name", "") as String
         val gender = SPUtil.get(this, "user_gender", "") as String
         val level = SPUtil.get(this, "user_level", 1) as Int
 
         GlideApp.with(this@MainActivity)
-            .load(GlideUrlNewKey(fileServer, path))
+            .load(GlideUrlNewKey(viewModel.fileServer, viewModel.path))
             .centerCrop()
             .placeholder(R.drawable.placeholder_avatar_2)
             .into(
@@ -156,35 +153,13 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         )
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_modify) as TextView).setOnClickListener {
-            Toast.makeText(this, "功能未实现", Toast.LENGTH_SHORT).show()
-
+            startActivity(Intent(this@MainActivity, UserActivity::class.java))
         }
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_character) as ImageView).setOnClickListener {
-            if (viewModel.userId != "") {
-                PictureSelector.create(this)
-                    .openGallery(SelectMimeType.ofImage())
-                    .isCameraForegroundService(true)
-                    .setSelectionMode(1)
-                    .setImageEngine(GlideEngine.createGlideEngine())
-                    .setCropEngine { fragment, srcUri, destinationUri, dataSource, requestCode ->
-                        UCrop.of(srcUri, destinationUri, dataSource)
-                            .withAspectRatio(1f, 1f)
-                            .withMaxResultSize(200, 200) //图片压缩没官方清晰
-                            .start(fragment.requireActivity(), fragment, requestCode)
-                    }
-                    .forResult(object : OnResultCallbackListener<LocalMedia> {
-                        override fun onResult(result: ArrayList<LocalMedia>) {
-                            GlideApp.with(this@MainActivity)
-                                .load(R.drawable.placeholder_avatar_2)
-                                .into(
-                                    binding.mainNavView.getHeaderView(0)
-                                        .findViewById(R.id.main_drawer_imageView) as ImageView
-                                )
-                            viewModel.putAvatar(Base64Util().getBase64(result[0].cutPath))
-                        }
-                        override fun onCancel() {}
-                    })
+            if (viewModel.userId != "" && viewModel.fileServer!="") {
+                //判断用户是否登录是否有头像，是就查看头像大图
+                UserViewDialog(this).PopupWindow(viewModel.fileServer,viewModel.path)
             }
         }
         binding.mainNavView.setNavigationItemSelectedListener {
@@ -349,14 +324,9 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     }
 
                 //用户签名
-                val text_slogan = (binding.mainNavView.getHeaderView(0)
-                    .findViewById(R.id.main_drawer_slogan) as TextView)
-                text_slogan.text =
-                    if (it.data.user.slogan.isNullOrBlank()) {
-                        resources.getString(R.string.slogan)
-                    } else {
-                        it.data.user.slogan
-                    }
+                val slogan = if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan
+                (binding.mainNavView.getHeaderView(0).findViewById(R.id.main_drawer_slogan) as TextView).text =
+                    if (slogan == "") resources.getString(R.string.slogan) else slogan
 
                 if (!it.data.user.isPunched) {//当前用户未打卡时
                     //是否设置自动打卡
@@ -374,12 +344,8 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 SPUtil.put(this, "user_gender", gender)
                 SPUtil.put(this, "user_level", level)
                 SPUtil.put(this, "user_exp", it.data.user.exp)
-                SPUtil.put(
-                    this,
-                    "user_slogan",
-                    if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan
-                )
                 SPUtil.put(this, "user_title", it.data.user.title)
+                SPUtil.put(this, "user_slogan", slogan)
                 SPUtil.put(this, "user_id", it.data.user._id)
                 SPUtil.put(this, "user_verified", it.data.user.verified)
 
@@ -495,29 +461,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             }
         }
 
-        //上传头像
-        viewModel.liveData_avatar.observe(this) {
-            if (it.code == 200) {
-                //成功就重新获取个人信息
-                viewModel.getProfile()
-            } else {
-                Toast.makeText(this, "更换头像失败", Toast.LENGTH_SHORT).show()
-                //失败切换为原来的头像
-                val fileServer = SPUtil.get(this, "user_fileServer", "") as String
-                val path = SPUtil.get(this, "user_path", "") as String
-                GlideApp.with(this)
-                    .load(
-                        if (path != "") {
-                            GlideUrlNewKey(fileServer, path)
-                        } else R.drawable.placeholder_avatar_2
-                    )
-                    .placeholder(R.drawable.placeholder_avatar_2)
-                    .into(
-                        binding.mainNavView.getHeaderView(0)
-                            .findViewById(R.id.main_drawer_imageView) as ImageView
-                    )
-            }
-        }
+
     }
 
     private fun showProgressBar(show: Boolean, string: String) {

@@ -40,6 +40,7 @@
     <string name="gender_nan">绅士</string>
     <string name="gender_nv">淑女</string>
     <string name="gender_bot">机器人</string>
+    <string name="user_slogan">自我介绍</string>
 
     <string name="title_activity_splash">SplashActivity</string>
     <string name="title_activity_main">MainActivity</string>

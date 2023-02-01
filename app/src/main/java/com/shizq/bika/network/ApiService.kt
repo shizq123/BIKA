@@ -325,4 +325,11 @@ interface ApiService {
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<Any>>
+
+    //上传自我介绍 签名
+    @PUT("users/profile")
+    fun profilePUT(
+        @Body requestBody: RequestBody,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<BaseResponse<Any>>
 }
