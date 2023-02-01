@@ -270,6 +270,12 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                 .show()
         }
 
+        binding.comiclistPages.setOnClickListener {
+            //修改页数点击没反应 扩大点击范围
+            binding.comiclistPage.requestFocus()
+            val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(binding.comiclistPage, 0)
+        }
         //跳转页数
         binding.comiclistPage.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
