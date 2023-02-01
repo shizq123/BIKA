@@ -7,6 +7,7 @@ import android.view.KeyEvent
 import android.view.MenuItem
 import android.view.View
 import android.view.ViewGroup
+import android.view.inputmethod.InputMethodManager
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -115,6 +116,13 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
     }
 
     private fun initListener() {
+        binding.commentsPages.setOnClickListener {
+            //修改页数点击没反应 扩大点击范围
+            binding.commentsPage.requestFocus()
+            val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            imm.showSoftInput(binding.commentsPage, 0)
+        }
+
         //页数跳转
         binding.commentsPage.setOnKeyListener { _, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
