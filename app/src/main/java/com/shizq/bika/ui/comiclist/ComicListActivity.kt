@@ -376,7 +376,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         binding.comiclistRv.addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 val layoutManager = recyclerView.layoutManager
-                if (layoutManager is LinearLayoutManager) {
+                if (layoutManager is LinearLayoutManager && !viewModel.tag.equals("random")) {
                     //获取最后一个可见item
                     val lastItemPosition = layoutManager.findLastVisibleItemPosition().toDouble()
                     //来显示当前页数
@@ -396,6 +396,10 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             binding.searchView.setText(viewModel.title)
 
         } else {
+            if(viewModel.tag.equals("favourite")){
+                //我的收藏隐藏搜索图标
+                binding.toolbar.menu.findItem(R.id.action_search).isVisible = false
+            }
             binding.toolbar.title = viewModel.title
         }
         return true
@@ -457,7 +461,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                 mComicListAdapter.addData(it.data.comics.docs)
                 viewModel.pages = it.data.comics.pages//总页数
                 viewModel.limit = it.data.comics.limit//每页显示多少
-                binding.comiclistPages.text="/${it.data.comics.pages}"//显示总页数
+                binding.comiclistPages.text=" / ${it.data.comics.pages}"//显示总页数
                 binding.comiclistPage.setText(it.data.comics.page.toString())//显示页数
                 if (it.data.comics.pages <= it.data.comics.page) {
                     binding.comiclistRv.loadMoreEnd()//没有更多数据

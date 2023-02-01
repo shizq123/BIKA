@@ -46,7 +46,7 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
             else -> "(机器人)"}
         binding.itemMyCommentsUserLevel.text="Lv.$level"
 
-        if (fileServer != null) {//头像
+        if (fileServer != "") {//头像
 
             GlideApp.with(holder.itemView)
                 .load(
@@ -59,7 +59,7 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
                 .placeholder(R.drawable.placeholder_avatar_2)
                 .into(binding.itemMyCommentsUserImage)
         }
-        if (character != null) { //头像框 新用户没有
+        if (character != "") { //头像框 新用户没有
 
             GlideApp.with(holder.itemView)
                 .load(character)

@@ -151,7 +151,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
 
                 if (data.audio.isNullOrEmpty() && data.image.isNullOrEmpty()) {
 //                        Toast.makeText(this,"回复-${}",Toast.LENGTH_SHORT).show()
-                    binding.chatSendContentReply.visibility = View.VISIBLE
+                    binding.chatSendContentReplyLayout.visibility = View.VISIBLE
                     viewModel.reply=data.message
                     viewModel.reply_name=data.name
                     binding.chatSendContentReply.text = data.name + "：" + data.message
@@ -220,9 +220,9 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
             }
         })
 
-        binding.chatSendContentReply.setOnCloseIconClickListener {
+        binding.chatSendContentReplyClose.setOnClickListener {
             binding.chatSendContentReply.text = ""
-            binding.chatSendContentReply.visibility = View.GONE
+            binding.chatSendContentReplyLayout.visibility = View.GONE
         }
 
 
@@ -299,7 +299,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
         viewModel.reply_name=""
         binding.chatSendContentInput.setText("")
         binding.chatSendContentReply.text = ""
-        binding.chatSendContentReply.visibility = View.GONE
+        binding.chatSendContentReplyLayout.visibility = View.GONE
         //滑动到底部
         chatRvBottom = false
         binding.chatRvBottomBtn.visibility = View.GONE

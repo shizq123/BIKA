@@ -126,7 +126,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                     var page = binding.commentsPage.text.toString().toInt() - 1//因为网络请求时会加一，所以提前减一
                     if (page > viewModel.pages) {
                         //输入的页数大于当前页数时，修改成最大页数
-                        page = viewModel.pages -1 //网络请求时会加一
+                        page = viewModel.pages - 1 //网络请求时会加一
                         binding.commentsPage.setText(viewModel.pages.toString())
                     }
                     if (viewModel.page != page) {
@@ -147,6 +147,16 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         }
         //评论点击事件
         binding.commentsRv.setOnItemClickListener { v, position ->
+            if (adapter_v2.getItemData(position)._user != null) {
+                val data = adapter_v2.getItemData(position)
+                viewModel.commentsId = adapter_v2.getItemData(position).id
+                dialog_send_sub_comments.setTitleText("回复 ${data._user.name}")
+                dialog_send_sub_comments.show()
+            }
+        }
+
+        //评论长按点击事件
+        binding.commentsRv.setOnItemLongClickListener { v, position ->
             if (adapter_v2.getItemData(position)._user != null) {
                 val data = adapter_v2.getItemData(position)
                 val choices = arrayOf<CharSequence>("回复", "复制", "举报")
@@ -184,6 +194,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                     .show()
 
             }
+            true
         }
         //评论 子view 点击事件
         binding.commentsRv.setOnItemChildClickListener { view, position ->
@@ -233,42 +244,82 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         //子评论 点击事件
         sub_comments_rv.setOnItemClickListener { v, position ->
             val data = adapter_sub.getItemData(position)
-            val choices: Array<CharSequence> = if (position == 0) {
-                arrayOf("回复", "复制", "举报")
+            if (position == 0) {
+                dialog_send_sub_comments.setTitleText("回复 " + data._user.name)
+                dialog_send_sub_comments.show()
             } else {
-                arrayOf("复制", "举报")
-            }
-            MaterialAlertDialogBuilder(v.context)
-                .setItems(choices) { _, which ->
-                    when (choices[which]) {
-                        "回复" -> {
-                            dialog_send_sub_comments.setTitleText("回复 " + data._user.name)
-                            dialog_send_sub_comments.show()
-                        }
-                        "复制" -> {
-                            val cm: ClipboardManager =
-                                getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
-                            cm.setPrimaryClip(ClipData.newPlainText(null, data.content))
-                            Toast.makeText(
-                                this,
-                                "已复制 ${data._user.name} 的评论",
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        }
-                        "举报" -> {
-                            MaterialAlertDialogBuilder(v.context)
-                                .setTitle("举报留言警告")
-                                .setMessage("你确定要举报这条留言吗\n留言一但举报就无法收回的喔！！！")
-                                .setPositiveButton("确定") { _, _ ->
-                                    binding.commentsProgressbar.visibility = View.VISIBLE
-                                    viewModel.commentsReport(data.id)
-                                }
-                                .setNegativeButton("取消", null)
-                                .show()
+                val choices: Array<CharSequence> = arrayOf("复制", "举报")
+                MaterialAlertDialogBuilder(v.context)
+                    .setItems(choices) { _, which ->
+                        when (choices[which]) {
+                            "复制" -> {
+                                val cm: ClipboardManager =
+                                    getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                                cm.setPrimaryClip(ClipData.newPlainText(null, data.content))
+                                Toast.makeText(
+                                    this,
+                                    "已复制 ${data._user.name} 的评论",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            "举报" -> {
+                                MaterialAlertDialogBuilder(v.context)
+                                    .setTitle("举报留言警告")
+                                    .setMessage("你确定要举报这条留言吗\n留言一但举报就无法收回的喔！！！")
+                                    .setPositiveButton("确定") { _, _ ->
+                                        binding.commentsProgressbar.visibility = View.VISIBLE
+                                        viewModel.commentsReport(data.id)
+                                    }
+                                    .setNegativeButton("取消", null)
+                                    .show()
+                            }
                         }
                     }
-                }
-                .show()
+                    .show()
+            }
+        }
+
+        //子评论 长按点击事件
+        sub_comments_rv.setOnItemLongClickListener { v, position ->
+            if (position == 0) {
+                val data = adapter_sub.getItemData(position)
+                val choices: Array<CharSequence> = arrayOf("回复", "复制", "举报")
+                MaterialAlertDialogBuilder(v.context)
+                    .setItems(choices) { _, which ->
+                        when (choices[which]) {
+                            "回复" -> {
+                                dialog_send_sub_comments.setTitleText("回复 " + data._user.name)
+                                dialog_send_sub_comments.show()
+                            }
+                            "复制" -> {
+                                val cm: ClipboardManager =
+                                    getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
+                                cm.setPrimaryClip(ClipData.newPlainText(null, data.content))
+                                Toast.makeText(
+                                    this,
+                                    "已复制 ${data._user.name} 的评论",
+                                    Toast.LENGTH_SHORT
+                                ).show()
+                            }
+                            "举报" -> {
+                                MaterialAlertDialogBuilder(v.context)
+                                    .setTitle("举报留言警告")
+                                    .setMessage("你确定要举报这条留言吗\n留言一但举报就无法收回的喔！！！")
+                                    .setPositiveButton("确定") { _, _ ->
+                                        binding.commentsProgressbar.visibility = View.VISIBLE
+                                        viewModel.commentsReport(data.id)
+                                    }
+                                    .setNegativeButton("取消", null)
+                                    .show()
+                            }
+                        }
+                    }
+                    .show()
+                true
+            } else {
+                false
+            }
+
         }
         //子评论 子view 点击事件
         sub_comments_rv.setOnItemChildClickListener { view, position ->
@@ -321,7 +372,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                     //获取最后一个可见item
                     val lastItemPosition = layoutManager.findLastVisibleItemPosition().toDouble()
                     //来显示当前页数
-                    binding.commentsPage.setText((ceil(lastItemPosition/viewModel.limit).toInt()+viewModel.startpage).toString())
+                    binding.commentsPage.setText((ceil(lastItemPosition / viewModel.limit).toInt() + viewModel.startpage).toString())
                 }
             }
         })
@@ -333,7 +384,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
             if (it.code == 200) {
                 viewModel.pages = it.data.comments.pages//总页数
                 viewModel.limit = it.data.comments.limit//每页显示多少
-                binding.commentsPages.text="/${it.data.comments.pages}"//显示总页数
+                binding.commentsPages.text = " / ${it.data.comments.pages}"//显示总页数
                 binding.commentsPage.setText(it.data.comments.page.toString())//显示页数
                 if (it.data.comments.pages <= it.data.comments.page) {
                     //总页数等于当前页数 显示后面没有数据

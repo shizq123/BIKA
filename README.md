@@ -25,7 +25,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
     开发app的目标 apk安装包要小 图片加载不卡顿 应用不闪退 功能要齐全
 
-    修改个人信息
     漫画详情章节观看记录
     漫画详情章节图片观看记录
     漫画阅读器
@@ -47,7 +46,6 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     优化activity 转成fragment
     图片修剪工具不是很好用 
     上传头像的锯齿较多不清晰
-    搜索框
     主题切换livedata会重复加载
 
 #服务器状态
