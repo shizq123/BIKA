@@ -47,7 +47,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
-                    android:text="头像"
+                    android:text="@string/user_avatar"
                     android:textSize="16sp" />
                 <!--头像-->
                 <RelativeLayout
@@ -86,7 +86,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
-                    android:text="昵称"
+                    android:text="@string/user_nickname"
                     android:textSize="16sp" />
 
                 <TextView
@@ -111,7 +111,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
-                    android:text="哔咔账号"
+                    android:text="@string/user_username"
                     android:textSize="16sp" />
 
                 <TextView
@@ -136,7 +136,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_centerVertical="true"
-                    android:text="出生日期"
+                    android:text="@string/user_birthday"
                     android:textSize="16sp" />
 
                 <TextView
@@ -163,14 +163,13 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="自我介绍"
+                    android:text="@string/user_slogan"
                     android:textSize="16sp" />
 
                 <TextView
                     android:id="@+id/user_slogan"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="..."
                     android:textColor="?attr/colorOutline"
                     android:textSize="14sp" />
             </LinearLayout>

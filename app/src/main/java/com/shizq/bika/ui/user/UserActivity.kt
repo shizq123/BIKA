@@ -94,7 +94,7 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
             slogan.requestFocus()
 
             MaterialAlertDialogBuilder(this)
-                .setTitle("自我介绍")
+                .setTitle(R.string.user_slogan)
                 .setView(view)
                 .setPositiveButton("确定") { dialog, which ->
                     binding.userProgressbar.show()

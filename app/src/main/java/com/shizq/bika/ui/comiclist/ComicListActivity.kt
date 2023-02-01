@@ -7,7 +7,6 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupWindow
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isVisible
@@ -265,7 +264,6 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                     }
 
                     setSeal(result)
-                    Toast.makeText(this, result.toString(), Toast.LENGTH_LONG).show()
                 }
                 .setNegativeButton("取消", null)
                 .setMultiChoiceItems(tag, tagInitial, null)

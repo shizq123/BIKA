@@ -40,6 +40,11 @@
     <string name="gender_nan">绅士</string>
     <string name="gender_nv">淑女</string>
     <string name="gender_bot">机器人</string>
+
+    <string name="user_avatar">头像</string>
+    <string name="user_nickname">昵称</string>
+    <string name="user_username">哔咔账号</string>
+    <string name="user_birthday">出生日期</string>
     <string name="user_slogan">自我介绍</string>
 
     <string name="title_activity_splash">SplashActivity</string>

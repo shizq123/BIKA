@@ -16,38 +16,6 @@ import java.net.UnknownHostException
 import javax.net.ssl.SSLException
 
 abstract class BaseObserver<T> : Observer<BaseResponse<T>> {
-    internal object ERROR {
-        /**
-         * 未知错误
-         */
-        const val UNKNOWN = 10000
-
-        /**
-         * 解析错误
-         */
-        const val PARSE_ERROR = 10001
-
-        /**
-         * 网络错误
-         */
-        const val NETWORD_ERROR = 10002
-
-        /**
-         * 协议出错
-         */
-        const val HTTP_ERROR = 1003
-
-        /**
-         * 证书出错
-         */
-        const val SSL_ERROR = 10005
-
-        /**
-         * 连接超时
-         */
-        const val TIMEOUT_ERROR = 10006
-    }
-
     override fun onSubscribe(d: Disposable) {}
     override fun onNext(baseResponse: BaseResponse<T>) {
         if (baseResponse.isOk()) {
@@ -69,7 +37,6 @@ abstract class BaseObserver<T> : Observer<BaseResponse<T>> {
 
                     onSuccess(baseResponse)
                 } else {
-                    baseResponse.code=ERROR.HTTP_ERROR
                     onCodeError(baseResponse)
                 }
             } else if (e is JsonParseException
@@ -77,32 +44,24 @@ abstract class BaseObserver<T> : Observer<BaseResponse<T>> {
                 || e is ParseException
                 || e is MalformedJsonException
             ) {
-                baseResponse.code=ERROR.PARSE_ERROR
                 baseResponse.message="解析错误"
                 onCodeError(baseResponse)
             } else if (e is ConnectException) {
-                baseResponse.code=ERROR.NETWORD_ERROR
                 baseResponse.message="连接失败"
                 onCodeError(baseResponse)
             } else if (e is ConnectTimeoutException) {
-                baseResponse.code=ERROR.TIMEOUT_ERROR
                 baseResponse.message="连接超时"
                 onCodeError(baseResponse)
             } else if (e is SocketTimeoutException) {
-                baseResponse.code=ERROR.TIMEOUT_ERROR
                 baseResponse.message="连接超时"
                 onCodeError(baseResponse)
             } else if (e is UnknownHostException) {
-                baseResponse.code=ERROR.TIMEOUT_ERROR
                 baseResponse.message="主机地址未知"
                 onCodeError(baseResponse)
             } else if (e is SSLException) {
-                baseResponse.code=ERROR.SSL_ERROR
                 baseResponse.message="证书验证失败"+e.message
                 onCodeError(baseResponse)
             } else {
-
-//                baseResponse.message="未知错误"
                 onCodeError(baseResponse)
             }
         } catch (ex: Exception) {

@@ -279,9 +279,7 @@
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="12dp"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginEnd="12dp"
+                    android:layout_margin="12dp"
                     android:orientation="horizontal">
 
                     <com.google.android.material.chip.Chip
@@ -295,14 +293,17 @@
                         android:id="@+id/comicinfo_tagslist"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        app:chipSpacing="2dp" />
+                        android:layout_marginStart="6dp"/>
                 </LinearLayout>
 
                 <LinearLayout
+                    android:id="@+id/comicinfo_tags_layout"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_margin="12dp"
+                    android:layout_marginStart="12dp"
+                    android:layout_marginEnd="12dp"
+                    android:layout_marginBottom="12dp"
+                    android:visibility="gone"
                     android:orientation="horizontal">
 
                     <com.google.android.material.chip.Chip
@@ -316,8 +317,7 @@
                         android:id="@+id/comicinfo_tagslist1"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"
-                        app:chipSpacing="2dp" />
+                        android:layout_marginStart="6dp"/>
                 </LinearLayout>
 
                 <!-- 章节 -->
