@@ -458,15 +458,15 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
             .subscribe(object : Observer<UpdateBean> {
                 override fun onNext(t: UpdateBean) {
                     if (t != null) {
-                        if (t.code > AppVersion().code()) {
+                        if (t.version.toInt() > AppVersion().code()) {
                             context?.let {
                                 MaterialAlertDialogBuilder(it)
-                                    .setTitle("新版本 v${t.name}")
-                                    .setMessage(t.des)
+                                    .setTitle("新版本 v${t.short_version}")
+                                    .setMessage(t.release_notes)
                                     .setPositiveButton("更新") { _, _ ->
                                         val intent = Intent()
                                         intent.action = "android.intent.action.VIEW"
-                                        intent.data = Uri.parse(t.url)
+                                        intent.data = Uri.parse(t.download_url)
                                         startActivity(intent)
                                     }
                                     .setNegativeButton("取消", null)

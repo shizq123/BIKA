@@ -12,7 +12,7 @@ interface ApiService {
     fun initGet(): Observable<InitBean>
 
     //检测版本更新
-    @GET("shizq123/BIKA/master/Update/updateinfo.json")
+    @GET("api/v0.1/apps/shizq123hh/bika/distribution_groups/Release/releases/latest")
     fun updateGet(): Observable<UpdateBean>
 
     //平台 info 不清楚用途

@@ -446,14 +446,14 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         }
         //更新
         viewModel.liveData_update.observe(this) {
-            if (it != null && it.code > AppVersion().code()) {
+            if (it != null && it.version.toInt() > AppVersion().code()) {
                 MaterialAlertDialogBuilder(this)
-                    .setTitle("新版本 v${it.name}")
-                    .setMessage(it.des)
+                    .setTitle("新版本 v${it.short_version}")
+                    .setMessage(it.release_notes)
                     .setPositiveButton("更新") { _, _ ->
                         val intent = Intent()
                         intent.action = "android.intent.action.VIEW"
-                        intent.data = Uri.parse(it.url)
+                        intent.data = Uri.parse(it.download_url)
                         startActivity(intent)
                     }
                     .setNegativeButton("取消", null)

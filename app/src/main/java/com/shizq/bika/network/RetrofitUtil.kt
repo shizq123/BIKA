@@ -11,7 +11,7 @@ object RetrofitUtil {
 
     var INFO = "http://68.183.234.72/"
     var BASE_URL = "https://picaapi.picacomic.com"
-    var UPDATE = "https://raw.githubusercontent.com/"
+    var UPDATE = "https://appcenter.ms"
     var URL = "" //用于记录
 
 
@@ -27,7 +27,6 @@ object RetrofitUtil {
         getRetrofit(UPDATE).create(ApiService::class.java)
     }
 
-    //BASE_URL
     private fun getRetrofit(url:String): Retrofit {
         if (retrofit == null||URL!=url) {
             URL=url
@@ -48,7 +47,9 @@ object RetrofitUtil {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
 //            .retryOnConnectionFailure(true)// 错误重连
-            .dns(HttpDns())
+        if (URL != UPDATE) {
+            builder.dns(HttpDns())
+        }
         return builder.build()
     }
 }
