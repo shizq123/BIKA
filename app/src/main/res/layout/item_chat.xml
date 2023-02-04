@@ -12,17 +12,17 @@
             android:id="@+id/chat_layout_l"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="68dp">
+            android:layout_marginEnd="60dp">
             <!--头像-->
             <RelativeLayout
                 android:id="@+id/chat_avatar_layout_l"
-                android:layout_width="64dp"
-                android:layout_height="64dp">
+                android:layout_width="56dp"
+                android:layout_height="56dp">
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/chat_avatar_l"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
                     android:layout_centerInParent="true"
                     android:layout_gravity="center"
                     android:adjustViewBounds="true"
@@ -78,7 +78,6 @@
                 android:layout_height="wrap_content"
                 android:layout_below="@id/chat_name_layout_l"
                 android:layout_marginStart="4dp"
-                android:layout_marginEnd="4dp"
                 android:layout_marginBottom="4dp"
                 android:layout_toEndOf="@id/chat_avatar_layout_l"
                 android:orientation="vertical">
@@ -175,7 +174,6 @@
                         android:layout_height="wrap_content"
                         android:layout_below="@id/chat_content_l"
                         android:adjustViewBounds="true"
-                        android:scaleType="centerInside"
                         android:visibility="gone" />
                 </RelativeLayout>
 
@@ -194,18 +192,18 @@
             android:id="@+id/chat_layout_r"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginStart="68dp">
+            android:layout_marginStart="60dp">
             <!--头像-->
             <RelativeLayout
                 android:id="@+id/chat_avatar_layout_r"
-                android:layout_width="64dp"
-                android:layout_height="64dp"
+                android:layout_width="56dp"
+                android:layout_height="56dp"
                 android:layout_alignParentEnd="true">
 
                 <com.google.android.material.imageview.ShapeableImageView
                     android:id="@+id/chat_avatar_r"
-                    android:layout_width="48dp"
-                    android:layout_height="48dp"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
                     android:layout_centerInParent="true"
                     android:layout_gravity="center"
                     android:adjustViewBounds="true"
@@ -259,7 +257,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_below="@id/chat_name_layout_r"
-                android:layout_marginStart="4dp"
                 android:layout_marginEnd="4dp"
                 android:layout_marginBottom="4dp"
                 android:layout_toStartOf="@id/chat_avatar_layout_r"
@@ -350,7 +347,6 @@
                         android:layout_height="wrap_content"
                         android:layout_below="@id/chat_content_r"
                         android:adjustViewBounds="true"
-                        android:scaleType="centerInside"
                         android:visibility="gone" />
                 </RelativeLayout>
 

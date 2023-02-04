@@ -53,7 +53,7 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
         mAdapter = MyCommentsAdapter()
         binding.myCommentsRv.adapter = mAdapter
 
-        userViewDialog= UserViewDialog(this)
+        userViewDialog = UserViewDialog(this)
 
         //        //子评论 bottomSheetDialog
         sub_comments_view = View.inflate(this, R.layout.view_bottom_sub_comments, null)
@@ -82,7 +82,7 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
     }
 
     private fun getWindowHeight(): Int {
-        return resources.displayMetrics.heightPixels-50.dp
+        return resources.displayMetrics.heightPixels - 50.dp
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -95,16 +95,16 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
         return super.onOptionsItemSelected(item)
     }
 
-    private fun initListener(){
+    private fun initListener() {
         binding.myCommentsRv.setOnItemChildClickListener { view, position ->
-            val id= view.id
-            val data =mAdapter.getItemData(position)
+            val id = view.id
+            val data = mAdapter.getItemData(position)
             //点赞
             if (id == R.id.item_my_comments_like_layout) {
-                viewModel.likePosition=position//保存当前要点赞的position
-                viewModel.likeCommentsId=mAdapter.getItemData(position)._id//保存当前要点赞的position
+                viewModel.likePosition = position//保存当前要点赞的position
+                viewModel.likeCommentsId = mAdapter.getItemData(position)._id//保存当前要点赞的position
                 viewModel.commentsLike()
-                binding.myCommentsProgressbar.visibility=View.VISIBLE
+                binding.myCommentsProgressbar.visibility = View.VISIBLE
             }
             //跳转
             if (id == R.id.item_my_comments_title_layout) {
@@ -141,13 +141,13 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
                         character = SPUtil.get(this, "user_character", "") as String,
                         emptyList(),
                         0,
-                    gender =SPUtil.get(this, "user_gender", "") as String,
-                        level =SPUtil.get(this, "user_level", 1) as Int,
-                        name =SPUtil.get(this, "user_name", "") as String,
+                        gender = SPUtil.get(this, "user_gender", "") as String,
+                        level = SPUtil.get(this, "user_level", 1) as Int,
+                        name = SPUtil.get(this, "user_name", "") as String,
                         "",
-                        "",
-                        "",
-                        false
+                        slogan = SPUtil.get(this, "user_slogan", "") as String,
+                        title = SPUtil.get(this, "user_title", "") as String,
+                        verified = SPUtil.get(this, "user_verified", false) as Boolean
                     ),
                     0,
                     data.content,
@@ -160,7 +160,7 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
                     data.totalComments,
                     true
                 )
-                viewModel.likePosition=position//暂存打开哪个主评论的position
+                viewModel.likePosition = position//暂存打开哪个主评论的position
                 viewModel.commentsId = data._id
                 viewModel.subPage = 0
 
@@ -179,24 +179,30 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
 
         sub_comments_rv.setOnItemClickListener { v, position ->
             if (position != 0) {
-                userViewDialog.showUserDialog(adapter_sub.getItemData(position)._user,sub_comments_view)
+                userViewDialog.showUserDialog(
+                    adapter_sub.getItemData(position)._user,
+                    sub_comments_view
+                )
             }
         }
         sub_comments_rv.setOnItemChildClickListener { view, position ->
-            val id= view.id
-            val data =adapter_sub.getItemData(position)
-            if (id == R.id.comments_name||id == R.id.comments_image_layout) {  userViewDialog.showUserDialog(data._user,sub_comments_view) }
+            val id = view.id
+            val data = adapter_sub.getItemData(position)
+            if (id == R.id.comments_name || id == R.id.comments_image_layout) {
+                userViewDialog.showUserDialog(data._user, sub_comments_view)
+            }
             //点赞
             if (id == R.id.comments_like_layout) {
-                viewModel.likeSubPosition=position//保存当前要点赞的position
-                viewModel.likeSubCommentsId=adapter_sub.getItemData(position)._id//保存当前要点赞的position
+                viewModel.likeSubPosition = position//保存当前要点赞的position
+                viewModel.likeSubCommentsId =
+                    adapter_sub.getItemData(position)._id//保存当前要点赞的position
                 viewModel.subCommentsLike()
             }
 
         }
 
         //子评论 分页列表加载更多的接口
-        sub_comments_rv.setOnLoadMoreListener{ viewModel.requestSubComment() }
+        sub_comments_rv.setOnLoadMoreListener { viewModel.requestSubComment() }
 
         //网络重试点击事件监听
         binding.myCommentsInclude2.loadLayout.setOnClickListener {
@@ -261,12 +267,12 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
 
         //评论点赞
         viewModel.liveData_comments_like.observe(this) {
-            binding.myCommentsProgressbar.visibility=View.GONE
+            binding.myCommentsProgressbar.visibility = View.GONE
             if (it.code == 200) {
                 //  设置要局部刷新的position及payload
-                mAdapter.refreshNotifyItemChanged(viewModel.likePosition, it.data.action=="like")
+                mAdapter.refreshNotifyItemChanged(viewModel.likePosition, it.data.action == "like")
             } else {
-                Toast.makeText(this,"点击爱心失败",Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "点击爱心失败", Toast.LENGTH_SHORT).show()
 
             }
         }
@@ -275,14 +281,20 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
         viewModel.liveData_sub_comments_like.observe(this) {
             if (it.code == 200) {
                 //  设置要局部刷新的position及payload
-                adapter_sub.refreshNotifyItemChanged(viewModel.likeSubPosition, it.data.action=="like")
+                adapter_sub.refreshNotifyItemChanged(
+                    viewModel.likeSubPosition,
+                    it.data.action == "like"
+                )
 
-                if(viewModel.commentsId==adapter_sub.data[viewModel.likeSubPosition]._id){
+                if (viewModel.commentsId == adapter_sub.data[viewModel.likeSubPosition]._id) {
                     //因为第一条数据是手动添加的，所以在这判断是否第一条数据 ，如果是就把主评论也更新
-                    mAdapter.refreshNotifyItemChanged(viewModel.likePosition, it.data.action=="like")
+                    mAdapter.refreshNotifyItemChanged(
+                        viewModel.likePosition,
+                        it.data.action == "like"
+                    )
                 }
             } else {
-                Toast.makeText(this,"点击爱心失败",Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "点击爱心失败", Toast.LENGTH_SHORT).show()
 
             }
         }

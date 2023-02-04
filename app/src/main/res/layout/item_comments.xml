@@ -11,16 +11,16 @@
         <!--头像-->
         <RelativeLayout
             android:id="@+id/comments_image_layout"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
+            android:layout_width="56dp"
+            android:layout_height="56dp"
             android:layout_marginStart="6dp"
             android:layout_marginTop="6dp"
             android:layout_marginEnd="4dp">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/comments_user_image"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
                 android:layout_centerInParent="true"
                 android:layout_gravity="center"
                 android:adjustViewBounds="true"

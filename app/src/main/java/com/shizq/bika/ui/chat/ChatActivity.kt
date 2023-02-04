@@ -159,6 +159,11 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
                     showKeyboard()
                 }
             }
+            if (id == R.id.chat_message_layout_r) {
+                if (!data.image.isNullOrEmpty()) {
+                    userViewDialog.PopupWindow(Base64Util().base64ToBitmap(data.image))
+                }
+            }
         }
 
         binding.chatRv.setOnItemChildLongClickListener { view, position ->

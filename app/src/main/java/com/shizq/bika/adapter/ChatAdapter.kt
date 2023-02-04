@@ -239,10 +239,11 @@ class ChatAdapter :
         holder.addOnClickListener(R.id.chat_name_l)
         holder.addOnLongClickListener(R.id.chat_avatar_layout_l)
         holder.addOnClickListener(R.id.chat_message_layout_l)
+        holder.addOnClickListener(R.id.chat_message_layout_r)
     }
 
     private fun setImageView(imageView: ImageView, bitmap: Bitmap) {
-        //手机截图比例的图片防止占满屏 TODO 小bug不影响体验 图片有不占满view情况
+        //手机截图比例的图片防止占满屏
         val bitmapH = bitmap.height
         val bitmapW = bitmap.width
         val imageMinW = 150.dp

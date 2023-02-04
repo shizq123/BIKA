@@ -131,11 +131,11 @@
 
             <ImageView
                 android:id="@+id/chat_rv_bottom_btn"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
+                android:layout_width="42dp"
+                android:layout_height="42dp"
                 android:layout_above="@id/chat_send_content_reply_layout"
                 android:layout_alignParentEnd="true"
-                android:layout_margin="16dp"
+                android:layout_margin="12dp"
                 android:background="@drawable/shape_chat_bg"
                 android:padding="8dp"
                 android:src="@drawable/ic_arrow_down"
