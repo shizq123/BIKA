@@ -69,8 +69,6 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             .count(18)// item个数
             .show()
 
-        initProfile()//显示用户信息
-
         initListener()
 
         viewModel.getUpdate()
@@ -82,6 +80,15 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         }
     }
 
+    override fun onTopResumedActivityChanged(isTopResumedActivity: Boolean) {
+        super.onTopResumedActivityChanged(isTopResumedActivity)
+        //页面显示时调用
+        if (isTopResumedActivity){
+            initProfile()//显示用户信息
+        }
+    }
+
+    //显示用户信息
     private fun initProfile() {
         viewModel.fileServer = SPUtil.get(this, "user_fileServer", "") as String
         viewModel.path = SPUtil.get(this, "user_path", "") as String
@@ -89,7 +96,10 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         val name = SPUtil.get(this, "user_name", "") as String
         val gender = SPUtil.get(this, "user_gender", "") as String
         val level = SPUtil.get(this, "user_level", 1) as Int
+        val exp = SPUtil.get(this, "user_exp", 0) as Int
+        val slogan = SPUtil.get(this, "user_slogan", "") as String
 
+        //头像
         GlideApp.with(this@MainActivity)
             .load(GlideUrlNewKey(viewModel.fileServer, viewModel.path))
             .centerCrop()
@@ -98,18 +108,21 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 binding.mainNavView.getHeaderView(0)
                     .findViewById(R.id.main_drawer_imageView) as ImageView
             )
+        //头像框
         GlideApp.with(this@MainActivity)
             .load(character)
             .into(
                 binding.mainNavView.getHeaderView(0)
                     .findViewById(R.id.main_drawer_character) as ImageView
             )
+        //用户名
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_name) as TextView).text = name
-
+        //等级
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_user_ver) as TextView).text =
-            "Lv.$level(0/${exp(level)})"
+            "Lv.$level($exp/${exp(level)})"
+        //性别
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_gender) as TextView).text =
             when (gender) {
@@ -117,6 +130,14 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 "f" -> "(淑女)"
                 else -> "(机器人)"
             }
+        //title
+        (binding.mainNavView.getHeaderView(0)
+            .findViewById(R.id.main_drawer_title) as TextView).text =
+            SPUtil.get(this, "user_title", "萌新") as String
+        //自我介绍 签名
+        (binding.mainNavView.getHeaderView(0)
+            .findViewById(R.id.main_drawer_slogan) as TextView).text =
+            if (slogan == "") resources.getString(R.string.slogan) else slogan
     }
 
     override fun onResume() {
