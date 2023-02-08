@@ -19,6 +19,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityMainBinding
 import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.apps.AppsActivity
+import com.shizq.bika.ui.chatroom.ChatRoomListActivity
 import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
@@ -230,18 +231,21 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     startActivity(Intent(this, AppsActivity::class.java))
                 }
                 4 -> {
+                    startActivity(Intent(this, ChatRoomListActivity::class.java))
+                }
+                5 -> {
                     val intentComments = Intent(this, CommentsActivity::class.java)
                     intentComments.putExtra("id", "5822a6e3ad7ede654696e482")
                     intentComments.putExtra("comics_games", "comics")
                     startActivity(intentComments)
                 }
-                5 -> {
+                6 -> {
                     intent.putExtra("tag", "latest")
                     intent.putExtra("title", datas.title)
                     intent.putExtra("value", datas.title)
                     startActivity(intent)
                 }
-                6 -> {
+                7 -> {
                     intent.putExtra("tag", "random")
                     intent.putExtra("title", datas.title)
                     intent.putExtra("value", datas.title)

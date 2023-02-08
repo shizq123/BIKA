@@ -93,6 +93,9 @@
         <activity
             android:name=".ui.user.UserActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.chatroom.ChatRoomListActivity"
+            android:exported="false" />
 
     </application>
 

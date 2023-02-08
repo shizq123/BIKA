@@ -37,14 +37,16 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
         mChatListAdapter = ChatListAdapter()
         mPicaAppsAdapter = PicaAppsAdapter()
         binding.appsRv.layoutManager = LinearLayoutManager(context)
-        if (str == "chat") {
-            binding.appsRv.adapter = mChatListAdapter
-            viewModel.getChatList()
-        } else {
-            binding.appsRv.adapter = mPicaAppsAdapter
-            viewModel.getPicaApps()
+        when(str){
+            "chat" -> {
+                binding.appsRv.adapter = mChatListAdapter
+                viewModel.getChatList()
+            }
+            "apps" -> {
+                binding.appsRv.adapter = mPicaAppsAdapter
+                viewModel.getPicaApps()
+            }
         }
-
         binding.appsInclude.loadLayout.isEnabled = false
         initListener()
     }
@@ -84,6 +86,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
     }
 
     override fun initViewObservable() {
+        //旧聊天室列表
         viewModel.liveData_chat.observe(this) {
             if (it.code == 200) {
                 mChatListAdapter.clear()
@@ -99,6 +102,8 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
 
             }
         }
+
+        //跳转的网页
         viewModel.liveData_apps.observe(this) {
             if (it.code == 200) {
                 mPicaAppsAdapter.clear()

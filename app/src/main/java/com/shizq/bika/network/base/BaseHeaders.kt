@@ -5,7 +5,7 @@ import com.shizq.bika.network.HmacSHA256Util
 import com.shizq.bika.utils.SPUtil
 import java.util.*
 
-class BaseHeaders(private val urlEnd: String, val type: String) {
+class BaseHeaders(private val urlEnd: String = "", val type: String = "") {
 
     fun getHeaders(): MutableMap<String, String> {
         val apikey = "C69BAF41DA5ABD1FFEDC6D2FEA56B"
@@ -30,7 +30,7 @@ class BaseHeaders(private val urlEnd: String, val type: String) {
 
     fun getHeaderMapAndToken(): Map<String, String> {
         val map = getHeaders()
-        map["authorization"] = SPUtil.get(MyApp.contextBase,"token","") as String
+        map["authorization"] = SPUtil.get(MyApp.contextBase, "token", "") as String
         return map
     }
 
@@ -43,8 +43,8 @@ class BaseHeaders(private val urlEnd: String, val type: String) {
     }
 
     fun getChatHeaderMapAndToken(): Map<String, String> {
-        val map  = getChatHeaders()
-        map["authorization"] = "Bearer "+SPUtil.get(MyApp.contextBase,"chat_token","") as String
+        val map = getChatHeaders()
+        map["authorization"] = "Bearer " + SPUtil.get(MyApp.contextBase, "chat_token", "") as String
         return map
     }
 }

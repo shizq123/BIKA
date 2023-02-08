@@ -1,6 +1,9 @@
 package com.shizq.bika.bean
 
 data class ChatBlackListBean(
+    val error: String,
+    val message: String,
+    val statusCode: Int,
     val docs: List<Doc>,
     val limit: Int,
     val offset: Int,

@@ -1,6 +1,9 @@
 package com.shizq.bika.bean
 
 data class ChatRoomListBean(
+    val error: String,
+    val message: String,
+    val statusCode: Int,
     val rooms: List<Room>
 ) {
     data class Room(

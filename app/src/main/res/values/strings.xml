@@ -28,6 +28,7 @@
     <string name="categories_leaderboard">排行榜</string>
     <string name="categories_game">游戏推荐</string>
     <string name="categories_apps">哔咔小程序</string>
+    <string name="categories_chat">新聊天室</string>
     <string name="categories_forum">留言板</string>
     <string name="categories_latest">最近更新</string>
     <string name="categories_random">随机本子</string>

@@ -2,7 +2,6 @@ package com.shizq.bika.ui.main
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
-import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.shizq.bika.MyApp
 import com.shizq.bika.R
@@ -27,6 +26,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
         R.string.categories_leaderboard,
         R.string.categories_game,
         R.string.categories_apps,
+        R.string.categories_chat,
         R.string.categories_forum,
         R.string.categories_latest,
         R.string.categories_random
@@ -36,6 +36,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
         R.drawable.cat_leaderboard,
         R.drawable.cat_game,
         R.drawable.cat_love_pica,
+        R.drawable.ic_chat,
         R.drawable.cat_forum,
         R.drawable.cat_latest,
         R.drawable.cat_random
@@ -64,7 +65,7 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
 
     var cList ={
         val categoriesList = ArrayList<CategoriesBean.Category>()
-        for (index in 0..6) {
+        for (index in cTitle.indices) {
             val category = CategoriesBean.Category(
                 "",
                 false,
