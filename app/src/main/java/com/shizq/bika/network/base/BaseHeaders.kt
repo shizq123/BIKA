@@ -33,4 +33,18 @@ class BaseHeaders(private val urlEnd: String, val type: String) {
         map["authorization"] = SPUtil.get(MyApp.contextBase,"token","") as String
         return map
     }
+
+    fun getChatHeaders(): MutableMap<String, String> {
+        val map: MutableMap<String, String> = HashMap()
+        map["user-agent"] = "Dart/2.19 (dart:io)"
+        map["api-version"] = "1.0.0"
+        map["content-type"] = "application/json; charset=UTF-8"
+        return map
+    }
+
+    fun getChatHeaderMapAndToken(): Map<String, String> {
+        val map  = getChatHeaders()
+        map["authorization"] = "Bearer "+SPUtil.get(MyApp.contextBase,"chat_token","") as String
+        return map
+    }
 }

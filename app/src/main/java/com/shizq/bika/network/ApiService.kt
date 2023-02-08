@@ -332,4 +332,44 @@ interface ApiService {
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<Any>>
+
+    //新聊天室 登录
+    @POST("auth/signin")
+    fun ChatSignInPost(
+        @Body requestBody: RequestBody,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<ChatSignInBean>
+
+    //新聊天室 用户信息
+    @GET("users/profile")
+    fun ChatProfileGet(
+        @HeaderMap headers: Map<String, String>
+    ): Observable<ChatProfileBean>
+
+    //新聊天室 房间列表
+    @GET("room/list")
+    fun ChatRoomListGet(
+        @HeaderMap headers: Map<String, String>
+    ): Observable<ChatRoomListBean>
+
+    //新聊天室 封锁用户 添加黑名单 https://live-server.bidobido.xyz/blacklist/block-user 请求文本{"userId":"xxx"}
+    @POST("blacklist/block-user")
+    fun ChatBlockUserPost(
+        @Body requestBody: RequestBody,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<ChatBlockUserBean>
+
+    //新聊天室 封锁列表 黑名单列表 https://live-server.bidobido.xyz/blacklist/list?offset=0
+    @GET("blacklist/list")
+    fun ChatBlackListGet(
+        @Query("offset") page: String,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<ChatBlackListBean>
+
+    //新聊天室 删除封锁 删除黑名单 https://live-server.bidobido.xyz/blacklist/63e3373e4548486c28e60cc5
+    @DELETE("blacklist/{id}")
+    fun ChatBlackListDelete(
+        @Path("id") gameId: String,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<ChatBlackListDeleteBean>
 }
