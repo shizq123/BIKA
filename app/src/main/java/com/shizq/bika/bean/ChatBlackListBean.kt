@@ -5,7 +5,7 @@ data class ChatBlackListBean(
     val message: String,
     val statusCode: Int,
     val docs: List<Doc>,
-    val limit: Int,
+    var limit: Int = 0,
     val offset: Int,
     val total: Int
 ) {

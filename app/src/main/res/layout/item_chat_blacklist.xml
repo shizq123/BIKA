@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <data>
+
+        <variable
+            name="m"
+            type="com.shizq.bika.bean.ChatBlackListBean.Doc" />
+    </data>
+
+
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:padding="6dp">
+
+        <!--头像-->
+        <com.google.android.material.imageview.ShapeableImageView
+            android:id="@+id/chat_blacklist_avatar"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
+            android:layout_gravity="center"
+            android:layout_marginStart="6dp"
+            android:scaleType="centerCrop"
+            android:src="@drawable/placeholder_avatar_2"
+            app:shapeAppearance="@style/CircleStyle" />
+
+        <ImageView
+            android:id="@+id/chat_blacklist_delete"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:layout_marginEnd="6dp"
+            android:src="@drawable/ic_close" />
+
+        <TextView
+            android:id="@+id/chat_rooms_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:layout_marginStart="6dp"
+            android:layout_toEndOf="@id/chat_blacklist_avatar"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:text="@{m.user.name}"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+
+    </RelativeLayout>
+</layout>

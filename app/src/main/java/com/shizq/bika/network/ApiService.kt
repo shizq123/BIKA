@@ -362,7 +362,7 @@ interface ApiService {
     //新聊天室 封锁列表 黑名单列表 https://live-server.bidobido.xyz/blacklist/list?offset=0
     @GET("blacklist/list")
     fun ChatBlackListGet(
-        @Query("offset") page: String,
+        @Query("offset") page: Int,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatBlackListBean>
 

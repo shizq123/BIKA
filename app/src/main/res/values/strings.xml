@@ -22,6 +22,7 @@
     <string name="action_sort">排序方式</string>
     <string name="action_delete">全部删除</string>
     <string name="action_video">视频</string>
+    <string name="action_blacklist">黑名单</string>
     <string name="keyboard">弹出键盘</string>
 
     <string name="categories_recommend">推荐</string>
@@ -71,4 +72,7 @@
     <string name="footer_error">加载失败，点击重试</string>
     <string name="footer_more">点击加载更多</string>
     <string name="footer_end">已经到底了</string>
+
+    <string name="chat_min_level">等级限制：</string>
+    <string name="chat_min_register_days">注册天数限制：</string>
 </resources>

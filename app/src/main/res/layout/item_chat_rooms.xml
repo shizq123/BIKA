@@ -24,14 +24,14 @@
                 android:id="@+id/chat_rooms_image"
                 android:layout_width="72dp"
                 android:layout_height="72dp"
-                android:scaleType="centerCrop"/>
+                android:scaleType="centerCrop" />
 
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_toEndOf="@+id/chat_rooms_image"
                 android:layout_marginStart="6dp"
+                android:layout_toEndOf="@+id/chat_rooms_image"
                 android:orientation="vertical">
                 <!--标题-->
                 <TextView
@@ -44,14 +44,22 @@
                     android:textSize="16sp"
                     android:textStyle="bold" />
 
-                <!--介绍-->
                 <TextView
-                    android:id="@+id/chat_rooms_description"
+                    android:id="@+id/chat_rooms_min_level"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:text="@{m.description}"
                     android:ellipsize="end"
-                    android:maxLines="3"
+                    android:maxLines="1"
+                    android:text="@{@string/chat_min_level+m.minLevel}"
+                    android:textSize="13sp" />
+
+                <TextView
+                    android:id="@+id/chat_rooms_min_register_days"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="@{@string/chat_min_register_days+m.minRegisterDays}"
                     android:textSize="13sp" />
 
             </LinearLayout>

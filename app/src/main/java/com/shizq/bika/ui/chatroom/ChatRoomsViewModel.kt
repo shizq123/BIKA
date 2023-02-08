@@ -18,7 +18,7 @@ import okhttp3.MediaType
 import okhttp3.RequestBody
 import retrofit2.HttpException
 
-class ChatRoomListViewModel(application: Application) : BaseViewModel(application) {
+class ChatRoomsViewModel(application: Application) : BaseViewModel(application) {
     val liveDataSignIn: MutableLiveData<ChatSignInBean> by lazy {
         MutableLiveData<ChatSignInBean>()
     }

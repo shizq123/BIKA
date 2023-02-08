@@ -1,26 +1,32 @@
 package com.shizq.bika.ui.chatroom
 
+import android.content.Intent
 import android.os.Bundle
+import android.view.Menu
 import android.view.MenuItem
 import android.view.ViewGroup
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
+import com.shizq.bika.MyApp
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatRoomsAdapter
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.databinding.ActivityChatRoomListBinding
+import com.shizq.bika.databinding.ActivityChatRoomsBinding
+import com.shizq.bika.ui.account.AccountActivity
+import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.SPUtil
 
 /**
  * 推荐
  */
 
-class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomListViewModel>() {
+class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewModel>() {
     private lateinit var mChatRoomsAdapter: ChatRoomsAdapter
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
-        return R.layout.activity_chat_room_list
+        return R.layout.activity_chat_rooms
     }
 
     override fun initVariableId(): Int {
@@ -32,9 +38,9 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
         setSupportActionBar(binding.chatroomInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        mChatRoomsAdapter= ChatRoomsAdapter()
+        mChatRoomsAdapter = ChatRoomsAdapter()
         binding.chatroomRv.layoutManager = LinearLayoutManager(this)
-        binding.chatroomRv.adapter=mChatRoomsAdapter
+        binding.chatroomRv.adapter = mChatRoomsAdapter
 
         //检查是否有token 没有就进行登录 显示登录提示框
         if (SPUtil.get(this, "chat_token", "") == "") {
@@ -43,25 +49,30 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
             viewModel.chatSignIn()
         } else {
             //有token 获取聊天室列表
+            if (mChatRoomsAdapter.itemCount == 0) {
+                //这个判断是防止重复请求
+                showProgressBar(true, "")
+                viewModel.chatRoomList()
+            }
+        }
+
+        //网络重试点击事件监听
+        binding.chatroomLoadLayout.setOnClickListener {
             showProgressBar(true, "")
             viewModel.chatRoomList()
-        }
 
-//        if (adapter.itemCount < 1) {
-//            viewModel.getData()
-//        }
-//
-//        //网络重试点击事件监听
-//        binding.collectionsLoadLayout.setOnClickListener {
-//            showProgressBar(true, "")
-//            viewModel.getData()
-//
-//        }
+        }
 
         binding.chatroomRv.setOnItemClickListener { _, position ->
-            Toast.makeText(this, mChatRoomsAdapter.getItemData(position).title, Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, mChatRoomsAdapter.getItemData(position).title, Toast.LENGTH_SHORT)
+                .show()
         }
 
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu_chat_rooms, menu)
+        return true
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
@@ -69,23 +80,34 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
             android.R.id.home -> {
                 finish()
             }
+            R.id.action_blacklist -> {
+                startActivity(Intent(this, ChatBlacklistActivity::class.java))
+            }
         }
         return super.onOptionsItemSelected(item)
     }
 
     override fun initViewObservable() {
         viewModel.liveDataSignIn.observe(this) {
-            //TODO 中途修改密码会登录失败，所以后面要加入账号密码登录，或者直接跳转到登录界面
+            //TODO 中途修改密码会登录失败，直接跳转到登录界面
             if (it.token != "") {
                 SPUtil.put(this, "chat_token", it.token)
                 viewModel.chatRoomList()
-            } else if (it.statusCode == 401 && it.message == "API_ERROR_INVALIID_PASSWORD") {
-                Toast.makeText(this, "账号或密码错误", Toast.LENGTH_SHORT).show()
+//            } else if (it.statusCode == 401 && it.message == "API_ERROR_INVALIID_PASSWORD") {
+//                Toast.makeText(this, "账号或密码错误", Toast.LENGTH_SHORT).show()
             } else {
-                showProgressBar(
-                    false,
-                    "网络错误，点击重试\ncode=${it.statusCode} error=${it.error} message=${it.message}"
-                )
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("网络错误")
+                    .setMessage("code=${it.statusCode} error=${it.error} message=${it.message}")
+                    .setPositiveButton("重新登录") { _, _ ->
+                        SPUtil.remove(MyApp.contextBase, "token")
+                        startActivity(Intent(this, AccountActivity::class.java))
+                        finishAffinity()
+                    }
+                    .setNegativeButton("取消") { _, _ ->
+                        finish()
+                    }
+                    .show()
             }
         }
         viewModel.liveDataRoomList.observe(this) {

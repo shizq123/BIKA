@@ -94,7 +94,10 @@
             android:name=".ui.user.UserActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.chatroom.ChatRoomListActivity"
+            android:name=".ui.chatroom.ChatRoomsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".ui.chatblacklist.ChatBlacklistActivity"
             android:exported="false" />
 
     </application>

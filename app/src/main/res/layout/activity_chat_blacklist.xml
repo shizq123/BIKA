@@ -6,7 +6,7 @@
 
         <variable
             name="viewModel"
-            type="com.shizq.bika.ui.chatroom.ChatRoomListViewModel" />
+            type="com.shizq.bika.ui.chatblacklist.ChatBlacklistViewModel" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
@@ -15,19 +15,19 @@
         android:fitsSystemWindows="true">
 
         <include
-            android:id="@+id/chatroom_include"
+            android:id="@+id/blacklist_include"
             layout="@layout/view_toolbar"
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
         <me.jingbin.library.ByRecyclerView
-            android:id="@+id/chatroom_rv"
+            android:id="@+id/blacklist_rv"
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
             android:layout_width="match_parent"
             android:layout_height="match_parent"/>
 
         <LinearLayout
-            android:id="@+id/chatroom_load_layout"
+            android:id="@+id/blacklist_load_layout"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             app:layout_behavior="@string/appbar_scrolling_view_behavior"
@@ -40,19 +40,19 @@
             app:layout_constraintTop_toTopOf="parent">
 
             <ProgressBar
-                android:id="@+id/chatroom_load_progressBar"
+                android:id="@+id/blacklist_load_progressBar"
                 android:layout_width="48dp"
                 android:layout_height="48dp" />
 
             <ImageView
-                android:id="@+id/chatroom_load_error"
+                android:id="@+id/blacklist_load_error"
                 android:layout_width="48dp"
                 android:layout_height="48dp"
                 android:src="@drawable/ic_error"
                 android:visibility="gone" />
 
             <TextView
-                android:id="@+id/chatroom_load_text"
+                android:id="@+id/blacklist_load_text"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
