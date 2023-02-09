@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chat
+package com.shizq.bika.ui.chat2
 
 import android.annotation.SuppressLint
 import android.os.Bundle
@@ -21,26 +21,26 @@ import com.luck.picture.lib.entity.LocalMedia
 import com.luck.picture.lib.interfaces.OnResultCallbackListener
 import com.shizq.bika.BR
 import com.shizq.bika.R
-import com.shizq.bika.adapter.ChatAdapter
+import com.shizq.bika.adapter.ChatMessageAdapter
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.databinding.ActivityChatBinding
-import com.shizq.bika.network.websocket.WebSocketManager
+import com.shizq.bika.databinding.ActivityChat2Binding
+import com.shizq.bika.network.websocket.ChatWebSocketManager
 import com.shizq.bika.utils.AndroidBug5497Workaround
 import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.utils.GlideEngine
 import com.shizq.bika.widget.UserViewDialog
 import com.yalantis.ucrop.UCrop
 
-//旧聊天室
+//新聊天室
 //消息是websocket实现，消息是实时，不会留记录,网络不好会丢失消息
-class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
-    private lateinit var adapter: ChatAdapter
+class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
+    private lateinit var adapter: ChatMessageAdapter
     private lateinit var userViewDialog: UserViewDialog
     var chatRvBottom = false//false表示底部
     private val atUser=ArrayList<String>() //@的用户名
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
-        return R.layout.activity_chat
+        return R.layout.activity_chat2
     }
 
     override fun initVariableId(): Int {
@@ -50,14 +50,14 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
     @SuppressLint("ResourceType")
     override fun initData() {
         AndroidBug5497Workaround.assistActivity(this)
-        viewModel.url =
-            intent.getStringExtra("url").toString() + "/socket.io/?EIO=3&transport=websocket"
+        viewModel.id = intent.getStringExtra("id").toString()
         binding.chatInclude.toolbar.title = intent.getStringExtra("title").toString()
         setSupportActionBar(binding.chatInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        viewModel.webSocketManager = WebSocketManager.getInstance()
 
-        adapter = ChatAdapter()
+        viewModel.webSocketManager = ChatWebSocketManager.getInstance()
+
+        adapter = ChatMessageAdapter()
         binding.chatRv.layoutManager = LinearLayoutManager(this)
         binding.chatRv.adapter = adapter
 
@@ -87,6 +87,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
     }
 
     fun initListener() {
+        //显示 跳转到底部的按钮
         binding.chatRv.addOnScrollListener(object : OnScrollListener() {
             override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
                 super.onScrollStateChanged(recyclerView, newState)
@@ -100,85 +101,87 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
 
             }
         })
+
+        //跳转到底部的按钮监听
         binding.chatRvBottomBtn.setOnClickListener {
             chatRvBottom = false
             binding.chatRvBottomBtn.visibility = View.GONE
             binding.chatRv.scrollToPosition(adapter.data.size - 1)
         }
 
+        //item子布局监听
         binding.chatRv.setOnItemChildClickListener { view, position ->
-
-            val id = view.id
-            val data = adapter.getItemData(position)
-            if (id == R.id.chat_avatar_layout_l) {
-                //头像点击事件 查看用户信息
-                //聊天信息携带的用户信息不全 可以进行网络获取 以后再说
-                userViewDialog.showUserDialog(data)
-            }
-            if (id == R.id.chat_name_l) {
-                //名字点击事件 用于 @
-                initChipGroup(data.name)
-                //需要弹出键盘
-                showKeyboard()
-            }
-
-            if (id == R.id.chat_message_layout_l) {
-                //消息点击事件 用于 回复
-                //判断 语音和图片不能回复
-                if (!data.image.isNullOrEmpty()) {
-                    userViewDialog.PopupWindow(Base64Util().base64ToBitmap(data.image))
-                }
-                if (!data.audio.isNullOrEmpty()) {
-                    view as RelativeLayout
-                    //遍历所有的子view 找到要进行更新ui的view
-                    for (i in 0 until view.childCount) {
-                        val v: View = view.getChildAt(i)
-                        if (v.id == R.id.chat_voice_l) {
-                            v as LinearLayout
-                            for (j in 0 until v.childCount) {
-                                val voiceView: View = v.getChildAt(j)
-                                if (voiceView.id == R.id.chat_voice_image_l) {
-                                    viewModel.playAudio(data.audio, voiceView)
-                                }
-                                if (voiceView.id == R.id.chat_voice_dian) {
-                                    voiceView.visibility = View.GONE
-                                }
-
-                            }
-                        }
-                    }
-                }
-
-                if (data.audio.isNullOrEmpty() && data.image.isNullOrEmpty()) {
-//                        Toast.makeText(this,"回复-${}",Toast.LENGTH_SHORT).show()
-                    binding.chatSendContentReplyLayout.visibility = View.VISIBLE
-                    viewModel.reply=data.message
-                    viewModel.reply_name=data.name
-                    binding.chatSendContentReply.text = data.name + "：" + data.message
-                    //需要弹出键盘
-                    showKeyboard()
-                }
-            }
-            if (id == R.id.chat_message_layout_r) {
-                if (!data.image.isNullOrEmpty()) {
-                    userViewDialog.PopupWindow(Base64Util().base64ToBitmap(data.image))
-                }
-            }
+//
+//            val id = view.id
+//            val data = adapter.getItemData(position)
+//            if (id == R.id.chat_avatar_layout_l) {
+//                //头像点击事件 查看用户信息
+//                //聊天信息携带的用户信息不全 可以进行网络获取 以后再说
+//                userViewDialog.showUserDialog(data)
+//            }
+//            if (id == R.id.chat_name_l) {
+//                //名字点击事件 用于 @
+//                initChipGroup(data.name)
+//                //需要弹出键盘
+//                showKeyboard()
+//            }
+//
+//            if (id == R.id.chat_message_layout_l) {
+//                //消息点击事件 用于 回复
+//                //判断 语音和图片不能回复
+//                if (!data.image.isNullOrEmpty()) {
+//                    userViewDialog.PopupWindow(Base64Util().base64ToBitmap(data.image))
+//                }
+//                if (!data.audio.isNullOrEmpty()) {
+//                    view as RelativeLayout
+//                    //遍历所有的子view 找到要进行更新ui的view
+//                    for (i in 0 until view.childCount) {
+//                        val v: View = view.getChildAt(i)
+//                        if (v.id == R.id.chat_voice_l) {
+//                            v as LinearLayout
+//                            for (j in 0 until v.childCount) {
+//                                val voiceView: View = v.getChildAt(j)
+//                                if (voiceView.id == R.id.chat_voice_image_l) {
+//                                    viewModel.playAudio(data.audio, voiceView)
+//                                }
+//                                if (voiceView.id == R.id.chat_voice_dian) {
+//                                    voiceView.visibility = View.GONE
+//                                }
+//
+//                            }
+//                        }
+//                    }
+//                }
+//
+//                if (data.audio.isNullOrEmpty() && data.image.isNullOrEmpty()) {
+////                        Toast.makeText(this,"回复-${}",Toast.LENGTH_SHORT).show()
+//                    binding.chatSendContentReplyLayout.visibility = View.VISIBLE
+//                    viewModel.reply=data.message
+//                    viewModel.reply_name=data.name
+//                    binding.chatSendContentReply.text = data.name + "：" + data.message
+//                    //需要弹出键盘
+//                    showKeyboard()
+//                }
+//            }
+//            if (id == R.id.chat_message_layout_r) {
+//                if (!data.image.isNullOrEmpty()) {
+//                    userViewDialog.PopupWindow(Base64Util().base64ToBitmap(data.image))
+//                }
+//            }
         }
 
+        //item子布局长按监听
         binding.chatRv.setOnItemChildLongClickListener { view, position ->
             if (view.id == R.id.chat_avatar_layout_l) {
                 //头像点击事件 用于 @
-                initChipGroup(adapter.getItemData(position).name)
+                initChipGroup(adapter.getItemData(position).data.profile.name)
                 //需要弹出键盘
                 showKeyboard()
             }
             true
         }
 
-        binding.chatSendVoice.setOnClickListener {
-            Toast.makeText(this, "发送语音暂不支持", Toast.LENGTH_SHORT).show()
-        }
+        //发送图片
         binding.chatSendPhoto.setOnClickListener {
             PictureSelector.create(this)
                 .openGallery(SelectMimeType.ofImage())
@@ -197,12 +200,14 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
                                 viewModel.atname+=name.replace("@","嗶咔_")
                             }
                         }
-                        viewModel.sendMessage(base64Image=Base64Util().getBase64(result[0].cutPath))
+//                        viewModel.sendMessage(base64Image=Base64Util().getBase64(result[0].cutPath))
                         clearInput()//清空输入框
                     }
                     override fun onCancel() {}
                 })
         }
+
+        //发送消息
         binding.chatSendBtn.setOnClickListener {
             //发送消息 和官方一致消息不为空时才能发送
             if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
@@ -211,10 +216,12 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
                         viewModel.atname+=name.replace("@","嗶咔_")
                     }
                 }
-                viewModel.sendMessage(text=binding.chatSendContentInput.text.toString())
+//                viewModel.sendMessage(text=binding.chatSendContentInput.text.toString())
                 clearInput()//清空输入框
             }
         }
+
+        //输入框监听
         binding.chatSendContentInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence, start: Int, before: Int, count: Int) {}
@@ -225,6 +232,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
             }
         })
 
+        //关闭需要回复的内容
         binding.chatSendContentReplyClose.setOnClickListener {
             binding.chatSendContentReply.text = ""
             binding.chatSendContentReplyLayout.visibility = View.GONE
@@ -235,9 +243,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
 
 
     override fun initViewObservable() {
-        viewModel.liveData_connections.observe(this) {
-            binding.chatInclude.toolbar.subtitle = it
-        }
+        //收到的消息
         viewModel.liveData_message.observe(this) {
             //后面要加最大消息数
             adapter.addData(it)
@@ -246,6 +252,8 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
             }
 
         }
+
+        //当前通信连接状态
         viewModel.liveData_state.observe(this) {
             if (it == "failed") {
                 MaterialAlertDialogBuilder(this)

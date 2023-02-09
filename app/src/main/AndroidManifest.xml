@@ -91,6 +91,9 @@
             android:name=".ui.chat.ChatActivity"
             android:exported="false" />
         <activity
+            android:name=".ui.chat2.ChatActivity"
+            android:exported="false" />
+        <activity
             android:name=".ui.user.UserActivity"
             android:exported="false" />
         <activity

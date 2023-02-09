@@ -7,6 +7,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 网络接口全部是抓包哔咔官方接口 <br>
 官方app的图片会重复加载，我的修改了缓存key，加载更快更省流量 <br>
 阅读器太难了还没写，我比较懒先把简单的bug修一修 :( <br>
+安装包大小5M左右 <br>
 
 #感谢
 

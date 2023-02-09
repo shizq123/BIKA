@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.ViewGroup
-import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
@@ -15,6 +14,7 @@ import com.shizq.bika.adapter.ChatRoomsAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChatRoomsBinding
 import com.shizq.bika.ui.account.AccountActivity
+import com.shizq.bika.ui.chat2.ChatActivity
 import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.SPUtil
 
@@ -64,8 +64,10 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
         }
 
         binding.chatroomRv.setOnItemClickListener { _, position ->
-            Toast.makeText(this, mChatRoomsAdapter.getItemData(position).title, Toast.LENGTH_SHORT)
-                .show()
+            val intent = Intent(this, ChatActivity::class.java)
+            intent.putExtra("title", mChatRoomsAdapter.getItemData(position).title)
+            intent.putExtra("id", mChatRoomsAdapter.getItemData(position).id)
+            startActivity(intent)
         }
 
     }
