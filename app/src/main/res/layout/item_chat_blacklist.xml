@@ -28,12 +28,13 @@
 
         <ImageView
             android:id="@+id/chat_blacklist_delete"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="42dp"
+            android:layout_height="42dp"
             android:layout_alignParentEnd="true"
             android:layout_centerVertical="true"
+            android:padding="10dp"
             android:layout_marginEnd="6dp"
-            android:src="@drawable/ic_close" />
+            android:src="@drawable/ic_delete" />
 
         <TextView
             android:id="@+id/chat_rooms_name"

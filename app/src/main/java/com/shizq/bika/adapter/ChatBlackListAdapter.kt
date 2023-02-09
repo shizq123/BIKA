@@ -22,5 +22,7 @@ class ChatBlackListAdapter :
             .placeholder(R.drawable.placeholder_avatar_2)
             .into(binding.chatBlacklistAvatar)
 
+        holder.addOnClickListener(R.id.chat_blacklist_delete)
+
     }
 }

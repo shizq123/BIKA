@@ -1,9 +1,11 @@
 package com.shizq.bika.ui.chat2
 
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
+import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -25,8 +27,8 @@ import com.shizq.bika.adapter.ChatMessageAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChat2Binding
 import com.shizq.bika.network.websocket.ChatWebSocketManager
+import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.AndroidBug5497Workaround
-import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.utils.GlideEngine
 import com.shizq.bika.widget.UserViewDialog
 import com.yalantis.ucrop.UCrop
@@ -37,7 +39,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
     private lateinit var adapter: ChatMessageAdapter
     private lateinit var userViewDialog: UserViewDialog
     var chatRvBottom = false//false表示底部
-    private val atUser=ArrayList<String>() //@的用户名
+    private val atUser = ArrayList<String>() //@的用户名
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_chat2
@@ -68,19 +70,20 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         initListener()
     }
 
-//    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-//        menuInflater.inflate(R.menu.toolbar_menu_chat, menu)
-//        return true
-//    }
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.toolbar_menu_chat2, menu)
+        return true
+    }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
                 finish()
             }
-//            R.id.action_setting -> {
-//                Toast.makeText(this, "功能不支持", Toast.LENGTH_SHORT).show()
-//            }
+
+            R.id.action_blacklist -> {
+                startActivity(Intent(this, ChatBlacklistActivity::class.java))
+            }
 
         }
         return super.onOptionsItemSelected(item)
@@ -196,13 +199,14 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                 .forResult(object : OnResultCallbackListener<LocalMedia> {
                     override fun onResult(result: ArrayList<LocalMedia>) {
                         if (atUser.size > 0) {
-                            for (name in atUser){
-                                viewModel.atname+=name.replace("@","嗶咔_")
+                            for (name in atUser) {
+                                viewModel.atname += name.replace("@", "嗶咔_")
                             }
                         }
 //                        viewModel.sendMessage(base64Image=Base64Util().getBase64(result[0].cutPath))
                         clearInput()//清空输入框
                     }
+
                     override fun onCancel() {}
                 })
         }
@@ -212,8 +216,8 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             //发送消息 和官方一致消息不为空时才能发送
             if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
                 if (atUser.size > 0) {
-                    for (name in atUser){
-                        viewModel.atname+=name.replace("@","嗶咔_")
+                    for (name in atUser) {
+                        viewModel.atname += name.replace("@", "嗶咔_")
                     }
                 }
 //                viewModel.sendMessage(text=binding.chatSendContentInput.text.toString())
@@ -277,11 +281,12 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
     }
 
 
-    private fun initChipGroup(str:String) {
+    private fun initChipGroup(str: String) {
         atUser.add("@$str")
         binding.chatSendAt.removeAllViews()
         for (text in atUser) {
-            val chip = layoutInflater.inflate(R.layout.item_chip_at, binding.chatSendAt, false) as Chip
+            val chip =
+                layoutInflater.inflate(R.layout.item_chip_at, binding.chatSendAt, false) as Chip
             chip.text = text
             binding.chatSendAt.addView(chip)
             chip.setOnClickListener {
@@ -299,17 +304,17 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 
     private fun showKeyboard() {
         binding.chatSendContentInput.requestFocus()
-        val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
         imm.showSoftInput(binding.chatSendContentInput, 0)
     }
 
-    fun clearInput(){
+    fun clearInput() {
         //清空输入框
         atUser.clear()
         binding.chatSendAt.removeAllViews()
-        viewModel.atname=""
-        viewModel.reply=""
-        viewModel.reply_name=""
+        viewModel.atname = ""
+        viewModel.reply = ""
+        viewModel.reply_name = ""
         binding.chatSendContentInput.setText("")
         binding.chatSendContentReply.text = ""
         binding.chatSendContentReplyLayout.visibility = View.GONE

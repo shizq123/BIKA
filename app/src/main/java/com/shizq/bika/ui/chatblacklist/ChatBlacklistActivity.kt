@@ -47,10 +47,13 @@ class ChatBlacklistActivity : BaseActivity<ActivityChatBlacklistBinding, ChatBla
 
         }
 
-//        binding.blacklistRv.setOnItemClickListener { _, position ->
-//            Toast.makeText(this, mChatRoomsAdapter.getItemData(position).title, Toast.LENGTH_SHORT)
-//                .show()
-//        }
+        binding.blacklistRv.setOnItemChildClickListener { view, position ->
+            if (view.id==R.id.chat_blacklist_delete){
+                binding.blacklistLoadLayout.visibility = ViewGroup.VISIBLE
+                showProgressBar(true, "")
+                viewModel.deleteChatBlackList(mChatBlackListAdapter.getItemData(position).id)
+            }
+        }
         binding.blacklistRv.setOnLoadMoreListener {  }
 
     }
@@ -78,6 +81,25 @@ class ChatBlacklistActivity : BaseActivity<ActivityChatBlacklistBinding, ChatBla
 //                } else {
 //                    binding.comiclistRv.loadMoreComplete()//加载成功
 //                }
+
+            } else {
+                showProgressBar(
+                    false,
+                    "网络错误，点击重试\ncode=${it.statusCode} error=${it.error} message=${it.message}"
+                )
+            }
+        }
+
+        viewModel.liveDataBlackListDelete.observe(this) {
+            if (it.id != null&&it.id != "") {
+                binding.blacklistLoadLayout.visibility = ViewGroup.GONE
+                for (i in 0 until mChatBlackListAdapter.data.size){
+                    if (it.id==mChatBlackListAdapter.getItemData(i).id){
+                        mChatBlackListAdapter.data-=mChatBlackListAdapter.getItemData(i)
+                        mChatBlackListAdapter.notifyDataSetChanged()
+                    }
+                }
+
 
             } else {
                 showProgressBar(

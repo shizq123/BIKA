@@ -240,7 +240,7 @@ class ChatMessageAdapter :
                         binding.chatContentL.visibility = View.GONE
                     }
                     GlideApp.with(holder.itemView)
-                        .load(message.medias)
+                        .load(message.medias[0])
                         .placeholder(R.drawable.placeholder_avatar_2)
                         .into(binding.chatContentImageL)
                 }else{

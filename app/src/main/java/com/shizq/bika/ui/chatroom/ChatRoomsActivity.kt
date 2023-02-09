@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.ViewGroup
+import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
@@ -64,16 +65,22 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
         }
 
         binding.chatroomRv.setOnItemClickListener { _, position ->
-            val intent = Intent(this, ChatActivity::class.java)
-            intent.putExtra("title", mChatRoomsAdapter.getItemData(position).title)
-            intent.putExtra("id", mChatRoomsAdapter.getItemData(position).id)
-            startActivity(intent)
+            val userLevel = SPUtil.get(this,"user_level",1) as Int
+            if (userLevel >= mChatRoomsAdapter.getItemData(position).minLevel) {
+                val intent = Intent(this, ChatActivity::class.java)
+                intent.putExtra("title", mChatRoomsAdapter.getItemData(position).title)
+                intent.putExtra("id", mChatRoomsAdapter.getItemData(position).id)
+                startActivity(intent)
+            } else {
+                Toast.makeText(this,"你不能进入此聊天室",Toast.LENGTH_SHORT).show()
+            }
+
         }
 
     }
 
     override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.toolbar_menu_chat_rooms, menu)
+        menuInflater.inflate(R.menu.toolbar_menu_chat2, menu)
         return true
     }
 

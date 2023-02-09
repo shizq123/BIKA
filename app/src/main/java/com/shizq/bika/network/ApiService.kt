@@ -341,8 +341,15 @@ interface ApiService {
     ): Observable<ChatSignInBean>
 
     //新聊天室 用户信息
-    @GET("users/profile")
+    @GET("user/profile")
     fun ChatProfileGet(
+        @HeaderMap headers: Map<String, String>
+    ): Observable<ChatProfileBean>
+
+    //新聊天室 查看别人的用户信息
+    @GET("user/profile/{id}")
+    fun ChatUserProfileGet(
+        @Query("id") page: String,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatProfileBean>
 

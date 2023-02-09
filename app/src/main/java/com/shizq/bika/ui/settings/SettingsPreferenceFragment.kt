@@ -206,8 +206,9 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                 activity?.let {
                     MaterialAlertDialogBuilder(it)
                         .setTitle("你确定要退出登录吗")
-                        .setPositiveButton("确定") { dialog, which ->
+                        .setPositiveButton("确定") { _, _ ->
                             SPUtil.remove(MyApp.contextBase, "token")
+                            SPUtil.remove(MyApp.contextBase, "chat_token")
                             startActivity(Intent(activity, AccountActivity::class.java))
                             activity?.finishAffinity()
                         }
