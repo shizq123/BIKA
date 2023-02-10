@@ -52,7 +52,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
     @SuppressLint("ResourceType")
     override fun initData() {
         AndroidBug5497Workaround.assistActivity(this)
-        viewModel.id = intent.getStringExtra("id").toString()
+        viewModel.roomId = intent.getStringExtra("id").toString()
         binding.chatInclude.toolbar.title = intent.getStringExtra("title").toString()
         setSupportActionBar(binding.chatInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
@@ -220,7 +220,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                         viewModel.atname += name.replace("@", "嗶咔_")
                     }
                 }
-//                viewModel.sendMessage(text=binding.chatSendContentInput.text.toString())
+                viewModel.sendMessage(message=binding.chatSendContentInput.text.toString())
                 clearInput()//清空输入框
             }
         }

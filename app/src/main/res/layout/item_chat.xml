@@ -63,6 +63,33 @@
                     android:layout_marginEnd="4dp"
                     android:src="@drawable/verified_icon"/>
 
+                <ImageView
+                    android:id="@+id/chat_official"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_hotel_class"/>
+
+                <ImageView
+                    android:id="@+id/chat_knight"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_group_work"/>
+
+                <ImageView
+                    android:id="@+id/chat_manager"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_security"/>
+
                 <TextView
                     android:id="@+id/chat_name_l"
                     android:layout_width="wrap_content"

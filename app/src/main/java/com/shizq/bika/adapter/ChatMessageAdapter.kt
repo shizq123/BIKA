@@ -148,7 +148,7 @@ class ChatMessageAdapter :
 //            }
 //
 //        }
-        else {
+        else if(bean.type=="TEXT_MESSAGE"||bean.type=="IMAGE_MESSAGE"){
             //接收消息
             if (bean.isBlocked){
                 //黑名单
@@ -186,7 +186,25 @@ class ChatMessageAdapter :
                     binding.chatLevelL.text = "Lv." + profile.level
                 }
 
-//                binding.chatVerified.visibility = if (profile.verified) View.VISIBLE else View.GONE
+                //和哔咔聊天室显示一致
+                if (profile.characters.isNotEmpty()) {
+                    for (i in profile.characters) {
+                        when(i){
+                            "knight" -> {
+                                binding.chatKnight.visibility=View.VISIBLE
+                            }
+                            "official" -> {
+                                binding.chatOfficial.visibility=View.VISIBLE
+
+                            }
+                            "manager" -> {
+                                binding.chatManager.visibility=View.VISIBLE
+
+                            }
+                        }
+
+                    }
+                }
                 //回复的信息
                 val reply = bean.data.reply
                 if (reply != null) {
@@ -241,7 +259,7 @@ class ChatMessageAdapter :
                     }
                     GlideApp.with(holder.itemView)
                         .load(message.medias[0])
-                        .placeholder(R.drawable.placeholder_avatar_2)
+                        .placeholder(R.drawable.placeholder_transparent_low)
                         .into(binding.chatContentImageL)
                 }else{
                     binding.chatContentImageL.visibility = View.GONE
@@ -249,6 +267,11 @@ class ChatMessageAdapter :
 
             }
 
+        }else{
+            binding.chatLayoutL.visibility = View.GONE
+            binding.chatLayoutR.visibility = View.GONE
+            binding.chatNotification.visibility = View.VISIBLE
+            binding.chatNotification.text = "未知消息类型"
         }
 
 //        holder.addOnClickListener(R.id.chat_avatar_layout_l)

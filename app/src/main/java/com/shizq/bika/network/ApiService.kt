@@ -379,4 +379,11 @@ interface ApiService {
         @Path("id") gameId: String,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatBlackListDeleteBean>
+
+    //新聊天室 发送消息
+    @POST("room/send-message")
+    fun ChatSendMessagePost(
+        @Body requestBody: RequestBody,
+        @HeaderMap headers: Map<String, String>
+    ): Observable<ChatMessage2Bean>
 }

@@ -20,12 +20,7 @@ data class ChatMessage2Bean(
             val message: String,
             val referenceId: String,
             val userMentions: List<UserMention>
-        ){
-            data class UserMention(
-                val id: String,
-                val name: String
-            )
-        }
+        )
 
         data class Profile(
             val avatarUrl: String,
@@ -52,3 +47,7 @@ data class ChatMessage2Bean(
         )
     }
 }
+data class UserMention(
+    val id: String,
+    val name: String
+)

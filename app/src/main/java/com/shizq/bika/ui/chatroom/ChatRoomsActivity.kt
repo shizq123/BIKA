@@ -110,6 +110,7 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
                     .setMessage("code=${it.statusCode} error=${it.error} message=${it.message}")
                     .setPositiveButton("重新登录") { _, _ ->
                         SPUtil.remove(MyApp.contextBase, "token")
+                        SPUtil.remove(MyApp.contextBase, "chat_token")
                         startActivity(Intent(this, AccountActivity::class.java))
                         finishAffinity()
                     }

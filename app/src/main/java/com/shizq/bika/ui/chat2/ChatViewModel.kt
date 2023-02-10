@@ -3,25 +3,31 @@ package com.shizq.bika.ui.chat2
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import com.shizq.bika.MyApp
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatMessage2Bean
+import com.shizq.bika.bean.UserMention
 import com.shizq.bika.network.RetrofitUtil
+import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.websocket.IReceiveMessage
 import com.shizq.bika.network.websocket.ChatWebSocketManager
 import com.shizq.bika.utils.SPUtil
+import io.reactivex.rxjava3.core.Observer
+import io.reactivex.rxjava3.disposables.Disposable
+import okhttp3.MediaType
+import okhttp3.RequestBody
+import retrofit2.HttpException
+import java.util.*
 
 class ChatViewModel(application: Application) : BaseViewModel(application) {
-    var id = ""
+    var roomId = ""
     lateinit var webSocketManager: ChatWebSocketManager
 
     var reply: String = ""
     var reply_name: String = ""
     var atname: String = ""
 
-    //    val liveData_connections: MutableLiveData<String> by lazy {
-//        MutableLiveData<String>()
-//    }
     val liveData_message: MutableLiveData<ChatMessage2Bean> by lazy {
         MutableLiveData<ChatMessage2Bean>()
     }
@@ -33,7 +39,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         val url = RetrofitUtil.LIVE_SERVER +
                 "/?token=" +
                 SPUtil.get(MyApp.contextBase, "chat_token", "") as String +
-                "&room=" + id
+                "&room=" + roomId
         webSocketManager.init(url, object :
             IReceiveMessage {
             override fun onConnectSuccess() {}
@@ -48,89 +54,54 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
 
             override fun onMessage(text: String) {
                 liveData_state.postValue("success")
-
-
                 liveData_message.postValue(Gson().fromJson(text, ChatMessage2Bean::class.java))
-//                "characters": [
-//                "official",//星星
-//                "manager"//盾牌
-//                ]
 
-//                if (text == "40") {
-//
-//
-//                    val array = ArrayList<String>()
-//                    array.add("init")
-//                    array.add(Gson().toJson(init()))
-//
-//                    webSocketManager.sendMessage("42" + Gson().toJson(array))
-//                }
-//                if (text.substring(0, 2) == "42") {
-//                    //收到消息 42 进行解析
-//                    val key = parseString(text.substring(2)).asJsonArray[0].asString
-//                    val json = parseString(text.substring(2)).asJsonArray[1].asJsonObject
-//
-//                    when (key) {
-//                        //broadcast_ads是广告
-//                        "broadcast_ads" -> {}
-//                        "new_connection" -> {
-//                            liveData_connections.postValue("${json.get("connections").asString}人在线")
-//                        }
-//                        "receive_notification" -> {
-//                            liveData_message.postValue(
-//                                Gson().fromJson(
-//                                    json,
-//                                    ChatMessageBean::class.java
-//                                )
-//                            )
-//                        }
-//                        "broadcast_message" -> {
-//                            liveData_message.postValue(
-//                                Gson().fromJson(
-//                                    json,
-//                                    ChatMessageBean::class.java
-//                                )
-//                            )
-//
-//                        }
-//                        "broadcast_image" -> {
-//                            liveData_message.postValue(
-//                                Gson().fromJson(
-//                                    json,
-//                                    ChatMessageBean::class.java
-//                                )
-//                            )
-//
-//                        }
-//                        "broadcast_audio" -> {
-//                            liveData_message.postValue(
-//                                Gson().fromJson(
-//                                    json,
-//                                    ChatMessageBean::class.java
-//                                )
-//                            )
-//                        }
-//
-//                        "connection_close" -> {
-//                            liveData_connections.postValue("${json.get("connections").asString}人在线")
-//                        }
-//
-//                        else -> {
-//                            //未知类型
-//                            liveData_message.postValue(
-//                                Gson().fromJson(
-//                                    json,
-//                                    ChatMessageBean::class.java
-//                                )
-//                            )
-//
-//                        }
-//                    }
-//
-//                }
             }
 
         })
+    }
+    fun sendMessage(message: String , userMentions: List<UserMention> = listOf()){
+        val map = mutableMapOf(
+            "roomId" to roomId,
+            "message" to message,
+            "referenceId" to UUID.randomUUID().toString(),
+            "userMentions" to userMentions
+        )
+        val body = RequestBody.create(
+            MediaType.parse("application/json; charset=UTF-8"),
+            Gson().toJson(map)
+        )
+        val headers = BaseHeaders().getChatHeaderMapAndToken()
+        RetrofitUtil.service_live.ChatSendMessagePost(body, headers)
+            .doOnSubscribe(this)
+            .subscribe(object : Observer<ChatMessage2Bean> {
+                override fun onSubscribe(d: Disposable) {
+
+                }
+
+                override fun onError(e: Throwable) {
+                    var t: ChatMessage2Bean? = null
+                    if (e is HttpException) {   //  处理服务器返回的非成功异常
+                        val responseBody = e.response()!!.errorBody()
+                        if (responseBody != null) {
+                            val type = object : TypeToken<ChatMessage2Bean>() {}.type
+                            t = Gson().fromJson(responseBody.string(), type)
+                            liveData_message.postValue(t)
+                        } else {
+                            liveData_message.postValue(t)
+                        }
+                    }
+                }
+
+                override fun onComplete() {
+
+                }
+
+                override fun onNext(t: ChatMessage2Bean) {
+                    liveData_message.postValue(t)
+                }
+
+            })
     }
 
 //    //发送文字 可以回复 可以@
