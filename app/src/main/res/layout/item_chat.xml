@@ -146,6 +146,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_margin="10dp"
+                            android:ellipsize="end"
+                            android:maxLines="2"
                             android:text="消息消息消息"
                             android:textSize="13sp" />
                     </LinearLayout>
@@ -271,6 +273,33 @@
                     android:src="@drawable/verified_icon"
                     android:visibility="gone" />
 
+                <ImageView
+                    android:id="@+id/chat_official_r"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_hotel_class"/>
+
+                <ImageView
+                    android:id="@+id/chat_knight_r"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_group_work"/>
+
+                <ImageView
+                    android:id="@+id/chat_manager_r"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:visibility="gone"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_security"/>
+
                 <TextView
                     android:id="@+id/chat_name_r"
                     android:layout_width="wrap_content"
@@ -327,6 +356,8 @@
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:layout_margin="10dp"
+                            android:ellipsize="end"
+                            android:maxLines="2"
                             android:text="消息消息消息"
                             android:textSize="13sp" />
                     </LinearLayout>

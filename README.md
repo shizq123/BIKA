@@ -1,6 +1,6 @@
 [![android](https://img.shields.io/badge/android-7.0%2B-brightgreen.svg)](https://github.com/shizq123/BIKA/releases)
 [![release](https://img.shields.io/github/release/shizq123/BIKA.svg)](https://github.com/shizq123/BIKA/releases)
-[![downloads](https://img.shields.io/github/downloads/shizq123/BIKA/total.svg)](https://github.com/shizq123/BIKA/releases)
+[![downloads](https://img.shields.io/github/downloads/shizq123/BIKA/v1.0.4/total.svg)](https://github.com/shizq123/BIKA/releases)
 
 代码很烂，功能还不全 <br>
 UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。<br>
@@ -8,6 +8,12 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 官方app的图片会重复加载，我的修改了缓存key，加载更快更省流量 <br>
 阅读器太难了还没写，我比较懒先把简单的bug修一修 :( <br>
 安装包大小5M左右 <br>
+
+#下载
+    
+[[GitHub下载]](https://github.com/shizq123/BIKA/releases)
+[[AppCenter下载]](https://install.appcenter.ms/users/shizq123hh/apps/bika/distribution_groups/release)
+[[蓝奏云下载]](https://zquan.lanzoue.com/b00zguxje)
 
 #感谢
 
@@ -24,15 +30,13 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 
 #未完成
 
-    开发app的目标 apk安装包要小 图片加载不卡顿 应用不闪退 功能要齐全
-
     漫画详情章节观看记录
     漫画详情章节图片观看记录
     漫画阅读器
     聊天室发送语音
     子评论页加进度条
+    哔咔新的聊天室
 
-    未来添加下载
     未来适配平板
     未来添加漫画下载
     添加转场动画
@@ -63,7 +67,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     413 request entity too large 图片上传太大
     500 :( -- 
 
-#聊天室 webSocket
+#旧聊天室 webSocket
 
     0 连接成功 
     2 心跳包 服务器会回复 3

@@ -86,7 +86,10 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                         if (responseBody != null) {
                             val type = object : TypeToken<ChatMessage2Bean>() {}.type
                             t = Gson().fromJson(responseBody.string(), type)
-                            liveData_message.postValue(t)
+                            if(e.code()!=201){
+                                //后面优化
+                                liveData_message.postValue(t)
+                            }
                         } else {
                             liveData_message.postValue(t)
                         }
