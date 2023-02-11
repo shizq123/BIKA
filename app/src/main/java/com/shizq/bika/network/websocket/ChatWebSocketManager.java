@@ -2,6 +2,8 @@ package com.shizq.bika.network.websocket;
 
 import android.util.Log;
 
+import com.shizq.bika.network.HttpDns;
+
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
@@ -58,6 +60,7 @@ public class ChatWebSocketManager {
                 .writeTimeout(60, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
                 .connectTimeout(60, TimeUnit.SECONDS)
+                .dns(new HttpDns())
                 .build();
         request = new Request.Builder().url(webSocketURL).build();
         receiveMessage = message;

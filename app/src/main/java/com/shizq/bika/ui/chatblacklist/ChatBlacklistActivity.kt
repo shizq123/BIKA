@@ -95,8 +95,9 @@ class ChatBlacklistActivity : BaseActivity<ActivityChatBlacklistBinding, ChatBla
                 binding.blacklistLoadLayout.visibility = ViewGroup.GONE
                 for (i in 0 until mChatBlackListAdapter.data.size){
                     if (it.id==mChatBlackListAdapter.getItemData(i).id){
-                        mChatBlackListAdapter.data-=mChatBlackListAdapter.getItemData(i)
-                        mChatBlackListAdapter.notifyDataSetChanged()
+                        mChatBlackListAdapter.data.remove(mChatBlackListAdapter.getItemData(i))
+                        mChatBlackListAdapter.notifyItemRemoved(i)
+                        break
                     }
                 }
 
