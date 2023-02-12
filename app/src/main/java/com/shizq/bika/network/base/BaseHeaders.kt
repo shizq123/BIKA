@@ -42,7 +42,7 @@ class BaseHeaders(private val urlEnd: String = "", val type: String = "") {
         return map
     }
 
-    fun getChatHeaderMapAndToken(): Map<String, String> {
+    fun getChatHeaderMapAndToken(): MutableMap<String, String> {
         val map = getChatHeaders()
         map["authorization"] = "Bearer " + SPUtil.get(MyApp.contextBase, "chat_token", "") as String
         return map

@@ -9,9 +9,6 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
-import android.widget.LinearLayout
-import android.widget.RelativeLayout
-import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
@@ -22,7 +19,6 @@ import com.luck.picture.lib.config.SelectMimeType
 import com.luck.picture.lib.entity.LocalMedia
 import com.luck.picture.lib.interfaces.OnResultCallbackListener
 import com.shizq.bika.BR
-import com.shizq.bika.MyApp
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatMessageAdapter
 import com.shizq.bika.base.BaseActivity
@@ -31,7 +27,6 @@ import com.shizq.bika.network.websocket.ChatWebSocketManager
 import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.AndroidBug5497Workaround
 import com.shizq.bika.utils.GlideEngine
-import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.widget.UserViewDialog
 import com.yalantis.ucrop.UCrop
 
@@ -193,19 +188,18 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                 .isCameraForegroundService(true)
                 .setCropEngine { fragment, srcUri, destinationUri, dataSource, requestCode ->
                     UCrop.of(srcUri, destinationUri, dataSource)
-                        .withMaxResultSize(800, 800)
                         .start(fragment.requireActivity(), fragment, requestCode);
                 }
                 .setSelectionMode(1)
                 .setImageEngine(GlideEngine.createGlideEngine())
                 .forResult(object : OnResultCallbackListener<LocalMedia> {
                     override fun onResult(result: ArrayList<LocalMedia>) {
-                        if (atUser.size > 0) {
-                            for (name in atUser) {
-                                viewModel.atname += name.replace("@", "嗶咔_")
-                            }
-                        }
-//                        viewModel.sendMessage(base64Image=Base64Util().getBase64(result[0].cutPath))
+//                        if (atUser.size > 0) {
+//                            for (name in atUser) {
+//                                viewModel.atname += name.replace("@", "嗶咔_")
+//                            }
+//                        }
+                        viewModel.sendImage(path = result[0].cutPath ,message = "")
                         clearInput()//清空输入框
                     }
 
@@ -217,11 +211,11 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         binding.chatSendBtn.setOnClickListener {
             //发送消息 和官方一致消息不为空时才能发送
             if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
-                if (atUser.size > 0) {
-                    for (name in atUser) {
-                        viewModel.atname += name.replace("@", "嗶咔_")
-                    }
-                }
+//                if (atUser.size > 0) {
+//                    for (name in atUser) {
+//                        viewModel.atname += name.replace("@", "嗶咔_")
+//                    }
+//                }
                 viewModel.sendMessage(message = binding.chatSendContentInput.text.toString())
                 clearInput()//清空输入框
             }

@@ -386,4 +386,11 @@ interface ApiService {
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatMessage2Bean>
+
+    //新聊天室 发送图片
+    @POST("room/send-image")
+    fun ChatSendImagePost(
+        @HeaderMap headers: Map<String, String>,
+        @Body requestBody: RequestBody
+    ): Observable<ChatMessage2Bean>
 }

@@ -52,7 +52,7 @@ object RetrofitUtil {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
 //            .retryOnConnectionFailure(true)// 错误重连
-        if (URL != UPDATE) {
+        if (URL != UPDATE||URL != LIVE_SERVER) {
             builder.dns(HttpDns())
         }
         return builder.build()
