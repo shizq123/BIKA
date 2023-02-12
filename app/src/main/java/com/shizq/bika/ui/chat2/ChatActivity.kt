@@ -22,6 +22,7 @@ import com.luck.picture.lib.config.SelectMimeType
 import com.luck.picture.lib.entity.LocalMedia
 import com.luck.picture.lib.interfaces.OnResultCallbackListener
 import com.shizq.bika.BR
+import com.shizq.bika.MyApp
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatMessageAdapter
 import com.shizq.bika.base.BaseActivity
@@ -30,6 +31,7 @@ import com.shizq.bika.network.websocket.ChatWebSocketManager
 import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.AndroidBug5497Workaround
 import com.shizq.bika.utils.GlideEngine
+import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.widget.UserViewDialog
 import com.yalantis.ucrop.UCrop
 
@@ -220,7 +222,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                         viewModel.atname += name.replace("@", "嗶咔_")
                     }
                 }
-                viewModel.sendMessage(message=binding.chatSendContentInput.text.toString())
+                viewModel.sendMessage(message = binding.chatSendContentInput.text.toString())
                 clearInput()//清空输入框
             }
         }
@@ -278,6 +280,28 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             }
         }
 
+        viewModel.liveDataSendMessage.observe(this) {
+            if (it.data != null) {
+                //发送成功
+                //通过 for循环 找到自己发送的消息进行数据更新
+                for (i in 0 until adapter.data.size) {
+                    if (adapter.getItemData(i).data != null) {
+                        if (adapter.getItemData(i).type == "TEXT_MESSAGE" || adapter.getItemData(i).type == "IMAGE_MESSAGE") {
+                            //得到指定id条目的位置
+                            if (adapter.getItemData(i).data.message.referenceId == it.data.message.referenceId) {
+                                //更新ui
+                                adapter.data[i] = it
+                                adapter.notifyItemChanged(i)
+                                break
+                            }
+                        }
+                    }
+                }
+            } else{
+                //发送失败 弹窗
+
+            }
+        }
     }
 
 

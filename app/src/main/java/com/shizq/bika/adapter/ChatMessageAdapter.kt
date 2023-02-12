@@ -54,22 +54,29 @@ class ChatMessageAdapter :
             //接收消息（文字，图片）
             val profile = bean.data.profile
             if (profile.name == name) {
-                //和自己相同名字是自己发的 或者后面改成判断用户id
+                //自己发的消息
+                //根据名字判断 或者后面改成判断用户id
                 binding.chatLayoutL.visibility = View.GONE
                 binding.chatLayoutR.visibility = View.VISIBLE
                 binding.chatNotification.visibility = View.GONE
                 binding.chatNameR.text = profile.name
+
+                if (profile.id.isNullOrEmpty()) {
+                    binding.chatMessageProgress.visibility = View.VISIBLE
+                } else {
+                    binding.chatMessageProgress.visibility = View.GONE
+                }
 
                 //头像
                 GlideApp.with(holder.itemView)
                     .load(
                         if (profile.avatarUrl != null && profile.avatarUrl != "") {
                             val i: Int = profile.avatarUrl.indexOf("/static/")
-                            if (i > 0)
+                            if (i > 0){
                                 GlideUrlNewKey(
                                     profile.avatarUrl.substring(0, i),
                                     profile.avatarUrl.substring(i + 8)
-                                )
+                                )}
                             else profile.avatarUrl
                         } else R.drawable.placeholder_avatar_2
                     )

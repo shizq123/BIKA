@@ -60,7 +60,7 @@ public class ChatWebSocketManager {
                 .writeTimeout(60, TimeUnit.SECONDS)
                 .readTimeout(60, TimeUnit.SECONDS)
                 .connectTimeout(60, TimeUnit.SECONDS)
-                .dns(new HttpDns())
+//                .dns(new HttpDns())
                 .build();
         request = new Request.Builder().url(webSocketURL).build();
         receiveMessage = message;

@@ -309,21 +309,36 @@
 
             </LinearLayout>
 
-            <LinearLayout
+            <RelativeLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_below="@id/chat_name_layout_r"
                 android:layout_marginEnd="4dp"
+                android:layout_marginTop="2dp"
                 android:layout_marginBottom="4dp"
-                android:layout_toStartOf="@id/chat_avatar_layout_r"
-                android:orientation="vertical">
-
+                android:layout_toStartOf="@id/chat_avatar_layout_r">
+                <RelativeLayout
+                    android:id="@+id/chat_message_progress_layout"
+                    android:layout_alignBottom="@id/chat_message_layout_r"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content">
+                    <ProgressBar
+                        android:id="@+id/chat_message_progress"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"/>
+                    <ImageView
+                        android:id="@+id/chat_message_error"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
+                        android:visibility="gone"
+                        android:src="@drawable/ic_error"/>
+                </RelativeLayout>
                 <RelativeLayout
                     android:id="@+id/chat_message_layout_r"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
                     android:background="@drawable/shape_chat_bg"
+                    android:layout_toEndOf="@+id/chat_message_progress_layout"
                     android:descendantFocusability="blocksDescendants"
                     android:orientation="vertical"
                     android:padding="10dp">
@@ -410,13 +425,14 @@
 
                 <TextView
                     android:id="@+id/chat_time_r"
+                    android:layout_below="@id/chat_message_layout_r"
+                    android:layout_toEndOf="@+id/chat_message_progress_layout"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_gravity="start"
                     android:textSize="8dp"
                     android:visibility="gone" />
-            </LinearLayout>
-
+            </RelativeLayout>
 
         </RelativeLayout>
 

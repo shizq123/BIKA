@@ -35,6 +35,10 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         MutableLiveData<String>()
     }
 
+    val liveDataSendMessage: MutableLiveData<ChatMessage2Bean> by lazy {
+        MutableLiveData<ChatMessage2Bean>()
+    }
+
     fun WebSocket() {
         val url = RetrofitUtil.LIVE_SERVER +
                 "/?token=" +
@@ -54,17 +58,40 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
 
             override fun onMessage(text: String) {
                 liveData_state.postValue("success")
-                liveData_message.postValue(Gson().fromJson(text, ChatMessage2Bean::class.java))
+
+                val bean = Gson().fromJson(text, ChatMessage2Bean::class.java)
+                if (bean.data != null) {
+                    if (bean.type == "TEXT_MESSAGE" || bean.type == "IMAGE_MESSAGE") {
+                        //防止重复显示 屏蔽掉自己发送的消息
+                        if (bean.data.profile.name !=
+                            SPUtil.get(MyApp.contextBase, "user_name", "") as String
+                        ) {
+                            liveData_message.postValue(bean)
+                        }
+                    } else {
+                        liveData_message.postValue(bean)
+                    }
+                }
 
             }
 
         })
     }
-    fun sendMessage(message: String , userMentions: List<UserMention> = listOf()){
+
+    fun sendMessage(message: String, userMentions: List<UserMention> = listOf()) {
+        val referenceId = UUID.randomUUID().toString()
+        //预先添加个数据 等发送成功再进行数据和ui的更新
+        liveData_message.postValue(
+            Gson().fromJson(
+                myMessage(message, referenceId, userMentions),
+                ChatMessage2Bean::class.java
+            )
+        )
+
         val map = mutableMapOf(
             "roomId" to roomId,
             "message" to message,
-            "referenceId" to UUID.randomUUID().toString(),
+            "referenceId" to referenceId,
             "userMentions" to userMentions
         )
         val body = RequestBody.create(
@@ -86,12 +113,9 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                         if (responseBody != null) {
                             val type = object : TypeToken<ChatMessage2Bean>() {}.type
                             t = Gson().fromJson(responseBody.string(), type)
-                            if(e.code()!=201){
-                                //后面优化
-                                liveData_message.postValue(t)
-                            }
+                            liveDataSendMessage.postValue(t)
                         } else {
-                            liveData_message.postValue(t)
+                            liveDataSendMessage.postValue(t)
                         }
                     }
                 }
@@ -101,10 +125,44 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                 }
 
                 override fun onNext(t: ChatMessage2Bean) {
-                    liveData_message.postValue(t)
+                    liveDataSendMessage.postValue(t)
                 }
 
             })
+    }
+
+    //非服务器返回的数据 用于显示ui的数据
+    fun myMessage(
+        message: String,
+        referenceId: String,
+        userMentions: List<UserMention> = listOf()
+    ): String {
+        val fileServer = SPUtil.get(MyApp.contextBase, "user_fileServer", "") as String
+        val path = SPUtil.get(MyApp.contextBase, "user_path", "") as String
+        val avatarUrl = if (fileServer == "") "" else "${fileServer.replace("/static/","")}/static/$path"
+
+        val messageMap = mutableMapOf(
+            "message" to message,
+            "referenceId" to referenceId,
+            "userMentions" to userMentions,
+        )
+        val profile = mutableMapOf(
+            "name" to SPUtil.get(MyApp.contextBase, "user_name", "") as String,
+            "level" to SPUtil.get(MyApp.contextBase, "user_level", 1) as Int,
+            "characters" to listOf<String>(),
+            "avatarUrl" to avatarUrl,
+        )
+        val data = mutableMapOf(
+            "message" to messageMap,
+            "profile" to profile
+        )
+
+        val json = mutableMapOf(
+            "type" to "TEXT_MESSAGE",
+            "isBlocked" to false,
+            "data" to data
+        )
+        return Gson().toJson(json)
     }
 
 //    //发送文字 可以回复 可以@
