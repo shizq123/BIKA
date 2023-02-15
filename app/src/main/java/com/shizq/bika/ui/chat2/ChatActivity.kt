@@ -186,6 +186,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             PictureSelector.create(this)
                 .openGallery(SelectMimeType.ofImage())
                 .isCameraForegroundService(true)
+                .isGif(true)
                 .setCropEngine { fragment, srcUri, destinationUri, dataSource, requestCode ->
                     UCrop.of(srcUri, destinationUri, dataSource)
                         .start(fragment.requireActivity(), fragment, requestCode);

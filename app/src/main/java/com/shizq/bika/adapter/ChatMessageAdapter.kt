@@ -3,6 +3,7 @@ package com.shizq.bika.adapter
 import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.drawable.AnimationDrawable
+import android.graphics.drawable.BitmapDrawable
 import android.media.MediaPlayer
 import android.text.SpannableString
 import android.text.Spanned
@@ -18,11 +19,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatMessage2Bean
 import com.shizq.bika.databinding.ItemChatBinding
-import com.shizq.bika.utils.Base64Util
-import com.shizq.bika.utils.GlideApp
-import com.shizq.bika.utils.GlideUrlNewKey
-import com.shizq.bika.utils.SPUtil
-import com.shizq.bika.utils.dp
+import com.shizq.bika.utils.*
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -42,7 +39,7 @@ class ChatMessageAdapter :
             binding.chatLayoutL.visibility = View.GONE
             binding.chatLayoutR.visibility = View.GONE
             binding.chatNotification.visibility = View.VISIBLE
-            binding.chatNotification.text = bean.data.data
+            binding.chatNotification.text = TimestampFormat().getDate(bean.data.data)
         } else if (bean.type == "SYSTEM_MESSAGE") {
             //{"type":"SYSTEM_MESSAGE","isBlocked":false,"data":{"action":"MUTE_USER","message":{"id":"hkGF2VNuneCeXxgf-aXrc","referenceId":"_WTa5ewBKkROW0OQYS775","message":"lassassino被禁言1土豆年","date":"2023-02-09T12:02:20+00:00"}}}
             //系统通知（禁言）
@@ -264,6 +261,7 @@ class ChatMessageAdapter :
                         GlideApp.with(holder.itemView)
                             .load(message.medias[0])
                             .placeholder(R.drawable.placeholder_avatar_2)
+//                            .placeholder(binding.chatContentImageL.drawable as BitmapDrawable) //并不能用已经加载的图片做占位图
                             .into(binding.chatContentImageL)
                     } else {
                         binding.chatContentImageL.visibility = View.GONE
