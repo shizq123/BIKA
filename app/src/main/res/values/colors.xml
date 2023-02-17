@@ -5,5 +5,8 @@
     <color name="pink">#FFED97B7</color>
     <color name="skeleton">#a2878787</color>
     <color name="bika">#EB74A0</color>
+    <color name="blue">#00f</color>
+    <color name="red">#f00</color>
+    <color name="green">#0f0</color>
 
 </resources>

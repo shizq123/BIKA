@@ -1,13 +1,12 @@
 package com.shizq.bika.ui.leaderboard
 
+import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
-import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.PopupWindow
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -15,9 +14,7 @@ import com.shizq.bika.adapter.ComicListAdapter2
 import com.shizq.bika.base.BaseFragment
 import com.shizq.bika.databinding.FragmentLeaderboardDayBinding
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
-import com.shizq.bika.utils.GlideApp
-import com.shizq.bika.utils.GlideUrlNewKey
-import com.shizq.bika.utils.StatusBarUtil
+import com.shizq.bika.ui.image.ImageActivity
 import me.jingbin.library.skeleton.ByRVItemSkeletonScreen
 import me.jingbin.library.skeleton.BySkeleton
 
@@ -25,14 +22,13 @@ import me.jingbin.library.skeleton.BySkeleton
  * 排行榜  日榜 周榜 月榜
  */
 
-class LeaderboardDayFragment:
+class LeaderboardDayFragment :
     BaseFragment<FragmentLeaderboardDayBinding, LeaderboardDayViewModel>() {
     private lateinit var adapter: ComicListAdapter2
-    private lateinit var skeletonScreen : ByRVItemSkeletonScreen
+    private lateinit var skeletonScreen: ByRVItemSkeletonScreen
 
     private lateinit var popupView: View
     private lateinit var popupImage: ImageView
-    private lateinit var mPopupWindow: PopupWindow
 
     override fun initContentView(
         inflater: LayoutInflater?, container: ViewGroup?, savedInstanceState: Bundle?
@@ -47,20 +43,12 @@ class LeaderboardDayFragment:
     override fun initData() {
         viewModel.tt = arguments?.getString("tt")
 
-        adapter= ComicListAdapter2()
+        adapter = ComicListAdapter2()
         binding.leaderboardDayRv.layoutManager = LinearLayoutManager(context)
 
         //PopupWindow 用来显示图片大图
         popupView = View.inflate(context, R.layout.view_popup_image, null)
         popupImage = popupView.findViewById(R.id.popup_image)
-        mPopupWindow = PopupWindow(
-            popupView,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            ViewGroup.LayoutParams.MATCH_PARENT,
-            true
-        )
-        mPopupWindow.isOutsideTouchable = true
-        mPopupWindow.isClippingEnabled = false
 
         skeletonScreen = BySkeleton
             .bindItem(binding.leaderboardDayRv)
@@ -80,7 +68,7 @@ class LeaderboardDayFragment:
 
     private fun initListener() {
         binding.leaderboardDayRv.setOnItemClickListener { _, position ->
-            val data=adapter.getItemData(position)
+            val data = adapter.getItemData(position)
             val intent = Intent(activity, ComicInfoActivity::class.java)
             intent.putExtra("id", data._id)
             intent.putExtra("fileserver", data.thumb.fileServer)
@@ -92,22 +80,22 @@ class LeaderboardDayFragment:
         }
         binding.leaderboardDayRv.setOnItemChildClickListener { view, position ->
             val data = adapter.getItemData(position)
-            GlideApp.with(view.context).load(
-                if (data.thumb != null) {
-                    GlideUrlNewKey(
-                        data.thumb.fileServer,
-                        (data.thumb.path)
-                    )
-                } else {
-                    R.drawable.placeholder_avatar_2
-                }
-            ).placeholder(R.drawable.placeholder_avatar_2).into(popupImage)
-            StatusBarUtil.hide(activity)
-            mPopupWindow.showAtLocation(activity?.window?.decorView, Gravity.BOTTOM, 0, 0)
+            var fileServer = ""
+            var path = ""
+            if (data.thumb != null) {
+                fileServer = data.thumb.fileServer
+                path = data.thumb.path
+            }
+            val intent = Intent(activity, ImageActivity::class.java)
+            intent.putExtra("fileserver", fileServer)
+            intent.putExtra("imageurl", path)
+            val options = ActivityOptions.makeSceneTransitionAnimation(activity, view, "image")
+            startActivity(intent, options.toBundle())
+
         }
 
         //加了监听才能显示 显示底部布局
-        binding.leaderboardDayRv.setOnLoadMoreListener {  }
+        binding.leaderboardDayRv.setOnLoadMoreListener { }
 
         //网络重试点击事件监听
         binding.leaderboardDayLoadLayout.setOnClickListener {
@@ -115,14 +103,6 @@ class LeaderboardDayFragment:
             skeletonScreen.show()
             viewModel.getLeaderboard()
 
-        }
-
-        mPopupWindow.setOnDismissListener {
-            //恢复状态栏
-            StatusBarUtil.show(activity)
-        }
-        popupView.setOnClickListener {
-            mPopupWindow.dismiss()
         }
 
     }
@@ -145,7 +125,8 @@ class LeaderboardDayFragment:
 
     private fun showProgressBar(show: Boolean, string: String) {
 
-        binding.leaderboardDayLoadProgressBar.visibility = if (show) ViewGroup.VISIBLE else ViewGroup.GONE
+        binding.leaderboardDayLoadProgressBar.visibility =
+            if (show) ViewGroup.VISIBLE else ViewGroup.GONE
         binding.leaderboardDayLoadError.visibility = if (show) ViewGroup.GONE else ViewGroup.VISIBLE
         binding.leaderboardDayLoadText.text = string
         binding.leaderboardDayLoadLayout.isEnabled = !show

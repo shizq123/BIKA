@@ -46,6 +46,11 @@ class CollectionsItemAdapter (val context: Context) : RecyclerView.Adapter<Colle
             intent.putExtra("title", datas[position].title)
             intent.putExtra("author", datas[position].author)
             intent.putExtra("totalViews", "")
+//            val options = ActivityOptions.makeSceneTransitionAnimation(
+//                context as Activity,
+//                holder.mImageView,
+//                "image")
+//            context.startActivity(intent,options.toBundle())
             context.startActivity(intent)
         }
     }

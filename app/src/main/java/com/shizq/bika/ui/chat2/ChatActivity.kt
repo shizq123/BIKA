@@ -1,6 +1,7 @@
 package com.shizq.bika.ui.chat2
 
 import android.annotation.SuppressLint
+import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -9,6 +10,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
+import android.widget.ImageView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
@@ -25,6 +27,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChat2Binding
 import com.shizq.bika.network.websocket.ChatWebSocketManager
 import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
+import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.AndroidBug5497Workaround
 import com.shizq.bika.utils.GlideEngine
 import com.shizq.bika.widget.UserViewDialog
@@ -112,26 +115,32 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         //item子布局监听
         binding.chatRv.setOnItemChildClickListener { view, position ->
 //
-//            val id = view.id
-//            val data = adapter.getItemData(position)
-//            if (id == R.id.chat_avatar_layout_l) {
+            val id = view.id
+            val data = adapter.getItemData(position)
+            if (id == R.id.chat_avatar_layout_l) {
 //                //头像点击事件 查看用户信息
 //                //聊天信息携带的用户信息不全 可以进行网络获取 以后再说
 //                userViewDialog.showUserDialog(data)
-//            }
-//            if (id == R.id.chat_name_l) {
-//                //名字点击事件 用于 @
-//                initChipGroup(data.name)
+            }
+            if (id == R.id.chat_name_l) {
+                //名字点击事件 用于 @
+//                initChipGroup(data.data.profile.name)
 //                //需要弹出键盘
 //                showKeyboard()
-//            }
-//
-//            if (id == R.id.chat_message_layout_l) {
+            }
+
+            if (id == R.id.chat_message_layout_l) {
 //                //消息点击事件 用于 回复
 //                //判断 语音和图片不能回复
-//                if (!data.image.isNullOrEmpty()) {
-//                    userViewDialog.PopupWindow(Base64Util().base64ToBitmap(data.image))
-//                }
+                if (data.data.message.medias!=null) {
+
+                    val intent = Intent(this, ImageActivity::class.java)
+                    intent.putExtra("fileserver", "")
+                    intent.putExtra("imageurl", data.data.message.medias[0])
+                    val imageview=view.findViewById<ImageView>(R.id.chat_voice_image_l)
+                    val options = ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
+                    startActivity(intent, options.toBundle())
+                }
 //                if (!data.audio.isNullOrEmpty()) {
 //                    view as RelativeLayout
 //                    //遍历所有的子view 找到要进行更新ui的view
@@ -151,8 +160,8 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 //                            }
 //                        }
 //                    }
-//                }
-//
+                }
+
 //                if (data.audio.isNullOrEmpty() && data.image.isNullOrEmpty()) {
 ////                        Toast.makeText(this,"回复-${}",Toast.LENGTH_SHORT).show()
 //                    binding.chatSendContentReplyLayout.visibility = View.VISIBLE
@@ -163,11 +172,17 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 //                    showKeyboard()
 //                }
 //            }
-//            if (id == R.id.chat_message_layout_r) {
-//                if (!data.image.isNullOrEmpty()) {
-//                    userViewDialog.PopupWindow(Base64Util().base64ToBitmap(data.image))
-//                }
-//            }
+            if (id == R.id.chat_message_layout_r) {
+
+                if (data.data.message.medias!=null) {
+                    val intent = Intent(this, ImageActivity::class.java)
+                    intent.putExtra("fileserver", "")
+                    intent.putExtra("imageurl", data.data.message.medias[0])
+                    val imageview=view.findViewById<ImageView>(R.id.chat_voice_image_r)
+                    val options = ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
+                    startActivity(intent, options.toBundle())
+                }
+            }
         }
 
         //item子布局长按监听

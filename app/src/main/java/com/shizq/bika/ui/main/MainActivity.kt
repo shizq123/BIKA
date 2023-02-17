@@ -1,6 +1,7 @@
 package com.shizq.bika.ui.main
 
 import android.annotation.SuppressLint
+import android.app.ActivityOptions
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -25,6 +26,7 @@ import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.ui.history.HistoryActivity
+import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.ui.leaderboard.LeaderboardActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.notifications.NotificationsActivity
@@ -84,7 +86,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
     override fun onTopResumedActivityChanged(isTopResumedActivity: Boolean) {
         super.onTopResumedActivityChanged(isTopResumedActivity)
         //页面显示时调用
-        if (isTopResumedActivity){
+        if (isTopResumedActivity) {
             initProfile()//显示用户信息
         }
     }
@@ -179,9 +181,18 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         }
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_character) as ImageView).setOnClickListener {
-            if (viewModel.userId != "" && viewModel.fileServer!="") {
+            if (viewModel.userId != "" && viewModel.fileServer != "") {
                 //判断用户是否登录是否有头像，是就查看头像大图
-                UserViewDialog(this).PopupWindow(viewModel.fileServer,viewModel.path)
+                val intent = Intent(this, ImageActivity::class.java)
+                intent.putExtra("fileserver", viewModel.fileServer)
+                intent.putExtra("imageurl", viewModel.path)
+                val options = ActivityOptions.makeSceneTransitionAnimation(
+                    this,
+                    (binding.mainNavView.getHeaderView(0)
+                        .findViewById(R.id.main_drawer_imageView) as ImageView),
+                    "image"
+                )
+                startActivity(intent, options.toBundle())
             }
         }
         binding.mainNavView.setNavigationItemSelectedListener {
@@ -350,7 +361,8 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
 
                 //用户签名
                 val slogan = if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan
-                (binding.mainNavView.getHeaderView(0).findViewById(R.id.main_drawer_slogan) as TextView).text =
+                (binding.mainNavView.getHeaderView(0)
+                    .findViewById(R.id.main_drawer_slogan) as TextView).text =
                     if (slogan == "") resources.getString(R.string.slogan) else slogan
 
                 if (!it.data.user.isPunched) {//当前用户未打卡时

@@ -1,10 +1,12 @@
 package com.shizq.bika.ui.comicinfo
 
 import android.annotation.SuppressLint
+import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
 import android.view.*
 import android.widget.Toast
+import androidx.core.view.ViewCompat
 import androidx.core.view.size
 import androidx.databinding.DataBindingUtil
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -20,6 +22,7 @@ import com.shizq.bika.databinding.ViewChapterFooterViewBinding
 import com.shizq.bika.db.History
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
+import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.ui.reader.ReaderActivity
 import com.shizq.bika.utils.*
 import com.shizq.bika.widget.SpacesItemDecoration
@@ -49,6 +52,8 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
     @SuppressLint("SetTextI18n")
     override fun initData() {
+        ViewCompat.setTransitionName(binding.comicinfoImage, "image")
+        ViewCompat.setTransitionName(binding.comicinfoTitle, "title")
         //接收传递的信息
         fileserver = intent.getStringExtra("fileserver").toString()
         imageurl = intent.getStringExtra("imageurl").toString()
@@ -125,6 +130,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
+//                finishAfterTransition()
                 finish()
             }
             R.id.action_bookmark -> {//Toolbar 收藏键
@@ -139,7 +145,11 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
     inner class ClickListener {
         fun Image() {
             //封面图片
-            userViewDialog.PopupWindow(fileserver, imageurl)
+            val intent = Intent(this@ComicInfoActivity, ImageActivity::class.java)
+            intent.putExtra("fileserver", fileserver)
+            intent.putExtra("imageurl", imageurl)
+            val options = ActivityOptions.makeSceneTransitionAnimation(this@ComicInfoActivity, binding.comicinfoImage, "image")
+            startActivity(intent, options.toBundle())
         }
 
         fun Author() {

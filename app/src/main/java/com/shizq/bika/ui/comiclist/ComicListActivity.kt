@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.comiclist
 
+import android.app.ActivityOptions
 import android.content.Intent
 import android.os.Bundle
 import android.util.SparseBooleanArray
@@ -7,6 +8,7 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupWindow
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isVisible
@@ -21,8 +23,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComiclistBinding
 import com.shizq.bika.db.Search
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
-import com.shizq.bika.utils.GlideApp
-import com.shizq.bika.utils.GlideUrlNewKey
+import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.StatusBarUtil
 import me.jingbin.library.skeleton.ByRVItemSkeletonScreen
 import me.jingbin.library.skeleton.BySkeleton
@@ -314,66 +315,54 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         }
 
         binding.comiclistRv.setOnItemClickListener { v, position ->
+            val intent = Intent(this@ComicListActivity, ComicInfoActivity::class.java)
             if (viewModel.tag.equals("random")) {
                 val data = mComicListAdapter2.getItemData(position)
-                val intent = Intent(this@ComicListActivity, ComicInfoActivity::class.java)
                 intent.putExtra("id", data._id)
                 intent.putExtra("fileserver", data.thumb.fileServer)
                 intent.putExtra("imageurl", data.thumb.path)
                 intent.putExtra("title", data.title)
                 intent.putExtra("author", data.author)
                 intent.putExtra("totalViews", data.totalViews.toString())
-                startActivity(intent)
+
+//                val imageView=v.findViewById<ImageView>(R.id.comiclist_item_image)
+//                val titleView=v.findViewById<TextView>(R.id.comiclist_item_title)
+//                val options = ActivityOptions.makeSceneTransitionAnimation(this,UtilPair.create(imageView, "image"), UtilPair.create(titleView, "title"))
+//                startActivity(intent, options.toBundle())
+
             } else {
                 val data = mComicListAdapter.getItemData(position)
-                val intent = Intent(this@ComicListActivity, ComicInfoActivity::class.java)
                 intent.putExtra("id", data._id)
                 intent.putExtra("fileserver", data.thumb.fileServer)
                 intent.putExtra("imageurl", data.thumb.path)
                 intent.putExtra("title", data.title)
                 intent.putExtra("author", data.author)
                 intent.putExtra("totalViews", data.totalViews.toString())
-                startActivity(intent)
+
+//                val imageView=v.findViewById<ImageView>(R.id.comiclist_item_image)
+//                val titleView=v.findViewById<TextView>(R.id.comiclist_item_title)
+//                val options = ActivityOptions.makeSceneTransitionAnimation(this,UtilPair.create(imageView, "image"), UtilPair.create(titleView, "title"))
+//                startActivity(intent, options.toBundle())
+
             }
+            startActivity(intent)
         }
         binding.comiclistRv.setOnItemChildClickListener { view, position ->
-            if (viewModel.tag.equals("random")) {
-                val data = mComicListAdapter2.getItemData(position)
-                GlideApp.with(view.context).load(
-                    if (data.thumb != null) {
-                        GlideUrlNewKey(data.thumb.fileServer, data.thumb.path)
-                    } else {
-                        R.drawable.placeholder_avatar_2
-                    }
-                ).placeholder(R.drawable.placeholder_transparent_low).into(popupImage)
+            if(view.id==R.id.comiclist_item_image){
 
-                StatusBarUtil.hide(this@ComicListActivity)
-                mPopupWindow.showAtLocation(
-                    this@ComicListActivity.window.decorView,
-                    Gravity.BOTTOM,
-                    0,
-                    0
-                )
-            } else {
-                val data = mComicListAdapter.getItemData(position)
-                GlideApp.with(view.context).load(
-                    if (data.thumb != null) {
-                        GlideUrlNewKey(
-                            data.thumb.fileServer,
-                            (data.thumb.path)
-                        )
-                    } else {
-                        R.drawable.placeholder_avatar_2
-                    }
-                ).placeholder(R.drawable.placeholder_transparent_low).into(popupImage)
+                val intent = Intent(this@ComicListActivity, ImageActivity::class.java)
+                if (viewModel.tag.equals("random")) {
+                    val data = mComicListAdapter2.getItemData(position)
+                    intent.putExtra("fileserver", data.thumb.fileServer)
+                    intent.putExtra("imageurl", data.thumb.path)
+                } else {
+                    val data = mComicListAdapter.getItemData(position)
+                    intent.putExtra("fileserver", data.thumb.fileServer)
+                    intent.putExtra("imageurl", data.thumb.path)
 
-                StatusBarUtil.hide(this@ComicListActivity)
-                mPopupWindow.showAtLocation(
-                    this@ComicListActivity.window.decorView,
-                    Gravity.BOTTOM,
-                    0,
-                    0
-                )
+                }
+                val options = ActivityOptions.makeSceneTransitionAnimation(this,view, "image")
+                startActivity(intent, options.toBundle())
             }
         }
 

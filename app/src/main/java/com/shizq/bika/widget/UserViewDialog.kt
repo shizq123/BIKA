@@ -1,5 +1,7 @@
 package com.shizq.bika.widget
 
+import android.app.ActivityOptions
+import android.content.Intent
 import android.graphics.Bitmap
 import android.view.Gravity
 import android.view.View
@@ -12,6 +14,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.R
 import com.shizq.bika.bean.*
+import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.StatusBarUtil
@@ -233,26 +236,13 @@ class UserViewDialog(val context: AppCompatActivity) {
         }
     }
 
-    fun PopupWindow(fileserver: String, path: String) {
-        PopupWindow(fileserver, path, context.window.decorView)
-    }
-
-    fun PopupWindow(fileserver: String, path: String, parentView: View) {
-
+    fun PopupWindow(fileServer: String, path: String, parentView: View) {
         if (path != "") {
-            GlideApp.with(context)
-                .load(GlideUrlNewKey(fileserver, path))
-                .placeholder(R.drawable.placeholder_avatar_2)
-                .into(popupImage)
-
-            StatusBarUtil.hide(context)
-            //PopupWindow会被BottomSheetDialog的view覆盖 解决办法用BottomSheetDialog的view替换this.window.decorView
-            mPopupWindow.showAtLocation(
-                parentView,
-                Gravity.BOTTOM,
-                0,
-                0
-            )
+            val intent = Intent(context, ImageActivity::class.java)
+            intent.putExtra("fileserver", fileServer)
+            intent.putExtra("imageurl", path)
+            val options = ActivityOptions.makeSceneTransitionAnimation(context)
+            context.startActivity(intent, options.toBundle())
 
         }
     }

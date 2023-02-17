@@ -276,11 +276,11 @@ class ChatMessageAdapter :
             binding.chatNotification.text = "未知消息类型"
         }
 
-//        holder.addOnClickListener(R.id.chat_avatar_layout_l)
-//        holder.addOnClickListener(R.id.chat_name_l)
-//        holder.addOnLongClickListener(R.id.chat_avatar_layout_l)
-//        holder.addOnClickListener(R.id.chat_message_layout_l)
-//        holder.addOnClickListener(R.id.chat_message_layout_r)
+        holder.addOnClickListener(R.id.chat_avatar_layout_l)
+        holder.addOnClickListener(R.id.chat_name_l)
+        holder.addOnLongClickListener(R.id.chat_avatar_layout_l)
+        holder.addOnClickListener(R.id.chat_message_layout_l)
+        holder.addOnClickListener(R.id.chat_message_layout_r)
     }
 
     private fun setImageView(imageView: ImageView, bitmap: Bitmap) {

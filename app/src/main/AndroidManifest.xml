@@ -102,6 +102,9 @@
         <activity
             android:name=".ui.chatblacklist.ChatBlacklistActivity"
             android:exported="false" />
+        <activity
+            android:name=".ui.image.ImageActivity"
+            android:exported="false" />
 
     </application>
 
