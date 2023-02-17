@@ -77,7 +77,6 @@ class ComicListAdapter : BaseBindingAdapter<ComicListBean.Comics.Doc, ItemComicl
                     bean.thumb.fileServer, bean.thumb.path
                 )
             )
-            .centerCrop()
             .placeholder(R.drawable.placeholder_transparent)
             .into(binding.comiclistItemImage)
         holder.addOnClickListener(R.id.comiclist_item_image)

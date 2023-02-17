@@ -31,10 +31,10 @@ class ImageActivity : BaseActivity<ActivityImageBinding, ImageViewModel>() {
                 if (imageurl != "") {
                     GlideUrlNewKey(fileserver, imageurl)
                 } else {
-                    R.drawable.placeholder_avatar_2
+                    R.drawable.placeholder_transparent_low
                 }
             )
-            .placeholder(R.drawable.placeholder_transparent_low)
+//            .placeholder(R.drawable.placeholder_transparent_low)
             .into(binding.touchImageView)
 
         binding.touchImageView.setOnClickListener {

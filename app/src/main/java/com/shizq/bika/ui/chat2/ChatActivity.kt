@@ -137,7 +137,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                     val intent = Intent(this, ImageActivity::class.java)
                     intent.putExtra("fileserver", "")
                     intent.putExtra("imageurl", data.data.message.medias[0])
-                    val imageview=view.findViewById<ImageView>(R.id.chat_voice_image_l)
+                    val imageview=view.findViewById<ImageView>(R.id.chat_content_image_l)
                     val options = ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
                     startActivity(intent, options.toBundle())
                 }
@@ -178,7 +178,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                     val intent = Intent(this, ImageActivity::class.java)
                     intent.putExtra("fileserver", "")
                     intent.putExtra("imageurl", data.data.message.medias[0])
-                    val imageview=view.findViewById<ImageView>(R.id.chat_voice_image_r)
+                    val imageview=view.findViewById<ImageView>(R.id.chat_content_image_r)
                     val options = ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
                     startActivity(intent, options.toBundle())
                 }

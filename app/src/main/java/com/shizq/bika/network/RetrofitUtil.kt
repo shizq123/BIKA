@@ -34,7 +34,7 @@ object RetrofitUtil {
 
     private fun getRetrofit(url:String): Retrofit {
         if (retrofit == null||URL!=url) {
-            URL=url
+            URL=url//记录baseurl
             retrofit = Retrofit.Builder()
                 .baseUrl(url)
                 .client(getOkHttpClient())
@@ -52,7 +52,7 @@ object RetrofitUtil {
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
 //            .retryOnConnectionFailure(true)// 错误重连
-        if (URL != UPDATE||URL != LIVE_SERVER) {
+        if (URL == BASE_URL) {
             builder.dns(HttpDns())
         }
         return builder.build()

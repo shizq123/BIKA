@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.games
 
+import android.app.ActivityOptions
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
@@ -15,6 +16,7 @@ import com.shizq.bika.adapter.GameScreenshotAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityGameInfoBinding
 import com.shizq.bika.ui.comment.CommentsActivity
+import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.StatusBarUtil
@@ -64,19 +66,12 @@ class GameInfoActivity : BaseActivity<ActivityGameInfoBinding, GameInfoViewModel
         viewModel.getGameInfo()
 
         mAdapter.setOnItemClickListener { v, data ->
-            GlideApp.with(v.context)
-                .load(GlideUrlNewKey(data.fileServer, data.path))
-                .placeholder(R.drawable.placeholder_avatar_2)
-                .into(popupImage)
 
-            StatusBarUtil.hide(this)
-            //PopupWindow会被BottomSheetDialog的view覆盖 解决办法用BottomSheetDialog的view替换this.window.decorView
-            mPopupWindow.showAtLocation(
-                this.window.decorView,
-                Gravity.BOTTOM,
-                0,
-                0
-            )
+            val intent = Intent(this, ImageActivity::class.java)
+            intent.putExtra("fileserver", data.fileServer)
+            intent.putExtra("imageurl", data.path)
+            val options = ActivityOptions.makeSceneTransitionAnimation(this, v, "image")
+            startActivity(intent, options.toBundle())
         }
 
         mPopupWindow.setOnDismissListener {
