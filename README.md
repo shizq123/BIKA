@@ -9,13 +9,13 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 阅读器太难了还没写，我比较懒先把简单的bug修一修 :( <br>
 安装包大小5M左右 <br>
 
-#下载
+# 下载
     
 [[GitHub下载]](https://github.com/shizq123/BIKA/releases)
 [[AppCenter下载]](https://install.appcenter.ms/users/shizq123hh/apps/bika/distribution_groups/release)
 [[蓝奏云下载]](https://zquan.lanzoue.com/b00zguxje)
 
-#感谢
+# 感谢
 
 [wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart) <br>
 [material-components/material-components-android](https://github.com/material-components/material-components-android) <br>
@@ -24,54 +24,33 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 [bumptech/glide](https://github.com/bumptech/glide) <br>
 [LuckSiege/PictureSelector](https://github.com/LuckSiege/PictureSelector) <br>
 
-#截图
+# 截图
 
 <img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s1.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s2.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s3.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s4.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s5.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s6.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s7.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s8.webp" width="216" height="480"><img src="https://raw.githubusercontent.com/shizq123/BIKA/master/Screenshot/s9.webp" width="216" height="480">
 
-#未完成
+# 功能
 
-    漫画详情章节观看记录
-    漫画详情章节图片观看记录
-    漫画阅读器
-    聊天室发送语音
-    子评论页加进度条
-    哔咔新的聊天室
+- 账号
+    - [x] 登录/注册/忘记密码/修改密码
+- 用户
+    - [x] 显示个人信息/修改头像/修改自我介绍/历史记录(本地)/我的收藏/我的消息/我的评论
+- 主页
+    - [x] 推荐(本子妹/本子母)/排行榜(日榜/周榜/月榜/骑士榜)/最近更新/随机本子/分类
+- 漫画列表
+    - [x] 排序/封印(筛选)/翻页
+- 游戏
+    - [x] 游戏推荐/游戏介绍/评论
+- 搜索
+    - [x] 搜索/热搜/搜索历史
+- 聊天室
+    - [x] 文字/图片/语音(接收)/@/回复/展示用户信息
+    - [ ] 语音(发送)/展示用户信息(自我介绍)
+- 新聊天室
+    - [x] 文字/图片/@(接收)/回复(接收)/黑名单
+    - [ ] 展示用户信息/@(发送)/回复(发送)/添加黑名单
+- 漫画
+    - [x] 漫画信息/漫画推荐/评论
+    - [ ] 阅读器(所有功能)/下载
 
-    未来适配平板
-    未来添加漫画下载
-    添加转场动画
+[笔记](https://raw.githubusercontent.com/shizq123/BIKA/master/NOTE。md)
 
-#待优化
-
-    注册页面 需要优化 跳转到登录页要显示注册的账号密码
-    回退键
-    设置页太乱
-    历史记录需要优化
-    更改密码 需要添加进度条
-    优化activity 转成fragment
-    图片修剪工具不是很好用 
-    上传头像的锯齿较多不清晰
-    主题切换livedata会重复加载
-
-#服务器状态
-
-    400 1019 cannot comment 无法发表评论
-    400 1031 higher level is required 评论等级不够
-    400 1002 avatar invalid base64 image 无效的base64图像
-    400 1004 账号密码错误
-    400 1008 email is already exist 邮箱已存在
-    400 1009 name is already exist 名称已存在
-    400 1014 漫画审核中
-    401 1005 unauthorized token过期
-    404 1007 not found 找不到数据
-    413 request entity too large 图片上传太大
-    500 :( -- 
-
-#旧聊天室 webSocket
-
-    0 连接成功 
-    2 心跳包 服务器会回复 3
-    40 连接成功
-    41 关闭聊天
-    42 消息
-    1000 超时
