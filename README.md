@@ -23,6 +23,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 [square/retrofit](https://github.com/square/retrofit) <br>
 [bumptech/glide](https://github.com/bumptech/glide) <br>
 [LuckSiege/PictureSelector](https://github.com/LuckSiege/PictureSelector) <br>
+[Baseflow/PhotoView](https://github.com/Baseflow/PhotoView) <br>
 
 # 截图
 
