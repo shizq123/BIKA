@@ -52,5 +52,5 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     - [x] 漫画信息/漫画推荐/评论
     - [ ] 阅读器(所有功能)/下载
 
-[笔记](https://raw.githubusercontent.com/shizq123/BIKA/master/NOTE.md)
+[笔记](https://github.com/shizq123/BIKA/blob/master/NOTE.md)
 
