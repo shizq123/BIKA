@@ -454,7 +454,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                 mComicListAdapter.addData(it.data.comics.docs)
                 viewModel.pages = it.data.comics.pages//总页数
                 viewModel.limit = it.data.comics.limit//每页显示多少
-                binding.comiclistPages.text=" / ${it.data.comics.pages}"//显示总页数
+                binding.comiclistPages.text=" / ${it.data.comics.pages}页"//显示总页数
                 binding.comiclistPage.setText(it.data.comics.page.toString())//显示页数
                 if (it.data.comics.pages <= it.data.comics.page) {
                     binding.comiclistRv.loadMoreEnd()//没有更多数据

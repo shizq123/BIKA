@@ -392,7 +392,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
             if (it.code == 200) {
                 viewModel.pages = it.data.comments.pages//总页数
                 viewModel.limit = it.data.comments.limit//每页显示多少
-                binding.commentsPages.text = " / ${it.data.comments.pages}"//显示总页数
+                binding.commentsPages.text = " / ${it.data.comments.pages}页"//显示总页数
                 binding.commentsPage.setText(it.data.comments.page.toString())//显示页数
                 if (it.data.comments.pages <= it.data.comments.page) {
                     //总页数等于当前页数 显示后面没有数据

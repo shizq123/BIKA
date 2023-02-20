@@ -2,8 +2,6 @@ package com.shizq.bika.network.websocket;
 
 import android.util.Log;
 
-import com.shizq.bika.network.HttpDns;
-
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
@@ -13,6 +11,7 @@ import okhttp3.WebSocket;
 import okhttp3.WebSocketListener;
 import okio.ByteString;
 
+//新聊天室WebSocket
 public class ChatWebSocketManager {
 
     private final static int MAX_NUM = 2;       // 最大重连数
@@ -57,12 +56,16 @@ public class ChatWebSocketManager {
     public void init(String webSocketURL, IReceiveMessage message) {
         client = new OkHttpClient.Builder()
                 .pingInterval(20, TimeUnit.SECONDS)
-                .writeTimeout(60, TimeUnit.SECONDS)
-                .readTimeout(60, TimeUnit.SECONDS)
-                .connectTimeout(60, TimeUnit.SECONDS)
+                .writeTimeout(30, TimeUnit.SECONDS)
+                .readTimeout(30, TimeUnit.SECONDS)
+                .connectTimeout(30, TimeUnit.SECONDS)
 //                .dns(new HttpDns())
                 .build();
-        request = new Request.Builder().url(webSocketURL).build();
+        request = new Request.Builder()
+                .url(webSocketURL)
+                .header("cache-control","no-cache")
+                .header("sec-websocket-extensions","permessage-deflate; client_max_window_bits")
+                .build();
         receiveMessage = message;
         connect();
     }

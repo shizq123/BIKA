@@ -106,6 +106,8 @@
             android:name=".ui.image.ImageActivity"
             android:exported="false" />
 
+        <service android:name=".service.ChatWebSocketService" />
+        <service android:name=".service.Chat2WebSocketService" />
     </application>
 
     <queries>

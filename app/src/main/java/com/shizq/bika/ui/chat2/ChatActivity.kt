@@ -2,8 +2,11 @@ package com.shizq.bika.ui.chat2
 
 import android.annotation.SuppressLint
 import android.app.ActivityOptions
+import android.content.ComponentName
 import android.content.Intent
+import android.content.ServiceConnection
 import android.os.Bundle
+import android.os.IBinder
 import android.text.Editable
 import android.text.TextWatcher
 import android.view.Menu
@@ -25,7 +28,7 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatMessageAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChat2Binding
-import com.shizq.bika.network.websocket.ChatWebSocketManager
+import com.shizq.bika.service.Chat2WebSocketService
 import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
 import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.AndroidBug5497Workaround
@@ -41,6 +44,19 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
     var chatRvBottom = false//false表示底部
     private val atUser = ArrayList<String>() //@的用户名
 
+    private lateinit var mService: Chat2WebSocketService
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(className: ComponentName, service: IBinder) {
+            val binder = service as Chat2WebSocketService.ChatBinder
+            mService = binder.getService()
+            viewModel.roomId = intent.getStringExtra("id").toString()
+            mService.webSocket(viewModel.roomId)
+            initObservable()
+        }
+
+        override fun onServiceDisconnected(className: ComponentName) {}
+    }
+
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_chat2
     }
@@ -52,12 +68,13 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
     @SuppressLint("ResourceType")
     override fun initData() {
         AndroidBug5497Workaround.assistActivity(this)
-        viewModel.roomId = intent.getStringExtra("id").toString()
+
+        val intentService = Intent(this, Chat2WebSocketService::class.java)
+        bindService(intentService, connection, BIND_AUTO_CREATE)
+
         binding.chatInclude.toolbar.title = intent.getStringExtra("title").toString()
         setSupportActionBar(binding.chatInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
-
-        viewModel.webSocketManager = ChatWebSocketManager.getInstance()
 
         adapter = ChatMessageAdapter()
         binding.chatRv.layoutManager = LinearLayoutManager(this)
@@ -66,7 +83,6 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         userViewDialog = UserViewDialog(this)
 
         binding.chatProgressbar.show()
-        viewModel.WebSocket()
         initListener()
     }
 
@@ -132,13 +148,14 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             if (id == R.id.chat_message_layout_l) {
 //                //消息点击事件 用于 回复
 //                //判断 语音和图片不能回复
-                if (data.data.message.medias!=null) {
+                if (data.data.message.medias != null) {
 
                     val intent = Intent(this, ImageActivity::class.java)
                     intent.putExtra("fileserver", "")
                     intent.putExtra("imageurl", data.data.message.medias[0])
-                    val imageview=view.findViewById<ImageView>(R.id.chat_content_image_l)
-                    val options = ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
+                    val imageview = view.findViewById<ImageView>(R.id.chat_content_image_l)
+                    val options =
+                        ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
                     startActivity(intent, options.toBundle())
                 }
 //                if (!data.audio.isNullOrEmpty()) {
@@ -160,7 +177,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 //                            }
 //                        }
 //                    }
-                }
+            }
 
 //                if (data.audio.isNullOrEmpty() && data.image.isNullOrEmpty()) {
 ////                        Toast.makeText(this,"回复-${}",Toast.LENGTH_SHORT).show()
@@ -174,12 +191,13 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 //            }
             if (id == R.id.chat_message_layout_r) {
 
-                if (data.data.message.medias!=null) {
+                if (data.data.message.medias != null) {
                     val intent = Intent(this, ImageActivity::class.java)
                     intent.putExtra("fileserver", "")
                     intent.putExtra("imageurl", data.data.message.medias[0])
-                    val imageview=view.findViewById<ImageView>(R.id.chat_content_image_r)
-                    val options = ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
+                    val imageview = view.findViewById<ImageView>(R.id.chat_content_image_r)
+                    val options =
+                        ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
                     startActivity(intent, options.toBundle())
                 }
             }
@@ -198,42 +216,48 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 
         //发送图片
         binding.chatSendPhoto.setOnClickListener {
-            PictureSelector.create(this)
-                .openGallery(SelectMimeType.ofImage())
-                .isCameraForegroundService(true)
-                .isGif(true)
-                .setCropEngine { fragment, srcUri, destinationUri, dataSource, requestCode ->
-                    UCrop.of(srcUri, destinationUri, dataSource)
-                        .start(fragment.requireActivity(), fragment, requestCode);
-                }
-                .setSelectionMode(1)
-                .setImageEngine(GlideEngine.createGlideEngine())
-                .forResult(object : OnResultCallbackListener<LocalMedia> {
-                    override fun onResult(result: ArrayList<LocalMedia>) {
+            //用进度条来判断聊天室是否连接成功
+            if (!binding.chatProgressbar.isShown) {
+                PictureSelector.create(this)
+                    .openGallery(SelectMimeType.ofImage())
+                    .isCameraForegroundService(true)
+                    .isGif(true)
+                    .setCropEngine { fragment, srcUri, destinationUri, dataSource, requestCode ->
+                        UCrop.of(srcUri, destinationUri, dataSource)
+                            .start(fragment.requireActivity(), fragment, requestCode);
+                    }
+                    .setSelectionMode(1)
+                    .setImageEngine(GlideEngine.createGlideEngine())
+                    .forResult(object : OnResultCallbackListener<LocalMedia> {
+                        override fun onResult(result: ArrayList<LocalMedia>) {
 //                        if (atUser.size > 0) {
 //                            for (name in atUser) {
 //                                viewModel.atname += name.replace("@", "嗶咔_")
 //                            }
 //                        }
-                        viewModel.sendImage(path = result[0].cutPath ,message = "")
-                        clearInput()//清空输入框
-                    }
+                            viewModel.sendImage(path = result[0].cutPath, message = "")
+                            clearInput()//清空输入框
+                        }
 
-                    override fun onCancel() {}
-                })
+                        override fun onCancel() {}
+                    })
+            }
         }
 
         //发送消息
         binding.chatSendBtn.setOnClickListener {
-            //发送消息 和官方一致消息不为空时才能发送
-            if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
+            //用进度条来判断聊天室是否连接成功
+            if (!binding.chatProgressbar.isShown) {
+                //发送消息 和官方一致消息不为空时才能发送
+                if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
 //                if (atUser.size > 0) {
 //                    for (name in atUser) {
 //                        viewModel.atname += name.replace("@", "嗶咔_")
 //                    }
 //                }
-                viewModel.sendMessage(message = binding.chatSendContentInput.text.toString())
-                clearInput()//清空输入框
+                    viewModel.sendMessage(message = binding.chatSendContentInput.text.toString())
+                    clearInput()//清空输入框
+                }
             }
         }
 
@@ -257,27 +281,26 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 
     }
 
-
-    override fun initViewObservable() {
+    //来自service的
+    fun initObservable() {
         //收到的消息
-        viewModel.liveData_message.observe(this) {
+        mService.liveData_message.observe(this) {
             //后面要加最大消息数
             adapter.addData(it)
             if (!chatRvBottom) {
                 binding.chatRv.scrollToPosition(adapter.data.size - 1)
             }
-
         }
 
         //当前通信连接状态
-        viewModel.liveData_state.observe(this) {
+        mService.liveData_state.observe(this) {
             if (it == "failed") {
                 MaterialAlertDialogBuilder(this)
                     .setTitle("网络错误")
                     .setMessage("是否尝试重新连接")
                     .setPositiveButton("确定") { dialog, which ->
                         binding.chatProgressbar.show()
-                        viewModel.WebSocket()
+                        mService.webSocket(viewModel.roomId)
                     }
                     .setNegativeButton("退出") { _, _ ->
                         finish()
@@ -287,6 +310,17 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             }
             if (it == "success") {
                 binding.chatProgressbar.hide()
+            }
+        }
+    }
+
+    //来自viewModel的
+    override fun initViewObservable() {
+        //收到的消息
+        viewModel.liveData_message.observe(this) {
+            adapter.addData(it)
+            if (!chatRvBottom) {
+                binding.chatRv.scrollToPosition(adapter.data.size - 1)
             }
         }
 
@@ -307,13 +341,12 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                         }
                     }
                 }
-            } else{
+            } else {
                 //发送失败 弹窗
 
             }
         }
     }
-
 
     private fun initChipGroup(str: String) {
         atUser.add("@$str")
@@ -328,12 +361,6 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                 binding.chatSendAt.removeView(chip)
             }
         }
-    }
-
-
-    override fun onDestroy() {
-        viewModel.webSocketManager.close()
-        super.onDestroy()
     }
 
     private fun showKeyboard() {
