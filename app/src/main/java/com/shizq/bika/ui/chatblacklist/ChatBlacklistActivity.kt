@@ -26,7 +26,7 @@ class ChatBlacklistActivity : BaseActivity<ActivityChatBlacklistBinding, ChatBla
     }
 
     override fun initData() {
-        binding.blacklistInclude.toolbar.title = "新聊天室黑名单"
+        binding.blacklistInclude.toolbar.title = "哔咔聊天室黑名单"
         setSupportActionBar(binding.blacklistInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 

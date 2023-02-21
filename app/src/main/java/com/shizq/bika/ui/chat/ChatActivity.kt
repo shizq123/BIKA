@@ -10,6 +10,7 @@ import android.text.Editable
 import android.text.TextWatcher
 import android.view.MenuItem
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.LinearLayout
 import android.widget.RelativeLayout
@@ -67,6 +68,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
 
     @SuppressLint("ResourceType")
     override fun initData() {
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)//屏幕常亮
         AndroidBug5497Workaround.assistActivity(this)
 
         val intentService = Intent(this, ChatWebSocketService::class.java)
@@ -131,7 +133,9 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
             if (id == R.id.chat_avatar_layout_l) {
                 //头像点击事件 查看用户信息
                 //聊天信息携带的用户信息不全 可以进行网络获取 以后再说
-                userViewDialog.showUserDialog(data)
+                if (data.user_id != null) {
+                    userViewDialog.showUserDialog(data.user_id)
+                }
             }
             if (id == R.id.chat_name_l) {
                 //名字点击事件 用于 @

@@ -70,7 +70,8 @@
                     android:layout_gravity="center_vertical"
                     android:layout_marginEnd="4dp"
                     android:src="@drawable/ic_hotel_class"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    app:tint="@color/green" />
 
                 <ImageView
                     android:id="@+id/chat_knight"
@@ -79,7 +80,8 @@
                     android:layout_gravity="center_vertical"
                     android:layout_marginEnd="4dp"
                     android:src="@drawable/ic_group_work"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    app:tint="@color/blue" />
 
                 <ImageView
                     android:id="@+id/chat_manager"
@@ -88,7 +90,8 @@
                     android:layout_gravity="center_vertical"
                     android:layout_marginEnd="4dp"
                     android:src="@drawable/ic_security"
-                    android:visibility="gone" />
+                    android:visibility="gone"
+                    app:tint="@color/red" />
 
                 <TextView
                     android:id="@+id/chat_name_l"
@@ -115,6 +118,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginTop="2dp"
                     android:background="@drawable/shape_chat_bg"
+                    android:descendantFocusability="afterDescendants"
                     android:orientation="vertical"
                     android:padding="10dp">
 
@@ -161,11 +165,18 @@
                         android:textSize="12sp"
                         android:visibility="gone" />
 
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chat_at_group_l"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_at_l"
+                        android:visibility="gone" />
+
                     <TextView
                         android:id="@+id/chat_content_l"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_below="@id/chat_at_l"
+                        android:layout_below="@id/chat_at_group_l"
                         android:autoLink="web"
                         android:text="消息消息消息消息"
                         android:textSize="14sp" />
@@ -358,6 +369,7 @@
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="8dp"
                         android:background="@drawable/shape_chat_reply_bg"
+                        android:descendantFocusability="afterDescendants"
                         android:orientation="vertical"
                         android:visibility="visible">
 
@@ -394,11 +406,18 @@
                         android:textSize="12sp"
                         android:visibility="gone" />
 
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chat_at_group_r"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_at_r"
+                        android:visibility="gone" />
+
                     <TextView
                         android:id="@+id/chat_content_r"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_below="@id/chat_at_r"
+                        android:layout_below="@id/chat_at_group_r"
                         android:text="消息消息消息消息"
                         android:textSize="14sp" />
 

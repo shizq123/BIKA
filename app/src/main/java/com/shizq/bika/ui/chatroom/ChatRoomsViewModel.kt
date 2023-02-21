@@ -35,7 +35,7 @@ class ChatRoomsViewModel(application: Application) : BaseViewModel(application) 
                 addProperty("password", SPUtil.get(MyApp.contextBase, "password", "") as String)
             }.asJsonObject.toString()
         )
-        RetrofitUtil.service_live.ChatSignInPost(
+        RetrofitUtil.service_live.chatSignInPost(
             body,
             BaseHeaders().getChatHeaders()
         )
@@ -71,7 +71,7 @@ class ChatRoomsViewModel(application: Application) : BaseViewModel(application) 
     }
 
     fun chatRoomList() {
-        RetrofitUtil.service_live.ChatRoomListGet(
+        RetrofitUtil.service_live.chatRoomListGet(
             BaseHeaders().getChatHeaderMapAndToken()
         )
             .doOnSubscribe(this)

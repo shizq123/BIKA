@@ -1,26 +1,33 @@
 package com.shizq.bika.widget
 
 import android.app.ActivityOptions
+import android.app.ProgressDialog
 import android.content.Intent
 import android.graphics.Bitmap
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ImageView
-import android.widget.PopupWindow
-import android.widget.TextView
+import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.MutableLiveData
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.R
 import com.shizq.bika.bean.*
+import com.shizq.bika.network.RetrofitUtil
+import com.shizq.bika.network.base.BaseHeaders
+import com.shizq.bika.network.base.BaseObserver
+import com.shizq.bika.network.base.BaseResponse
 import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.StatusBarUtil
+import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
+import io.reactivex.rxjava3.schedulers.Schedulers
 
 class UserViewDialog(val context: AppCompatActivity) {
     private lateinit var dia: AlertDialog
+    private var progress: ProgressDialog? = null
     private lateinit var dialog_view: View
     private lateinit var dialog_image_layout: View
     private lateinit var dialog_image: ImageView
@@ -34,6 +41,9 @@ class UserViewDialog(val context: AppCompatActivity) {
     private lateinit var popupImage: ImageView
     private lateinit var mPopupWindow: PopupWindow
 
+    val liveData_profile: MutableLiveData<BaseResponse<ProfileBean>> by lazy {
+        MutableLiveData<BaseResponse<ProfileBean>>()
+    }
 
     init {
         initview()
@@ -72,6 +82,29 @@ class UserViewDialog(val context: AppCompatActivity) {
         popupView.setOnClickListener {
             mPopupWindow.dismiss()
         }
+
+        liveData_profile.observe(context) {
+            if (it.code == 200) {
+                progress?.dismiss()
+                progress = null
+                val t = it.data.user
+                // 请求成功
+                userDialog(
+                    t.name,
+                    t.title,
+                    t.gender,
+                    t.level,
+                    t.slogan,
+                    { if (t.avatar != null) t.avatar.fileServer else "" },
+                    { if (t.avatar != null) t.avatar.path else "" },
+                    t.character,
+                    context.window.decorView
+                )
+            } else {
+                dia.dismiss()
+                Toast.makeText(context, "网络请求失败", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     fun showUserDialog(t: CommentsBean.User) {
@@ -85,7 +118,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         if (t == null) {
             return
         }
-        UserDialog(
+        userDialog(
             t.name,
             t.title,
             t.gender,
@@ -102,7 +135,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         if (t == null) {
             return
         }
-        UserDialog(
+        userDialog(
             t.name,
             t.title,
             t.gender,
@@ -119,7 +152,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         if (t == null) {
             return
         }
-        UserDialog(
+        userDialog(
             t.name,
             t.title,
             t.gender,
@@ -136,7 +169,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         if (t == null) {
             return
         }
-        UserDialog(
+        userDialog(
             t.name,
             t.title,
             t.gender,
@@ -149,37 +182,42 @@ class UserViewDialog(val context: AppCompatActivity) {
         )
     }
 
-    fun showUserDialog(t: ChatMessageBean) {
+    fun showUserDialog(t: ChatMessage2Bean.Data.Profile) {
         if (t == null) {
             return
         }
+
         var fileServer = ""
         var path = ""
 
-        if (t.avatar != null && t.avatar != "") {
-            val i: Int = t.avatar.indexOf("/static/")
+        if (t.avatarUrl != null && t.avatarUrl != "") {
+            val i: Int = t.avatarUrl.indexOf("/static/")
             if (i > 0) {
-                fileServer = t.avatar.substring(0, i)
-                path = t.avatar.substring(i + 8)
+                fileServer = t.avatarUrl.substring(0, i)
+                path = t.avatarUrl.substring(i + 8)
             } else {
-                path = t.avatar
+                path = t.avatarUrl
             }
         }
-
-        UserDialog(
+        userDialog(
             t.name,
             t.title,
             t.gender,
             t.level,
-            " ",
+            t.slogan,
             { fileServer },
             { path },
-            t.character,
+            "",
             context.window.decorView
         )
     }
 
-    private fun UserDialog(
+    fun showUserDialog(userId: String) {
+        progress =  ProgressDialog.show(context, null, "加载用户信息...", true)
+        getProfile(userId)
+    }
+
+    private fun userDialog(
         name: String,
         title: String,
         gender: String,
@@ -225,7 +263,9 @@ class UserViewDialog(val context: AppCompatActivity) {
         dia = MaterialAlertDialogBuilder(context).setView(dialog_view).show()
 
         dia.setOnDismissListener {
-//            //用完必须销毁 不销毁报错
+            //用完必须销毁 不销毁报错
+            progress?.dismiss()
+            progress = null
             (dialog_view.parent as ViewGroup).removeView(dialog_view)
         }
 
@@ -257,5 +297,26 @@ class UserViewDialog(val context: AppCompatActivity) {
             0,
             0
         )
+    }
+
+    private fun getProfile(userId: String) {
+        RetrofitUtil.service.userProfileGet(
+            userId,
+            BaseHeaders("users/$userId/profile", "GET").getHeaderMapAndToken()
+        )
+            .compose { upstream ->
+                upstream.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+            }
+            .subscribe(object : BaseObserver<ProfileBean>() {
+                override fun onSuccess(baseResponse: BaseResponse<ProfileBean>) {
+                    liveData_profile.postValue(baseResponse)
+
+                }
+
+                override fun onCodeError(baseResponse: BaseResponse<ProfileBean>) {
+                    liveData_profile.postValue(baseResponse)
+                }
+
+            })
     }
 }

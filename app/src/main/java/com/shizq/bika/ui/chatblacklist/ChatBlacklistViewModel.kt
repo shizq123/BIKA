@@ -25,7 +25,7 @@ class  ChatBlacklistViewModel(application: Application) : BaseViewModel(applicat
 
     fun getChatBlackList() {
         offset++
-        RetrofitUtil.service_live.ChatBlackListGet(offset,
+        RetrofitUtil.service_live.chatBlackListGet(offset,
             BaseHeaders().getChatHeaderMapAndToken()
         )
             .doOnSubscribe(this)
@@ -61,7 +61,7 @@ class  ChatBlacklistViewModel(application: Application) : BaseViewModel(applicat
     }
 
     fun deleteChatBlackList(id:String) {
-        RetrofitUtil.service_live.ChatBlackListDelete(id,
+        RetrofitUtil.service_live.chatBlackListDelete(id,
             BaseHeaders().getChatHeaderMapAndToken()
         )
             .doOnSubscribe(this)

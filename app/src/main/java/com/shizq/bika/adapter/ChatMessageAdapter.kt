@@ -1,18 +1,11 @@
 package com.shizq.bika.adapter
 
 import android.graphics.Bitmap
-import android.graphics.Color
-import android.graphics.drawable.AnimationDrawable
-import android.graphics.drawable.BitmapDrawable
-import android.media.MediaPlayer
-import android.text.SpannableString
-import android.text.Spanned
-import android.text.style.ForegroundColorSpan
-import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
-import android.widget.TextView
+import androidx.appcompat.app.AppCompatActivity
+import com.google.android.material.chip.Chip
 import com.shizq.bika.MyApp
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
@@ -20,9 +13,7 @@ import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatMessage2Bean
 import com.shizq.bika.databinding.ItemChatBinding
 import com.shizq.bika.utils.*
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
+import com.shizq.bika.widget.UserViewDialog
 
 //新聊天室 聊天页面
 class ChatMessageAdapter :
@@ -69,19 +60,21 @@ class ChatMessageAdapter :
                     .load(
                         if (profile.avatarUrl != null && profile.avatarUrl != "") {
                             val i: Int = profile.avatarUrl.indexOf("/static/")
-                            if (i > 0){
+                            if (i > 0) {
                                 GlideUrlNewKey(
                                     profile.avatarUrl.substring(0, i),
                                     profile.avatarUrl.substring(i + 8)
-                                )}
-                            else profile.avatarUrl
+                                )
+                            } else profile.avatarUrl
                         } else R.drawable.placeholder_avatar_2
                     )
                     .placeholder(R.drawable.placeholder_avatar_2)
                     .into(binding.chatAvatarR)
 
                 //等级
-                if (profile.level >= 0) { binding.chatLevelR.text = "Lv." + profile.level }
+                if (profile.level >= 0) {
+                    binding.chatLevelR.text = "Lv." + profile.level
+                }
 
                 //管理员 骑士等 图标和哔咔聊天室显示一致
                 binding.chatKnightR.visibility = View.GONE
@@ -123,16 +116,25 @@ class ChatMessageAdapter :
 
                 //消息
                 val message = bean.data.message
+                //艾特某人
                 if (message.userMentions.isNotEmpty()) {
-                    //艾特某人
-                    binding.chatAtR.visibility = View.VISIBLE
-                    var name = ""
+                    binding.chatAtGroupR.visibility = View.VISIBLE
+                    binding.chatAtGroupR.removeAllViews()
                     for (i in message.userMentions) {
-                        name = "@" + i.name
+                        val chip = Chip(holder.itemView.context)
+                        chip.text = i.name
+                        chip.textSize = 12.dp.toFloat()
+                        chip.height = 24.dp
+                        chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
+                        binding.chatAtGroupR.addView(chip)
+
+                        chip.setOnClickListener {
+                            //通过id展示用户信息
+                            UserViewDialog(holder.itemView.context as AppCompatActivity).showUserDialog(i.id)
+                        }
                     }
-                    binding.chatAtR.text = name
                 } else {
-                    binding.chatAtR.visibility = View.GONE
+                    binding.chatAtGroupR.visibility = View.GONE
                 }
 
                 if (bean.type == "TEXT_MESSAGE") {
@@ -231,16 +233,23 @@ class ChatMessageAdapter :
 
                     //消息
                     val message = bean.data.message
+                    //艾特某人
                     if (message.userMentions.isNotEmpty()) {
-                        //艾特某人
-                        binding.chatAtL.visibility = View.VISIBLE
-                        var name = ""
+                        binding.chatAtGroupL.visibility = View.VISIBLE
                         for (i in message.userMentions) {
-                            name = "@" + i.name
+                            val chip = Chip(holder.itemView.context)
+                            chip.text = i.name
+                            chip.textSize = 12.dp.toFloat()
+                            chip.height = 24.dp
+                            chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
+                            binding.chatAtGroupL.addView(chip)
+
+                            chip.setOnClickListener {
+                                UserViewDialog(holder.itemView.context as AppCompatActivity).showUserDialog(i.id)
+                            }
                         }
-                        binding.chatAtL.text = name
                     } else {
-                        binding.chatAtL.visibility = View.GONE
+                        binding.chatAtGroupL.visibility = View.GONE
                     }
 
                     if (bean.type == "TEXT_MESSAGE") {
@@ -280,7 +289,9 @@ class ChatMessageAdapter :
         holder.addOnClickListener(R.id.chat_name_l)
         holder.addOnLongClickListener(R.id.chat_avatar_layout_l)
         holder.addOnClickListener(R.id.chat_message_layout_l)
+        holder.addOnClickListener(R.id.chat_reply_layout)
         holder.addOnClickListener(R.id.chat_message_layout_r)
+        holder.addOnClickListener(R.id.chat_reply_layout_r)
     }
 
     private fun setImageView(imageView: ImageView, bitmap: Bitmap) {

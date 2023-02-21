@@ -12,6 +12,7 @@ import android.text.TextWatcher
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -27,12 +28,12 @@ import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatMessageAdapter
 import com.shizq.bika.base.BaseActivity
+import com.shizq.bika.bean.UserMention
 import com.shizq.bika.databinding.ActivityChat2Binding
 import com.shizq.bika.service.Chat2WebSocketService
 import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
 import com.shizq.bika.ui.image.ImageActivity
-import com.shizq.bika.utils.AndroidBug5497Workaround
-import com.shizq.bika.utils.GlideEngine
+import com.shizq.bika.utils.*
 import com.shizq.bika.widget.UserViewDialog
 import com.yalantis.ucrop.UCrop
 
@@ -42,7 +43,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
     private lateinit var adapter: ChatMessageAdapter
     private lateinit var userViewDialog: UserViewDialog
     var chatRvBottom = false//false表示底部
-    private val atUser = ArrayList<String>() //@的用户名
+    private val atUser = ArrayList<UserMention>() //@的用户名
 
     private lateinit var mService: Chat2WebSocketService
     private val connection = object : ServiceConnection {
@@ -67,6 +68,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 
     @SuppressLint("ResourceType")
     override fun initData() {
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)//屏幕常亮
         AndroidBug5497Workaround.assistActivity(this)
 
         val intentService = Intent(this, Chat2WebSocketService::class.java)
@@ -133,23 +135,64 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 //
             val id = view.id
             val data = adapter.getItemData(position)
+            //点击头像 查看用户信息
             if (id == R.id.chat_avatar_layout_l) {
-//                //头像点击事件 查看用户信息
-//                //聊天信息携带的用户信息不全 可以进行网络获取 以后再说
-//                userViewDialog.showUserDialog(data)
+                userViewDialog.showUserDialog(data.data.profile)
             }
+            //点击名字 用于 @
             if (id == R.id.chat_name_l) {
-                //名字点击事件 用于 @
-//                initChipGroup(data.data.profile.name)
-//                //需要弹出键盘
-//                showKeyboard()
+                initChipGroup(data.data.profile.id,data.data.profile.name)
+                //需要弹出键盘
+                showKeyboard()
             }
 
-            if (id == R.id.chat_message_layout_l) {
-//                //消息点击事件 用于 回复
-//                //判断 语音和图片不能回复
-                if (data.data.message.medias != null) {
+            //点击回复的消息 查看消息
+            if (id == R.id.chat_reply_layout||id == R.id.chat_reply_layout_r) {
+                //查看回复的消息
+                when (data.data.reply.type) {
+                    "TEXT_MESSAGE" -> {
+                        MaterialAlertDialogBuilder(this)
+                            .setTitle(data.data.reply.name)
+                            .setMessage(data.data.reply.message)
+                            .show()
+                    }
+                    "IMAGE_MESSAGE" -> {
+                        //TODO 简单实现效果 后面添加到view中 加入复制
+                        val image =ImageView(this)
+                        image.adjustViewBounds=true
+//                        image.setPadding(24.dp)
+                        GlideApp.with(this)
+                            .load(data.data.reply.image)
+                            .placeholder(R.drawable.placeholder_avatar_2)
+                            .into(image)
+                        image.setOnClickListener {
+                            val intent = Intent(this, ImageActivity::class.java)
+                            intent.putExtra("fileserver", "")
+                            intent.putExtra("imageurl", data.data.reply.image)
+                            val options =
+                                ActivityOptions.makeSceneTransitionAnimation(this, it, "image")
+                            startActivity(intent, options.toBundle())
+                        }
+                        MaterialAlertDialogBuilder(this)
+                            .setTitle(data.data.reply.name)
+                            .setView(image)
+                            .show()
+                    }
+                    else -> {
+                        MaterialAlertDialogBuilder(this)
+                            .setTitle(data.data.reply.name)
+                            .setMessage("[该消息类型不支持查看]")
+                            .show()
+                    }
+                }
 
+            }
+
+            //点击消息 收到的消息
+            if (id == R.id.chat_message_layout_l) {
+                //消息点击事件 用于 回复
+                //判断 语音和图片不能回复
+                if (data.data.message.medias != null) {
                     val intent = Intent(this, ImageActivity::class.java)
                     intent.putExtra("fileserver", "")
                     intent.putExtra("imageurl", data.data.message.medias[0])
@@ -189,8 +232,9 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
 //                    showKeyboard()
 //                }
 //            }
-            if (id == R.id.chat_message_layout_r) {
 
+            //点击消息 自己发送的消息
+            if (id == R.id.chat_message_layout_r) {
                 if (data.data.message.medias != null) {
                     val intent = Intent(this, ImageActivity::class.java)
                     intent.putExtra("fileserver", "")
@@ -207,7 +251,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         binding.chatRv.setOnItemChildLongClickListener { view, position ->
             if (view.id == R.id.chat_avatar_layout_l) {
                 //头像点击事件 用于 @
-                initChipGroup(adapter.getItemData(position).data.profile.name)
+                initChipGroup(adapter.getItemData(position).data.profile.id,adapter.getItemData(position).data.profile.name)
                 //需要弹出键盘
                 showKeyboard()
             }
@@ -250,12 +294,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             if (!binding.chatProgressbar.isShown) {
                 //发送消息 和官方一致消息不为空时才能发送
                 if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
-//                if (atUser.size > 0) {
-//                    for (name in atUser) {
-//                        viewModel.atname += name.replace("@", "嗶咔_")
-//                    }
-//                }
-                    viewModel.sendMessage(message = binding.chatSendContentInput.text.toString())
+                    viewModel.sendMessage(userMentions = atUser, message = binding.chatSendContentInput.text.toString())
                     clearInput()//清空输入框
                 }
             }
@@ -348,16 +387,16 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         }
     }
 
-    private fun initChipGroup(str: String) {
-        atUser.add("@$str")
+    private fun initChipGroup(userid:String,name: String) {
+        atUser.add(UserMention(userid,name))
         binding.chatSendAt.removeAllViews()
-        for (text in atUser) {
+        for (user in atUser) {
             val chip =
                 layoutInflater.inflate(R.layout.item_chip_at, binding.chatSendAt, false) as Chip
-            chip.text = text
+            chip.text = user.name
             binding.chatSendAt.addView(chip)
             chip.setOnClickListener {
-                atUser.remove(text)
+                atUser.remove(user)
                 binding.chatSendAt.removeView(chip)
             }
         }

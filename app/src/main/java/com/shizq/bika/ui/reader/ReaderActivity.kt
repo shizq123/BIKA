@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.WindowManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -12,7 +13,6 @@ import com.shizq.bika.adapter.ReaderAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityReaderBinding
 import com.shizq.bika.db.History
-import com.shizq.bika.db.Search
 
 //阅读漫画页
 class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
@@ -27,6 +27,7 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
     }
 
     override fun initData() {
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)//屏幕常亮
         viewModel.bookId = intent.getStringExtra("bookId")
         viewModel.order = intent.getIntExtra("order", 1)
         viewModel.chapterTotal = intent.getIntExtra("chapterTotal", 1)

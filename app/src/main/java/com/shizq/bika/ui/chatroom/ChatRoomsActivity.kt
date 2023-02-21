@@ -35,7 +35,7 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
     }
 
     override fun initData() {
-        binding.chatroomInclude.toolbar.title = "新聊天室"
+        binding.chatroomInclude.toolbar.title = "哔咔聊天室"
         setSupportActionBar(binding.chatroomInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 

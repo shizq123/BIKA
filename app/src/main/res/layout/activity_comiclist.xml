@@ -75,6 +75,7 @@
                     android:layout_height="wrap_content"
                     android:text="@string/action_sort"
                     android:layout_marginEnd="8dp"
+                    android:gravity="center"
                     android:visibility="gone"
                     app:drawableEndCompat="@drawable/ic_arrow_down" />
 
@@ -83,6 +84,7 @@
                     android:layout_toEndOf="@id/comiclist_sort"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:gravity="center"
                     app:drawableEndCompat="@drawable/ic_arrow_down"
                     android:text="封印"/>
 

@@ -58,7 +58,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
             Gson().toJson(map)
         )
         val headers = BaseHeaders().getChatHeaderMapAndToken()
-        RetrofitUtil.service_live.ChatSendMessagePost(body, headers)
+        RetrofitUtil.service_live.chatSendMessagePost(body, headers)
             .doOnSubscribe(this)
             .subscribe(object : Observer<ChatMessage2Bean> {
                 override fun onSubscribe(d: Disposable) {
@@ -123,7 +123,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         val headers = BaseHeaders().getChatHeaderMapAndToken()
         headers["content-type"] = "multipart/form-data; boundary=${multipartBodyBuild.boundary()}"
 
-        RetrofitUtil.service_live.ChatSendImagePost(headers, multipartBodyBuild)
+        RetrofitUtil.service_live.chatSendImagePost(headers, multipartBodyBuild)
             .doOnSubscribe(this@ChatViewModel)
             .subscribe(object : Observer<ChatMessage2Bean> {
                 override fun onSubscribe(d: Disposable) {

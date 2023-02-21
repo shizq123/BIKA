@@ -266,7 +266,7 @@ interface ApiService {
     ): Observable<BaseResponse<ComicListBean>>
 
     //查看用户信息
-    @POST("users/{userId}/profile")
+    @GET("users/{userId}/profile")
     fun userProfileGet(
         @Path("userId") userId: String,
         @HeaderMap headers: Map<String, String>
@@ -335,61 +335,61 @@ interface ApiService {
 
     //新聊天室 登录
     @POST("auth/signin")
-    fun ChatSignInPost(
+    fun chatSignInPost(
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatSignInBean>
 
     //新聊天室 用户信息
     @GET("user/profile")
-    fun ChatProfileGet(
+    fun chatProfileGet(
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatProfileBean>
 
     //新聊天室 查看别人的用户信息
     @GET("user/profile/{id}")
-    fun ChatUserProfileGet(
+    fun chatUserProfileGet(
         @Query("id") page: String,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatProfileBean>
 
     //新聊天室 房间列表
     @GET("room/list")
-    fun ChatRoomListGet(
+    fun chatRoomListGet(
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatRoomListBean>
 
     //新聊天室 封锁用户 添加黑名单 https://live-server.bidobido.xyz/blacklist/block-user 请求文本{"userId":"xxx"}
     @POST("blacklist/block-user")
-    fun ChatBlockUserPost(
+    fun chatBlockUserPost(
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatBlockUserBean>
 
     //新聊天室 封锁列表 黑名单列表 https://live-server.bidobido.xyz/blacklist/list?offset=0
     @GET("blacklist/list")
-    fun ChatBlackListGet(
+    fun chatBlackListGet(
         @Query("offset") page: Int,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatBlackListBean>
 
     //新聊天室 删除封锁 删除黑名单 https://live-server.bidobido.xyz/blacklist/63e3373e4548486c28e60cc5
     @DELETE("blacklist/{id}")
-    fun ChatBlackListDelete(
+    fun chatBlackListDelete(
         @Path("id") gameId: String,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatBlackListDeleteBean>
 
     //新聊天室 发送消息
     @POST("room/send-message")
-    fun ChatSendMessagePost(
+    fun chatSendMessagePost(
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<ChatMessage2Bean>
 
     //新聊天室 发送图片
     @POST("room/send-image")
-    fun ChatSendImagePost(
+    fun chatSendImagePost(
         @HeaderMap headers: Map<String, String>,
         @Body requestBody: RequestBody
     ): Observable<ChatMessage2Bean>
