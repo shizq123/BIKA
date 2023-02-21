@@ -141,13 +141,13 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             }
             //点击名字 用于 @
             if (id == R.id.chat_name_l) {
-                initChipGroup(data.data.profile.id,data.data.profile.name)
+                initChipGroup(data.data.profile.id, data.data.profile.name)
                 //需要弹出键盘
                 showKeyboard()
             }
 
             //点击回复的消息 查看消息
-            if (id == R.id.chat_reply_layout||id == R.id.chat_reply_layout_r) {
+            if (id == R.id.chat_reply_layout || id == R.id.chat_reply_layout_r) {
                 //查看回复的消息
                 when (data.data.reply.type) {
                     "TEXT_MESSAGE" -> {
@@ -158,8 +158,8 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                     }
                     "IMAGE_MESSAGE" -> {
                         //TODO 简单实现效果 后面添加到view中 加入复制
-                        val image =ImageView(this)
-                        image.adjustViewBounds=true
+                        val image = ImageView(this)
+                        image.adjustViewBounds = true
 //                        image.setPadding(24.dp)
                         GlideApp.with(this)
                             .load(data.data.reply.image)
@@ -191,58 +191,65 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             //点击消息 收到的消息
             if (id == R.id.chat_message_layout_l) {
                 //消息点击事件 用于 回复
-                //判断 语音和图片不能回复
-                if (data.data.message.medias != null) {
-                    val intent = Intent(this, ImageActivity::class.java)
-                    intent.putExtra("fileserver", "")
-                    intent.putExtra("imageurl", data.data.message.medias[0])
-                    val imageview = view.findViewById<ImageView>(R.id.chat_content_image_l)
-                    val options =
-                        ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
-                    startActivity(intent, options.toBundle())
+                //判断 消息类型
+                when (data.type) {
+                    "TEXT_MESSAGE" -> {
+                        //文本消息 点击回复
+                        binding.chatSendContentReplyLayout.visibility = View.VISIBLE
+                        viewModel.replyMessage = data.data.message.message
+                        viewModel.replyName = data.data.profile.name
+                        viewModel.replyId = data.id
+                        viewModel.replyMessageType = data.type
+                        binding.chatSendContentReply.text =
+                            data.data.profile.name + "：" + data.data.message.message
+                        //需要弹出键盘
+                        showKeyboard()
+                    }
+                    "IMAGE_MESSAGE" -> {
+                        //图片消息 点击查看 //后面优化 添加回复
+                        val intent = Intent(this, ImageActivity::class.java)
+                        intent.putExtra("fileserver", "")
+                        intent.putExtra("imageurl", data.data.message.medias[0])
+                        val imageview = view.findViewById<ImageView>(R.id.chat_content_image_l)
+                        val options =
+                            ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
+                        startActivity(intent, options.toBundle())
+                    }
+                    else -> {
+                        //其他类型 不操作
+                    }
                 }
-//                if (!data.audio.isNullOrEmpty()) {
-//                    view as RelativeLayout
-//                    //遍历所有的子view 找到要进行更新ui的view
-//                    for (i in 0 until view.childCount) {
-//                        val v: View = view.getChildAt(i)
-//                        if (v.id == R.id.chat_voice_l) {
-//                            v as LinearLayout
-//                            for (j in 0 until v.childCount) {
-//                                val voiceView: View = v.getChildAt(j)
-//                                if (voiceView.id == R.id.chat_voice_image_l) {
-//                                    viewModel.playAudio(data.audio, voiceView)
-//                                }
-//                                if (voiceView.id == R.id.chat_voice_dian) {
-//                                    voiceView.visibility = View.GONE
-//                                }
-//
-//                            }
-//                        }
-//                    }
             }
-
-//                if (data.audio.isNullOrEmpty() && data.image.isNullOrEmpty()) {
-////                        Toast.makeText(this,"回复-${}",Toast.LENGTH_SHORT).show()
-//                    binding.chatSendContentReplyLayout.visibility = View.VISIBLE
-//                    viewModel.reply=data.message
-//                    viewModel.reply_name=data.name
-//                    binding.chatSendContentReply.text = data.name + "：" + data.message
-//                    //需要弹出键盘
-//                    showKeyboard()
-//                }
-//            }
 
             //点击消息 自己发送的消息
             if (id == R.id.chat_message_layout_r) {
-                if (data.data.message.medias != null) {
-                    val intent = Intent(this, ImageActivity::class.java)
-                    intent.putExtra("fileserver", "")
-                    intent.putExtra("imageurl", data.data.message.medias[0])
-                    val imageview = view.findViewById<ImageView>(R.id.chat_content_image_r)
-                    val options =
-                        ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
-                    startActivity(intent, options.toBundle())
+                //判断 消息类型
+                when (data.type) {
+                    //文本消息 点击回复
+                    "TEXT_MESSAGE" -> {
+                        binding.chatSendContentReplyLayout.visibility = View.VISIBLE
+                        viewModel.replyMessage = data.data.message.message
+                        viewModel.replyName = data.data.profile.name
+                        viewModel.replyId = data.id
+                        viewModel.replyMessageType = data.type
+                        binding.chatSendContentReply.text =
+                            data.data.profile.name + "：" + data.data.message.message
+                        //需要弹出键盘
+                        showKeyboard()
+                    }
+                    "IMAGE_MESSAGE" -> {
+                        //图片消息 点击查看 //后面优化 添加回复
+                        val intent = Intent(this, ImageActivity::class.java)
+                        intent.putExtra("fileserver", "")
+                        intent.putExtra("imageurl", data.data.message.medias[0])
+                        val imageview = view.findViewById<ImageView>(R.id.chat_content_image_r)
+                        val options =
+                            ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
+                        startActivity(intent, options.toBundle())
+                    }
+                    else -> {
+                        //其他类型 不操作
+                    }
                 }
             }
         }
@@ -251,7 +258,8 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         binding.chatRv.setOnItemChildLongClickListener { view, position ->
             if (view.id == R.id.chat_avatar_layout_l) {
                 //头像点击事件 用于 @
-                initChipGroup(adapter.getItemData(position).data.profile.id,adapter.getItemData(position).data.profile.name)
+                val profile = adapter.getItemData(position).data.profile
+                initChipGroup(profile.id, profile.name)
                 //需要弹出键盘
                 showKeyboard()
             }
@@ -274,11 +282,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                     .setImageEngine(GlideEngine.createGlideEngine())
                     .forResult(object : OnResultCallbackListener<LocalMedia> {
                         override fun onResult(result: ArrayList<LocalMedia>) {
-//                        if (atUser.size > 0) {
-//                            for (name in atUser) {
-//                                viewModel.atname += name.replace("@", "嗶咔_")
-//                            }
-//                        }
+                            //发送图片 不添加回复与文字 纯图片发送//后面优化
                             viewModel.sendImage(path = result[0].cutPath, message = "")
                             clearInput()//清空输入框
                         }
@@ -294,7 +298,31 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
             if (!binding.chatProgressbar.isShown) {
                 //发送消息 和官方一致消息不为空时才能发送
                 if (!binding.chatSendContentInput.text.toString().trim().isNullOrBlank()) {
-                    viewModel.sendMessage(userMentions = atUser, message = binding.chatSendContentInput.text.toString())
+                    when (viewModel.replyMessageType) {
+                        "" -> {
+                            //不是回复消息 发送的纯文字
+                            viewModel.sendMessage(
+                                userMentions = atUser,
+                                message = binding.chatSendContentInput.text.toString()
+                            )
+                        }
+                        "TEXT_MESSAGE" -> {
+                            //回复文字消息
+                            viewModel.sendMessage(
+                                userMentions = atUser,
+                                message = binding.chatSendContentInput.text.toString()
+                            )
+                        }
+                        "IMAGE_MESSAGE" -> {
+                            //回复图片消息 //后面添加
+
+                        }
+                        else -> {
+                            //回复其他消息 //后面添加
+
+                        }
+                    }
+
                     clearInput()//清空输入框
                 }
             }
@@ -387,8 +415,8 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         }
     }
 
-    private fun initChipGroup(userid:String,name: String) {
-        atUser.add(UserMention(userid,name))
+    private fun initChipGroup(userid: String, name: String) {
+        atUser.add(UserMention(userid, name))
         binding.chatSendAt.removeAllViews()
         for (user in atUser) {
             val chip =
@@ -412,9 +440,11 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         //清空输入框
         atUser.clear()
         binding.chatSendAt.removeAllViews()
-        viewModel.atname = ""
-        viewModel.reply = ""
-        viewModel.reply_name = ""
+        viewModel.replyMessage = ""
+        viewModel.replyImage = ""
+        viewModel.replyId = ""
+        viewModel.replyName = ""
+        viewModel.replyMessageType = ""
         binding.chatSendContentInput.setText("")
         binding.chatSendContentReply.text = ""
         binding.chatSendContentReplyLayout.visibility = View.GONE

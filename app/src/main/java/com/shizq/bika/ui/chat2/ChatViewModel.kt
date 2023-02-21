@@ -24,9 +24,11 @@ import java.util.*
 class ChatViewModel(application: Application) : BaseViewModel(application) {
     var roomId = ""
 
-    var reply: String = ""
-    var reply_name: String = ""
-    var atname: String = ""
+    var replyMessage: String = ""
+    var replyId: String = ""
+    var replyName: String = ""
+    var replyImage: String = ""
+    var replyMessageType: String = ""
 
     val liveData_message: MutableLiveData<ChatMessage2Bean> by lazy {
         MutableLiveData<ChatMessage2Bean>()
@@ -46,6 +48,20 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
                 ChatMessage2Bean::class.java
             )
         )
+        val reply = mutableMapOf(
+            "name" to replyName,
+            "id" to replyId,
+            "type" to replyMessageType,
+        )
+
+        when (replyMessageType) {
+            "IMAGE_MESSAGE" -> {
+                reply["image"] = replyImage
+            }
+            else -> {
+                reply["message"] = replyMessage
+            }
+        }
 
         val map = mutableMapOf(
             "roomId" to roomId,
@@ -53,6 +69,11 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
             "referenceId" to referenceId,
             "userMentions" to userMentions
         )
+
+        if (replyName != "") {
+            map["reply"] = reply
+        }
+
         val body = RequestBody.create(
             MediaType.parse("application/json; charset=UTF-8"),
             Gson().toJson(map)
@@ -110,7 +131,12 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
             .addUnsafeNonAscii("content-disposition", "form-data; name=caption")
             .addUnsafeNonAscii("content-transfer-encoding", "binary")
             .build()
-        multipartBody.addPart(MultipartBody.Part.create(captionHeaders, RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), message)))
+        multipartBody.addPart(
+            MultipartBody.Part.create(
+                captionHeaders,
+                RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), message)
+            )
+        )
 
         multipartBody.addFormDataPart("userMentions", userMentions.toString())
 

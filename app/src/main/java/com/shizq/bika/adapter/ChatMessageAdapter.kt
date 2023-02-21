@@ -236,6 +236,7 @@ class ChatMessageAdapter :
                     //艾特某人
                     if (message.userMentions.isNotEmpty()) {
                         binding.chatAtGroupL.visibility = View.VISIBLE
+                        binding.chatAtGroupL.removeAllViews()
                         for (i in message.userMentions) {
                             val chip = Chip(holder.itemView.context)
                             chip.text = i.name

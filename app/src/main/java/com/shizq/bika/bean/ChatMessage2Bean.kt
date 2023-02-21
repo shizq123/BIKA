@@ -3,7 +3,8 @@ package com.shizq.bika.bean
 data class ChatMessage2Bean(
     val `data`: Data,
     val isBlocked: Boolean,
-    val type: String
+    val type: String,
+    val id: String
 ){
     data class Data(
         val `data`: String,
