@@ -18,6 +18,7 @@ import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.chat2.ChatActivity
 import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.SPUtil
+import com.shizq.bika.utils.TimeUtil
 
 /**
  * 推荐
@@ -65,16 +66,17 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
         }
 
         binding.chatroomRv.setOnItemClickListener { _, position ->
-            val userLevel = SPUtil.get(this,"user_level",1) as Int
-            if (userLevel >= mChatRoomsAdapter.getItemData(position).minLevel) {
+            val userLevel = SPUtil.get(this, "user_level", 1) as Int
+            val data = mChatRoomsAdapter.getItemData(position)
+            //注册天数和等级全符合太能跳转
+            if (userLevel >= data.minLevel && TimeUtil().registerDays(data.minRegisterDays)) {
                 val intent = Intent(this, ChatActivity::class.java)
                 intent.putExtra("title", mChatRoomsAdapter.getItemData(position).title)
                 intent.putExtra("id", mChatRoomsAdapter.getItemData(position).id)
                 startActivity(intent)
             } else {
-                Toast.makeText(this,"你不能进入此聊天室",Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "你不能进入此聊天室", Toast.LENGTH_SHORT).show()
             }
-
         }
 
     }

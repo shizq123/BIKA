@@ -378,6 +378,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 SPUtil.put(this, "user_character", character)
                 SPUtil.put(this, "user_name", name)
                 SPUtil.put(this, "user_birthday", it.data.user.birthday)
+                SPUtil.put(this, "user_created_at", it.data.user.created_at)
                 SPUtil.put(this, "user_gender", gender)
                 SPUtil.put(this, "user_level", level)
                 SPUtil.put(this, "user_exp", it.data.user.exp)
