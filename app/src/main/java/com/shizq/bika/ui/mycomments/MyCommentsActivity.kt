@@ -179,17 +179,14 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
 
         sub_comments_rv.setOnItemClickListener { v, position ->
             if (position != 0) {
-                userViewDialog.showUserDialog(
-                    adapter_sub.getItemData(position)._user,
-                    sub_comments_view
-                )
+                userViewDialog.showUserDialog(adapter_sub.getItemData(position)._user)
             }
         }
         sub_comments_rv.setOnItemChildClickListener { view, position ->
             val id = view.id
             val data = adapter_sub.getItemData(position)
             if (id == R.id.comments_name || id == R.id.comments_image_layout) {
-                userViewDialog.showUserDialog(data._user, sub_comments_view)
+                userViewDialog.showUserDialog(data._user)
             }
             //点赞
             if (id == R.id.comments_like_layout) {

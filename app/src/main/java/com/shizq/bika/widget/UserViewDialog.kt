@@ -26,7 +26,7 @@ import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
 import io.reactivex.rxjava3.schedulers.Schedulers
 
 class UserViewDialog(val context: AppCompatActivity) {
-    private lateinit var dia: AlertDialog
+    private var dia: AlertDialog? = null
     private var progress: ProgressDialog? = null
     private lateinit var dialog_view: View
     private lateinit var dialog_image_layout: View
@@ -36,6 +36,7 @@ class UserViewDialog(val context: AppCompatActivity) {
     private lateinit var dialog_name: TextView
     private lateinit var dialog_title: TextView
     private lateinit var dialog_slogan: TextView
+    private lateinit var dialog_block: TextView
 
     private lateinit var popupView: View
     private lateinit var popupImage: ImageView
@@ -59,6 +60,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         dialog_name = dialog_view.findViewById(R.id.view_user_nickname)
         dialog_title = dialog_view.findViewById(R.id.view_user_title)
         dialog_slogan = dialog_view.findViewById(R.id.view_user_slogan)
+        dialog_block = dialog_view.findViewById(R.id.view_user_block)
 
         //PopupWindow显示大图片
         popupView = View.inflate(context, R.layout.view_popup_image, null)
@@ -84,9 +86,9 @@ class UserViewDialog(val context: AppCompatActivity) {
         }
 
         liveData_profile.observe(context) {
+            progress?.dismiss()
+            progress = null
             if (it.code == 200) {
-                progress?.dismiss()
-                progress = null
                 val t = it.data.user
                 // 请求成功
                 userDialog(
@@ -97,24 +99,17 @@ class UserViewDialog(val context: AppCompatActivity) {
                     t.slogan,
                     { if (t.avatar != null) t.avatar.fileServer else "" },
                     { if (t.avatar != null) t.avatar.path else "" },
-                    t.character,
-                    context.window.decorView
+                    t.character
                 )
             } else {
-                dia.dismiss()
+                dia?.dismiss()
+                dia = null
                 Toast.makeText(context, "网络请求失败", Toast.LENGTH_SHORT).show()
             }
         }
     }
 
     fun showUserDialog(t: CommentsBean.User) {
-        if (t == null) {
-            return
-        }
-        showUserDialog(t, context.window.decorView)
-    }
-
-    fun showUserDialog(t: CommentsBean.User, parentView: View) {
         if (t == null) {
             return
         }
@@ -126,8 +121,7 @@ class UserViewDialog(val context: AppCompatActivity) {
             t.slogan,
             { if (t.avatar != null) t.avatar.fileServer else "" },
             { if (t.avatar != null) t.avatar.path else "" },
-            t.character,
-            parentView
+            t.character
         )
     }
 
@@ -143,8 +137,7 @@ class UserViewDialog(val context: AppCompatActivity) {
             t.slogan,
             { if (t.avatar != null) t.avatar.fileServer else "" },
             { if (t.avatar != null) t.avatar.path else "" },
-            t.character,
-            context.window.decorView
+            t.character
         )
     }
 
@@ -160,8 +153,7 @@ class UserViewDialog(val context: AppCompatActivity) {
             t.slogan,
             { if (t.avatar != null) t.avatar.fileServer else "" },
             { if (t.avatar != null) t.avatar.path else "" },
-            t.character,
-            context.window.decorView
+            t.character
         )
     }
 
@@ -177,8 +169,7 @@ class UserViewDialog(val context: AppCompatActivity) {
             t.slogan,
             { if (t.avatar != null) t.avatar.fileServer else "" },
             { if (t.avatar != null) t.avatar.path else "" },
-            t.character,
-            context.window.decorView
+            t.character
         )
     }
 
@@ -207,13 +198,12 @@ class UserViewDialog(val context: AppCompatActivity) {
             t.slogan,
             { fileServer },
             { path },
-            "",
-            context.window.decorView
+            ""
         )
     }
 
     fun showUserDialog(userId: String) {
-        progress =  ProgressDialog.show(context, null, "加载用户信息...", true)
+        progress = ProgressDialog.show(context, null, "加载用户信息...", true)
         getProfile(userId)
     }
 
@@ -225,8 +215,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         slogan: String,
         fileServer: () -> String,
         path: () -> String,
-        character: String,
-        parentView: View
+        character: String
     ) {
         dialog_name.text = name
         dialog_title.text = title
@@ -262,7 +251,7 @@ class UserViewDialog(val context: AppCompatActivity) {
 
         dia = MaterialAlertDialogBuilder(context).setView(dialog_view).show()
 
-        dia.setOnDismissListener {
+        dia?.setOnDismissListener {
             //用完必须销毁 不销毁报错
             progress?.dismiss()
             progress = null
@@ -271,12 +260,13 @@ class UserViewDialog(val context: AppCompatActivity) {
 
         //dialog view 头像点击事件
         dialog_image_layout.setOnClickListener {
-            dia.dismiss()
-            PopupWindow(fileServer(), path(), parentView)
+            dia?.dismiss()
+            dia = null
+            popupWindow(fileServer(), path())
         }
     }
 
-    fun PopupWindow(fileServer: String, path: String, parentView: View) {
+    fun popupWindow(fileServer: String, path: String) {
         if (path != "") {
             val intent = Intent(context, ImageActivity::class.java)
             intent.putExtra("fileserver", fileServer)

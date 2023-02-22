@@ -1,0 +1,231 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="6dp">
+
+        <RelativeLayout
+            android:id="@+id/chat_layout_l"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="60dp">
+            <!--头像-->
+            <RelativeLayout
+                android:id="@+id/chat_avatar_layout_l"
+                android:layout_width="56dp"
+                android:layout_height="56dp">
+
+                <com.google.android.material.imageview.ShapeableImageView
+                    android:id="@+id/chat_avatar_l"
+                    android:layout_width="42dp"
+                    android:layout_height="42dp"
+                    android:layout_centerInParent="true"
+                    android:layout_gravity="center"
+                    android:adjustViewBounds="true"
+                    android:scaleType="centerCrop"
+                    android:src="@drawable/placeholder_avatar_2"
+                    app:shapeAppearance="@style/CircleStyle" />
+
+                <ImageView
+                    android:id="@+id/chat_character_l"
+                    android:layout_width="match_parent"
+                    android:layout_height="match_parent" />
+            </RelativeLayout>
+
+            <LinearLayout
+                android:id="@+id/chat_name_layout_l"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="4dp"
+                android:layout_marginEnd="4dp"
+                android:layout_toEndOf="@id/chat_avatar_layout_l"
+                android:orientation="horizontal"
+                android:padding="2dp">
+
+                <TextView
+                    android:id="@+id/chat_level_l"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="4dp"
+                    android:textColor="@color/pink"
+                    android:textSize="12sp" />
+
+                <ImageView
+                    android:id="@+id/chat_verified"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/verified_icon"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/chat_official"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_hotel_class"
+                    android:visibility="gone"
+                    app:tint="@color/green" />
+
+                <ImageView
+                    android:id="@+id/chat_knight"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_group_work"
+                    android:visibility="gone"
+                    app:tint="@color/blue" />
+
+                <ImageView
+                    android:id="@+id/chat_manager"
+                    android:layout_width="12dp"
+                    android:layout_height="12dp"
+                    android:layout_gravity="center_vertical"
+                    android:layout_marginEnd="4dp"
+                    android:src="@drawable/ic_security"
+                    android:visibility="gone"
+                    app:tint="@color/red" />
+
+                <TextView
+                    android:id="@+id/chat_name_l"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:ellipsize="end"
+                    android:maxLines="1"
+                    android:text="用户名"
+                    android:textSize="12sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/chat_name_layout_l"
+                android:layout_marginStart="4dp"
+                android:layout_marginBottom="4dp"
+                android:layout_toEndOf="@id/chat_avatar_layout_l"
+                android:orientation="vertical">
+
+                <RelativeLayout
+                    android:id="@+id/chat_message_layout_l"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:background="@drawable/shape_chat_bg"
+                    android:descendantFocusability="afterDescendants"
+                    android:orientation="vertical"
+                    android:padding="10dp">
+
+                    <!--                回复的消息-->
+                    <LinearLayout
+                        android:id="@+id/chat_reply_layout"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="8dp"
+                        android:background="@drawable/shape_chat_reply_bg"
+                        android:orientation="vertical"
+                        android:visibility="visible">
+
+                        <TextView
+                            android:id="@+id/chat_reply_name"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginTop="10dp"
+                            android:layout_marginEnd="10dp"
+                            android:ellipsize="end"
+                            android:maxLines="1"
+                            android:text="用户名"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/chat_reply"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_margin="10dp"
+                            android:ellipsize="end"
+                            android:maxLines="2"
+                            android:text="消息消息消息"
+                            android:textSize="13sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/chat_at_l"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_reply_layout"
+                        android:textColor="@color/pink"
+                        android:textSize="12sp"
+                        android:visibility="gone" />
+
+                    <com.google.android.material.chip.ChipGroup
+                        android:id="@+id/chat_at_group_l"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_at_l"
+                        android:visibility="gone" />
+
+                    <TextView
+                        android:id="@+id/chat_content_l"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_at_group_l"
+                        android:autoLink="web"
+                        android:text="消息消息消息消息"
+                        android:textSize="14sp" />
+
+                    <LinearLayout
+                        android:id="@+id/chat_voice_l"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_content_l"
+                        android:gravity="center_vertical"
+                        android:visibility="gone">
+
+                        <ImageView
+                            android:id="@+id/chat_voice_image_l"
+                            android:layout_width="20dp"
+                            android:layout_height="20dp"
+                            android:background="@drawable/voice" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="[语音]" />
+
+                        <ImageView
+                            android:id="@+id/chat_voice_dian"
+                            android:layout_width="3dp"
+                            android:layout_height="3dp"
+                            android:layout_marginStart="4dp"
+                            android:background="#F00" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/chat_content_image_l"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_below="@id/chat_content_l"
+                        android:adjustViewBounds="true"
+                        android:visibility="gone" />
+                </RelativeLayout>
+
+                <TextView
+                    android:id="@+id/chat_time_l"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="end"
+                    android:textSize="8dp"
+                    android:visibility="gone" />
+            </LinearLayout>
+
+        </RelativeLayout>
+    </LinearLayout>
+</layout>

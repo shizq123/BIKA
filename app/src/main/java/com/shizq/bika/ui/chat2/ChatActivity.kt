@@ -26,7 +26,7 @@ import com.luck.picture.lib.entity.LocalMedia
 import com.luck.picture.lib.interfaces.OnResultCallbackListener
 import com.shizq.bika.BR
 import com.shizq.bika.R
-import com.shizq.bika.adapter.ChatMessageAdapter
+import com.shizq.bika.adapter.ChatMessageMultiAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.bean.UserMention
 import com.shizq.bika.databinding.ActivityChat2Binding
@@ -40,7 +40,7 @@ import com.yalantis.ucrop.UCrop
 //新聊天室
 //消息是websocket实现，消息是实时，不会留记录,网络不好会丢失消息
 class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
-    private lateinit var adapter: ChatMessageAdapter
+    private lateinit var adapter: ChatMessageMultiAdapter
     private lateinit var userViewDialog: UserViewDialog
     var chatRvBottom = false//false表示底部
     private val atUser = ArrayList<UserMention>() //@的用户名
@@ -78,7 +78,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         setSupportActionBar(binding.chatInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        adapter = ChatMessageAdapter()
+        adapter = ChatMessageMultiAdapter()
         binding.chatRv.layoutManager = LinearLayoutManager(this)
         binding.chatRv.adapter = adapter
 

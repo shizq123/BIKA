@@ -1,8 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    xmlns:app="http://schemas.android.com/apk/res-auto">
+    android:layout_height="match_parent">
+
     <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -13,8 +14,7 @@
             android:id="@+id/view_user_image_layout"
             android:layout_width="96dp"
             android:layout_height="96dp"
-            android:layout_centerHorizontal="true"
-            >
+            android:layout_centerHorizontal="true">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/view_user_image"
@@ -39,9 +39,9 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/view_user_image_layout"
             android:layout_centerHorizontal="true"
-            android:textColor="?attr/colorOutline"
             android:text="(a) lv1(0/0)"
-            android:textSize="12sp"/>
+            android:textColor="?attr/colorOutline"
+            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/view_user_nickname"
@@ -58,23 +58,32 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_below="@id/view_user_nickname"
-            android:background="@drawable/shape_title_bg"
             android:layout_centerHorizontal="true"
-            android:paddingTop="1dp"
-            android:paddingBottom="1.5dp"
+            android:background="@drawable/shape_title_bg"
             android:paddingStart="3dp"
+            android:paddingTop="1dp"
             android:paddingEnd="3dp"
+            android:paddingBottom="1.5dp"
             android:text="aaa"
-            android:textSize="12sp"/>
+            android:textSize="12sp" />
 
         <TextView
             android:id="@+id/view_user_slogan"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
             android:layout_below="@id/view_user_title"
-            android:textSize="14sp"/>
+            android:layout_centerHorizontal="true"
+            android:textSize="14sp" />
 
+        <TextView
+            android:id="@+id/view_user_block"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:padding="12dp"
+            android:text="拉黑"
+            android:textSize="14sp"
+            android:visibility="gone" />
 
     </RelativeLayout>
 </androidx.core.widget.NestedScrollView>
