@@ -9,6 +9,7 @@ import com.shizq.bika.databinding.ItemMyCommentsBinding
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.SPUtil
+import com.shizq.bika.utils.TimeUtil
 
 class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyCommentsBinding>(R.layout.item_my_comments) {
 
@@ -45,6 +46,7 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
             "f" -> "(淑女)"
             else -> "(机器人)"}
         binding.itemMyCommentsUserLevel.text="Lv.$level"
+        binding.itemMyCommentsTime.text=TimeUtil().time(bean.created_at)
 
         if (fileServer != "") {//头像
 

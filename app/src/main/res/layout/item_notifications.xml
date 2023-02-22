@@ -3,11 +3,6 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
     <data>
-
-        <import type="com.shizq.bika.utils.TimeUtil" />
-
-        <import type="android.view.View" />
-
         <variable
             name="m"
             type="com.shizq.bika.bean.NotificationsBean.Notifications.Doc" />
@@ -25,9 +20,9 @@
             android:layout_width="64dp"
             android:layout_height="64dp"
             android:layout_marginStart="6dp"
-            android:layout_marginBottom="6dp"
             android:layout_marginTop="6dp"
-            android:layout_marginEnd="4dp">
+            android:layout_marginEnd="4dp"
+            android:layout_marginBottom="6dp">
 
             <com.google.android.material.imageview.ShapeableImageView
                 android:id="@+id/item_notifications_user_image"
@@ -46,29 +41,30 @@
                 android:layout_height="match_parent" />
         </RelativeLayout>
 
-    <RelativeLayout
-        android:id="@+id/item_notifications_cover_layout"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginStart="4dp"
-        android:layout_marginTop="6dp"
-        android:layout_marginBottom="6dp"
-        android:layout_marginEnd="6dp"
-        android:layout_alignParentEnd="true">
-        <ImageView
-            android:id="@+id/item_notifications_cover"
-            android:layout_width="64dp"
-            android:layout_height="64dp"
-            android:visibility="gone"/>
-    </RelativeLayout>
+        <RelativeLayout
+            android:id="@+id/item_notifications_cover_layout"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_marginStart="4dp"
+            android:layout_marginTop="6dp"
+            android:layout_marginEnd="6dp"
+            android:layout_marginBottom="6dp">
+
+            <ImageView
+                android:id="@+id/item_notifications_cover"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
+                android:visibility="gone" />
+        </RelativeLayout>
 
         <TextView
             android:id="@+id/item_notifications_title"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="6dp"
-            android:layout_toEndOf="@+id/item_notifications_image_layout"
             android:layout_toStartOf="@+id/item_notifications_cover_layout"
+            android:layout_toEndOf="@+id/item_notifications_image_layout"
             android:ellipsize="end"
             android:singleLine="true"
             android:text="@{m.title}"
@@ -82,8 +78,8 @@
             android:layout_height="wrap_content"
             android:layout_below="@id/item_notifications_title"
             android:layout_marginTop="4dp"
-            android:layout_toEndOf="@+id/item_notifications_image_layout"
             android:layout_toStartOf="@+id/item_notifications_cover_layout"
+            android:layout_toEndOf="@+id/item_notifications_image_layout"
             android:text="@{m.content}"
             android:textSize="16sp" />
 
@@ -92,15 +88,13 @@
             android:id="@+id/item_notifications_time"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="4dp"
             android:layout_below="@id/comments_content_text"
-            android:layout_toEndOf="@+id/item_notifications_image_layout"
-            android:layout_toStartOf="@+id/item_notifications_cover_layout"
+            android:layout_marginTop="4dp"
             android:layout_marginBottom="12dp"
-            android:text="@{TimeUtil.B(m.created_at)}"
+            android:layout_toStartOf="@+id/item_notifications_cover_layout"
+            android:layout_toEndOf="@+id/item_notifications_image_layout"
             android:textColor="?attr/colorOutline"
             android:textSize="12sp" />
-
 
     </RelativeLayout>
 

@@ -4,7 +4,7 @@ import android.view.ViewGroup
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatMessage2Bean
 import com.shizq.bika.databinding.ItemChatMessageSystemBinding
-import com.shizq.bika.utils.TimestampFormat
+import com.shizq.bika.utils.TimeUtil
 
 //新聊天室 一些通知
 class ChatMessageSystemHolder (viewGroup: ViewGroup, layoutId: Int) :
@@ -17,7 +17,7 @@ class ChatMessageSystemHolder (viewGroup: ViewGroup, layoutId: Int) :
     ) {
         when(bean.type){
             "CONNECTED" -> {
-                binding.chatNotification.text = TimestampFormat().getDate(bean.data.data)
+                binding.chatNotification.text = TimeUtil().getDate(bean.data.data)
             }
 
             "SYSTEM_MESSAGE" -> {

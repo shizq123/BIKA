@@ -16,6 +16,6 @@ class ChapterAdapter : BaseBindingAdapter<ChapterBean.Eps.Doc, ItemChapterBindin
         position: Int
     ) {
         binding.chapterTitle.text = bean.title
-        binding.chapterTime.text = TimeUtil.B(bean.updated_at)
+        binding.chapterTime.text = TimeUtil().time(bean.updated_at)
     }
 }

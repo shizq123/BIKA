@@ -4,8 +4,9 @@
     xmlns:tools="http://schemas.android.com/tools">
 
     <data>
-        <import type="android.view.View"/>
-        <import type="com.shizq.bika.utils.TimeUtil"/>
+
+        <import type="android.view.View" />
+
         <variable
             name="clickListener"
             type="com.shizq.bika.ui.comicinfo.ComicInfoActivity.ClickListener" />
@@ -259,7 +260,6 @@
                                 android:id="@+id/comicinfo_creator_updated_at"
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:text="@{TimeUtil.B(viewModel.liveData_info.Data.Comic.updated_at)+@string/updated_at}"
                                 android:textSize="12sp" />
                         </LinearLayout>
                     </RelativeLayout>
@@ -293,7 +293,7 @@
                         android:id="@+id/comicinfo_tagslist"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"/>
+                        android:layout_marginStart="6dp" />
                 </LinearLayout>
 
                 <LinearLayout
@@ -303,8 +303,8 @@
                     android:layout_marginStart="12dp"
                     android:layout_marginEnd="12dp"
                     android:layout_marginBottom="12dp"
-                    android:visibility="gone"
-                    android:orientation="horizontal">
+                    android:orientation="horizontal"
+                    android:visibility="gone">
 
                     <com.google.android.material.chip.Chip
                         android:layout_width="wrap_content"
@@ -317,7 +317,7 @@
                         android:id="@+id/comicinfo_tagslist1"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginStart="6dp"/>
+                        android:layout_marginStart="6dp" />
                 </LinearLayout>
 
                 <!-- 章节 -->

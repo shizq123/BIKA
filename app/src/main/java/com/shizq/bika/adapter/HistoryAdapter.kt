@@ -7,7 +7,7 @@ import com.shizq.bika.databinding.ItemHistroyBinding
 import com.shizq.bika.db.History
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
-import com.shizq.bika.utils.TimestampFormat
+import com.shizq.bika.utils.TimeUtil
 
 class HistoryAdapter :
     BaseBindingAdapter<History, ItemHistroyBinding>(R.layout.item_histroy) {
@@ -22,6 +22,6 @@ class HistoryAdapter :
             .load(GlideUrlNewKey(bean.fileServer, bean.path))
             .placeholder(R.drawable.placeholder_avatar_2)
             .into(binding.historyItemImage)
-        binding.historyItemTime.text = TimestampFormat().getDateToString(bean.time)
+        binding.historyItemTime.text = TimeUtil().getDate(bean.time)
     }
 }

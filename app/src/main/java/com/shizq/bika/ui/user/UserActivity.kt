@@ -52,7 +52,7 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
         binding.userNickname.text = SPUtil.get(this, "user_name", "") as String
         binding.userUsername.text = SPUtil.get(this, "username", "") as String
         binding.userBirthday.text =
-            (SPUtil.get(this, "user_birthday", "") as String).subSequence(0, 10)
+            TimeUtil().getBirthday(SPUtil.get(this, "user_birthday", "") as String)
         binding.userSlogan.text = SPUtil.get(this, "user_slogan", "") as String
 
         initListener()

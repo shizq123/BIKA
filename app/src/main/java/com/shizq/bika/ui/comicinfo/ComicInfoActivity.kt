@@ -148,7 +148,11 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
             val intent = Intent(this@ComicInfoActivity, ImageActivity::class.java)
             intent.putExtra("fileserver", fileserver)
             intent.putExtra("imageurl", imageurl)
-            val options = ActivityOptions.makeSceneTransitionAnimation(this@ComicInfoActivity, binding.comicinfoImage, "image")
+            val options = ActivityOptions.makeSceneTransitionAnimation(
+                this@ComicInfoActivity,
+                binding.comicinfoImage,
+                "image"
+            )
             startActivity(intent, options.toBundle())
         }
 
@@ -327,6 +331,9 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                     } else {
                         binding.comicinfoCreatorAvatar.setImageResource(R.drawable.placeholder_avatar)
                     }
+                    //上传者 更新时间
+                    binding.comicinfoCreatorUpdatedAt.text =
+                        TimeUtil().time(it.data.comic.updated_at) + getString(R.string.updated_at)
 
                     //记录历史
                     val historyList = viewModel.getHistory()

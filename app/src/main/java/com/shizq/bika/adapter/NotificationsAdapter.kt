@@ -8,6 +8,7 @@ import com.shizq.bika.bean.NotificationsBean
 import com.shizq.bika.databinding.ItemNotificationsBinding
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
+import com.shizq.bika.utils.TimeUtil
 
 class NotificationsAdapter :
     BaseBindingAdapter<NotificationsBean.Notifications.Doc, ItemNotificationsBinding>(R.layout.item_notifications) {
@@ -17,7 +18,7 @@ class NotificationsAdapter :
         binding: ItemNotificationsBinding,
         position: Int
     ) {
-
+        binding.itemNotificationsTime.text=TimeUtil().time(bean.created_at)
         if (bean._sender.avatar != null) {//头像
             GlideApp.with(holder.itemView)
                 .load(

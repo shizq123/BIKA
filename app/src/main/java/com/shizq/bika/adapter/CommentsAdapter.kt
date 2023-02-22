@@ -68,7 +68,7 @@ class CommentsAdapter: BaseBindingAdapter<CommentsBean.Comments.Doc, ItemComment
         }
 
 
-        binding.commentsTime.text = TimeUtil.B(bean.created_at)//时间
+        binding.commentsTime.text = TimeUtil().time(bean.created_at)//时间
         binding.commentsLikeText.text = bean.likesCount.toString()//爱心数
         binding.commentsLikeImage.setImageResource(if (bean.isLiked) R.drawable.ic_favorite_24 else R.drawable.ic_favorite_border_24)
 

@@ -4,17 +4,17 @@
 
     <data>
 
-        <import type="com.shizq.bika.utils.TimeUtil" />
         <import type="android.view.View" />
 
         <variable
             name="m"
             type="com.shizq.bika.bean.MyCommentsBean.Comments.Doc" />
     </data>
+
     <RelativeLayout
+        android:id="@+id/comments_layout"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:id="@+id/comments_layout"
         android:orientation="vertical">
 
         <!--头像-->
@@ -47,8 +47,8 @@
             android:id="@+id/comments_user_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginEnd="6dp"
             android:layout_alignTop="@id/item_my_comments_image_layout"
+            android:layout_marginEnd="6dp"
             android:layout_toEndOf="@+id/item_my_comments_image_layout">
             <!--点赞-->
             <LinearLayout
@@ -107,8 +107,8 @@
                         android:paddingTop="1dp"
                         android:paddingEnd="3dp"
                         android:paddingBottom="1.5dp"
-                        android:textSize="10sp"
                         android:textColor="?attr/colorOutline"
+                        android:textSize="10sp"
                         android:visibility="visible" />
 
                     <TextView
@@ -125,7 +125,6 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginStart="8dp"
-                        android:text="@{TimeUtil.B(m.created_at)}"
                         android:textColor="?attr/colorOutline"
                         android:textSize="12sp" />
 
@@ -141,9 +140,9 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/comments_user_layout"
-            android:layout_toEndOf="@+id/item_my_comments_image_layout"
             android:layout_marginTop="4dp"
             android:layout_marginEnd="6dp"
+            android:layout_toEndOf="@+id/item_my_comments_image_layout"
             android:text="@{m.content}"
             android:textSize="14sp" />
 
@@ -154,8 +153,8 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_below="@id/comments_content_text"
-            android:layout_marginEnd="8dp"
             android:layout_marginTop="4dp"
+            android:layout_marginEnd="8dp"
             android:layout_toEndOf="@+id/item_my_comments_image_layout"
             android:visibility="@{m.commentsCount==0?View.GONE:View.VISIBLE}"
             app:cardBackgroundColor="?attr/colorOnSurfaceInverse"
@@ -186,32 +185,34 @@
 
         <LinearLayout
             android:id="@+id/item_my_comments_title_layout"
-            android:layout_below="@id/item_my_comments_sub_layout"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
+            android:layout_below="@id/item_my_comments_sub_layout"
             android:layout_marginTop="4dp"
             android:layout_marginEnd="6dp"
+            android:layout_marginBottom="16dp"
             android:layout_toEndOf="@id/item_my_comments_image_layout"
             android:gravity="center_vertical"
             android:orientation="horizontal">
+
             <TextView
                 android:id="@+id/item_my_comments_type"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textColor="?attr/colorOutline"
                 android:text="@{m._game == null?@string/text_CommentsType_comic:@string/text_CommentsType_game}"
-                android:textSize="14sp"/>
+                android:textColor="?attr/colorOutline"
+                android:textSize="14sp" />
+
             <TextView
                 android:id="@+id/item_my_comments_title"
                 android:layout_width="wrap_content"
-               android:layout_height="wrap_content"
+                android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
                 android:text="@{m._game == null?m._comic.title:m._game.title}"
-                android:textSize="16sp"
                 android:textColor="@color/pink"
-                android:textStyle="bold"/>
+                android:textSize="16sp"
+                android:textStyle="bold" />
         </LinearLayout>
 
     </RelativeLayout>
