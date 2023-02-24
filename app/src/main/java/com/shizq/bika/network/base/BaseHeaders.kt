@@ -37,7 +37,7 @@ class BaseHeaders(private val urlEnd: String = "", val type: String = "") {
     fun getChatHeaders(): MutableMap<String, String> {
         val map: MutableMap<String, String> = HashMap()
         map["user-agent"] = "Dart/2.19 (dart:io)"
-        map["api-version"] = "1.0.0"
+        map["api-version"] = "1.0.2"
         map["content-type"] = "application/json; charset=UTF-8"
         return map
     }

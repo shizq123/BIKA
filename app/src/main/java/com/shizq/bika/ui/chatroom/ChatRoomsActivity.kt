@@ -68,7 +68,7 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
         binding.chatroomRv.setOnItemClickListener { _, position ->
             val userLevel = SPUtil.get(this, "user_level", 1) as Int
             val data = mChatRoomsAdapter.getItemData(position)
-            //注册天数和等级全符合太能跳转
+            //注册天数和等级全符合才能跳转
             if (userLevel >= data.minLevel && TimeUtil().registerDays(data.minRegisterDays)) {
                 val intent = Intent(this, ChatActivity::class.java)
                 intent.putExtra("title", mChatRoomsAdapter.getItemData(position).title)
@@ -123,7 +123,7 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
             }
         }
         viewModel.liveDataRoomList.observe(this) {
-            if (it.rooms.isNotEmpty()) {
+            if (it.rooms != null) {
                 binding.chatroomLoadLayout.visibility = ViewGroup.GONE
                 mChatRoomsAdapter.clear()
                 mChatRoomsAdapter.addData(it.rooms)

@@ -13,6 +13,7 @@ import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.luck.picture.lib.magical.MagicalViewWrapper
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CategoriesAdapter
@@ -178,6 +179,12 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_modify) as TextView).setOnClickListener {
             startActivity(Intent(this@MainActivity, UserActivity::class.java))
+        }
+        (binding.mainNavView.getHeaderView(0)
+            .findViewById(R.id.main_drawer_punch_in) as TextView).setOnClickListener {
+            (binding.mainNavView.getHeaderView(0)
+                .findViewById(R.id.main_drawer_punch_in) as TextView).visibility=View.GONE
+            viewModel.punch_In()
         }
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_character) as ImageView).setOnClickListener {
@@ -369,6 +376,9 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     //是否设置自动打卡
                     if (SPUtil.get(this, "setting_punch", true) as Boolean) {
                         viewModel.punch_In()
+                    } else {
+                        (binding.mainNavView.getHeaderView(0)
+                            .findViewById(R.id.main_drawer_punch_in) as TextView).visibility=View.VISIBLE
                     }
                 }
 
@@ -473,8 +483,11 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 //保存
                 SPUtil.put(this, "user_level", level)
                 SPUtil.put(this, "user_exp", exp)
+                initProfile()
                 Toast.makeText(this, "自动打卡成功", Toast.LENGTH_SHORT).show()
             } else {
+                (binding.mainNavView.getHeaderView(0)
+                    .findViewById(R.id.main_drawer_punch_in) as TextView).visibility=View.VISIBLE
                 Toast.makeText(
                     this,
                     "打卡失败message=${it.message} code=${it.code} error=${it.error}",

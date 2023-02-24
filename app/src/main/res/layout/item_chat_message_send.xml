@@ -143,15 +143,24 @@
                     android:padding="10dp">
 
                     <!--回复的消息-->
-                    <LinearLayout
+                    <RelativeLayout
                         android:id="@+id/chat_reply_layout_r"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_marginBottom="8dp"
                         android:background="@drawable/shape_chat_reply_bg"
                         android:descendantFocusability="afterDescendants"
-                        android:orientation="vertical"
                         android:visibility="visible">
+
+                        <ImageView
+                            android:id="@+id/chat_reply_image"
+                            android:layout_width="48dp"
+                            android:layout_height="48dp"
+                            android:layout_marginStart="10dp"
+                            android:layout_marginTop="10dp"
+                            android:layout_marginBottom="10dp"
+                            android:scaleType="centerCrop"
+                            android:visibility="gone"/>
 
                         <TextView
                             android:id="@+id/chat_reply_name_r"
@@ -160,6 +169,7 @@
                             android:layout_marginStart="10dp"
                             android:layout_marginTop="10dp"
                             android:layout_marginEnd="10dp"
+                            android:layout_toEndOf="@id/chat_reply_image"
                             android:ellipsize="end"
                             android:maxLines="1"
                             android:text="用户名"
@@ -170,12 +180,14 @@
                             android:id="@+id/chat_reply_r"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
+                            android:layout_below="@id/chat_reply_name_r"
                             android:layout_margin="10dp"
+                            android:layout_toEndOf="@id/chat_reply_image"
                             android:ellipsize="end"
                             android:maxLines="2"
                             android:text="消息消息消息"
                             android:textSize="13sp" />
-                    </LinearLayout>
+                    </RelativeLayout>
 
                     <TextView
                         android:id="@+id/chat_at_r"

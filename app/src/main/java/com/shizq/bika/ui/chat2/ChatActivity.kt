@@ -15,6 +15,7 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
+import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
@@ -81,6 +82,10 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         adapter = ChatMessageMultiAdapter()
         binding.chatRv.layoutManager = LinearLayoutManager(this)
         binding.chatRv.adapter = adapter
+        val itemTouchHelperCallback=ChatReplyTouchHelperCallback(adapter)
+        val itemTouchHelper= ItemTouchHelper(itemTouchHelperCallback)
+        itemTouchHelper.attachToRecyclerView(binding.chatRv)
+
 
         userViewDialog = UserViewDialog(this)
 
@@ -158,25 +163,13 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                     }
                     "IMAGE_MESSAGE" -> {
                         //TODO 简单实现效果 后面添加到view中 加入复制
-                        val image = ImageView(this)
-                        image.adjustViewBounds = true
-//                        image.setPadding(24.dp)
-                        GlideApp.with(this)
-                            .load(data.data.reply.image)
-                            .placeholder(R.drawable.placeholder_avatar_2)
-                            .into(image)
-                        image.setOnClickListener {
-                            val intent = Intent(this, ImageActivity::class.java)
-                            intent.putExtra("fileserver", "")
-                            intent.putExtra("imageurl", data.data.reply.image)
-                            val options =
-                                ActivityOptions.makeSceneTransitionAnimation(this, it, "image")
-                            startActivity(intent, options.toBundle())
-                        }
-                        MaterialAlertDialogBuilder(this)
-                            .setTitle(data.data.reply.name)
-                            .setView(image)
-                            .show()
+                        val intent = Intent(this, ImageActivity::class.java)
+                        intent.putExtra("fileserver", "")
+                        intent.putExtra("imageurl", data.data.reply.image)
+                        val imageview = view.findViewById<ImageView>(R.id.chat_reply_image)
+                        val options =
+                            ActivityOptions.makeSceneTransitionAnimation(this, imageview, "image")
+                        startActivity(intent, options.toBundle())
                     }
                     else -> {
                         MaterialAlertDialogBuilder(this)
@@ -410,7 +403,11 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                 }
             } else {
                 //发送失败 弹窗
-
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("发送失败")
+                    .setPositiveButton("确定",null)
+                    .setCancelable(false)
+                    .show()
             }
         }
     }

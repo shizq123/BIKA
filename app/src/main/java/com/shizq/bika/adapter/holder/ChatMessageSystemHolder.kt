@@ -1,4 +1,4 @@
-package com.shizq.bika.adapter
+package com.shizq.bika.adapter.holder
 
 import android.view.ViewGroup
 import com.shizq.bika.base.BaseBindingHolder
@@ -7,33 +7,33 @@ import com.shizq.bika.databinding.ItemChatMessageSystemBinding
 import com.shizq.bika.utils.TimeUtil
 
 //新聊天室 一些通知
-class ChatMessageSystemHolder (viewGroup: ViewGroup, layoutId: Int) :
-    BaseBindingHolder<ChatMessage2Bean, ItemChatMessageSystemBinding>(viewGroup,layoutId) {
+class ChatMessageSystemHolder(viewGroup: ViewGroup, layoutId: Int) :
+    BaseBindingHolder<ChatMessage2Bean, ItemChatMessageSystemBinding>(viewGroup, layoutId) {
 
     override fun onBindingView(
         holder: BaseBindingHolder<*, *>,
         bean: ChatMessage2Bean,
         position: Int
     ) {
-        when(bean.type){
+        binding.chatNotification.text = when (bean.type) {
             "CONNECTED" -> {
-                binding.chatNotification.text = TimeUtil().getDate(bean.data.data)
+                TimeUtil().getDate(bean.data.data)
             }
 
             "SYSTEM_MESSAGE" -> {
-                binding.chatNotification.text = bean.data.message.message
+                bean.data.message.message
             }
 
             "TEXT_MESSAGE" -> {
-                binding.chatNotification.text = "黑名单消息"
+                "黑名单消息"
             }
 
             "IMAGE_MESSAGE" -> {
-                binding.chatNotification.text = "黑名单消息"
+                "黑名单消息"
             }
 
             else -> {
-                binding.chatNotification.text = "未知消息类型"
+                "未知消息类型"
             }
         }
     }

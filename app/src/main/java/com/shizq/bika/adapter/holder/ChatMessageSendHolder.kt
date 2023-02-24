@@ -1,4 +1,4 @@
-package com.shizq.bika.adapter
+package com.shizq.bika.adapter.holder
 
 import android.view.View
 import android.view.ViewGroup
@@ -85,7 +85,15 @@ class ChatMessageSendHolder (viewGroup: ViewGroup, layoutId: Int) :
                 binding.chatReplyR.text = reply.message
             }
             if (reply.type == "IMAGE_MESSAGE") {
+                binding.chatReplyImage.visibility = View.VISIBLE
+                GlideApp.with(holder.itemView)
+                    .load(reply.image)
+                    .placeholder(R.drawable.placeholder_avatar_2)
+                    .into(binding.chatReplyImage)
                 binding.chatReplyR.text = "[图片]"
+            } else {
+                binding.chatReplyImage.visibility = View.GONE
+
             }
         } else {
             binding.chatReplyLayoutR.visibility = ViewGroup.GONE
@@ -94,10 +102,10 @@ class ChatMessageSendHolder (viewGroup: ViewGroup, layoutId: Int) :
         //消息
         val message = bean.data.message
         //艾特某人
-        if (message.userMentions.isNotEmpty()) {
+        if (bean.data.userMentions.isNotEmpty()) {
             binding.chatAtGroupR.visibility = View.VISIBLE
             binding.chatAtGroupR.removeAllViews()
-            for (i in message.userMentions) {
+            for (i in bean.data.userMentions) {
                 val chip = Chip(holder.itemView.context)
                 chip.text = i.name
                 chip.textSize = 12.dp.toFloat()

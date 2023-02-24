@@ -18,8 +18,19 @@
         android:layout_alignTop="@id/main_drawer_imageView_layout"
         android:layout_alignParentEnd="true"
         android:padding="10dp"
-        android:text="编辑"
+        android:text="@string/drawer_edit"
         android:textAppearance="?android:attr/textAppearanceMedium"
+        android:textSize="13sp" />
+    <TextView
+        android:id="@+id/main_drawer_punch_in"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@id/main_drawer_imageView_layout"
+        android:layout_toStartOf="@id/main_drawer_modify"
+        android:padding="10dp"
+        android:text="@string/drawer_punch_in"
+        android:textAppearance="?android:attr/textAppearanceMedium"
+        android:visibility="gone"
         android:textSize="13sp" />
 
     <!--头像-->
@@ -95,6 +106,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_below="@id/main_drawer_title"
+        android:ellipsize="end"
+        android:maxLines="3"
         android:text="..."
         android:textAppearance="?android:attr/textAppearanceMedium"
         android:textSize="12sp" />

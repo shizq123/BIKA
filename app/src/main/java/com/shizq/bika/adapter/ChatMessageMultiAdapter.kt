@@ -3,6 +3,9 @@ package com.shizq.bika.adapter
 import android.view.ViewGroup
 import com.shizq.bika.MyApp
 import com.shizq.bika.R
+import com.shizq.bika.adapter.holder.ChatMessageReceiveHolder
+import com.shizq.bika.adapter.holder.ChatMessageSendHolder
+import com.shizq.bika.adapter.holder.ChatMessageSystemHolder
 import com.shizq.bika.bean.ChatMessage2Bean
 import com.shizq.bika.utils.SPUtil
 import me.jingbin.library.adapter.BaseByRecyclerViewAdapter

@@ -9,6 +9,7 @@ data class ChatMessage2Bean(
     data class Data(
         val `data`: String,
         val action: String,//"action":"MUTE_USER"
+        val userMentions: List<UserMention>,
         val message: Message,
         val profile: Profile,
         val reply: Reply
@@ -19,8 +20,7 @@ data class ChatMessage2Bean(
             val id: String,
             val medias: List<String>,
             val message: String,
-            val referenceId: String,
-            val userMentions: List<UserMention>
+            val referenceId: String
         )
 
         data class Profile(

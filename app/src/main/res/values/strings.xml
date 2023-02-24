@@ -14,6 +14,8 @@
 
     <string name="drawer_show">显示侧滑菜单</string>
     <string name="drawer_hide">隐藏侧滑菜单</string>
+    <string name="drawer_edit">编辑</string>
+    <string name="drawer_punch_in">打哔咔</string>
 
     <string name="action_settings">设置</string>
     <string name="action_search">搜索</string>
