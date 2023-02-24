@@ -13,7 +13,6 @@ import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.recyclerview.widget.GridLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.luck.picture.lib.magical.MagicalViewWrapper
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CategoriesAdapter
@@ -35,7 +34,6 @@ import com.shizq.bika.ui.search.SearchActivity
 import com.shizq.bika.ui.settings.SettingsActivity
 import com.shizq.bika.ui.user.UserActivity
 import com.shizq.bika.utils.*
-import com.shizq.bika.widget.UserViewDialog
 import me.jingbin.library.skeleton.ByRVItemSkeletonScreen
 import me.jingbin.library.skeleton.BySkeleton
 
@@ -534,73 +532,4 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
     private fun getWindowWidth(): Int {
         return resources.displayMetrics.widthPixels
     }
-
-//    private var expand = "[展开]"
-//    private var collapse = "[收起]"
-//
-//    private fun expandText(contentTextView: TextView) {
-//        val text: CharSequence = contentTextView.text
-//        val width: Int = contentTextView.width
-//        val paint: TextPaint = contentTextView.paint
-//        val layout: Layout = contentTextView.layout
-//        val line: Int = layout.lineCount
-//        if (line > 4) {
-//            val start: Int = layout.getLineStart(3)
-//            val end: Int = layout.getLineVisibleEnd(3)
-//            val lastLine = text.subSequence(start, end)
-//            val expandWidth = paint.measureText(expand)
-//            val remain = width - expandWidth
-//            val ellipsize = TextUtils.ellipsize(
-//                lastLine,
-//                paint,
-//                remain,
-//                TextUtils.TruncateAt.END
-//            )
-//            val clickableSpan: ClickableSpan = object : ClickableSpan() {
-//                override fun onClick(widget: View) {
-//                    collapseText(contentTextView,text)
-//                }
-//            }
-//            val ssb = SpannableStringBuilder()
-//            ssb.append(text.subSequence(0, start))
-//            ssb.append(ellipsize)
-//            ssb.append(expand)
-//            ssb.setSpan(
-//                ForegroundColorSpan(-0x8c9608),
-//                ssb.length - expand.length, ssb.length,
-//                Spanned.SPAN_INCLUSIVE_EXCLUSIVE
-//            )
-//            ssb.setSpan(
-//                clickableSpan,
-//                ssb.length - expand.length, ssb.length,
-//                Spanned.SPAN_INCLUSIVE_EXCLUSIVE
-//            )
-//            contentTextView.movementMethod = LinkMovementMethod.getInstance()
-//            contentTextView.text = ssb
-//        }
-//    }
-//
-//    private fun collapseText(contentTextView: TextView,text: CharSequence) {
-//
-//        // 默认此时文本肯定超过行数了，直接在最后拼接文本
-//        val clickableSpan: ClickableSpan = object : ClickableSpan() {
-//            override fun onClick(widget: View) {
-//                expandText(contentTextView)
-//            }
-//        }
-//        val ssb = SpannableStringBuilder()
-//        ssb.append(text.toString().replace(expand, ""))
-//        ssb.append(collapse)
-//        ssb.setSpan(
-//            ForegroundColorSpan(-0x8c9608),
-//            ssb.length - collapse.length, ssb.length,
-//            Spanned.SPAN_INCLUSIVE_EXCLUSIVE
-//        )
-//        ssb.setSpan(
-//            clickableSpan,
-//            ssb.length - collapse.length, ssb.length,
-//            Spanned.SPAN_INCLUSIVE_EXCLUSIVE
-//        )
-//        contentTextView.text = ssb
-//    }
 }

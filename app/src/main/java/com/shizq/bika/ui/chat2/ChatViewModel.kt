@@ -195,16 +195,12 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
 
         val messageMap = if (imagePath == "") {
             mutableMapOf(
-                "message" to message,
-                "referenceId" to referenceId,
-                "userMentions" to userMentions,
+                "message" to message
             )
         } else {
             mutableMapOf(
                 "caption" to message,
-                "medias" to listOf(imagePath),
-                "referenceId" to referenceId,
-                "userMentions" to userMentions,
+                "medias" to listOf(imagePath)
             )
         }
 
@@ -216,17 +212,20 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         )
         val data = mutableMapOf(
             "message" to messageMap,
-            "profile" to profile
+            "profile" to profile,
+            "userMentions" to userMentions
         )
 
         val json = if (imagePath == "") {
             mutableMapOf(
+                "referenceId" to referenceId,
                 "type" to "TEXT_MESSAGE",
                 "isBlocked" to false,
                 "data" to data
             )
         } else {
             mutableMapOf(
+                "referenceId" to referenceId,
                 "type" to "IMAGE_MESSAGE",
                 "isBlocked" to false,
                 "data" to data

@@ -15,7 +15,6 @@ import android.view.View
 import android.view.WindowManager
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
-import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.OnScrollListener
@@ -82,9 +81,6 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
         adapter = ChatMessageMultiAdapter()
         binding.chatRv.layoutManager = LinearLayoutManager(this)
         binding.chatRv.adapter = adapter
-        val itemTouchHelperCallback=ChatReplyTouchHelperCallback(adapter)
-        val itemTouchHelper= ItemTouchHelper(itemTouchHelperCallback)
-        itemTouchHelper.attachToRecyclerView(binding.chatRv)
 
 
         userViewDialog = UserViewDialog(this)
@@ -389,15 +385,13 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                 //发送成功
                 //通过 for循环 找到自己发送的消息进行数据更新
                 for (i in 0 until adapter.data.size) {
-                    if (adapter.getItemData(i).data != null) {
-                        if (adapter.getItemData(i).type == "TEXT_MESSAGE" || adapter.getItemData(i).type == "IMAGE_MESSAGE") {
-                            //得到指定id条目的位置
-                            if (adapter.getItemData(i).data.message.referenceId == it.data.message.referenceId) {
-                                //更新ui
-                                adapter.data[i] = it
-                                adapter.notifyItemChanged(i)
-                                break
-                            }
+                    if (adapter.getItemData(i).type == "TEXT_MESSAGE" || adapter.getItemData(i).type == "IMAGE_MESSAGE") {
+                        //得到指定id条目的位置 //不是很准
+                        if (adapter.getItemData(i).referenceId == it.referenceId) {
+                            //更新ui
+                            adapter.data[i] = it
+                            adapter.notifyItemChanged(i)
+                            break
                         }
                     }
                 }
@@ -405,7 +399,7 @@ class ChatActivity : BaseActivity<ActivityChat2Binding, ChatViewModel>() {
                 //发送失败 弹窗
                 MaterialAlertDialogBuilder(this)
                     .setTitle("发送失败")
-                    .setPositiveButton("确定",null)
+                    .setPositiveButton("确定", null)
                     .setCancelable(false)
                     .show()
             }

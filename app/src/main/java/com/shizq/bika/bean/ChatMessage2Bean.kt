@@ -4,6 +4,7 @@ data class ChatMessage2Bean(
     val `data`: Data,
     val isBlocked: Boolean,
     val type: String,
+    val referenceId: String,
     val id: String
 ){
     data class Data(
@@ -19,8 +20,7 @@ data class ChatMessage2Bean(
             val date: String,
             val id: String,
             val medias: List<String>,
-            val message: String,
-            val referenceId: String
+            val message: String
         )
 
         data class Profile(
