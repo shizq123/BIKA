@@ -108,8 +108,8 @@ class ChatMessageSendHolder (viewGroup: ViewGroup, layoutId: Int) :
             for (i in bean.data.userMentions) {
                 val chip = Chip(holder.itemView.context)
                 chip.text = i.name
-                chip.textSize = 12f.dp
-                chip.height = 24.dp
+//                chip.textSize = 12f.dp
+//                chip.height = 24.dp
                 chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
                 binding.chatAtGroupR.addView(chip)
 
