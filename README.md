@@ -9,6 +9,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
 官方app的图片会重复加载，我的修改了缓存key，加载更快更省流量 <br>
 阅读器太难了还没写，我比较懒先把简单的bug修一修 :( <br>
 安装包大小5M以内 <br>
+没时间更新，鸽了 :( <br>
 
 # 下载
     
