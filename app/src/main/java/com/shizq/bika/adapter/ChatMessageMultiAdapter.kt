@@ -6,14 +6,14 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.holder.ChatMessageReceiveHolder
 import com.shizq.bika.adapter.holder.ChatMessageSendHolder
 import com.shizq.bika.adapter.holder.ChatMessageSystemHolder
-import com.shizq.bika.bean.ChatMessage2Bean
+import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.utils.SPUtil
 import me.jingbin.library.adapter.BaseByRecyclerViewAdapter
 import me.jingbin.library.adapter.BaseByViewHolder
 
 //新聊天室多布局
 class ChatMessageMultiAdapter:
-    BaseByRecyclerViewAdapter<ChatMessage2Bean, BaseByViewHolder<ChatMessage2Bean>>() {
+    BaseByRecyclerViewAdapter<ChatMessageBean, BaseByViewHolder<ChatMessageBean>>() {
 
     val name = SPUtil.get(MyApp.contextBase, "user_name", "") as String
 
@@ -52,7 +52,7 @@ class ChatMessageMultiAdapter:
     override fun onCreateViewHolder(
         parent: ViewGroup,
         viewType: Int
-    ): BaseByViewHolder<ChatMessage2Bean> {
+    ): BaseByViewHolder<ChatMessageBean> {
         return when (viewType) {
             1 -> {
                 ChatMessageSystemHolder(parent, R.layout.item_chat_message_system)

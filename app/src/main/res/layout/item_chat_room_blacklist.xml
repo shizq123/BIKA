@@ -6,7 +6,7 @@
 
         <variable
             name="m"
-            type="com.shizq.bika.bean.ChatBlackListBean.Doc" />
+            type="com.shizq.bika.bean.ChatRoomBlackListBean.Doc" />
     </data>
 
 

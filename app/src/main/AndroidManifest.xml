@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.shizq.bika">
+    xmlns:tools="http://schemas.android.com/tools">
 
     <uses-permission android:name="android.permission.INTERNET" />
 
@@ -88,26 +87,26 @@
             android:name=".ui.apps.AppsActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.chat.ChatActivity"
+            android:name=".ui.chatroom.old.ChatRoomActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.chat2.ChatActivity"
+            android:name=".ui.chatroom.current.ChatRoomActivity"
             android:exported="false" />
         <activity
             android:name=".ui.user.UserActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.chatroom.ChatRoomsActivity"
+            android:name=".ui.chatroom.current.chatroomlist.ChatRoomListActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.chatblacklist.ChatBlacklistActivity"
+            android:name=".ui.chatroom.current.blacklist.ChatBlacklistActivity"
             android:exported="false" />
         <activity
             android:name=".ui.image.ImageActivity"
             android:exported="false" />
 
+        <service android:name=".service.ChatWebSocketServiceOld" />
         <service android:name=".service.ChatWebSocketService" />
-        <service android:name=".service.Chat2WebSocketService" />
     </application>
 
     <queries>

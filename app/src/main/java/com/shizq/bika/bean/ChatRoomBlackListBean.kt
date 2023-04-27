@@ -1,6 +1,6 @@
 package com.shizq.bika.bean
 
-data class ChatBlackListBean(
+data class ChatRoomBlackListBean(
     val error: String,
     val message: String,
     val statusCode: Int,

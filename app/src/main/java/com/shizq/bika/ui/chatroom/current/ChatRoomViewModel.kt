@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chat2
+package com.shizq.bika.ui.chatroom.current
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
@@ -6,7 +6,7 @@ import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import com.shizq.bika.MyApp
 import com.shizq.bika.base.BaseViewModel
-import com.shizq.bika.bean.ChatMessage2Bean
+import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.UserMention
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
@@ -21,7 +21,7 @@ import retrofit2.HttpException
 import java.io.File
 import java.util.*
 
-class ChatViewModel(application: Application) : BaseViewModel(application) {
+class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
     var roomId = ""
 
     var replyMessage: String = ""
@@ -30,12 +30,12 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
     var replyImage: String = ""
     var replyMessageType: String = ""
 
-    val liveData_message: MutableLiveData<ChatMessage2Bean> by lazy {
-        MutableLiveData<ChatMessage2Bean>()
+    val liveData_message: MutableLiveData<ChatMessageBean> by lazy {
+        MutableLiveData<ChatMessageBean>()
     }
 
-    val liveDataSendMessage: MutableLiveData<ChatMessage2Bean> by lazy {
-        MutableLiveData<ChatMessage2Bean>()
+    val liveDataSendMessage: MutableLiveData<ChatMessageBean> by lazy {
+        MutableLiveData<ChatMessageBean>()
     }
 
     //发送文字消息 当前不能@不能回复
@@ -45,7 +45,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         liveData_message.postValue(
             Gson().fromJson(
                 myMessage(message, "", referenceId, userMentions),
-                ChatMessage2Bean::class.java
+                ChatMessageBean::class.java
             )
         )
         val reply = mutableMapOf(
@@ -81,17 +81,17 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         val headers = BaseHeaders().getChatHeaderMapAndToken()
         RetrofitUtil.service_live.chatSendMessagePost(body, headers)
             .doOnSubscribe(this)
-            .subscribe(object : Observer<ChatMessage2Bean> {
+            .subscribe(object : Observer<ChatMessageBean> {
                 override fun onSubscribe(d: Disposable) {
 
                 }
 
                 override fun onError(e: Throwable) {
-                    var t: ChatMessage2Bean? = null
+                    var t: ChatMessageBean? = null
                     if (e is HttpException) {   //  处理服务器返回的非成功异常
                         val responseBody = e.response()!!.errorBody()
                         if (responseBody != null) {
-                            val type = object : TypeToken<ChatMessage2Bean>() {}.type
+                            val type = object : TypeToken<ChatMessageBean>() {}.type
                             t = Gson().fromJson(responseBody.string(), type)
                             liveDataSendMessage.postValue(t)
                         } else {
@@ -104,7 +104,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
 
                 }
 
-                override fun onNext(t: ChatMessage2Bean) {
+                override fun onNext(t: ChatMessageBean) {
                     liveDataSendMessage.postValue(t)
                 }
 
@@ -118,7 +118,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         liveData_message.postValue(
             Gson().fromJson(
                 myMessage(message, path, referenceId, userMentions),
-                ChatMessage2Bean::class.java
+                ChatMessageBean::class.java
             )
         )
         val multipartBody =
@@ -150,18 +150,18 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
         headers["content-type"] = "multipart/form-data; boundary=${multipartBodyBuild.boundary()}"
 
         RetrofitUtil.service_live.chatSendImagePost(headers, multipartBodyBuild)
-            .doOnSubscribe(this@ChatViewModel)
-            .subscribe(object : Observer<ChatMessage2Bean> {
+            .doOnSubscribe(this@ChatRoomViewModel)
+            .subscribe(object : Observer<ChatMessageBean> {
                 override fun onSubscribe(d: Disposable) {
 
                 }
 
                 override fun onError(e: Throwable) {
-                    var t: ChatMessage2Bean? = null
+                    var t: ChatMessageBean? = null
                     if (e is HttpException) {   //  处理服务器返回的非成功异常
                         val responseBody = e.response()!!.errorBody()
                         if (responseBody != null) {
-                            val type = object : TypeToken<ChatMessage2Bean>() {}.type
+                            val type = object : TypeToken<ChatMessageBean>() {}.type
                             t = Gson().fromJson(responseBody.string(), type)
                             liveDataSendMessage.postValue(t)
                         } else {
@@ -174,7 +174,7 @@ class ChatViewModel(application: Application) : BaseViewModel(application) {
 
                 }
 
-                override fun onNext(t: ChatMessage2Bean) {
+                override fun onNext(t: ChatMessageBean) {
                     liveDataSendMessage.postValue(t)
                 }
 

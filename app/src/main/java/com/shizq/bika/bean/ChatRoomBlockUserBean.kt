@@ -1,6 +1,6 @@
 package com.shizq.bika.bean
 
-data class ChatBlockUserBean(
+data class ChatRoomBlockUserBean(
     val error: String,
     val message: String,
     val statusCode: Int,

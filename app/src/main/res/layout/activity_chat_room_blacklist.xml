@@ -6,7 +6,7 @@
 
         <variable
             name="viewModel"
-            type="com.shizq.bika.ui.chatblacklist.ChatBlacklistViewModel" />
+            type="com.shizq.bika.ui.chatroom.current.blacklist.ChatBlacklistViewModel" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout

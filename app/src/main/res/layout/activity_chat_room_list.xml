@@ -6,7 +6,7 @@
 
         <variable
             name="viewModel"
-            type="com.shizq.bika.ui.chatroom.ChatRoomsViewModel" />
+            type="com.shizq.bika.ui.chatroom.current.chatroomlist.ChatRoomListViewModel" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout

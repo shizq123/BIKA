@@ -2,17 +2,17 @@ package com.shizq.bika.adapter.holder
 
 import android.view.ViewGroup
 import com.shizq.bika.base.BaseBindingHolder
-import com.shizq.bika.bean.ChatMessage2Bean
+import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.databinding.ItemChatMessageSystemBinding
 import com.shizq.bika.utils.TimeUtil
 
 //新聊天室 一些通知
 class ChatMessageSystemHolder(viewGroup: ViewGroup, layoutId: Int) :
-    BaseBindingHolder<ChatMessage2Bean, ItemChatMessageSystemBinding>(viewGroup, layoutId) {
+    BaseBindingHolder<ChatMessageBean, ItemChatMessageSystemBinding>(viewGroup, layoutId) {
 
     override fun onBindingView(
         holder: BaseBindingHolder<*, *>,
-        bean: ChatMessage2Bean,
+        bean: ChatMessageBean,
         position: Int
     ) {
         binding.chatNotification.text = when (bean.type) {

@@ -45,7 +45,7 @@ android {
     }
 
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = '17'
     }
 
     buildFeatures {
@@ -54,9 +54,10 @@ android {
     }
 
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
     }
+    namespace 'com.shizq.bika'
 
     applicationVariants.all {
         it.outputs.each { output ->
@@ -76,6 +77,7 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.9.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation "androidx.lifecycle:lifecycle-viewmodel-ktx:2.5.1"
+    implementation "androidx.lifecycle:lifecycle-runtime-ktx:2.5.1"
     implementation "androidx.recyclerview:recyclerview:1.2.1"
     implementation 'androidx.navigation:navigation-fragment-ktx:2.5.3'
     implementation 'androidx.navigation:navigation-ui-ktx:2.5.3'
@@ -103,5 +105,8 @@ dependencies {
     implementation 'io.github.lucksiege:ucrop:v3.10.7'//修剪
 
     implementation "com.github.chrisbanes:PhotoView:2.3.0"
+
+//    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4"
+//    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:1.6.4"
 
 }

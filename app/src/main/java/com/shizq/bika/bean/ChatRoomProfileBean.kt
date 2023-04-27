@@ -1,6 +1,6 @@
 package com.shizq.bika.bean
 
-data class ChatProfileBean(
+data class ChatRoomProfileBean(
     val error: String,
     val message: String,
     val statusCode: Int,

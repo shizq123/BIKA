@@ -6,7 +6,7 @@ import androidx.appcompat.app.AppCompatActivity
 import com.google.android.material.chip.Chip
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingHolder
-import com.shizq.bika.bean.ChatMessage2Bean
+import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.databinding.ItemChatMessageSendBinding
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
@@ -15,11 +15,11 @@ import com.shizq.bika.widget.UserViewDialog
 
 //新聊天室 我发送的消息
 class ChatMessageSendHolder (viewGroup: ViewGroup, layoutId: Int) :
-    BaseBindingHolder<ChatMessage2Bean, ItemChatMessageSendBinding>(viewGroup,layoutId) {
+    BaseBindingHolder<ChatMessageBean, ItemChatMessageSendBinding>(viewGroup,layoutId) {
 
     override fun onBindingView(
         holder: BaseBindingHolder<*, *>,
-        bean: ChatMessage2Bean,
+        bean: ChatMessageBean,
         position: Int
     ) {
         val profile = bean.data.profile

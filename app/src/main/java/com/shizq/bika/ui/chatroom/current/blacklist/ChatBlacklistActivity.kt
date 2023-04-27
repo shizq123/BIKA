@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chatblacklist
+package com.shizq.bika.ui.chatroom.current.blacklist
 
 import android.os.Bundle
 import android.view.MenuItem
@@ -6,19 +6,19 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
-import com.shizq.bika.adapter.ChatBlackListAdapter
+import com.shizq.bika.adapter.ChatRoomBlackListAdapter
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.databinding.ActivityChatBlacklistBinding
+import com.shizq.bika.databinding.ActivityChatRoomBlacklistBinding
 
 /**
  * 推荐
  */
 
-class ChatBlacklistActivity : BaseActivity<ActivityChatBlacklistBinding, ChatBlacklistViewModel>() {
-    private lateinit var mChatBlackListAdapter: ChatBlackListAdapter
+class ChatBlacklistActivity : BaseActivity<ActivityChatRoomBlacklistBinding, ChatBlacklistViewModel>() {
+    private lateinit var mChatBlackListAdapter: ChatRoomBlackListAdapter
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
-        return R.layout.activity_chat_blacklist
+        return R.layout.activity_chat_room_blacklist
     }
 
     override fun initVariableId(): Int {
@@ -30,7 +30,7 @@ class ChatBlacklistActivity : BaseActivity<ActivityChatBlacklistBinding, ChatBla
         setSupportActionBar(binding.blacklistInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        mChatBlackListAdapter = ChatBlackListAdapter()
+        mChatBlackListAdapter = ChatRoomBlackListAdapter()
         binding.blacklistRv.layoutManager = LinearLayoutManager(this)
         binding.blacklistRv.adapter = mChatBlackListAdapter
 

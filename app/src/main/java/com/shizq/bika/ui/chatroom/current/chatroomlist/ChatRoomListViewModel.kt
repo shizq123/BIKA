@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chatroom
+package com.shizq.bika.ui.chatroom.current.chatroomlist
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
@@ -8,7 +8,7 @@ import com.google.gson.reflect.TypeToken
 import com.shizq.bika.MyApp
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatRoomListBean
-import com.shizq.bika.bean.ChatSignInBean
+import com.shizq.bika.bean.ChatRoomSignInBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.utils.SPUtil
@@ -18,9 +18,9 @@ import okhttp3.MediaType
 import okhttp3.RequestBody
 import retrofit2.HttpException
 
-class ChatRoomsViewModel(application: Application) : BaseViewModel(application) {
-    val liveDataSignIn: MutableLiveData<ChatSignInBean> by lazy {
-        MutableLiveData<ChatSignInBean>()
+class ChatRoomListViewModel(application: Application) : BaseViewModel(application) {
+    val liveDataSignIn: MutableLiveData<ChatRoomSignInBean> by lazy {
+        MutableLiveData<ChatRoomSignInBean>()
     }
 
     val liveDataRoomList: MutableLiveData<ChatRoomListBean> by lazy {
@@ -40,17 +40,17 @@ class ChatRoomsViewModel(application: Application) : BaseViewModel(application) 
             BaseHeaders().getChatHeaders()
         )
             .doOnSubscribe(this)
-            .subscribe(object : Observer<ChatSignInBean> {
+            .subscribe(object : Observer<ChatRoomSignInBean> {
                 override fun onSubscribe(d: Disposable) {
 
                 }
 
                 override fun onError(e: Throwable) {
-                    var t: ChatSignInBean? = null
+                    var t: ChatRoomSignInBean? = null
                     if (e is HttpException) {   //  处理服务器返回的非成功异常
                         val responseBody = e.response()!!.errorBody()
                         if (responseBody != null) {
-                            val type = object : TypeToken<ChatSignInBean>() {}.type
+                            val type = object : TypeToken<ChatRoomSignInBean>() {}.type
                             t = Gson().fromJson(responseBody.string(), type)
                             liveDataSignIn.postValue(t)
                         } else {
@@ -63,7 +63,7 @@ class ChatRoomsViewModel(application: Application) : BaseViewModel(application) 
 
                 }
 
-                override fun onNext(t: ChatSignInBean) {
+                override fun onNext(t: ChatRoomSignInBean) {
                     liveDataSignIn.postValue(t)
                 }
 

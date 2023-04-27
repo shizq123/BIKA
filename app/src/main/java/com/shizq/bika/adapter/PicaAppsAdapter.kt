@@ -3,9 +3,7 @@ package com.shizq.bika.adapter
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
-import com.shizq.bika.bean.ChatListBean
 import com.shizq.bika.bean.PicaAppsBean
-import com.shizq.bika.databinding.ItemChatlistBinding
 import com.shizq.bika.databinding.ItemPicaappsBinding
 import com.shizq.bika.utils.GlideApp
 

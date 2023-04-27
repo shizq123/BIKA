@@ -2,12 +2,9 @@ package com.shizq.bika.adapter
 
 import android.graphics.Bitmap
 import android.graphics.Color
-import android.graphics.drawable.AnimationDrawable
-import android.media.MediaPlayer
 import android.text.SpannableString
 import android.text.Spanned
 import android.text.style.ForegroundColorSpan
-import android.util.Base64
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
@@ -16,24 +13,21 @@ import com.shizq.bika.MyApp
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
-import com.shizq.bika.bean.ChatMessageBean
-import com.shizq.bika.databinding.ItemChatBinding
+import com.shizq.bika.bean.ChatMessageOldBean
+import com.shizq.bika.databinding.ItemChatMessageOldBinding
 import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.dp
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 
-//聊天页面 乱
-class ChatAdapter :
-    BaseBindingAdapter<ChatMessageBean, ItemChatBinding>(R.layout.item_chat) {
+//旧聊天页面 乱
+class ChatMessageOldAdapter :
+    BaseBindingAdapter<ChatMessageOldBean, ItemChatMessageOldBinding>(R.layout.item_chat_message_old) {
     override fun bindView(
         holder: BaseBindingHolder<*, *>,
-        bean: ChatMessageBean,
-        binding: ItemChatBinding,
+        bean: ChatMessageOldBean,
+        binding: ItemChatMessageOldBinding,
         position: Int
     ) {
         //设置一个回复类消息的最小宽度 类似qq

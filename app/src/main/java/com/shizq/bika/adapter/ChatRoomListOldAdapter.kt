@@ -3,17 +3,18 @@ package com.shizq.bika.adapter
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
-import com.shizq.bika.bean.ChatListBean
-import com.shizq.bika.databinding.ItemChatlistBinding
+import com.shizq.bika.bean.ChatRoomListOldBean
+import com.shizq.bika.databinding.ItemChatRoomListOldBinding
 import com.shizq.bika.utils.GlideApp
 
-class ChatListAdapter :
-    BaseBindingAdapter<ChatListBean.Chat, ItemChatlistBinding>(R.layout.item_chatlist) {
+//旧聊天室列表
+class ChatRoomListOldAdapter :
+    BaseBindingAdapter<ChatRoomListOldBean.Chat, ItemChatRoomListOldBinding>(R.layout.item_chat_room_list_old) {
 
     override fun bindView(
         holder: BaseBindingHolder<*, *>,
-        bean: ChatListBean.Chat,
-        binding: ItemChatlistBinding,
+        bean: ChatRoomListOldBean.Chat,
+        binding: ItemChatRoomListOldBinding,
         position: Int
     ) {
 

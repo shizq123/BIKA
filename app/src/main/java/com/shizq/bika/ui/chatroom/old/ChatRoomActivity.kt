@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chat
+package com.shizq.bika.ui.chatroom.old
 
 import android.annotation.SuppressLint
 import android.content.ComponentName
@@ -26,10 +26,10 @@ import com.luck.picture.lib.entity.LocalMedia
 import com.luck.picture.lib.interfaces.OnResultCallbackListener
 import com.shizq.bika.BR
 import com.shizq.bika.R
-import com.shizq.bika.adapter.ChatAdapter
+import com.shizq.bika.adapter.ChatMessageOldAdapter
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.databinding.ActivityChatBinding
-import com.shizq.bika.service.ChatWebSocketService
+import com.shizq.bika.databinding.ActivityChatRoomOldBinding
+import com.shizq.bika.service.ChatWebSocketServiceOld
 import com.shizq.bika.utils.AndroidBug5497Workaround
 import com.shizq.bika.utils.Base64Util
 import com.shizq.bika.utils.GlideEngine
@@ -38,16 +38,16 @@ import com.yalantis.ucrop.UCrop
 
 //旧聊天室
 //消息是websocket实现，消息是实时，不会留记录,网络不好会丢失消息
-class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
-    private lateinit var adapter: ChatAdapter
+class ChatRoomActivity : BaseActivity<ActivityChatRoomOldBinding, ChatRoomViewModel>() {
+    private lateinit var adapter: ChatMessageOldAdapter
     private lateinit var userViewDialog: UserViewDialog
     var chatRvBottom = false//false表示底部
     private val atUser = ArrayList<String>() //@的用户名
 
-    private lateinit var mService: ChatWebSocketService
+    private lateinit var mService: ChatWebSocketServiceOld
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
-            val binder = service as ChatWebSocketService.ChatBinder
+            val binder = service as ChatWebSocketServiceOld.ChatBinder
             mService = binder.getService()
             viewModel.url =
                 intent.getStringExtra("url").toString() + "/socket.io/?EIO=3&transport=websocket"
@@ -59,7 +59,7 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
     }
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
-        return R.layout.activity_chat
+        return R.layout.activity_chat_room_old
     }
 
     override fun initVariableId(): Int {
@@ -71,14 +71,14 @@ class ChatActivity : BaseActivity<ActivityChatBinding, ChatViewModel>() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)//屏幕常亮
         AndroidBug5497Workaround.assistActivity(this)
 
-        val intentService = Intent(this, ChatWebSocketService::class.java)
+        val intentService = Intent(this, ChatWebSocketServiceOld::class.java)
         bindService(intentService, connection, BIND_AUTO_CREATE)
 
         binding.chatInclude.toolbar.title = intent.getStringExtra("title").toString()
         setSupportActionBar(binding.chatInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        adapter = ChatAdapter()
+        adapter = ChatMessageOldAdapter()
         binding.chatRv.layoutManager = LinearLayoutManager(this)
         binding.chatRv.adapter = adapter
 

@@ -5,7 +5,7 @@
 
         <variable
             name="m"
-            type="com.shizq.bika.bean.ChatListBean.Chat" />
+            type="com.shizq.bika.bean.ChatRoomListOldBean.Chat" />
     </data>
 
     <com.google.android.material.card.MaterialCardView

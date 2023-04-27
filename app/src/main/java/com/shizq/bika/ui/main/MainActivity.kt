@@ -20,7 +20,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityMainBinding
 import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.apps.AppsActivity
-import com.shizq.bika.ui.chatroom.ChatRoomsActivity
+import com.shizq.bika.ui.chatroom.current.chatroomlist.ChatRoomListActivity
 import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
@@ -247,7 +247,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     startActivity(Intent(this, AppsActivity::class.java))
                 }
                 4 -> {
-                    startActivity(Intent(this, ChatRoomsActivity::class.java))
+                    startActivity(Intent(this, ChatRoomListActivity::class.java))
                 }
                 5 -> {
                     val intentComments = Intent(this, CommentsActivity::class.java)

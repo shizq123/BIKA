@@ -173,7 +173,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         )
     }
 
-    fun showUserDialog(t: ChatMessage2Bean.Data.Profile) {
+    fun showUserDialog(t: ChatMessageBean.Data.Profile) {
         if (t == null) {
             return
         }

@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chat
+package com.shizq.bika.ui.chatroom.old
 
 import android.app.Application
 import android.graphics.drawable.AnimationDrawable
@@ -11,7 +11,7 @@ import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 
-class ChatViewModel(application: Application) : BaseViewModel(application) {
+class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
     var url = ""
 
     var reply: String = ""

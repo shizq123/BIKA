@@ -317,7 +317,7 @@ interface ApiService {
     @GET("chat")
     fun chatListGet(
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ChatListBean>>
+    ): Observable<BaseResponse<ChatRoomListOldBean>>
 
     //上传头像 //抓包得出上传的分辨率是200*200 //聊天室抓包，图片其中一边的最大分辨率是800
     @PUT("users/avatar")
@@ -338,20 +338,20 @@ interface ApiService {
     fun chatSignInPost(
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatSignInBean>
+    ): Observable<ChatRoomSignInBean>
 
     //新聊天室 用户信息
     @GET("user/profile")
     fun chatProfileGet(
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatProfileBean>
+    ): Observable<ChatRoomProfileBean>
 
     //新聊天室 查看别人的用户信息
     @GET("user/profile/{id}")
     fun chatUserProfileGet(
         @Query("id") page: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatProfileBean>
+    ): Observable<ChatRoomProfileBean>
 
     //新聊天室 房间列表
     @GET("room/list")
@@ -364,33 +364,33 @@ interface ApiService {
     fun chatBlockUserPost(
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatBlockUserBean>
+    ): Observable<ChatRoomBlockUserBean>
 
     //新聊天室 封锁列表 黑名单列表 https://live-server.bidobido.xyz/blacklist/list?offset=0
     @GET("blacklist/list")
     fun chatBlackListGet(
         @Query("offset") page: Int,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatBlackListBean>
+    ): Observable<ChatRoomBlackListBean>
 
     //新聊天室 删除封锁 删除黑名单 https://live-server.bidobido.xyz/blacklist/63e3373e4548486c28e60cc5
     @DELETE("blacklist/{id}")
     fun chatBlackListDelete(
         @Path("id") gameId: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatBlackListDeleteBean>
+    ): Observable<ChatRoomBlackListDeleteBean>
 
     //新聊天室 发送消息
     @POST("room/send-message")
     fun chatSendMessagePost(
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatMessage2Bean>
+    ): Observable<ChatMessageBean>
 
     //新聊天室 发送图片
     @POST("room/send-image")
     fun chatSendImagePost(
         @HeaderMap headers: Map<String, String>,
         @Body requestBody: RequestBody
-    ): Observable<ChatMessage2Bean>
+    ): Observable<ChatMessageBean>
 }

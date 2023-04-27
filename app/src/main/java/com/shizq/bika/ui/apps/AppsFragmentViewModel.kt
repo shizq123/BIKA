@@ -3,7 +3,7 @@ package com.shizq.bika.ui.apps
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.shizq.bika.base.BaseViewModel
-import com.shizq.bika.bean.ChatListBean
+import com.shizq.bika.bean.ChatRoomListOldBean
 import com.shizq.bika.bean.PicaAppsBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
@@ -11,8 +11,8 @@ import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
 
 class AppsFragmentViewModel(application: Application) : BaseViewModel(application) {
-    val liveData_chat: MutableLiveData<BaseResponse<ChatListBean>> by lazy {
-        MutableLiveData<BaseResponse<ChatListBean>>()
+    val liveData_chat: MutableLiveData<BaseResponse<ChatRoomListOldBean>> by lazy {
+        MutableLiveData<BaseResponse<ChatRoomListOldBean>>()
     }
 
     val liveData_apps: MutableLiveData<BaseResponse<PicaAppsBean>> by lazy {
@@ -24,12 +24,12 @@ class AppsFragmentViewModel(application: Application) : BaseViewModel(applicatio
             BaseHeaders("chat", "GET").getHeaderMapAndToken()
         )
             .doOnSubscribe(this)
-            .subscribe(object : BaseObserver<ChatListBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<ChatListBean>) {
+            .subscribe(object : BaseObserver<ChatRoomListOldBean>() {
+                override fun onSuccess(baseResponse: BaseResponse<ChatRoomListOldBean>) {
                     liveData_chat.postValue(baseResponse)
                 }
 
-                override fun onCodeError(baseResponse: BaseResponse<ChatListBean>) {
+                override fun onCodeError(baseResponse: BaseResponse<ChatRoomListOldBean>) {
                     liveData_chat.postValue(baseResponse)
                 }
 

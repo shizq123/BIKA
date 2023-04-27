@@ -8,16 +8,16 @@ import android.view.ViewGroup
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
-import com.shizq.bika.adapter.ChatListAdapter
+import com.shizq.bika.adapter.ChatRoomListOldAdapter
 import com.shizq.bika.adapter.PicaAppsAdapter
 import com.shizq.bika.base.BaseFragment
 import com.shizq.bika.databinding.FragmentAppsBinding
-import com.shizq.bika.ui.chat.ChatActivity
+import com.shizq.bika.ui.chatroom.old.ChatRoomActivity
 import com.shizq.bika.utils.SPUtil
 
 class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() {
     private var str: String? = null
-    private lateinit var mChatListAdapter: ChatListAdapter
+    private lateinit var mChatRoomListAdapter: ChatRoomListOldAdapter
     private lateinit var mPicaAppsAdapter: PicaAppsAdapter
 
     override fun initContentView(
@@ -34,12 +34,12 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
 
     override fun initData() {
         str = arguments?.getString("key")
-        mChatListAdapter = ChatListAdapter()
+        mChatRoomListAdapter = ChatRoomListOldAdapter()
         mPicaAppsAdapter = PicaAppsAdapter()
         binding.appsRv.layoutManager = LinearLayoutManager(context)
         when(str){
             "chat" -> {
-                binding.appsRv.adapter = mChatListAdapter
+                binding.appsRv.adapter = mChatRoomListAdapter
                 viewModel.getChatList()
             }
             "apps" -> {
@@ -54,9 +54,9 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
     private fun initListener() {
         binding.appsRv.setOnItemClickListener { _, position ->
             if (str == "chat") {
-                val intent = Intent(activity, ChatActivity::class.java)
-                intent.putExtra("title", mChatListAdapter.getItemData(position).title)
-                intent.putExtra("url", mChatListAdapter.getItemData(position).url)
+                val intent = Intent(activity, ChatRoomActivity::class.java)
+                intent.putExtra("title", mChatRoomListAdapter.getItemData(position).title)
+                intent.putExtra("url", mChatRoomListAdapter.getItemData(position).url)
                 startActivity(intent)
             } else {
                 val intent = Intent()
@@ -89,9 +89,9 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
         //旧聊天室列表
         viewModel.liveData_chat.observe(this) {
             if (it.code == 200) {
-                mChatListAdapter.clear()
+                mChatRoomListAdapter.clear()
                 binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
-                mChatListAdapter.addData(it.data.chatList)
+                mChatRoomListAdapter.addData(it.data.chatList)
             } else {
                 //网络错误
                 binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE

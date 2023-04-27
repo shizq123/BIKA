@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chatroom
+package com.shizq.bika.ui.chatroom.current.chatroomlist
 
 import android.content.Intent
 import android.os.Bundle
@@ -11,24 +11,24 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.MyApp
 import com.shizq.bika.R
-import com.shizq.bika.adapter.ChatRoomsAdapter
+import com.shizq.bika.adapter.ChatRoomListAdapter
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.databinding.ActivityChatRoomsBinding
+import com.shizq.bika.databinding.ActivityChatRoomListBinding
 import com.shizq.bika.ui.account.AccountActivity
-import com.shizq.bika.ui.chat2.ChatActivity
-import com.shizq.bika.ui.chatblacklist.ChatBlacklistActivity
+import com.shizq.bika.ui.chatroom.current.ChatRoomActivity
+import com.shizq.bika.ui.chatroom.current.blacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.TimeUtil
 
 /**
- * 推荐
+ * 新聊天室列表
  */
 
-class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewModel>() {
-    private lateinit var mChatRoomsAdapter: ChatRoomsAdapter
+class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomListViewModel>() {
+    private lateinit var mChatRoomsAdapter: ChatRoomListAdapter
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
-        return R.layout.activity_chat_rooms
+        return R.layout.activity_chat_room_list
     }
 
     override fun initVariableId(): Int {
@@ -40,7 +40,7 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
         setSupportActionBar(binding.chatroomInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        mChatRoomsAdapter = ChatRoomsAdapter()
+        mChatRoomsAdapter = ChatRoomListAdapter()
         binding.chatroomRv.layoutManager = LinearLayoutManager(this)
         binding.chatroomRv.adapter = mChatRoomsAdapter
 
@@ -70,7 +70,7 @@ class ChatRoomsActivity : BaseActivity<ActivityChatRoomsBinding, ChatRoomsViewMo
             val data = mChatRoomsAdapter.getItemData(position)
             //注册天数和等级全符合才能跳转
             if (userLevel >= data.minLevel && TimeUtil().registerDays(data.minRegisterDays)) {
-                val intent = Intent(this, ChatActivity::class.java)
+                val intent = Intent(this, ChatRoomActivity::class.java)
                 intent.putExtra("title", mChatRoomsAdapter.getItemData(position).title)
                 intent.putExtra("id", mChatRoomsAdapter.getItemData(position).id)
                 startActivity(intent)
