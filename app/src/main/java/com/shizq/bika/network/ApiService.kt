@@ -309,9 +309,9 @@ interface ApiService {
 
     //小程序列表
     @GET("pica-apps")
-    fun picaAppsGet(
+    suspend fun picaAppsGet(
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<PicaAppsBean>>
+    ): BaseResponse<PicaAppsBean>
 
     //聊天室列表
     @GET("chat")

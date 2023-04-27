@@ -1,7 +1,9 @@
 package com.shizq.bika.ui.apps
 
 import android.app.Application
+import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatRoomListOldBean
 import com.shizq.bika.bean.PicaAppsBean
@@ -9,6 +11,7 @@ import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
+import kotlinx.coroutines.launch
 
 class AppsFragmentViewModel(application: Application) : BaseViewModel(application) {
     val liveData_chat: MutableLiveData<BaseResponse<ChatRoomListOldBean>> by lazy {
@@ -18,6 +21,8 @@ class AppsFragmentViewModel(application: Application) : BaseViewModel(applicatio
     val liveData_apps: MutableLiveData<BaseResponse<PicaAppsBean>> by lazy {
         MutableLiveData<BaseResponse<PicaAppsBean>>()
     }
+    val apps: LiveData<BaseResponse<PicaAppsBean>>
+        get() = liveData_apps
 
     fun getChatList() {
         RetrofitUtil.service.chatListGet(
@@ -37,19 +42,28 @@ class AppsFragmentViewModel(application: Application) : BaseViewModel(applicatio
     }
 
     fun getPicaApps() {
-        RetrofitUtil.service.picaAppsGet(
-            BaseHeaders("pica-apps", "GET").getHeaderMapAndToken()
-        )
-            .doOnSubscribe(this)
-            .subscribe(object : BaseObserver<PicaAppsBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<PicaAppsBean>) {
-                    liveData_apps.postValue(baseResponse)
-                }
+//        RetrofitUtil.service.picaAppsGet(
+//            BaseHeaders("pica-apps", "GET").getHeaderMapAndToken()
+//        )
+//            .doOnSubscribe(this)
+//            .subscribe(object : BaseObserver<PicaAppsBean>() {
+//                override fun onSuccess(baseResponse: BaseResponse<PicaAppsBean>) {
+//                    liveData_apps.postValue(baseResponse)
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<PicaAppsBean>) {
+//                    liveData_apps.postValue(baseResponse)
+//                }
+//
+//            })
 
-                override fun onCodeError(baseResponse: BaseResponse<PicaAppsBean>) {
-                    liveData_apps.postValue(baseResponse)
-                }
-
-            })
+        viewModelScope.launch {
+            try {
+                val apps = RetrofitUtil.service.picaAppsGet(BaseHeaders("pica-apps", "GET").getHeaderMapAndToken())
+                liveData_apps.postValue(apps)
+            } catch (e: Exception) {
+                // 处理异常情况
+            }
+        }
     }
 }
