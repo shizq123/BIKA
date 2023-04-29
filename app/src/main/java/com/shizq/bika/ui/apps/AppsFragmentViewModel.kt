@@ -11,6 +11,9 @@ import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.launch
 
 class AppsFragmentViewModel(application: Application) : BaseViewModel(application) {
@@ -21,9 +24,11 @@ class AppsFragmentViewModel(application: Application) : BaseViewModel(applicatio
     val liveData_apps: MutableLiveData<BaseResponse<PicaAppsBean>> by lazy {
         MutableLiveData<BaseResponse<PicaAppsBean>>()
     }
-    val apps: LiveData<BaseResponse<PicaAppsBean>>
-        get() = liveData_apps
 
+    private val repository = AppsRepository()
+
+    private val _appsFlow = MutableStateFlow<BaseResponse<PicaAppsBean>?>(null)
+    val appsFlow: StateFlow<BaseResponse<PicaAppsBean>?> = _appsFlow
     fun getChatList() {
         RetrofitUtil.service.chatListGet(
             BaseHeaders("chat", "GET").getHeaderMapAndToken()
@@ -56,14 +61,15 @@ class AppsFragmentViewModel(application: Application) : BaseViewModel(applicatio
 //                }
 //
 //            })
-
-        viewModelScope.launch {
-            try {
-                val apps = RetrofitUtil.service.picaAppsGet(BaseHeaders("pica-apps", "GET").getHeaderMapAndToken())
-                liveData_apps.postValue(apps)
-            } catch (e: Exception) {
-                // 处理异常情况
+            viewModelScope.launch {
+                repository.getAppsFlow()
+                    .catch { e ->
+                        // 处理异常情况
+                    }
+                    .collect { apps ->
+                        _appsFlow.value = apps
+                    }
             }
-        }
+
     }
 }

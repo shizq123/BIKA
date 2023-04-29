@@ -5,6 +5,7 @@ import android.net.Uri
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -14,6 +15,7 @@ import com.shizq.bika.base.BaseFragment
 import com.shizq.bika.databinding.FragmentAppsBinding
 import com.shizq.bika.ui.chatroom.old.ChatRoomActivity
 import com.shizq.bika.utils.SPUtil
+import kotlinx.coroutines.launch
 
 class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() {
     private var str: String? = null
@@ -37,11 +39,12 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
         mChatRoomListAdapter = ChatRoomListOldAdapter()
         mPicaAppsAdapter = PicaAppsAdapter()
         binding.appsRv.layoutManager = LinearLayoutManager(context)
-        when(str){
+        when (str) {
             "chat" -> {
                 binding.appsRv.adapter = mChatRoomListAdapter
                 viewModel.getChatList()
             }
+
             "apps" -> {
                 binding.appsRv.adapter = mPicaAppsAdapter
                 viewModel.getPicaApps()
@@ -104,21 +107,42 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
         }
 
         //跳转的网页
-        viewModel.liveData_apps.observe(this) {
-            if (it.code == 200) {
-                mPicaAppsAdapter.clear()
-                binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
-                mPicaAppsAdapter.addData(it.data.apps)
-            } else {
-                //网络错误
-                binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
-                binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
-                binding.appsInclude.loadText.text =
-                    "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
-                binding.appsInclude.loadLayout.isEnabled = true
-
+//        viewModel.liveData_apps.observe(this) {
+//            if (it.code == 200) {
+//                mPicaAppsAdapter.clear()
+//                binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+//                mPicaAppsAdapter.addData(it.data.apps)
+//            } else {
+//                //网络错误
+//                binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
+//                binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
+//                binding.appsInclude.loadText.text =
+//                    "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+//                binding.appsInclude.loadLayout.isEnabled = true
+//
+//            }
+//        }
+        lifecycleScope.launch {
+            viewModel.appsFlow.collect {
+                if (it != null) {
+                    if (it.code == 200) {
+                        mPicaAppsAdapter.clear()
+                        binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+                        mPicaAppsAdapter.addData(it.data.apps)
+                    } else {
+                        //网络错误
+                        binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
+                        binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
+                        binding.appsInclude.loadText.text =
+                            "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+                        binding.appsInclude.loadLayout.isEnabled = true
+                        //
+                        //            }
+                    }
+                }
             }
-        }
-    }
 
+        }
+
+    }
 }
