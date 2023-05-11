@@ -8,7 +8,6 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupWindow
-import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isVisible
@@ -34,80 +33,82 @@ import kotlin.math.ceil
  */
 
 class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewModel>() {
-    private var tag = arrayOf<CharSequence>(
-        "全彩",
-        "長篇",
-        "同人",
-        "短篇",
-        "圓神領域",
-        "碧藍幻想",
-        "CG雜圖",
-        "英語 ENG",
-        "生肉",
-        "純愛",
-        "百合花園",
-        "耽美花園",
-        "偽娘哲學",
-        "後宮閃光",
-        "扶他樂園",
-        "單行本",
-        "姐姐系",
-        "妹妹系",
-        "SM",
-        "性轉換",
-        "足の恋",
-        "人妻",
-        "NTR",
-        "強暴",
-        "非人類",
-        "艦隊收藏",
-        "Love Live",
-        "SAO 刀劍神域",
-        "Fate",
-        "東方",
-        "WEBTOON",
-        "禁書目錄",
-        "歐美",
-        "Cosplay",
-        "重口地帶"
-    )
-    private var tagInitial = booleanArrayOf(
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false,
-        false
-    )
+    companion object {
+        private var tag = arrayOf<CharSequence>(
+            "全彩",
+            "長篇",
+            "同人",
+            "短篇",
+            "圓神領域",
+            "碧藍幻想",
+            "CG雜圖",
+            "英語 ENG",
+            "生肉",
+            "純愛",
+            "百合花園",
+            "耽美花園",
+            "偽娘哲學",
+            "後宮閃光",
+            "扶他樂園",
+            "單行本",
+            "姐姐系",
+            "妹妹系",
+            "SM",
+            "性轉換",
+            "足の恋",
+            "人妻",
+            "NTR",
+            "強暴",
+            "非人類",
+            "艦隊收藏",
+            "Love Live",
+            "SAO 刀劍神域",
+            "Fate",
+            "東方",
+            "WEBTOON",
+            "禁書目錄",
+            "歐美",
+            "Cosplay",
+            "重口地帶"
+        )
+        private var tagInitial = booleanArrayOf(
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+        )
+    }
 
     private lateinit var mComicListAdapter: ComicListAdapter
     private lateinit var mComicListAdapter2: ComicListAdapter2
@@ -180,6 +181,10 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         }
 
         binding.comiclistLoadLayout.isEnabled = false//加载时 view不可点击
+        val seals = ArrayList<CharSequence>()
+        seals.addAll((tagInitial.indices).filter { tagInitial[it] } .map { tag[it] })
+        mComicListAdapter.addSealData(seals)
+        mComicListAdapter2.addSealData(seals)
         intiListener()
     }
 
