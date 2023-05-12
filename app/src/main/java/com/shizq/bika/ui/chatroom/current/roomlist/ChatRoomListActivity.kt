@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chatroom.current.chatroomlist
+package com.shizq.bika.ui.chatroom.current.roomlist
 
 import android.content.Intent
 import android.os.Bundle

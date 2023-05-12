@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.chatroom.current.chatroomlist
+package com.shizq.bika.ui.chatroom.current.roomlist
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
@@ -80,7 +80,7 @@ class ChatRoomListViewModel(application: Application) : BaseViewModel(applicatio
 
                 }
 
-                override fun onError(e: Throwable) {
+                override fun onError(e: Throwable)   {
                     var t: ChatRoomListBean? = null
                     if (e is HttpException) {   //  处理服务器返回的非成功异常
                         val responseBody = e.response()!!.errorBody()

@@ -20,7 +20,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityMainBinding
 import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.apps.AppsActivity
-import com.shizq.bika.ui.chatroom.current.chatroomlist.ChatRoomListActivity
+import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity

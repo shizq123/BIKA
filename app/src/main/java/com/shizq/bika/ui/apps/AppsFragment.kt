@@ -16,6 +16,7 @@ import com.shizq.bika.databinding.FragmentAppsBinding
 import com.shizq.bika.ui.chatroom.old.ChatRoomActivity
 import com.shizq.bika.utils.SPUtil
 import kotlinx.coroutines.launch
+import com.shizq.bika.network.Result
 
 class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() {
     private var str: String? = null
@@ -124,22 +125,43 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
 //        }
         lifecycleScope.launch {
             viewModel.appsFlow.collect {
-                if (it != null) {
-                    if (it.code == 200) {
+                when (it) {
+                    is Result.Success -> {
                         mPicaAppsAdapter.clear()
                         binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
                         mPicaAppsAdapter.addData(it.data.apps)
-                    } else {
-                        //网络错误
+                    }
+                    is Result.Error -> {
+                        val message = it.message
+                        // TODO: 处理请求失败的错误信息
                         binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
                         binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
                         binding.appsInclude.loadText.text =
                             "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
                         binding.appsInclude.loadLayout.isEnabled = true
-                        //
-                        //            }
                     }
+                    is Result.Loading -> {
+                        // TODO: 处理请求正在加载中的状态
+                    }
+
+                    else -> {}
                 }
+//                if (it != null) {
+//                    if (it.code == 200) {
+//                        mPicaAppsAdapter.clear()
+//                        binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+//                        mPicaAppsAdapter.addData(it.data.apps)
+//                    } else {
+//                        //网络错误
+//                        binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
+//                        binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
+//                        binding.appsInclude.loadText.text =
+//                            "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+//                        binding.appsInclude.loadLayout.isEnabled = true
+//                        //
+//                        //            }
+//                    }
+//                }
             }
 
         }

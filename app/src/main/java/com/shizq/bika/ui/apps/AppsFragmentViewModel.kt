@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatRoomListOldBean
 import com.shizq.bika.bean.PicaAppsBean
+import com.shizq.bika.network.Result
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
@@ -27,8 +28,8 @@ class AppsFragmentViewModel(application: Application) : BaseViewModel(applicatio
 
     private val repository = AppsRepository()
 
-    private val _appsFlow = MutableStateFlow<BaseResponse<PicaAppsBean>?>(null)
-    val appsFlow: StateFlow<BaseResponse<PicaAppsBean>?> = _appsFlow
+    private val _appsFlow = MutableStateFlow<Result<PicaAppsBean>?>(null)
+    val appsFlow: StateFlow<Result<PicaAppsBean>?> = _appsFlow
     fun getChatList() {
         RetrofitUtil.service.chatListGet(
             BaseHeaders("chat", "GET").getHeaderMapAndToken()
@@ -61,15 +62,11 @@ class AppsFragmentViewModel(application: Application) : BaseViewModel(applicatio
 //                }
 //
 //            })
-            viewModelScope.launch {
-                repository.getAppsFlow()
-                    .catch { e ->
-                        // 处理异常情况
-                    }
-                    .collect { apps ->
-                        _appsFlow.value = apps
-                    }
+        viewModelScope.launch {
+            repository.getAppsFlow().collect { apps ->
+                _appsFlow.value = apps
             }
+        }
 
     }
 }
