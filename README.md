@@ -4,28 +4,17 @@
 [![downloads](https://img.shields.io/github/downloads/shizq123/BIKA/v1.0.5/total.svg)](https://github.com/shizq123/BIKA/releases)
 
 代码很烂，功能还不全 <br>
-UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart)， 个人能力有限，没完全理解mvvm，让我改的稀巴烂。<br>
+Material Design 3(Material You)<br>
 网络接口全部是抓包哔咔官方接口 <br>
-官方app的图片会重复加载，我的修改了缓存key，加载更快更省流量 <br>
-阅读器太难了还没写，我比较懒先把简单的bug修一修 :( <br>
+阅读器太难了不会写 :( <br>
 安装包大小5M以内 <br>
-没时间更新，鸽了 :( <br>
+项目重构中... <br>
 
 # 下载
     
 [[GitHub下载]](https://github.com/shizq123/BIKA/releases)
 [[AppCenter下载]](https://install.appcenter.ms/users/shizq123hh/apps/bika/distribution_groups/release)
-[[蓝奏云下载]](https://zquan.lanzoue.com/b00zguxje)
-
-# 感谢
-
-[wzqjava/MVVMSmart](https://github.com/wzqjava/MVVMSmart) <br>
-[material-components/material-components-android](https://github.com/material-components/material-components-android) <br>
-[youlookwhat/ByRecyclerView](https://github.com/youlookwhat/ByRecyclerView) <br>
-[square/retrofit](https://github.com/square/retrofit) <br>
-[bumptech/glide](https://github.com/bumptech/glide) <br>
-[LuckSiege/PictureSelector](https://github.com/LuckSiege/PictureSelector) <br>
-[Baseflow/PhotoView](https://github.com/Baseflow/PhotoView) <br>
+[[蓝奏云下载]](https://zquan.lanzoue.com/b00zguxje)\
 
 # 截图
 
@@ -50,7 +39,7 @@ UI采用MD3, 项目框架使用的是[wzqjava/MVVMSmart](https://github.com/wzqj
     - [ ] 语音(发送)
 - 新聊天室
     - [x] 文字/图片/@/回复/黑名单
-    - [ ] 回复图片消息/添加黑名单
+    - [x] 回复图片消息/添加黑名单
 - 漫画
     - [x] 漫画信息/漫画推荐/评论
     - [ ] 阅读器(所有功能)/下载

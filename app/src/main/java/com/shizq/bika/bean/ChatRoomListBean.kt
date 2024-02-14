@@ -4,7 +4,7 @@ data class ChatRoomListBean(
     val error: String,
     val message: String,
     val statusCode: Int,
-    val rooms: List<Room>
+    val rooms: List<Room>?
 ) {
     data class Room(
         val allowedCharacters: List<Any>,

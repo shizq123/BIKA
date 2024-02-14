@@ -30,7 +30,7 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)//屏幕常亮
         viewModel.bookId = intent.getStringExtra("bookId")
         viewModel.order = intent.getIntExtra("order", 1)
-        viewModel.chapterTotal = intent.getIntExtra("chapterTotal", 1)
+        viewModel.totalEps = intent.getIntExtra("totalEps", 1)
 
         binding.readerInclude.toolbar.title = ""
         setSupportActionBar(binding.readerInclude.toolbar)

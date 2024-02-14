@@ -3,12 +3,15 @@ package com.shizq.bika.ui.collections
 import android.os.Bundle
 import android.view.MenuItem
 import android.view.ViewGroup
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CollectionsAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityCollectionsBinding
+import com.shizq.bika.network.Result
+import kotlinx.coroutines.launch
 
 /**
  * 推荐
@@ -57,17 +60,26 @@ class CollectionsActivity : BaseActivity<ActivityCollectionsBinding, Collections
     }
 
     override fun initViewObservable() {
-        viewModel.liveData.observe(this) {
-            if (it.code == 200) {
-                binding.collectionsLoadLayout.visibility = ViewGroup.GONE
-                if (adapter.itemCount < 1) {
-                    adapter.addData(it.data.collections)
+        lifecycleScope.launch {
+            viewModel.collections.collect {
+                when (it) {
+                    is Result.Success -> {
+                        binding.collectionsLoadLayout.visibility = ViewGroup.GONE
+                        if (adapter.itemCount < 1) {
+                            adapter.addData(it.data.collections)
+                        }
+                    }
+
+                    is Result.Error -> {
+                        showProgressBar(
+                            false,
+                            "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+                        )
+                    }
+
+                    is Result.Loading -> {}
+                    else -> {}
                 }
-            } else {
-                showProgressBar(
-                    false,
-                    "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
-                )
             }
         }
     }

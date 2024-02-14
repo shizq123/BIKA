@@ -71,9 +71,9 @@ interface ApiService {
 
     //首页推荐
     @GET("collections")
-    fun collectionsGet(
+    suspend fun collectionsGet(
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<CollectionsBean>>
+    ): BaseResponse<CollectionsBean>
 
     //分类
     @GET("categories")
@@ -97,28 +97,28 @@ interface ApiService {
 
     //漫画列表
     @GET("comics")
-    fun comicsListGet(
+    suspend fun comicsListGet(
         @Query("page") page: String,
         @Query("c") name: String,
         @Query("s") type: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean>>
+    ): BaseResponse<ComicListBean>
 
     //漫画列表
     @GET("comics")
-    fun comicsListGet(
+    suspend fun comicsListGet(
         @Query("page") page: String,
         @Query("s") type: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean>>
+    ): BaseResponse<ComicListBean>
 
     //搜索漫画列表
     @POST("comics/advanced-search")
-    fun comicsSearchPOST(
+    suspend fun comicsSearchPOST(
         @Query("page") page: Int,
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean>>
+    ): BaseResponse<ComicListBean>
 
     //搜索 热搜词条
     @GET("keywords")
@@ -128,45 +128,45 @@ interface ApiService {
 
     //随机漫画
     @GET("comics/random")
-    fun randomGet(
+    suspend fun randomGet(
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean2>>
+    ): BaseResponse<ComicListBean2>
 
     //漫画详情
     @GET("comics/{bookId}")
-    fun comicsInfoGet(
+    suspend fun comicsInfoGet(
         @Path("bookId") bookId: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicInfoBean>>
+    ): BaseResponse<ComicInfoBean>
 
     //漫画详情下面的推荐漫画
     @GET("comics/{bookId}/recommendation")
-    fun recommendGet(
+    suspend fun recommendGet(
         @Path("bookId") bookId: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<RecommendBean>>
+    ): BaseResponse<RecommendBean>
 
     //漫画 喜欢
     @POST("comics/{bookId}/like")
-    fun comicsLikePost(
+    suspend fun comicsLikePost(
         @Path("bookId") bookId: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ActionBean>>
+    ): BaseResponse<ActionBean>
 
     //漫画 收藏
     @POST("comics/{bookId}/favourite")
-    fun comicsFavouritePost(
+    suspend fun comicsFavouritePost(
         @Path("bookId") bookId: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ActionBean>>
+    ): BaseResponse<ActionBean>
 
     //漫画章节
     @GET("comics/{bookId}/eps")
-    fun comicsChapterGet(
+    suspend fun comicsEpisodeGet(
         @Path("bookId") bookId: String,
         @Query("page") page: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ChapterBean>>
+    ): BaseResponse<EpisodeBean>
 
     //漫画内容图片
     @GET("comics/{bookId}/order/{order}/pages")
@@ -179,12 +179,12 @@ interface ApiService {
 
     //评论列表
     @GET("{comics_games}/{id}/comments")
-    fun comicsCommentsGet(
+    suspend fun comicsCommentsGet(
         @Path("comics_games") comics_games: String,
         @Path("id") id: String,
         @Query("page") page: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<CommentsBean>>
+    ): BaseResponse<CommentsBean>
 
     //发送评论 游戏与漫画的评论
     @POST("{comics_games}/{id}/comments")
@@ -197,11 +197,11 @@ interface ApiService {
 
     //子评论列表
     @GET("comments/{commentsId}/childrens")
-    fun commentsChildrensGet(
+    suspend fun commentsChildrensGet(
         @Path("commentsId") commentsId: String,
         @Query("page") page: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<CommentsBean>>
+    ): BaseResponse<CommentsBean>
 
     //发送子评论
     @POST("comments/{id}")
@@ -227,43 +227,43 @@ interface ApiService {
 
     //漫画详细 搜索 标签
     @GET("comics")
-    fun tagsGet(
+    suspend fun tagsGet(
         @Query("page") page: String,
         @Query("t") tagsName: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean>>
+    ): BaseResponse<ComicListBean>
 
     //漫画详细 搜索 汉化组
     @GET("comics")
-    fun  translateGet(
+    suspend fun translateGet(
         @Query("page") page: String,
         @Query("ct") translate: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean>>
+    ): BaseResponse<ComicListBean>
 
     //漫画详细 搜索 作者
     @GET("comics")
-    fun authorGet(
+    suspend fun authorGet(
         @Query("page") page: String,
         @Query("a") author: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean>>
+    ): BaseResponse<ComicListBean>
 
     //漫画详细 搜索 创作者
     @GET("comics")
-    fun creatorGet(
+    suspend fun creatorGet(
         @Query("page") page: String,
         @Query("ca") creator: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean>>
+    ): BaseResponse<ComicListBean>
 
     //s=dd新到旧,da旧到新,ld最多爱心,vd最多指名
     @GET("users/favourite")
-    fun myFavouriteGet(
+    suspend fun myFavouriteGet(
         @Query("s") s: String,
         @Query("page") page: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean>>
+    ): BaseResponse<ComicListBean>
 
     //查看用户信息
     @GET("users/{userId}/profile")
@@ -315,9 +315,9 @@ interface ApiService {
 
     //聊天室列表
     @GET("chat")
-    fun chatListGet(
+    suspend fun oldChatRoomListGet(
         @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ChatRoomListOldBean>>
+    ):BaseResponse<ChatRoomListOldBean>
 
     //上传头像 //抓包得出上传的分辨率是200*200 //聊天室抓包，图片其中一边的最大分辨率是800
     @PUT("users/avatar")
@@ -335,10 +335,10 @@ interface ApiService {
 
     //新聊天室 登录
     @POST("auth/signin")
-    fun chatSignInPost(
+    suspend fun chatSignInPost(
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatRoomSignInBean>
+    ): ChatRoomSignInBean
 
     //新聊天室 用户信息
     @GET("user/profile")
@@ -355,9 +355,9 @@ interface ApiService {
 
     //新聊天室 房间列表
     @GET("room/list")
-    fun chatRoomListGet(
+    suspend fun chatRoomListGet(
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatRoomListBean>
+    ): ChatRoomListBean
 
     //新聊天室 封锁用户 添加黑名单 https://live-server.bidobido.xyz/blacklist/block-user 请求文本{"userId":"xxx"}
     @POST("blacklist/block-user")
@@ -368,17 +368,17 @@ interface ApiService {
 
     //新聊天室 封锁列表 黑名单列表 https://live-server.bidobido.xyz/blacklist/list?offset=0
     @GET("blacklist/list")
-    fun chatBlackListGet(
+    suspend fun chatBlackListGet(
         @Query("offset") page: Int,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatRoomBlackListBean>
+    ): ChatRoomBlackListBean
 
     //新聊天室 删除封锁 删除黑名单 https://live-server.bidobido.xyz/blacklist/63e3373e4548486c28e60cc5
     @DELETE("blacklist/{id}")
-    fun chatBlackListDelete(
+    suspend fun chatBlackListDelete(
         @Path("id") gameId: String,
         @HeaderMap headers: Map<String, String>
-    ): Observable<ChatRoomBlackListDeleteBean>
+    ): ChatRoomBlackListDeleteBean
 
     //新聊天室 发送消息
     @POST("room/send-message")

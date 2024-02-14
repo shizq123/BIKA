@@ -9,7 +9,7 @@ import java.util.concurrent.TimeUnit
 object RetrofitUtil {
     private var retrofit: Retrofit? = null
 
-    var INFO = "http://68.183.234.72/"
+    private var INFO = "http://68.183.234.72"
     var BASE_URL = "https://picaapi.picacomic.com"
     var UPDATE = "https://appcenter.ms"
     var LIVE_SERVER = "https://live-server.bidobido.xyz"//新聊天室

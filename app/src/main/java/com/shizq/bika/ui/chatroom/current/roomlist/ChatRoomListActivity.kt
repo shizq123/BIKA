@@ -6,6 +6,7 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.ViewGroup
 import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
@@ -14,11 +15,14 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatRoomListAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChatRoomListBinding
+import com.shizq.bika.network.Result
 import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.chatroom.current.ChatRoomActivity
 import com.shizq.bika.ui.chatroom.current.blacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.TimeUtil
+import kotlinx.coroutines.flow.collect
+import kotlinx.coroutines.launch
 
 /**
  * 新聊天室列表
@@ -91,6 +95,7 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
             android.R.id.home -> {
                 finish()
             }
+
             R.id.action_blacklist -> {
                 startActivity(Intent(this, ChatBlacklistActivity::class.java))
             }
@@ -122,19 +127,44 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
                     .show()
             }
         }
-        viewModel.liveDataRoomList.observe(this) {
-            if (it.rooms != null) {
-                binding.chatroomLoadLayout.visibility = ViewGroup.GONE
-                mChatRoomsAdapter.clear()
-                mChatRoomsAdapter.addData(it.rooms)
-            } else {
-                showProgressBar(
+//        viewModel.liveDataRoomList.observe(this) {
+//            if (it.rooms != null) {
+//                binding.chatroomLoadLayout.visibility = ViewGroup.GONE
+//                mChatRoomsAdapter.clear()
+//                mChatRoomsAdapter.addData(it.rooms)
+//            } else {
+//                showProgressBar(
+//                    false,
+//                    "网络错误，点击重试\ncode=${it.statusCode} error=${it.error} message=${it.message}"
+//                )
+//            }
+//        }
+
+        lifecycleScope.launch {
+            viewModel.roomListFlow.collect() {
+                when (it) {
+                    is Result.Success -> {
+                        binding.chatroomLoadLayout.visibility = ViewGroup.GONE
+                        mChatRoomsAdapter.clear()
+                        mChatRoomsAdapter.addData(it.data.rooms)
+                    }
+
+                    is Result.Error -> {
+                        val message = it.message
+                        showProgressBar(
                     false,
-                    "网络错误，点击重试\ncode=${it.statusCode} error=${it.error} message=${it.message}"
+                    "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
                 )
+                    }
+
+                    is Result.Loading -> {
+
+                    }
+
+                    else -> {}
+                }
             }
         }
-
     }
 
     private fun showProgressBar(show: Boolean, string: String) {

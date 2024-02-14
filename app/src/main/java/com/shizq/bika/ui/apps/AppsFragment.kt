@@ -91,38 +91,33 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
 
     override fun initViewObservable() {
         //旧聊天室列表
-        viewModel.liveData_chat.observe(this) {
-            if (it.code == 200) {
-                mChatRoomListAdapter.clear()
-                binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
-                mChatRoomListAdapter.addData(it.data.chatList)
-            } else {
-                //网络错误
-                binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
-                binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
-                binding.appsInclude.loadText.text =
-                    "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
-                binding.appsInclude.loadLayout.isEnabled = true
+        lifecycleScope.launch {
+            viewModel.roomList.collect {
+                when (it) {
+                    is Result.Success -> {
+                        mChatRoomListAdapter.clear()
+                        binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+                        mChatRoomListAdapter.addData(it.data.chatList)
+                    }
 
+                    is Result.Error -> {
+                        binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
+                        binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
+                        binding.appsInclude.loadText.text =
+                            "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+                        binding.appsInclude.loadLayout.isEnabled = true
+                    }
+
+                    is Result.Loading -> {
+
+                    }
+
+                    else -> {}
+                }
             }
         }
 
         //跳转的网页
-//        viewModel.liveData_apps.observe(this) {
-//            if (it.code == 200) {
-//                mPicaAppsAdapter.clear()
-//                binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
-//                mPicaAppsAdapter.addData(it.data.apps)
-//            } else {
-//                //网络错误
-//                binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
-//                binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
-//                binding.appsInclude.loadText.text =
-//                    "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
-//                binding.appsInclude.loadLayout.isEnabled = true
-//
-//            }
-//        }
         lifecycleScope.launch {
             viewModel.appsFlow.collect {
                 when (it) {
@@ -131,6 +126,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
                         binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
                         mPicaAppsAdapter.addData(it.data.apps)
                     }
+
                     is Result.Error -> {
                         val message = it.message
                         // TODO: 处理请求失败的错误信息
@@ -140,28 +136,13 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
                             "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
                         binding.appsInclude.loadLayout.isEnabled = true
                     }
+
                     is Result.Loading -> {
                         // TODO: 处理请求正在加载中的状态
                     }
 
                     else -> {}
                 }
-//                if (it != null) {
-//                    if (it.code == 200) {
-//                        mPicaAppsAdapter.clear()
-//                        binding.appsInclude.loadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
-//                        mPicaAppsAdapter.addData(it.data.apps)
-//                    } else {
-//                        //网络错误
-//                        binding.appsInclude.loadProgressBar.visibility = ViewGroup.GONE
-//                        binding.appsInclude.loadError.visibility = ViewGroup.VISIBLE
-//                        binding.appsInclude.loadText.text =
-//                            "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
-//                        binding.appsInclude.loadLayout.isEnabled = true
-//                        //
-//                        //            }
-//                    }
-//                }
             }
 
         }

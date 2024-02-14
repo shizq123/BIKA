@@ -6,10 +6,10 @@ import androidx.room.*
 @Dao
 interface SearchDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertSearch(vararg search: Search?)
+    fun insertSearch(vararg search: Search)
 
     @Delete
-    fun deleteSearch(vararg search: Search?)
+    fun deleteSearch(vararg search: Search)
 
     @Query("DELETE FROM SEARCH")
     fun deleteAllSearch()

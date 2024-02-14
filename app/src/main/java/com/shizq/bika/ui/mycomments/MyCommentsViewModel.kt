@@ -57,27 +57,27 @@ class MyCommentsViewModel (application: Application) : BaseViewModel(application
     }
     fun requestSubComment() {
         subPage++
-        RetrofitUtil.service.commentsChildrensGet(
-            commentsId.toString(),
-            subPage.toString(),
-            BaseHeaders("comments/$commentsId/childrens?page=$subPage", "GET").getHeaderMapAndToken()
-        )
-            .doOnSubscribe(this)
-            .subscribe(object : BaseObserver<CommentsBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<CommentsBean>) {
-                    if (subPage == 1 && baseResponse.data.comments.pages!=1) {
-                        //每次只加载5条数据，所以第一页多请求一遍 。还有只有一夜数据不重复加载
-                        requestSubComment()
-                    }
-                    liveData_sub_comments.postValue(baseResponse)
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<CommentsBean>) {
-                    subPage--
-                    liveData_sub_comments.postValue(baseResponse)
-                }
-
-            })
+//        RetrofitUtil.service.commentsChildrensGet(
+//            commentsId.toString(),
+//            subPage.toString(),
+//            BaseHeaders("comments/$commentsId/childrens?page=$subPage", "GET").getHeaderMapAndToken()
+//        )
+//            .doOnSubscribe(this)
+//            .subscribe(object : BaseObserver<CommentsBean>() {
+//                override fun onSuccess(baseResponse: BaseResponse<CommentsBean>) {
+//                    if (subPage == 1 && baseResponse.data.comments.pages!=1) {
+//                        //每次只加载5条数据，所以第一页多请求一遍 。还有只有一夜数据不重复加载
+//                        requestSubComment()
+//                    }
+//                    liveData_sub_comments.postValue(baseResponse)
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<CommentsBean>) {
+//                    subPage--
+//                    liveData_sub_comments.postValue(baseResponse)
+//                }
+//
+//            })
     }
 
     fun commentsLike() {

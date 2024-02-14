@@ -10,6 +10,7 @@ import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.TextView
 import android.widget.Toast
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.bottomsheet.BottomSheetBehavior
@@ -21,9 +22,11 @@ import com.shizq.bika.adapter.CommentsAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.bean.CommentsBean
 import com.shizq.bika.databinding.ActivityCommentsBinding
+import com.shizq.bika.network.Result
 import com.shizq.bika.utils.dp
 import com.shizq.bika.widget.InputTextMsgDialog
 import com.shizq.bika.widget.UserViewDialog
+import kotlinx.coroutines.launch
 import me.jingbin.library.ByRecyclerView
 import kotlin.math.ceil
 
@@ -58,8 +61,8 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
     }
 
     override fun initData() {
-        viewModel.id = intent.getStringExtra("id")
-        viewModel.comics_games = intent.getStringExtra("comics_games")
+        viewModel.id = intent.getStringExtra("id").toString()
+        viewModel.comicsOrGames = intent.getStringExtra("comics_games").toString()
 
         binding.commentsInclude.toolbar.title = "评论"
         setSupportActionBar(binding.commentsInclude.toolbar)
@@ -119,7 +122,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         binding.commentsPages.setOnClickListener {
             //修改页数点击没反应 扩大点击范围
             binding.commentsPage.requestFocus()
-            val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(binding.commentsPage, 0)
         }
 
@@ -137,9 +140,9 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                         page = viewModel.pages - 1 //网络请求时会加一
                         binding.commentsPage.setText(viewModel.pages.toString())
                     }
-                    if (viewModel.page != page) {
+                    if (viewModel.commentsPage != page) {
                         viewModel.startpage = page//起始页数
-                        viewModel.page = page//当前页数
+                        viewModel.commentsPage = page//当前页数
                         binding.commentsRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
                         binding.commentsLoadLayout.visibility = ViewGroup.VISIBLE
                         binding.commentsLoadLayout.isEnabled = false
@@ -157,7 +160,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         binding.commentsRv.setOnItemClickListener { v, position ->
             if (adapter_v2.getItemData(position)._user != null) {
                 val data = adapter_v2.getItemData(position)
-                viewModel.commentsId = adapter_v2.getItemData(position).id
+                viewModel.commentId = adapter_v2.getItemData(position).id
                 dialog_send_sub_comments.setTitleText("回复 ${data._user.name}")
                 dialog_send_sub_comments.show()
             }
@@ -172,10 +175,11 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                     .setItems(choices) { dialog, which ->
                         when (which) {
                             0 -> {
-                                viewModel.commentsId = adapter_v2.getItemData(position).id
+                                viewModel.commentId = adapter_v2.getItemData(position).id
                                 dialog_send_sub_comments.setTitleText("回复 ${data._user.name}")
                                 dialog_send_sub_comments.show()
                             }
+
                             1 -> {
                                 val cm: ClipboardManager =
                                     getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
@@ -186,6 +190,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
+
                             2 -> {
                                 MaterialAlertDialogBuilder(v.context)
                                     .setTitle("举报留言警告")
@@ -237,9 +242,9 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                     true
                 )
                 viewModel.data = bean
-                viewModel.commentsId = data._id
+                viewModel.commentId = data._id
                 viewModel.likePosition = position//暂存打开哪个主评论的position
-                viewModel.subPage = 0
+                viewModel.subCommentsPage = 0
 
                 val list_sub_comments: ArrayList<CommentsBean.Comments.Doc> = ArrayList()
                 list_sub_comments.add(bean)
@@ -270,6 +275,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
+
                             "举报" -> {
                                 MaterialAlertDialogBuilder(v.context)
                                     .setTitle("举报留言警告")
@@ -299,6 +305,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                                 dialog_send_sub_comments.setTitleText("回复 " + data._user.name)
                                 dialog_send_sub_comments.show()
                             }
+
                             "复制" -> {
                                 val cm: ClipboardManager =
                                     getSystemService(CLIPBOARD_SERVICE) as ClipboardManager
@@ -309,6 +316,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                                     Toast.LENGTH_SHORT
                                 ).show()
                             }
+
                             "举报" -> {
                                 MaterialAlertDialogBuilder(v.context)
                                     .setTitle("举报留言警告")
@@ -388,35 +396,101 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
     }
 
     override fun initViewObservable() {
-        viewModel.liveData_comments.observe(this) {
-            if (it.code == 200) {
-                viewModel.pages = it.data.comments.pages//总页数
-                viewModel.limit = it.data.comments.limit//每页显示多少
-                binding.commentsPages.text = " / ${it.data.comments.pages}页"//显示总页数
-                binding.commentsPage.setText(it.data.comments.page.toString())//显示页数
-                if (it.data.comments.pages <= it.data.comments.page) {
-                    //总页数等于当前页数 显示后面没有数据
-                    binding.commentsRv.loadMoreEnd()
-                } else {
-                    //总页数不等于当前页数 回收加载布局
-                    binding.commentsRv.loadMoreComplete() //加载完成
+        lifecycleScope.launch {
+            viewModel.comments.collect {
+                when (it) {
+                    is Result.Success -> {
+                        val data=it.data.comments
+                        viewModel.pages = data.pages//总页数
+                        viewModel.limit = data.limit//每页显示多少
+                        binding.commentsPages.text = " / ${data.pages}页"//显示总页数
+                        binding.commentsPage.setText(data.page.toString())//显示页数
+                        if (data.pages <= data.page) {
+                            //总页数等于当前页数 显示后面没有数据
+                            binding.commentsRv.loadMoreEnd()
+                        } else {
+                            //总页数不等于当前页数 回收加载布局
+                            binding.commentsRv.loadMoreComplete() //加载完成
+                        }
+
+                        binding.commentsReplyLayout.visibility = ViewGroup.VISIBLE
+                        binding.commentsLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+                        adapter_v2.addData(data.docs)
+                    }
+
+                    is Result.Error -> {
+                        if (viewModel.commentsPage <= 1) {//当首次加载时出现网络错误
+                            binding.commentsLoadProgressBar.visibility = ViewGroup.GONE
+                            binding.commentsLoadError.visibility = ViewGroup.VISIBLE
+                            binding.commentsLoadText.text =
+                                "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+                            binding.commentsLoadLayout.isEnabled = true
+                        } else {
+                            //当页面不是第一页时 网络错误可能是分页加载时出现的网络错误
+                            binding.commentsRv.loadMoreFail()
+                        }
+                    }
+
+                    is Result.Loading -> {}
+                    else -> {}
                 }
+            }
+        }
+//        viewModel.liveData_comments.observe(this) {
+//            if (it.code == 200) {
+//                viewModel.pages = it.data.comments.pages//总页数
+//                viewModel.limit = it.data.comments.limit//每页显示多少
+//                binding.commentsPages.text = " / ${it.data.comments.pages}页"//显示总页数
+//                binding.commentsPage.setText(it.data.comments.page.toString())//显示页数
+//                if (it.data.comments.pages <= it.data.comments.page) {
+//                    //总页数等于当前页数 显示后面没有数据
+//                    binding.commentsRv.loadMoreEnd()
+//                } else {
+//                    //总页数不等于当前页数 回收加载布局
+//                    binding.commentsRv.loadMoreComplete() //加载完成
+//                }
+//
+//                binding.commentsReplyLayout.visibility = ViewGroup.VISIBLE
+//                binding.commentsLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+//                adapter_v2.addData(it.data.comments.docs)
+//
+//
+//            } else {
+//                if (viewModel.page <= 1) {//当首次加载时出现网络错误
+//                    binding.commentsLoadProgressBar.visibility = ViewGroup.GONE
+//                    binding.commentsLoadError.visibility = ViewGroup.VISIBLE
+//                    binding.commentsLoadText.text =
+//                        "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+//                    binding.commentsLoadLayout.isEnabled = true
+//                } else {
+//                    //当页面不是第一页时 网络错误可能是分页加载时出现的网络错误
+//                    binding.commentsRv.loadMoreFail()
+//                }
+//            }
+//        }
 
-                binding.commentsReplyLayout.visibility = ViewGroup.VISIBLE
-                binding.commentsLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
-                adapter_v2.addData(it.data.comments.docs)
+        lifecycleScope.launch {
+            viewModel.subComments.collect {
+                when (it) {
+                    is Result.Success -> {
+                        val data=it.data.comments
+                        adapter_sub.addData(data.docs)
+                        if (data.pages ==data.page) {
+                            //总页数等于当前页数 显示后面没有数据
+                            sub_comments_rv.loadMoreEnd()
+                        } else {
+                            //总页数不等于当前页数 回收加载布局
+                            sub_comments_rv.loadMoreComplete() //加载完成
+                        }
+                    }
 
+                    is Result.Error -> {
+                        viewModel.subCommentsPage--
+                        sub_comments_rv.loadMoreFail()
+                    }
 
-            } else {
-                if (viewModel.page <= 1) {//当首次加载时出现网络错误
-                    binding.commentsLoadProgressBar.visibility = ViewGroup.GONE
-                    binding.commentsLoadError.visibility = ViewGroup.VISIBLE
-                    binding.commentsLoadText.text =
-                        "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
-                    binding.commentsLoadLayout.isEnabled = true
-                } else {
-                    //当页面不是第一页时 网络错误可能是分页加载时出现的网络错误
-                    binding.commentsRv.loadMoreFail()
+                    is Result.Loading -> {}
+                    else -> {}
                 }
             }
         }
@@ -437,27 +511,27 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
         }
 
         //子评论
-        viewModel.liveData_sub_comments.observe(this) {
-            if (it.code == 200) {
-                adapter_sub.addData(it.data.comments.docs)
-                if (it.data.comments.pages == it.data.comments.page) {
-                    //总页数等于当前页数 显示后面没有数据
-                    sub_comments_rv.loadMoreEnd()
-                } else {
-                    //总页数不等于当前页数 回收加载布局
-                    sub_comments_rv.loadMoreComplete() //加载完成
-                }
-            } else {
-                sub_comments_rv.loadMoreFail()
-
-            }
-        }
+//        viewModel.liveData_sub_comments.observe(this) {
+//            if (it.code == 200) {
+//                adapter_sub.addData(it.data.comments.docs)
+//                if (it.data.comments.pages == it.data.comments.page) {
+//                    //总页数等于当前页数 显示后面没有数据
+//                    sub_comments_rv.loadMoreEnd()
+//                } else {
+//                    //总页数不等于当前页数 回收加载布局
+//                    sub_comments_rv.loadMoreComplete() //加载完成
+//                }
+//            } else {
+//                sub_comments_rv.loadMoreFail()
+//
+//            }
+//        }
         //发送评论
         viewModel.liveData_seed_comments.observe(this) {
             if (it.code == 200) {
                 //成功
                 adapter_v2.clear()
-                viewModel.page = 0
+                viewModel.commentsPage = 0
                 viewModel.requestComment()
             } else if (it.code == 400) {
                 if (it.error == "1019") {
@@ -483,7 +557,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                     adapter_sub.addData(list_sub_comments)
                 }
 
-                viewModel.subPage = 0
+                viewModel.subCommentsPage = 0
                 viewModel.requestSubComment()
             } else if (it.code == 400) {
                 if (it.error == "1019") {
@@ -526,7 +600,7 @@ class CommentsActivity : BaseActivity<ActivityCommentsBinding, CommentsViewModel
                     it.data.action == "like"
                 )
 
-                if (viewModel.commentsId == adapter_sub.data[viewModel.likeSubPosition]._id) {
+                if (viewModel.commentId == adapter_sub.data[viewModel.likeSubPosition]._id) {
                     //因为第一条数据是手动添加的，所以在这判断是否第一条数据 ，如果是就把主评论也更新
                     adapter_v2.refreshNotifyItemChanged(
                         viewModel.likePosition,

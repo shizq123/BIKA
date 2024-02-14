@@ -15,7 +15,7 @@ class ReaderViewModel(application: Application) : BaseViewModel(application) {
     var order = 1
     var bookId: String? = null
     var page = 0
-    var chapterTotal = 1
+    var totalEps = 1 //总章数
 
     val liveData_picture: MutableLiveData<BaseResponse<ComicsPictureBean>> by lazy {
         MutableLiveData<BaseResponse<ComicsPictureBean>>()

@@ -8,9 +8,11 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupWindow
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isVisible
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
@@ -21,9 +23,11 @@ import com.shizq.bika.adapter.ComicListAdapter2
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComiclistBinding
 import com.shizq.bika.db.Search
+import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.StatusBarUtil
+import kotlinx.coroutines.launch
 import me.jingbin.library.skeleton.ByRVItemSkeletonScreen
 import me.jingbin.library.skeleton.BySkeleton
 import kotlin.math.ceil
@@ -182,7 +186,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
 
         binding.comiclistLoadLayout.isEnabled = false//加载时 view不可点击
         val seals = ArrayList<CharSequence>()
-        seals.addAll((tagInitial.indices).filter { tagInitial[it] } .map { tag[it] })
+        seals.addAll((tagInitial.indices).filter { tagInitial[it] }.map { tag[it] })
         mComicListAdapter.addSealData(seals)
         mComicListAdapter2.addSealData(seals)
         intiListener()
@@ -192,13 +196,13 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         binding.searchView.setOnKeyListener { v, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
                 //监听回车键
-                val search= Search(binding.searchView.text.toString())
+                val search = Search(binding.searchView.text.toString())
                 viewModel.insertSearch(search)//添加搜索记录
 
                 viewModel.value = binding.searchView.text.toString()
                 viewModel.tag = "search"
-                viewModel.page=0
-                viewModel.startpage=0
+                viewModel.page = 0
+                viewModel.startpage = 0
                 mComicListAdapter.clear()
                 mComicListAdapter.notifyDataSetChanged()
                 binding.comiclistRv.isEnabled = false//加载时不允许滑动，解决加载时滑动recyclerview报错
@@ -231,14 +235,17 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                         item.isChecked = true
                         setSort("dd", item.title.toString())
                     }
+
                     R.id.da -> {
                         item.isChecked = true
                         setSort("da", item.title.toString())
                     }
+
                     R.id.ld -> {
                         item.isChecked = true
                         setSort("ld", item.title.toString())
                     }
+
                     R.id.vd -> {
                         item.isChecked = true
                         setSort("vd", item.title.toString())
@@ -279,7 +286,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         binding.comiclistPages.setOnClickListener {
             //修改页数点击没反应 扩大点击范围
             binding.comiclistPage.requestFocus()
-            val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+            val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
             imm.showSoftInput(binding.comiclistPage, 0)
         }
         //跳转页数
@@ -293,7 +300,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                     var page = binding.comiclistPage.text.toString().toInt() - 1//因为网络请求时会加一，所以提前减一
                     if (page > viewModel.pages) {
                         //输入的页数大于当前页数时，修改成最大页数
-                        page = viewModel.pages -1 //网络请求时会加一
+                        page = viewModel.pages - 1 //网络请求时会加一
                         binding.comiclistPage.setText(viewModel.pages.toString())
                     }
                     if (viewModel.page != page) {
@@ -353,7 +360,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             startActivity(intent)
         }
         binding.comiclistRv.setOnItemChildClickListener { view, position ->
-            if(view.id==R.id.comiclist_item_image){
+            if (view.id == R.id.comiclist_item_image) {
 
                 val intent = Intent(this@ComicListActivity, ImageActivity::class.java)
                 if (viewModel.tag.equals("random")) {
@@ -366,7 +373,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                     intent.putExtra("imageurl", data.thumb.path)
 
                 }
-                val options = ActivityOptions.makeSceneTransitionAnimation(this,view, "image")
+                val options = ActivityOptions.makeSceneTransitionAnimation(this, view, "image")
                 startActivity(intent, options.toBundle())
             }
         }
@@ -378,7 +385,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
                     //获取最后一个可见item
                     val lastItemPosition = layoutManager.findLastVisibleItemPosition().toDouble()
                     //来显示当前页数
-                    binding.comiclistPage.setText((ceil(lastItemPosition/viewModel.limit).toInt()+viewModel.startpage).toString())
+                    binding.comiclistPage.setText((ceil(lastItemPosition / viewModel.limit).toInt() + viewModel.startpage).toString())
                 }
             }
         })
@@ -390,11 +397,11 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         //toolbar菜单创建完毕后更新ui
         if (viewModel.tag.equals("search")) {
             binding.toolbar.menu.findItem(R.id.action_search).isVisible = false
-            binding.comiclistSearchLayout.isVisible=true
+            binding.comiclistSearchLayout.isVisible = true
             binding.searchView.setText(viewModel.title)
 
         } else {
-            if(viewModel.tag.equals("favourite")){
+            if (viewModel.tag.equals("favourite")) {
                 //我的收藏隐藏搜索图标
                 binding.toolbar.menu.findItem(R.id.action_search).isVisible = false
             }
@@ -408,12 +415,13 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             android.R.id.home -> {
                 finish()
             }
-            R.id.action_search ->{
+
+            R.id.action_search -> {
                 binding.toolbar.menu.findItem(R.id.action_search).isVisible = false
-                binding.comiclistSearchLayout.isVisible=true
+                binding.comiclistSearchLayout.isVisible = true
                 //获取焦点 弹出软键盘
                 binding.searchView.requestFocus()
-                val imm =getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
+                val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
                 imm.showSoftInput(binding.searchView, 0)
             }
         }
@@ -451,58 +459,116 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
     }
 
     override fun initViewObservable() {
-        viewModel.liveData.observe(this) {
-            skeletonScreen.hide()
-            binding.comiclistRv.isEnabled = true
-            if (it.code == 200) {
-                binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
-                mComicListAdapter.addData(it.data.comics.docs)
-                viewModel.pages = it.data.comics.pages//总页数
-                viewModel.limit = it.data.comics.limit//每页显示多少
-                binding.comiclistPages.text=" / ${it.data.comics.pages}页"//显示总页数
-                binding.comiclistPage.setText(it.data.comics.page.toString())//显示页数
-                if (it.data.comics.pages <= it.data.comics.page) {
-                    binding.comiclistRv.loadMoreEnd()//没有更多数据
-                } else {
-                    binding.comiclistRv.loadMoreComplete()//加载成功
-                }
+//        viewModel.liveData.observe(this) {
+//            skeletonScreen.hide()
+//            binding.comiclistRv.isEnabled = true
+//            if (it.code == 200) {
+//                binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+//                mComicListAdapter.addData(it.data.comics.docs)
+//                viewModel.pages = it.data.comics.pages//总页数
+//                viewModel.limit = it.data.comics.limit//每页显示多少
+//                binding.comiclistPages.text=" / ${it.data.comics.pages}页"//显示总页数
+//                binding.comiclistPage.setText(it.data.comics.page.toString())//显示页数
+//                if (it.data.comics.pages <= it.data.comics.page) {
+//                    binding.comiclistRv.loadMoreEnd()//没有更多数据
+//                } else {
+//                    binding.comiclistRv.loadMoreComplete()//加载成功
+//                }
+//
+//            } else {
+//                if (viewModel.page <= 1) {//当首次加载时出现网络错误
+//                    showProgressBar(
+//                        false,
+//                        "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+//                    )
+//                } else {
+//                    //当页面不是第一页时 网络错误可能是分页加载时出现的网络错误
+//                    binding.comiclistRv.loadMoreFail()
+//                }
+//            }
+//        }
+        lifecycleScope.launch {
+            viewModel.comicList.collect {
+                skeletonScreen.hide()
+                binding.comiclistRv.isEnabled = true
+                when (it) {
+                    is Result.Success -> {
+                        binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+                        mComicListAdapter.addData(it.data.comics.docs)
+                        viewModel.pages = it.data.comics.pages//总页数
+                        viewModel.limit = it.data.comics.limit//每页显示多少
+                        binding.comiclistPages.text = " / ${it.data.comics.pages}页"//显示总页数
+                        binding.comiclistPage.setText(it.data.comics.page.toString())//显示页数
+                        if (it.data.comics.pages <= it.data.comics.page) {
+                            binding.comiclistRv.loadMoreEnd()//没有更多数据
+                        } else {
+                            binding.comiclistRv.loadMoreComplete()//加载成功
+                        }
+                    }
 
-            } else {
-                if (viewModel.page <= 1) {//当首次加载时出现网络错误
-                    showProgressBar(
-                        false,
-                        "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
-                    )
-                } else {
-                    //当页面不是第一页时 网络错误可能是分页加载时出现的网络错误
-                    binding.comiclistRv.loadMoreFail()
+                    is Result.Error -> {
+                        viewModel.page--
+                        if (viewModel.page <= 1) {//当首次加载时出现网络错误
+                            showProgressBar(
+                                false,
+                                "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+                            )
+                        } else {
+                            //当页面不是第一页时 网络错误可能是分页加载时出现的网络错误
+                            binding.comiclistRv.loadMoreFail()
+                        }
+                    }
+
+                    else -> {}
                 }
             }
         }
 
-        viewModel.liveData2.observe(this) {
-            skeletonScreen.hide()
-            binding.comiclistRv.isEnabled = true
-            if (it.code == 200) {
-                mComicListAdapter2.addData(it.data.comics)
-                binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
-                binding.comiclistRv.loadMoreEnd()
-            } else {
+        lifecycleScope.launch {
+            viewModel.comicList2.collect {
+                skeletonScreen.hide()
+                binding.comiclistRv.isEnabled = true
+                when (it) {
+                    is Result.Success -> {
+                        mComicListAdapter2.addData(it.data.comics)
+                        binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+                        binding.comiclistRv.loadMoreEnd()
+                    }
 
-                showProgressBar(
-                    false,
-                    "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
-                )
+                    is Result.Error -> {
+                        showProgressBar(
+                            false,
+                            "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+                        )
+                    }
+
+                    else -> {}
+                }
             }
         }
+//        viewModel.liveData2.observe(this) {
+//            skeletonScreen.hide()
+//            binding.comiclistRv.isEnabled = true
+//            if (it.code == 200) {
+//                mComicListAdapter2.addData(it.data.comics)
+//                binding.comiclistLoadLayout.visibility = ViewGroup.GONE//隐藏加载进度条页面
+//                binding.comiclistRv.loadMoreEnd()
+//            } else {
+//
+//                showProgressBar(
+//                    false,
+//                    "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+//                )
+//            }
+//        }
 
 
-        binding.comiclistRv.setOnLoadMoreListener {
+        binding.comiclistRv.setOnLoadMoreListener{
             viewModel.getComicList()
         }
 
         //网络重试点击事件监听
-        binding.comiclistLoadLayout.setOnClickListener {
+        binding.comiclistLoadLayout.setOnClickListener{
             skeletonScreen.show()
             showProgressBar(true, "")
             if (viewModel.tag.equals("random")) {
@@ -514,11 +580,11 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         }
 
         //大图PopupWindow
-        mPopupWindow.setOnDismissListener {
+        mPopupWindow.setOnDismissListener{
             //恢复状态栏
             StatusBarUtil.show(this@ComicListActivity)
         }
-        popupView.setOnClickListener {
+        popupView.setOnClickListener{
             mPopupWindow.dismiss()
         }
     }

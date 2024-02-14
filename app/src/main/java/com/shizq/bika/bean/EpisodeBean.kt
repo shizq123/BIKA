@@ -1,6 +1,6 @@
 package com.shizq.bika.bean
 
-data class ChapterBean(
+data class EpisodeBean(
         val eps: Eps
     ) {
 

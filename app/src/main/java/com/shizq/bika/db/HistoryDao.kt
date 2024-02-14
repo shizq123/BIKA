@@ -6,13 +6,13 @@ import androidx.room.*
 @Dao
 interface HistoryDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun insertHistory(vararg history: History?)
+    fun insertHistory(vararg history: History)
 
     @Update
-    fun updateHistory(vararg history: History?)
+    fun updateHistory(vararg history: History)
 
     @Delete
-    fun deleteHistory(vararg history: History?)
+    fun deleteHistory(vararg history: History)
 
     @Query("DELETE FROM HISTORY")
     fun deleteAllHistory()
