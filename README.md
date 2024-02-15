@@ -14,7 +14,7 @@ Material Design 3(Material You)<br>
     
 [[GitHub下载]](https://github.com/shizq123/BIKA/releases)
 [[AppCenter下载]](https://install.appcenter.ms/users/shizq123hh/apps/bika/distribution_groups/release)
-[[蓝奏云下载]](https://zquan.lanzoue.com/b00zguxje)\
+[[蓝奏云下载]](https://zquan.lanzoue.com/b00zguxje)
 
 # 截图
 
@@ -38,8 +38,8 @@ Material Design 3(Material You)<br>
     - [x] 文字/图片/语音(接收)/@/回复/展示用户信息
     - [ ] 语音(发送)
 - 新聊天室
-    - [x] 文字/图片/@/回复/黑名单
-    - [x] 回复图片消息/添加黑名单
+    - [ ] 文字/图片/@/回复/黑名单
+    - [ ] 回复图片消息/添加黑名单
 - 漫画
     - [x] 漫画信息/漫画推荐/评论
     - [ ] 阅读器(所有功能)/下载
