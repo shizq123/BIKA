@@ -32,14 +32,23 @@ android {
     buildTypes {
 
         getByName("debug") {
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("keyStore")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+                "retrofit2.pro"
+            )
         }
         getByName("release") {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("keyStore")
             proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro",
+                "retrofit2.pro"
             )
         }
     }
@@ -120,7 +129,7 @@ dependencies {
     kapt("com.github.bumptech.glide:compiler:4.14.2") //  Glide
     implementation("com.github.bumptech.glide:okhttp3-integration:4.14.2")//  Glide
 
-    implementation("io.reactivex.rxjava3:rxjava:3.1.5")
+//    implementation("io.reactivex.rxjava3:rxjava:3.1.5")
     implementation("io.reactivex.rxjava3:rxandroid:3.0.0")
 
     implementation("io.github.lucksiege:pictureselector:v3.10.7")//图片选择器

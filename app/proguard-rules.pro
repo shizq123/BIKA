@@ -5,3 +5,4 @@
 
 -keep class com.shizq.bika.network.base.BaseResponse {*;}
 -keep class com.shizq.bika.bean.** {*;}
+-keep class com.shizq.bika.base.** {*;}
