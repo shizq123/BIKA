@@ -233,35 +233,36 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         binding.mainRv.setOnItemClickListener { v, position ->
             val intent = Intent(this, ComicListActivity::class.java)
             val datas = adapter_categories.getItemData(position)
-            when (position) {
-                0 -> {
+            when (datas.imageRes) {
+                //根据ResId来判断 以后改
+                R.drawable.bika -> {
                     startActivity(Intent(this, CollectionsActivity::class.java))
                 }
-                1 -> {
+                R.drawable.cat_leaderboard -> {
                     startActivity(Intent(this, LeaderboardActivity::class.java))
                 }
-                2 -> {
+                R.drawable.cat_game -> {
                     startActivity(Intent(this, GamesActivity::class.java))
                 }
-                3 -> {
+                R.drawable.cat_love_pica -> {
                     startActivity(Intent(this, AppsActivity::class.java))
                 }
-                4 -> {
+                R.drawable.ic_chat -> {
                     startActivity(Intent(this, ChatRoomListActivity::class.java))
                 }
-                5 -> {
+                R.drawable.cat_forum -> {
                     val intentComments = Intent(this, CommentsActivity::class.java)
                     intentComments.putExtra("id", "5822a6e3ad7ede654696e482")
                     intentComments.putExtra("comics_games", "comics")
                     startActivity(intentComments)
                 }
-                6 -> {
+                R.drawable.cat_latest -> {
                     intent.putExtra("tag", "latest")
                     intent.putExtra("title", datas.title)
                     intent.putExtra("value", datas.title)
                     startActivity(intent)
                 }
-                7 -> {
+                R.drawable.cat_random -> {
                     intent.putExtra("tag", "random")
                     intent.putExtra("title", datas.title)
                     intent.putExtra("value", datas.title)

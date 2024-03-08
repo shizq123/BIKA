@@ -26,17 +26,17 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
         R.string.categories_leaderboard,
         R.string.categories_game,
         R.string.categories_apps,
-        R.string.categories_chat,
+//        R.string.categories_chat,
         R.string.categories_forum,
         R.string.categories_latest,
         R.string.categories_random
     )
     private val cRes = arrayOf(
-        R.drawable.logo_round,
+        R.drawable.bika,
         R.drawable.cat_leaderboard,
         R.drawable.cat_game,
         R.drawable.cat_love_pica,
-        R.drawable.ic_chat,
+//        R.drawable.ic_chat,
         R.drawable.cat_forum,
         R.drawable.cat_latest,
         R.drawable.cat_random
