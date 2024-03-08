@@ -32,14 +32,14 @@ android {
     buildTypes {
 
         getByName("debug") {
-            isMinifyEnabled = true
-            isShrinkResources = true
+//            isMinifyEnabled = true
+//            isShrinkResources = true
             signingConfig = signingConfigs.getByName("keyStore")
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro",
-                "retrofit2.pro"
-            )
+//            proguardFiles(
+//                getDefaultProguardFile("proguard-android-optimize.txt"),
+//                "proguard-rules.pro",
+//                "retrofit2.pro"
+//            )
         }
         getByName("release") {
             isMinifyEnabled = true
