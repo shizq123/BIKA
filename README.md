@@ -1,7 +1,7 @@
 [![icon](https://raw.githubusercontent.com/shizq123/BIKA/master/app/src/main/res/mipmap-xhdpi/ic_launcher.png)](https://github.com/shizq123/BIKA/releases) <br>
 [![android](https://img.shields.io/badge/android-7.0%2B-brightgreen.svg)](https://github.com/shizq123/BIKA/releases)
 [![release](https://img.shields.io/github/release/shizq123/BIKA.svg)](https://github.com/shizq123/BIKA/releases)
-[![downloads](https://img.shields.io/github/downloads/shizq123/BIKA/v1.0.5/total.svg)](https://github.com/shizq123/BIKA/releases)
+[![downloads](https://img.shields.io/github/downloads/shizq123/BIKA/v1.0.7/total.svg)](https://github.com/shizq123/BIKA/releases)
 
 代码很烂，功能还不全 <br>
 Material Design 3(Material You)<br>
