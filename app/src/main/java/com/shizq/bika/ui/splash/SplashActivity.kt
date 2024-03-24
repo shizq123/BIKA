@@ -53,7 +53,7 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
                 if (!initBean.addresses.isNullOrEmpty()) {
                 SPUtil.put(this,"addresses1",initBean.addresses[0])
                 SPUtil.put(this,"addresses2",initBean.addresses[1])
-                }else if (!initBean.addresses.isNullOrEmpty()) {
+                }else if (!initBean.address.isNullOrEmpty()) {
                     //2024.3.8 哔咔数据改变
                     SPUtil.put(this,"addresses1",initBean.address[0])
                     SPUtil.put(this,"addresses2",initBean.address[1])
