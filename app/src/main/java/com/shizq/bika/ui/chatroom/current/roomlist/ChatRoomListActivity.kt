@@ -10,7 +10,7 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatRoomListAdapter
 import com.shizq.bika.base.BaseActivity
@@ -116,8 +116,8 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
                     .setTitle("网络错误")
                     .setMessage("code=${it.statusCode} error=${it.error} message=${it.message}")
                     .setPositiveButton("重新登录") { _, _ ->
-                        SPUtil.remove(MyApp.contextBase, "token")
-                        SPUtil.remove(MyApp.contextBase, "chat_token")
+                        SPUtil.remove(BIKAApplication.contextBase, "token")
+                        SPUtil.remove(BIKAApplication.contextBase, "chat_token")
                         startActivity(Intent(this, AccountActivity::class.java))
                         finishAffinity()
                     }

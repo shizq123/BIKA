@@ -9,7 +9,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
@@ -39,7 +39,7 @@ class ChatMessageOldAdapter :
             binding.chatNotification.visibility = View.VISIBLE
             binding.chatNotification.text = bean.message
         } else if (bean.name != null && bean.name == SPUtil.get(
-                MyApp.contextBase,
+                BIKAApplication.contextBase,
                 "user_name",
                 ""
             ) as String

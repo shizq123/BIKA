@@ -8,7 +8,7 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
 import com.google.gson.JsonParser
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 import com.shizq.bika.bean.ChatMessageOldBean
 import com.shizq.bika.network.websocket.IReceiveMessage
 import com.shizq.bika.network.websocket.WebSocketManager
@@ -150,9 +150,9 @@ class ChatWebSocketServiceOld : Service() {
         base64Image: String = "",
         base64Audio: String = ""
     ) {
-        val fileServer = SPUtil.get(MyApp.contextBase, "user_fileServer", "") as String
-        val path = SPUtil.get(MyApp.contextBase, "user_path", "") as String
-        val character = SPUtil.get(MyApp.contextBase, "user_character", "") as String
+        val fileServer = SPUtil.get(BIKAApplication.contextBase, "user_fileServer", "") as String
+        val path = SPUtil.get(BIKAApplication.contextBase, "user_path", "") as String
+        val character = SPUtil.get(BIKAApplication.contextBase, "user_character", "") as String
 
         val map = mutableMapOf<String, Any>()
         map["at"] = if (base64Audio == "") atname else ""
@@ -165,20 +165,20 @@ class ChatWebSocketServiceOld : Service() {
             map["character"] = character
         }
 
-        map["email"] = SPUtil.get(MyApp.contextBase, "username", "") as String
-        map["gender"] = SPUtil.get(MyApp.contextBase, "user_gender", "bot") as String
+        map["email"] = SPUtil.get(BIKAApplication.contextBase, "username", "") as String
+        map["gender"] = SPUtil.get(BIKAApplication.contextBase, "user_gender", "bot") as String
         map["image"] = base64Image
-        map["level"] = SPUtil.get(MyApp.contextBase, "user_level", 1) as Int
+        map["level"] = SPUtil.get(BIKAApplication.contextBase, "user_level", 1) as Int
         map["message"] = text
-        map["name"] = SPUtil.get(MyApp.contextBase, "user_name", "") as String
+        map["name"] = SPUtil.get(BIKAApplication.contextBase, "user_name", "") as String
         map["platform"] = "android"
         map["reply"] = if (base64Audio == "") reply else ""
         map["reply_name"] = if (base64Audio == "") reply_name else ""
-        map["title"] = SPUtil.get(MyApp.contextBase, "user_title", "") as String
+        map["title"] = SPUtil.get(BIKAApplication.contextBase, "user_title", "") as String
         map["type"] = if (base64Image != "") 4 else if (base64Audio != "") 5 else 3
         map["unique_id"] = ""
-        map["user_id"] = SPUtil.get(MyApp.contextBase, "user_id", "") as String
-        map["verified"] = SPUtil.get(MyApp.contextBase, "user_verified", false) as Boolean
+        map["user_id"] = SPUtil.get(BIKAApplication.contextBase, "user_id", "") as String
+        map["verified"] = SPUtil.get(BIKAApplication.contextBase, "user_verified", false) as Boolean
 
         val json = Gson().toJson(map)
         val array = ArrayList<String>()

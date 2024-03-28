@@ -1,7 +1,7 @@
 package com.shizq.bika.adapter
 
 import android.view.ViewGroup
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.adapter.holder.ChatMessageReceiveHolder
 import com.shizq.bika.adapter.holder.ChatMessageSendHolder
@@ -15,7 +15,7 @@ import me.jingbin.library.adapter.BaseByViewHolder
 class ChatMessageMultiAdapter:
     BaseByRecyclerViewAdapter<ChatMessageBean, BaseByViewHolder<ChatMessageBean>>() {
 
-    val name = SPUtil.get(MyApp.contextBase, "user_name", "") as String
+    val name = SPUtil.get(BIKAApplication.contextBase, "user_name", "") as String
 
     override fun getItemViewType(position: Int): Int {
         val data = getItemData(position)

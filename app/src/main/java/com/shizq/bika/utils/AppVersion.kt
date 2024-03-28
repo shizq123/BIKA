@@ -3,7 +3,7 @@ package com.shizq.bika.utils
 import android.content.pm.PackageInfo
 import android.content.pm.PackageManager
 import android.os.Build
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 
 class AppVersion {
     fun code(): Long {
@@ -20,8 +20,8 @@ class AppVersion {
     }
 
     private fun getPackageInfo(): PackageInfo {
-        val packageManager = MyApp.contextBase.packageManager
-        val packageName = MyApp.contextBase.packageName
+        val packageManager = BIKAApplication.contextBase.packageManager
+        val packageName = BIKAApplication.contextBase.packageName
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
         } else {

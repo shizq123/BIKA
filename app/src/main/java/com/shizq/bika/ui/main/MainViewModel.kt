@@ -3,7 +3,7 @@ package com.shizq.bika.ui.main
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.JsonObject
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.*
@@ -12,8 +12,6 @@ import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
 import com.shizq.bika.utils.SPUtil
-import io.reactivex.rxjava3.core.Observer
-import io.reactivex.rxjava3.disposables.Disposable
 import okhttp3.MediaType
 import okhttp3.RequestBody
 
@@ -55,10 +53,6 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
 
     val liveData: MutableLiveData<BaseResponse<CategoriesBean>> by lazy {
         MutableLiveData<BaseResponse<CategoriesBean>>()
-    }
-
-    val liveData_update: MutableLiveData<UpdateBean> by lazy {
-        MutableLiveData<UpdateBean>()
     }
 
     var categoriesList = ArrayList<CategoriesBean.Category>()
@@ -117,8 +111,8 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
         val body = RequestBody.create(
             MediaType.parse("application/json; charset=UTF-8"),
             JsonObject().apply {
-                addProperty("email", SPUtil.get(MyApp.contextBase, "username", "") as String)
-                addProperty("password", SPUtil.get(MyApp.contextBase, "password", "") as String)
+                addProperty("email", SPUtil.get(BIKAApplication.contextBase, "username", "") as String)
+                addProperty("password", SPUtil.get(BIKAApplication.contextBase, "password", "") as String)
             }.asJsonObject.toString()
         )
         val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
@@ -150,18 +144,5 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
             })
     }
 
-    fun getUpdate() {
-        RetrofitUtil.service_update.updateGet()
-            .doOnSubscribe(this@MainViewModel)
-            .subscribe(object : Observer<UpdateBean> {
-                override fun onNext(t: UpdateBean) {
-                    liveData_update.postValue(t)
-                }
 
-                override fun onError(e: Throwable) {}
-                override fun onSubscribe(d: Disposable) {}
-                override fun onComplete() {}
-
-            })
-    }
 }

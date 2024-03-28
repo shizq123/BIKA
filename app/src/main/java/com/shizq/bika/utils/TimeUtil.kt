@@ -1,7 +1,7 @@
 package com.shizq.bika.utils
 
 import android.annotation.SuppressLint
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -81,7 +81,7 @@ class TimeUtil {
     }
 
     fun registerDays(day: Int): Boolean {
-        val createdAt = SPUtil.get(MyApp.contextBase, "user_created_at", "") as String
+        val createdAt = SPUtil.get(BIKAApplication.contextBase, "user_created_at", "") as String
         val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
         val time = simpleDateFormat.parse(createdAt)!!.time
         val currentTime = System.currentTimeMillis()

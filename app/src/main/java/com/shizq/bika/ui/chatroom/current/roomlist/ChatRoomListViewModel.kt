@@ -28,8 +28,8 @@ class ChatRoomListViewModel(application: Application) : BaseViewModel(applicatio
 //        val body = RequestBody.create(
 //            MediaType.parse("application/json; charset=UTF-8"),
 //            JsonObject().apply {
-//                addProperty("email", SPUtil.get(MyApp.contextBase, "username", "") as String)
-//                addProperty("password", SPUtil.get(MyApp.contextBase, "password", "") as String)
+//                addProperty("email", SPUtil.get(BIKAApplication.contextBase, "username", "") as String)
+//                addProperty("password", SPUtil.get(BIKAApplication.contextBase, "password", "") as String)
 //            }.asJsonObject.toString()
 //        )
 //        RetrofitUtil.service_live.chatSignInPost(

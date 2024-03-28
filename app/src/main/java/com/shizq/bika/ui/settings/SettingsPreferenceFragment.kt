@@ -18,7 +18,7 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.bean.UpdateBean
 import com.shizq.bika.network.RetrofitUtil
@@ -207,8 +207,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                     MaterialAlertDialogBuilder(it)
                         .setTitle("你确定要退出登录吗")
                         .setPositiveButton("确定") { _, _ ->
-                            SPUtil.remove(MyApp.contextBase, "token")
-                            SPUtil.remove(MyApp.contextBase, "chat_token")
+                            SPUtil.remove(BIKAApplication.contextBase, "token")
+                            SPUtil.remove(BIKAApplication.contextBase, "chat_token")
                             startActivity(Intent(activity, AccountActivity::class.java))
                             activity?.finishAffinity()
                         }
@@ -265,7 +265,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
     private fun changePassword(oldpassword: String, password: String) {
         var old = oldpassword
         if (oldpassword == "") {
-            old = SPUtil.get(MyApp.contextBase, "password", "") as String
+            old = SPUtil.get(BIKAApplication.contextBase, "password", "") as String
         }
 
         val body = RequestBody.create(
@@ -286,7 +286,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                     if (baseResponse.code == 200) {
 
                         //保存密码
-                        SPUtil.put(MyApp.contextBase, "password", password)
+                        SPUtil.put(BIKAApplication.contextBase, "password", password)
                         Toast.makeText(activity, "修改密码成功", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(

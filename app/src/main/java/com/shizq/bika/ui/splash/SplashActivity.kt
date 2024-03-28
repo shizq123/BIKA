@@ -1,11 +1,14 @@
 package com.shizq.bika.ui.splash
 
 import android.annotation.SuppressLint
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import androidx.core.splashscreen.SplashScreen
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Observer
+import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseActivity
@@ -13,6 +16,7 @@ import com.shizq.bika.bean.InitBean
 import com.shizq.bika.databinding.ActivitySplashBinding
 import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.main.MainActivity
+import com.shizq.bika.utils.AppVersion
 import com.shizq.bika.utils.SPUtil
 
 
@@ -34,13 +38,39 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
     }
 
     override fun initData() {
-        showProgressBar(true,"获取节点信息...")//加载时 view不可点击
-        viewModel.getInit()// 网络请求获取 节点一节点二
+        showProgressBar(true,"获取版本信息...")//加载时 view不可点击
+        viewModel.getLatestVersion()//版本检测
     }
 
     @SuppressLint("SetTextI18n")
     override fun initViewObservable() {
         super.initViewObservable()
+
+        //更新
+        viewModel.liveData_latest_version.observe(this) {
+            if (it != null && it.version.toInt() > AppVersion().code()) {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle("新版本 v${it.short_version}")
+                    .setMessage(it.release_notes)
+                    .setCancelable(false)
+                    .setPositiveButton("更新") { _, _ ->
+                        val intent = Intent()
+                        intent.action = "android.intent.action.VIEW"
+                        intent.data = Uri.parse(it.download_url)
+                        startActivity(intent)
+                        finish()
+                    }
+                    .setNegativeButton("取消"){_, _ ->
+                        showProgressBar(true,"获取节点信息...")
+                        viewModel.getInit()// 网络请求获取 节点一节点二
+                    }
+                    .show()
+            } else {
+                showProgressBar(true,"获取节点信息...")
+                viewModel.getInit()// 网络请求获取 节点一节点二
+            }
+        }
+
 
         //节点
         viewModel.liveData_init.observe(this, Observer { initBean: InitBean ->

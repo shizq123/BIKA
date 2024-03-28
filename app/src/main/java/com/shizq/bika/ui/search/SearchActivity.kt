@@ -9,7 +9,7 @@ import androidx.core.view.isGone
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
-import com.shizq.bika.MyApp
+import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivitySearchBinding

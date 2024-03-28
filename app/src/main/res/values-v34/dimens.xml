@@ -1,0 +1,3 @@
+<resources>
+    <bool name="appOnBackInvokedCallbackEnabled">true</bool>
+</resources>

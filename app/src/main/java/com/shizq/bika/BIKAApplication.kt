@@ -6,7 +6,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.shizq.bika.utils.SPUtil
 
-class MyApp : Application() {
+class BIKAApplication : Application() {
 
     companion object {
         @SuppressLint("StaticFieldLeak")

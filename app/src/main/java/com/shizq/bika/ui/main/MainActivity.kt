@@ -73,8 +73,6 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
 
         initListener()
 
-        viewModel.getUpdate()
-
         if (adapter_categories.data.size < 1) {
             //防止重复加载
             showProgressBar(true, "检查账号信息...")
@@ -494,23 +492,6 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 ).show()
             }
         }
-        //更新
-        viewModel.liveData_update.observe(this) {
-            if (it != null && it.version.toInt() > AppVersion().code()) {
-                MaterialAlertDialogBuilder(this)
-                    .setTitle("新版本 v${it.short_version}")
-                    .setMessage(it.release_notes)
-                    .setPositiveButton("更新") { _, _ ->
-                        val intent = Intent()
-                        intent.action = "android.intent.action.VIEW"
-                        intent.data = Uri.parse(it.download_url)
-                        startActivity(intent)
-                    }
-                    .setNegativeButton("取消", null)
-                    .show()
-            }
-        }
-
 
     }
 
