@@ -5,7 +5,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatRoomBlackListBean
 import com.shizq.bika.databinding.ItemChatRoomBlacklistBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 
 //新聊天室黑名单
 class ChatRoomBlackListAdapter :
@@ -18,7 +18,7 @@ class ChatRoomBlackListAdapter :
         position: Int
     ) {
 
-        GlideApp.with(holder.itemView)
+        Glide.with(holder.itemView)
             .load(bean.user.avatarUrl)
             .placeholder(R.drawable.placeholder_avatar_2)
             .into(binding.chatBlacklistAvatar)

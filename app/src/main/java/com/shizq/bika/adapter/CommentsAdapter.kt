@@ -8,7 +8,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.CommentsBean
 import com.shizq.bika.databinding.ItemCommentsBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.TimeUtil
 import com.shizq.bika.widget.IconTextSpan
@@ -32,7 +32,7 @@ class CommentsAdapter: BaseBindingAdapter<CommentsBean.Comments.Doc, ItemComment
                     else -> "(机器人)"
                 }
             //头像
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(
                     if (bean._user.avatar != null) {
                         GlideUrlNewKey(
@@ -48,7 +48,7 @@ class CommentsAdapter: BaseBindingAdapter<CommentsBean.Comments.Doc, ItemComment
 
             //服务器返回头像的像素是200*200 头像框是256*256 头像偏大正确应该是192*192来算 比例4:3 view要按比例设置
             //头像框
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(if (bean._user.character.isNullOrEmpty()) "" else bean._user.character )
                 .into(binding.commentsUserCharacter)
 
@@ -58,11 +58,11 @@ class CommentsAdapter: BaseBindingAdapter<CommentsBean.Comments.Doc, ItemComment
             binding.commentsUserVer.text = ""//等级
             binding.commentsUserGender.text = "未知"//性别
             //头像
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(R.drawable.placeholder_avatar_2)
                 .into(binding.commentsUserImage)
             //头像框
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load("")
                 .into(binding.commentsUserCharacter)
         }

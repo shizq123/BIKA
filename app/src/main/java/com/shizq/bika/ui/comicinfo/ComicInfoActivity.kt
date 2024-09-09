@@ -11,6 +11,7 @@ import androidx.core.view.size
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
@@ -102,7 +103,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         binding.comicinfoRecommend.adapter = mAdapterRecommend
 
         //加载数据
-        GlideApp.with(this)
+        Glide.with(this)
             .load(GlideUrlNewKey(fileserver, imageurl))
             .placeholder(R.drawable.placeholder_transparent)
             .into(binding.comicinfoImage)
@@ -229,7 +230,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 //                    if (imageurl == "") {
 //                        fileserver = it.data.comic.thumb.fileServer
 //                        imageurl = it.data.comic.thumb.path
-//                        GlideApp.with(this)
+//                        Glide.with(this)
 //                            .load(
 //                                GlideUrlNewKey(
 //                                    it.data.comic.thumb.fileServer,
@@ -323,7 +324,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 //
 //                    //上传者 头像
 //                    if (null != it.data.comic._creator.avatar) {
-//                        GlideApp.with(this)
+//                        Glide.with(this)
 //                            .load(
 //                                GlideUrlNewKey(
 //                                    it.data.comic._creator.avatar.fileServer,
@@ -416,7 +417,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                             if (imageurl == "") {
                                 fileserver = it.data.comic.thumb.fileServer
                                 imageurl = it.data.comic.thumb.path
-                                GlideApp.with(this@ComicInfoActivity)
+                                Glide.with(this@ComicInfoActivity)
                                     .load(
                                         GlideUrlNewKey(
                                             it.data.comic.thumb.fileServer,
@@ -519,7 +520,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
                             //上传者 头像
                             if (null != it.data.comic._creator.avatar) {
-                                GlideApp.with(this@ComicInfoActivity)
+                                Glide.with(this@ComicInfoActivity)
                                     .load(
                                         GlideUrlNewKey(
                                             it.data.comic._creator.avatar.fileServer,

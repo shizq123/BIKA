@@ -11,7 +11,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.shizq.bika.R
 import com.shizq.bika.bean.CollectionsBean
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 
 class CollectionsItemAdapter (val context: Context) : RecyclerView.Adapter<CollectionsItemAdapter.ViewHolder>() {
@@ -72,7 +72,7 @@ class CollectionsItemAdapter (val context: Context) : RecyclerView.Adapter<Colle
 
         fun setData(item: CollectionsBean.Collection.Comic) {
             mTextView.text = item.title
-            GlideApp.with(itemView)
+            Glide.with(itemView)
                 .load(GlideUrlNewKey(item.thumb.fileServer, item.thumb.path))
                 .centerCrop()
                 .placeholder(R.drawable.placeholder_transparent)

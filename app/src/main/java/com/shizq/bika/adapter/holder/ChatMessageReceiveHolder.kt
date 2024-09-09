@@ -8,7 +8,7 @@ import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.databinding.ItemChatMessageReceiveBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.dp
 import com.shizq.bika.widget.UserViewDialog
@@ -27,7 +27,7 @@ class ChatMessageReceiveHolder(viewGroup: ViewGroup, layoutId: Int) :
         binding.chatNameL.text = profile.name
 
         //头像 //拆分 利于缓存 省流量 加载更快
-        GlideApp.with(holder.itemView)
+        Glide.with(holder.itemView)
             .load(
                 if (profile.avatarUrl != null && profile.avatarUrl != "") {
                     val i: Int = profile.avatarUrl.indexOf("/static/")
@@ -79,7 +79,7 @@ class ChatMessageReceiveHolder(viewGroup: ViewGroup, layoutId: Int) :
             }
             if (reply.type == "IMAGE_MESSAGE") {
                 binding.chatReplyImage.visibility = View.VISIBLE
-                GlideApp.with(holder.itemView)
+                Glide.with(holder.itemView)
                     .load(reply.image)
                     .placeholder(R.drawable.placeholder_avatar_2)
                     .into(binding.chatReplyImage)
@@ -128,7 +128,7 @@ class ChatMessageReceiveHolder(viewGroup: ViewGroup, layoutId: Int) :
             } else {
                 binding.chatContentL.visibility = View.GONE
             }
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(message.medias[0])
                 .placeholder(R.drawable.placeholder_avatar_2)
 //                            .placeholder(binding.chatContentImageL.drawable as BitmapDrawable) //并不能用已经加载的图片做占位图

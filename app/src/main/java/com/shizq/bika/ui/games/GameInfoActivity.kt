@@ -17,7 +17,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityGameInfoBinding
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.image.ImageActivity
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.StatusBarUtil
 import com.shizq.bika.utils.dp
@@ -155,7 +155,7 @@ class GameInfoActivity : BaseActivity<ActivityGameInfoBinding, GameInfoViewModel
                 binding.gameTitle.paint.isFakeBoldText = true
 
                 //游戏icon
-                GlideApp.with(this)
+                Glide.with(this)
                     .load(GlideUrlNewKey(it.data.game.icon.fileServer, it.data.game.icon.path))
                     .placeholder(R.drawable.placeholder_transparent)
                     .into(binding.gameIcon)

@@ -6,7 +6,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.NotificationsBean
 import com.shizq.bika.databinding.ItemNotificationsBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.TimeUtil
 
@@ -20,7 +20,7 @@ class NotificationsAdapter :
     ) {
         binding.itemNotificationsTime.text=TimeUtil().time(bean.created_at)
         if (bean._sender.avatar != null) {//头像
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(
                     GlideUrlNewKey(
                         bean._sender.avatar.fileServer,
@@ -32,13 +32,13 @@ class NotificationsAdapter :
                 .into(binding.itemNotificationsUserImage)
         }
         if (bean._sender.character != null) { //头像框 新用户没有
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(bean._sender.character)
                 .into(binding.itemNotificationsUserCharacter)
         }
         if (bean.cover != null) { //头像框 新用户没有
             binding.itemNotificationsCover.visibility = View.VISIBLE
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(
                     GlideUrlNewKey(
                         bean.cover.fileServer,

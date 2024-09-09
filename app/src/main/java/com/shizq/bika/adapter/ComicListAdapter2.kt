@@ -6,7 +6,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ComicListBean2
 import com.shizq.bika.databinding.ItemComiclist2Binding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 
 //漫画列表的第二种数据类型
@@ -71,7 +71,7 @@ class ComicListAdapter2 : BaseBindingAdapter<ComicListBean2.Comics, ItemComiclis
         }
         binding.comiclistItemCategory.text = "分类：$ategory"
 
-        GlideApp.with(holder.itemView)
+        Glide.with(holder.itemView)
             .load(
                 //哔咔服务器问题 需自行修改图片请求路径
                 GlideUrlNewKey(

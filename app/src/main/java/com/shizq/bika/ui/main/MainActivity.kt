@@ -12,6 +12,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.recyclerview.widget.GridLayoutManager
+import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -100,7 +101,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         val slogan = SPUtil.get(this, "user_slogan", "") as String
 
         //头像
-        GlideApp.with(this@MainActivity)
+        Glide.with(this@MainActivity)
             .load(GlideUrlNewKey(viewModel.fileServer, viewModel.path))
             .centerCrop()
             .placeholder(R.drawable.placeholder_avatar_2)
@@ -109,7 +110,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     .findViewById(R.id.main_drawer_imageView) as ImageView
             )
         //头像框
-        GlideApp.with(this@MainActivity)
+        Glide.with(this@MainActivity)
             .load(character)
             .into(
                 binding.mainNavView.getHeaderView(0)
@@ -316,7 +317,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 if (it.data.user.avatar != null) {//头像
                     fileServer = it.data.user.avatar.fileServer
                     path = it.data.user.avatar.path
-                    GlideApp.with(this@MainActivity)
+                    Glide.with(this@MainActivity)
                         .load(
                             GlideUrlNewKey(
                                 fileServer,
@@ -333,7 +334,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 if (it.data.user.character != null) { //头像框 新用户没有
 
                     character = it.data.user.character
-                    GlideApp.with(this@MainActivity)
+                    Glide.with(this@MainActivity)
                         .load(character)
                         .into(
                             binding.mainNavView.getHeaderView(0)

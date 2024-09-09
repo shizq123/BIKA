@@ -6,7 +6,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.MyCommentsBean
 import com.shizq.bika.databinding.ItemMyCommentsBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.TimeUtil
@@ -50,7 +50,7 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
 
         if (fileServer != "") {//头像
 
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(
                     GlideUrlNewKey(
                         fileServer,
@@ -63,7 +63,7 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
         }
         if (character != "") { //头像框 新用户没有
 
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(character)
                 .into(binding.itemMyCommentsUserCharacter)
         }
