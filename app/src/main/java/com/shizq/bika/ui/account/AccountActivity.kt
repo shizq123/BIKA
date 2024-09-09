@@ -2,13 +2,14 @@ package com.shizq.bika.ui.account
 
 import android.os.Bundle
 import android.view.MenuItem
+import androidx.activity.addCallback
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityAccountBinding
 
 //登录注册
-class AccountActivity : BaseActivity<ActivityAccountBinding,AccountViewModel>() {
+class AccountActivity : BaseActivity<ActivityAccountBinding, AccountViewModel>() {
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_account
@@ -25,9 +26,9 @@ class AccountActivity : BaseActivity<ActivityAccountBinding,AccountViewModel>() 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
         when (item.itemId) {
             android.R.id.home -> {
-                onBackPressed() //只有注册页有返回键 所以回退到登录页
+                //只有注册页有返回键 所以回退到登录页
+                onBackPressedDispatcher.onBackPressed()
             }
-
         }
         return super.onOptionsItemSelected(item)
     }
