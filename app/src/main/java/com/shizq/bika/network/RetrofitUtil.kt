@@ -1,20 +1,22 @@
 package com.shizq.bika.network
 
+import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import java.util.concurrent.TimeUnit
 
 object RetrofitUtil {
     private var retrofit: Retrofit? = null
 
-    private var INFO = "http://68.183.234.72"
-    var BASE_URL = "https://picaapi.picacomic.com"
-    var UPDATE = "https://appcenter.ms"
+    private const val INFO = "http://68.183.234.72"
+    private const val BASE_URL = "https://picaapi.picacomic.com"
+    private const val UPDATE = "https://appcenter.ms"
     var LIVE_SERVER = "https://live-server.bidobido.xyz"//新聊天室
-    var URL = "" //用于记录
-
+    private var URL: String? = null //用于记录
 
     val service: ApiService by lazy {
         getRetrofit(BASE_URL).create(ApiService::class.java)
@@ -32,13 +34,14 @@ object RetrofitUtil {
         getRetrofit(LIVE_SERVER).create(ApiService::class.java)
     }
 
-    private fun getRetrofit(url:String): Retrofit {
-        if (retrofit == null||URL!=url) {
-            URL=url//记录baseurl
+    private fun getRetrofit(url: String): Retrofit {
+        if (retrofit == null || URL != url) {
+            URL = url//记录baseurl
             retrofit = Retrofit.Builder()
                 .baseUrl(url)
                 .client(getOkHttpClient())
                 .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(json.asConverterFactory("application/json; charset=UTF8".toMediaType()))
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build()
         }
@@ -46,15 +49,14 @@ object RetrofitUtil {
     }
 
     private fun getOkHttpClient(): OkHttpClient {
-
         val builder = OkHttpClient.Builder()
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
             .writeTimeout(30, TimeUnit.SECONDS)
-//            .retryOnConnectionFailure(true)// 错误重连
         if (URL == BASE_URL) {
             builder.dns(HttpDns())
         }
+
         return builder.build()
     }
 }

@@ -33,6 +33,7 @@ import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.observers.DefaultObserver
 import io.reactivex.rxjava3.schedulers.Schedulers
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import retrofit2.HttpException
 
@@ -268,7 +269,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
         }
 
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply {
                 addProperty("new_password", password)
                 addProperty("old_password", old)

@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import java.net.URLEncoder
 
@@ -62,7 +63,7 @@ class ComicListRepository {
                     RetrofitUtil.service.comicsSearchPOST(
                         page,
                         RequestBody.create(
-                            MediaType.parse("application/json; charset=UTF-8"),
+                            "application/json; charset=UTF-8".toMediaTypeOrNull(),
                             "{\"keyword\":\"$value\",\"sort\":\"$sort\"}"
                         ),
                         BaseHeaders(urlEnd.toString(), "POST").getHeaderMapAndToken()

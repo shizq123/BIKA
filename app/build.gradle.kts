@@ -88,6 +88,7 @@ dependencies {
     implementation(libs.retrofit)
     implementation(libs.retrofit.converter.gson)
     implementation(libs.retrofit.adapter.rxjava3)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
 
     implementation(libs.glide)
     ksp(libs.glide.compiler)
@@ -102,4 +103,6 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
 }

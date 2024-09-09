@@ -13,13 +13,14 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
 class ChatRoomListRepository {
     suspend fun getSignInFlow(): Flow<Result<ChatRoomSignInBean>> = flow {
         emit(Result.Loading)
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply {
                 addProperty("email", SPUtil.get("username", "") as String)
                 addProperty("password", SPUtil.get("password", "") as String)

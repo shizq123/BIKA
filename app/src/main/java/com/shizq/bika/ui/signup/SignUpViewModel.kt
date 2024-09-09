@@ -10,6 +10,7 @@ import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
 class SignUpViewModel(application: Application) : BaseViewModel(application) {
@@ -32,7 +33,7 @@ class SignUpViewModel(application: Application) : BaseViewModel(application) {
     fun requestSignUp() {
 //        Log.d("---json---",json.toString())
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply {
                 addProperty("answer1", answer1)
                 addProperty("answer2", answer2)
