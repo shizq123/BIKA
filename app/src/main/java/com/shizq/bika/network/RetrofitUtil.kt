@@ -1,8 +1,8 @@
 package com.shizq.bika.network
 
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.adapter.rxjava3.RxJava3CallAdapterFactory
 import retrofit2.converter.gson.GsonConverterFactory
@@ -17,6 +17,18 @@ object RetrofitUtil {
     private const val UPDATE = "https://appcenter.ms"
     var LIVE_SERVER = "https://live-server.bidobido.xyz"//新聊天室
     private var URL: String? = null //用于记录
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(30, TimeUnit.SECONDS)
+        .readTimeout(30, TimeUnit.SECONDS)
+        .writeTimeout(30, TimeUnit.SECONDS)
+        .dns(HttpDns())
+        .addInterceptor(
+            HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            }
+        )
+        .build()
 
     val service: ApiService by lazy {
         getRetrofit(BASE_URL).create(ApiService::class.java)
@@ -39,24 +51,12 @@ object RetrofitUtil {
             URL = url//记录baseurl
             retrofit = Retrofit.Builder()
                 .baseUrl(url)
-                .client(getOkHttpClient())
+                .client(client)
                 .addConverterFactory(GsonConverterFactory.create())
                 .addConverterFactory(json.asConverterFactory("application/json; charset=UTF8".toMediaType()))
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build()
         }
         return retrofit!!
-    }
-
-    private fun getOkHttpClient(): OkHttpClient {
-        val builder = OkHttpClient.Builder()
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
-        if (URL == BASE_URL) {
-            builder.dns(HttpDns())
-        }
-
-        return builder.build()
     }
 }
