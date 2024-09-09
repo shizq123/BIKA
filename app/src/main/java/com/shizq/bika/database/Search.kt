@@ -1,4 +1,4 @@
-package com.shizq.bika.db
+package com.shizq.bika.database
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity

@@ -1,15 +1,13 @@
 package com.shizq.bika.ui.comiclist
 
 import android.app.Application
-import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ComicListBean
 import com.shizq.bika.bean.ComicListBean2
-import com.shizq.bika.db.Search
-import com.shizq.bika.db.SearchRepository
+import com.shizq.bika.database.Search
+import com.shizq.bika.database.SearchRepository
 import com.shizq.bika.network.Result
-import com.shizq.bika.network.base.BaseResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch

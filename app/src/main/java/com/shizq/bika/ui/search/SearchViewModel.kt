@@ -5,8 +5,8 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.KeywordsBean
-import com.shizq.bika.db.Search
-import com.shizq.bika.db.SearchRepository
+import com.shizq.bika.database.Search
+import com.shizq.bika.database.SearchRepository
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver

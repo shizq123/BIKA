@@ -8,7 +8,6 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupWindow
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isVisible
@@ -22,7 +21,7 @@ import com.shizq.bika.adapter.ComicListAdapter
 import com.shizq.bika.adapter.ComicListAdapter2
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComiclistBinding
-import com.shizq.bika.db.Search
+import com.shizq.bika.database.Search
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import com.shizq.bika.ui.image.ImageActivity

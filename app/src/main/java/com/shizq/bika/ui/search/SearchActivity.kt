@@ -9,14 +9,11 @@ import androidx.core.view.isGone
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivitySearchBinding
-import com.shizq.bika.db.Search
-import com.shizq.bika.ui.account.AccountActivity
+import com.shizq.bika.database.Search
 import com.shizq.bika.ui.comiclist.ComicListActivity
-import com.shizq.bika.utils.SPUtil
 
 class SearchActivity : BaseActivity<ActivitySearchBinding, SearchViewModel>() {
 

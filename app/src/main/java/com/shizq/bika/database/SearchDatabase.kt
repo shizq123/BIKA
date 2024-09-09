@@ -1,4 +1,4 @@
-package com.shizq.bika.db
+package com.shizq.bika.database
 
 import android.content.Context
 import androidx.room.Database

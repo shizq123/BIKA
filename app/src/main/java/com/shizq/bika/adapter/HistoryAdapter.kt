@@ -4,7 +4,7 @@ import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.databinding.ItemHistroyBinding
-import com.shizq.bika.db.History
+import com.shizq.bika.database.History
 import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.TimeUtil

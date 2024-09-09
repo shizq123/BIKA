@@ -21,7 +21,7 @@ import com.shizq.bika.adapter.RecommendAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComicinfoBinding
 import com.shizq.bika.databinding.ItemEpisodeFooterViewBinding
-import com.shizq.bika.db.History
+import com.shizq.bika.database.History
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity

@@ -11,7 +11,7 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.HistoryAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityHistoryBinding
-import com.shizq.bika.db.History
+import com.shizq.bika.database.History
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 
 class HistoryActivity : BaseActivity<ActivityHistoryBinding, HistoryViewModel>() {

@@ -12,7 +12,7 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.ReaderAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityReaderBinding
-import com.shizq.bika.db.History
+import com.shizq.bika.database.History
 
 //阅读漫画页
 class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {

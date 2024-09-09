@@ -3,8 +3,8 @@ package com.shizq.bika.ui.history
 import android.app.Application
 import androidx.lifecycle.LiveData
 import com.shizq.bika.base.BaseViewModel
-import com.shizq.bika.db.History
-import com.shizq.bika.db.HistoryRepository
+import com.shizq.bika.database.History
+import com.shizq.bika.database.HistoryRepository
 
 class HistoryViewModel (application: Application) : BaseViewModel(application) {
     var page=0

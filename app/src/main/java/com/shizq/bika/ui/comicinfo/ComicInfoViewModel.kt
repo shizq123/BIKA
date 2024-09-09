@@ -7,8 +7,8 @@ import com.shizq.bika.bean.ActionBean
 import com.shizq.bika.bean.EpisodeBean
 import com.shizq.bika.bean.ComicInfoBean
 import com.shizq.bika.bean.RecommendBean
-import com.shizq.bika.db.History
-import com.shizq.bika.db.HistoryRepository
+import com.shizq.bika.database.History
+import com.shizq.bika.database.HistoryRepository
 import com.shizq.bika.network.Result
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow

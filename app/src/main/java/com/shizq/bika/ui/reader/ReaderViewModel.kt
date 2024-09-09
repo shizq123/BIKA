@@ -4,8 +4,8 @@ import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ComicsPictureBean
-import com.shizq.bika.db.History
-import com.shizq.bika.db.HistoryRepository
+import com.shizq.bika.database.History
+import com.shizq.bika.database.HistoryRepository
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
