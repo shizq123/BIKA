@@ -81,20 +81,20 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
                 //保存两个host地址
                 //2024.3.8 能跑以后改
                 if (!initBean.addresses.isNullOrEmpty()) {
-                SPUtil.put(this,"addresses1",initBean.addresses[0])
-                SPUtil.put(this,"addresses2",initBean.addresses[1])
+                SPUtil.put("addresses1", initBean.addresses[0])
+                SPUtil.put("addresses2", initBean.addresses[1])
                 }else if (!initBean.address.isNullOrEmpty()) {
                     //2024.3.8 哔咔数据改变
-                    SPUtil.put(this,"addresses1",initBean.address[0])
-                    SPUtil.put(this,"addresses2",initBean.address[1])
+                    SPUtil.put("addresses1", initBean.address[0])
+                    SPUtil.put("addresses2", initBean.address[1])
                 } else {
                     //2024.3.8 防闪退加入哔咔常用的ip(以后不确定能用)
-                    SPUtil.put(this,"addresses1","172.67.194.19")
-                    SPUtil.put(this,"addresses2","104.21.20.188")
+                    SPUtil.put("addresses1", "172.67.194.19")
+                    SPUtil.put("addresses2", "104.21.20.188")
                 }
 
                 //检查是否有token 没有就进行登录 显示登录提示框
-                if (SPUtil.get(this,"token", "") == "") {
+                if (SPUtil.get("token", "") == "") {
                     //没有token 挑转到登录页面
                     startActivity(AccountActivity::class.java)
                     finish()

@@ -33,9 +33,9 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
         setSupportActionBar(binding.userInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val fileServer = SPUtil.get(this, "user_fileServer", "") as String
-        val path = SPUtil.get(this, "user_path", "") as String
-        val character = SPUtil.get(this, "user_character", "") as String
+        val fileServer = SPUtil.get("user_fileServer", "") as String
+        val path = SPUtil.get("user_path", "") as String
+        val character = SPUtil.get("user_character", "") as String
 
         if (fileServer != "") {
             Glide.with(this)
@@ -50,13 +50,13 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
                 .into(binding.userCharacter)
         }
 
-        binding.userNickname.text = SPUtil.get(this, "user_name", "") as String
-        binding.userUsername.text = SPUtil.get(this, "username", "") as String
+        binding.userNickname.text = SPUtil.get("user_name", "") as String
+        binding.userUsername.text = SPUtil.get("username", "") as String
         binding.userBirthday.text =
-            TimeUtil().getBirthday(SPUtil.get(this, "user_birthday", "") as String)
+            TimeUtil().getBirthday(SPUtil.get("user_birthday", "") as String)
         binding.userCreatedAt.text =
-            TimeUtil().getBirthday(SPUtil.get(this, "user_created_at", "") as String)
-        binding.userSlogan.text = SPUtil.get(this, "user_slogan", "") as String
+            TimeUtil().getBirthday(SPUtil.get("user_created_at", "") as String)
+        binding.userSlogan.text = SPUtil.get("user_slogan", "") as String
 
         initListener()
     }
@@ -120,8 +120,8 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
                 binding.userSloganLayout.isEnabled = true
                 Toast.makeText(this, "更换头像失败", Toast.LENGTH_SHORT).show()
                 //失败切换为原来的头像
-                val fileServer = SPUtil.get(this, "user_fileServer", "") as String
-                val path = SPUtil.get(this, "user_path", "") as String
+                val fileServer = SPUtil.get("user_fileServer", "") as String
+                val path = SPUtil.get("user_path", "") as String
                 Glide.with(this)
                     .load(
                         if (path != "") {
@@ -176,12 +176,11 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
                     if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan
 
                 //存一下当前用户信息
-                SPUtil.put(this, "user_fileServer", fileServer)
-                SPUtil.put(this, "user_path", path)
-                SPUtil.put(this, "user_level", it.data.user.level)
-                SPUtil.put(this, "user_exp", it.data.user.exp)
+                SPUtil.put("user_fileServer", fileServer)
+                SPUtil.put("user_path", path)
+                SPUtil.put("user_level", it.data.user.level)
+                SPUtil.put("user_exp", it.data.user.exp)
                 SPUtil.put(
-                    this,
                     "user_slogan",
                     if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan
                 )

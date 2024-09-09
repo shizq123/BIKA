@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.UserMention
@@ -188,8 +187,8 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
         referenceId: String,
         userMentions: List<UserMention> = listOf()
     ): String {
-        val fileServer = SPUtil.get(BIKAApplication.contextBase, "user_fileServer", "") as String
-        val path = SPUtil.get(BIKAApplication.contextBase, "user_path", "") as String
+        val fileServer = SPUtil.get("user_fileServer", "") as String
+        val path = SPUtil.get("user_path", "") as String
         val avatarUrl =
             if (fileServer == "") "" else "${fileServer.replace("/static/", "")}/static/$path"
 
@@ -205,8 +204,8 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
         }
 
         val profile = mutableMapOf(
-            "name" to SPUtil.get(BIKAApplication.contextBase, "user_name", "") as String,
-            "level" to SPUtil.get(BIKAApplication.contextBase, "user_level", 1) as Int,
+            "name" to SPUtil.get("user_name", "") as String,
+            "level" to SPUtil.get("user_level", 1) as Int,
             "characters" to listOf<String>(),
             "avatarUrl" to avatarUrl,
         )

@@ -3,7 +3,6 @@ package com.shizq.bika.ui.main
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.JsonObject
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.*
@@ -111,8 +110,8 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
         val body = RequestBody.create(
             MediaType.parse("application/json; charset=UTF-8"),
             JsonObject().apply {
-                addProperty("email", SPUtil.get(BIKAApplication.contextBase, "username", "") as String)
-                addProperty("password", SPUtil.get(BIKAApplication.contextBase, "password", "") as String)
+                addProperty("email", SPUtil.get("username", "") as String)
+                addProperty("password", SPUtil.get("password", "") as String)
             }.asJsonObject.toString()
         )
         val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()

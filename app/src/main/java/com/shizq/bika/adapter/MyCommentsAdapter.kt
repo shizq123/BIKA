@@ -24,12 +24,12 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
         parent: ViewGroup,
         viewType: Int
     ): BaseBindingHolder<MyCommentsBean.Comments.Doc, ItemMyCommentsBinding> {
-        fileServer = SPUtil.get(parent.context, "user_fileServer", "") as String
-        path = SPUtil.get(parent.context, "user_path", "") as String
-        character = SPUtil.get(parent.context, "user_character", "") as String
-        name = SPUtil.get(parent.context, "user_name", "") as String
-        gender = SPUtil.get(parent.context, "user_gender", "") as String
-        level = SPUtil.get(parent.context, "user_level", 1) as Int
+        fileServer = SPUtil.get("user_fileServer", "") as String
+        path = SPUtil.get("user_path", "") as String
+        character = SPUtil.get("user_character", "") as String
+        name = SPUtil.get("user_name", "") as String
+        gender = SPUtil.get("user_gender", "") as String
+        level = SPUtil.get("user_level", 1) as Int
 
         return super.onCreateViewHolder(parent, viewType)
     }

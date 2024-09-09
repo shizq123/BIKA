@@ -45,8 +45,8 @@ class SignInFragment : BaseFragment<FragmentSigninBinding, SignInViewModel>() {
 
         binding.clickListener = ClickListener()
 
-        binding.signinUsername.setText(SPUtil.get(context, "username", "") as String)
-        binding.signinPassword.setText(SPUtil.get(context, "password", "") as String)
+        binding.signinUsername.setText(SPUtil.get("username", "") as String)
+        binding.signinPassword.setText(SPUtil.get("password", "") as String)
 
     }
 
@@ -131,10 +131,10 @@ class SignInFragment : BaseFragment<FragmentSigninBinding, SignInViewModel>() {
         viewModel.liveData_signin.observe(this) {
             if (it.code == 200) {
                 //保存token 账号密码
-                SPUtil.put(context, "token", it.data.token)
+                SPUtil.put("token", it.data.token)
 
-                SPUtil.put(context, "username", binding.signinUsername.text.toString().trim())
-                SPUtil.put(context, "password", binding.signinPassword.text.toString().trim())
+                SPUtil.put("username", binding.signinUsername.text.toString().trim())
+                SPUtil.put("password", binding.signinPassword.text.toString().trim())
 
                 Toast.makeText(
                     context,

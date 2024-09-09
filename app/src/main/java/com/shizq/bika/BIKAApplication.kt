@@ -18,13 +18,14 @@ class BIKAApplication : Application() {
         contextBase = this
         DynamicColors.applyToActivitiesIfAvailable(this)//根据壁纸修改App主题颜色
 
-        val nightMode=SPUtil.get(this,"setting_night", "跟随系统") as String
+        SPUtil.init(this)
+        val nightMode = SPUtil.get("setting_night", "跟随系统") as String
         AppCompatDelegate.setDefaultNightMode(
             when (nightMode) {
-                "开启"->AppCompatDelegate.MODE_NIGHT_YES
-                "关闭"->AppCompatDelegate.MODE_NIGHT_NO
-                "跟随系统"->AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
-                else->AppCompatDelegate.MODE_NIGHT_NO
+                "开启" -> AppCompatDelegate.MODE_NIGHT_YES
+                "关闭" -> AppCompatDelegate.MODE_NIGHT_NO
+                "跟随系统" -> AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM
+                else -> AppCompatDelegate.MODE_NIGHT_NO
             }
         )
 

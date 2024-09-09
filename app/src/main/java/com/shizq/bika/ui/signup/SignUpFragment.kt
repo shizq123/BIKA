@@ -371,8 +371,8 @@ class SignUpFragment : BaseFragment<FragmentSignupBinding, SignUpViewModel>() {
                 // 注册成功 保存账号密码
 //                MmkvUtils.putSet("username", viewModel.email.toString())
 //                MmkvUtils.putSet("password", viewModel.password.toString())
-                SPUtil.put(context, "username", viewModel.email.toString())
-                SPUtil.put(context, "password", viewModel.password.toString())
+                SPUtil.put("username", viewModel.email.toString())
+                SPUtil.put("password", viewModel.password.toString())
                 // 提示是否继续登录
                 MaterialAlertDialogBuilder(activity as AppCompatActivity)
                     .setTitle("注册成功是否继续登录")

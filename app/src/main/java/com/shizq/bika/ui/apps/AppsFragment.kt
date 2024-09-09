@@ -67,7 +67,7 @@ class AppsFragment : BaseFragment<FragmentAppsBinding, AppsFragmentViewModel>() 
                 intent.action = "android.intent.action.VIEW"
                 intent.data = Uri.parse(
                     "${mPicaAppsAdapter.getItemData(position).url}/?token=${
-                        SPUtil.get(context, "token", "")
+                        SPUtil.get("token", "")
                     }&secret=pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
                 )
                 startActivity(intent)

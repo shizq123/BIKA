@@ -6,7 +6,6 @@ import android.os.Binder
 import android.os.IBinder
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.websocket.ChatWebSocketManager
@@ -46,7 +45,7 @@ class ChatWebSocketService : Service() {
     fun webSocket(roomId:String) {
         val url = RetrofitUtil.LIVE_SERVER +
                 "/?token=" +
-                SPUtil.get(BIKAApplication.contextBase, "chat_token", "") as String +
+                SPUtil.get("chat_token", "") as String +
                 "&room=" + roomId
         webSocketManager.init(url, object :
             IReceiveMessage {
@@ -68,7 +67,7 @@ class ChatWebSocketService : Service() {
                     if (bean.type == "TEXT_MESSAGE" || bean.type == "IMAGE_MESSAGE") {
                         //防止重复显示 屏蔽掉自己发送的消息
                         if (bean.data.profile.name !=
-                            SPUtil.get(BIKAApplication.contextBase, "user_name", "") as String
+                            SPUtil.get("user_name", "") as String
                         ) {
                             liveData_message.postValue(bean)
                         }
