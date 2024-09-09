@@ -28,6 +28,5 @@ class BIKAApplication : Application() {
                 else -> AppCompatDelegate.MODE_NIGHT_NO
             }
         )
-
     }
 }

@@ -2,14 +2,16 @@ package com.shizq.bika.ui.reader
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ComicsPictureBean
-import com.shizq.bika.database.History
-import com.shizq.bika.database.HistoryRepository
+import com.shizq.bika.database.BikaDatabase
+import com.shizq.bika.database.model.HistoryEntity
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
+import kotlinx.coroutines.launch
 
 class ReaderViewModel(application: Application) : BaseViewModel(application) {
     var order = 1
@@ -42,14 +44,16 @@ class ReaderViewModel(application: Application) : BaseViewModel(application) {
             })
     }
 
-    private val historyRepository: HistoryRepository = HistoryRepository(application)
+    private val historyRepository = BikaDatabase(application).historyDao()
     //通过 漫画的id查询
-    fun getHistory(): List<History>{
-        return historyRepository.getHistory(bookId)
+    suspend fun getHistory(): List<HistoryEntity>{
+        return historyRepository.gatHistory(bookId!!)
     }
 
-    fun updateHistory(vararg history: History?) {
-        historyRepository.updateHistory(*history)
+    fun updateHistory(vararg historyEntity: HistoryEntity) {
+        viewModelScope.launch {
+            historyRepository.updateHistory(*historyEntity)
+        }
     }
 
 }

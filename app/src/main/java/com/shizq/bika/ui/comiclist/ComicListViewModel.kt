@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ComicListBean
 import com.shizq.bika.bean.ComicListBean2
-import com.shizq.bika.database.Search
-import com.shizq.bika.database.SearchRepository
+import com.shizq.bika.database.BikaDatabase
+import com.shizq.bika.database.model.SearchEntity
 import com.shizq.bika.network.Result
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,7 +40,7 @@ class ComicListViewModel(application: Application) : BaseViewModel(application) 
     fun getComicList() {
         page++//每次请求加1
         viewModelScope.launch {
-            repository.getComicListFlow(tag.toString(),sort,page,value.toString()).collect {
+            repository.getComicListFlow(tag.toString(), sort, page, value.toString()).collect {
                 _comicList.value = it
             }
         }
@@ -54,8 +54,10 @@ class ComicListViewModel(application: Application) : BaseViewModel(application) 
         }
     }
 
-    private val searchRepository: SearchRepository = SearchRepository(application)
-    fun insertSearch(vararg search: Search?) {
-        searchRepository.insertSearch(*search)
+    private val searchDao = BikaDatabase(application).searchDao()
+    fun insertSearch(vararg searchEntities: SearchEntity) {
+        viewModelScope.launch {
+            searchDao.insertSearch(*searchEntities)
+        }
     }
 }

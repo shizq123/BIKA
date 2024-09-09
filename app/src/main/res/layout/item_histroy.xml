@@ -3,7 +3,7 @@
     <data>
         <variable
             name="m"
-            type="com.shizq.bika.database.History" />
+            type="com.shizq.bika.database.model.HistoryEntity" />
     </data>
 
     <com.google.android.material.card.MaterialCardView

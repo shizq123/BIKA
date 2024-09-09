@@ -21,7 +21,7 @@ import com.shizq.bika.adapter.RecommendAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComicinfoBinding
 import com.shizq.bika.databinding.ItemEpisodeFooterViewBinding
-import com.shizq.bika.database.History
+import com.shizq.bika.database.model.HistoryEntity
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
@@ -539,7 +539,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                             //记录历史
                             val historyList = viewModel.getHistory()
                             if (historyList.isNotEmpty()) {
-                                val history = History(
+                                val historyEntity = HistoryEntity(
                                     System.currentTimeMillis(),
                                     historyList[0].title,
                                     historyList[0].fileServer,
@@ -555,12 +555,12 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                                     historyList[0].ep,
                                     historyList[0].page
                                 )
-                                history.id = historyList[0].id
+                                historyEntity.id = historyList[0].id
                                 //这个进行更新 //更新好象要主键
-                                viewModel.updateHistory(history)//更新搜索记录
+                                viewModel.updateHistory(historyEntity)//更新搜索记录
 
                             } else {
-                                val history = History(
+                                val historyEntity = HistoryEntity(
                                     System.currentTimeMillis(),
                                     viewModel.title.toString(),
                                     fileserver,
@@ -577,7 +577,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                                     ""
                                 )
                                 //这个进行更新 //更新好象要主键
-                                viewModel.insertHistory(history)//添加搜索记录
+                                viewModel.insertHistory(historyEntity)//添加搜索记录
                             }
                         }
                     }

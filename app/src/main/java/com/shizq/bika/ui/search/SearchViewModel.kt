@@ -3,14 +3,16 @@ package com.shizq.bika.ui.search
 import android.app.Application
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.viewModelScope
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.KeywordsBean
-import com.shizq.bika.database.Search
-import com.shizq.bika.database.SearchRepository
+import com.shizq.bika.database.BikaDatabase
+import com.shizq.bika.database.model.SearchEntity
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
+import kotlinx.coroutines.launch
 
 class SearchViewModel(application: Application) : BaseViewModel(application) {
     val liveDataSearchKey: MutableLiveData<BaseResponse<KeywordsBean>> by lazy {
@@ -18,7 +20,7 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun getKey() {
-        val headers= BaseHeaders("keywords","GET").getHeaderMapAndToken()
+        val headers = BaseHeaders("keywords", "GET").getHeaderMapAndToken()
 
         RetrofitUtil.service.keywordsGet(headers)
             .doOnSubscribe(this@SearchViewModel)
@@ -34,21 +36,25 @@ class SearchViewModel(application: Application) : BaseViewModel(application) {
             })
     }
 
-    private val searchRepository: SearchRepository = SearchRepository(application)
+    private val searchRepository = BikaDatabase(application).searchDao()
     val allSearchLive: LiveData<List<String>>
-        get() = searchRepository.listLiveData
+        get() = searchRepository.allSearchLive
 
-    fun insertSearch(vararg search: Search?) {
-        searchRepository.insertSearch(*search)
+    fun insertSearch(vararg searchEntities: SearchEntity) {
+        viewModelScope.launch {
+            searchRepository.insertSearch(*searchEntities)
+        }
     }
 
-    fun deleteSearch(vararg search: Search?) {
-        searchRepository.deleteSearch(*search)
+    fun deleteSearch(vararg searchEntities: SearchEntity) {
+        viewModelScope.launch {
+            searchRepository.deleteSearch(*searchEntities)
+        }
     }
 
     fun deleteAllSearch() {
-        searchRepository.deleteAllSearch()
+        viewModelScope.launch {
+            searchRepository.deleteAllSearch()
+        }
     }
-
-
 }
