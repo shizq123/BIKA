@@ -7,8 +7,8 @@ import com.shizq.bika.bean.ActionBean
 import com.shizq.bika.bean.EpisodeBean
 import com.shizq.bika.bean.ComicInfoBean
 import com.shizq.bika.bean.RecommendBean
-import com.shizq.bika.db.History
-import com.shizq.bika.db.HistoryRepository
+import com.shizq.bika.database.BikaDatabase
+import com.shizq.bika.database.model.HistoryEntity
 import com.shizq.bika.network.Result
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -16,13 +16,13 @@ import kotlinx.coroutines.launch
 
 class ComicInfoViewModel(application: Application) : BaseViewModel(application) {
     var bookId: String = ""
-    var title:String? =null
-    var author:String? =null
-    var totalViews:String? =null
+    var title: String? = null
+    var author: String? = null
+    var totalViews: String? = null
     var episodePage = 0
     var creatorId: String = ""
     var totalEps: Int = 1
-    var creator:ComicInfoBean.Comic.Creator? =null
+    var creator: ComicInfoBean.Comic.Creator? = null
 
     private val repository = ComicInfoRepository()
 
@@ -36,6 +36,7 @@ class ComicInfoViewModel(application: Application) : BaseViewModel(application) 
     val recommend: StateFlow<Result<RecommendBean>?> = _recommend
     private val _favourite = MutableStateFlow<Result<ActionBean>?>(null)
     val favourite: StateFlow<Result<ActionBean>?> = _favourite
+
     //漫画信息
     fun getInfo() {
         viewModelScope.launch {
@@ -50,7 +51,7 @@ class ComicInfoViewModel(application: Application) : BaseViewModel(application) 
         //每次页数加1
         episodePage++
         viewModelScope.launch {
-            repository.getEpisodeFlow(bookId,episodePage.toString()).collect {
+            repository.getEpisodeFlow(bookId, episodePage.toString()).collect {
                 _episode.value = it
             }
         }
@@ -83,18 +84,21 @@ class ComicInfoViewModel(application: Application) : BaseViewModel(application) 
         }
     }
 
-    private val historyRepository: HistoryRepository = HistoryRepository(application)
+    private val historyDao = BikaDatabase(application).historyDao()
 
     //通过 漫画的id查询
-    fun getHistory(): List<History>{
-        return historyRepository.getHistory(bookId)
+    suspend fun getHistory(): List<HistoryEntity> {
+        return historyDao.gatHistory(bookId)
     }
 
-    fun updateHistory(vararg history: History?) {
-        historyRepository.updateHistory(*history)
+    fun updateHistory(vararg historyEntity: HistoryEntity) {
+        viewModelScope.launch {
+            historyDao.updateHistory(*historyEntity)
+        }
     }
-    fun insertHistory(vararg history: History?) {
-        historyRepository.insertHistory(*history)
+
+    fun insertHistory(vararg historyEntity: HistoryEntity) {
+        viewModelScope.launch { historyDao.insertHistory(*historyEntity) }
     }
 
 }

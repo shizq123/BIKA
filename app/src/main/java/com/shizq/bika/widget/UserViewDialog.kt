@@ -11,6 +11,7 @@ import android.widget.*
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
+import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.R
 import com.shizq.bika.bean.*
@@ -19,7 +20,6 @@ import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
 import com.shizq.bika.ui.image.ImageActivity
-import com.shizq.bika.utils.GlideApp
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.StatusBarUtil
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -233,7 +233,7 @@ class UserViewDialog(val context: AppCompatActivity) {
             dialog_slogan.text = slogan
         }
         //头像
-        GlideApp.with(context)
+        Glide.with(context)
             .load(
                 if (path() != "") {
                     GlideUrlNewKey(fileServer(), path())
@@ -245,7 +245,7 @@ class UserViewDialog(val context: AppCompatActivity) {
             .into(dialog_image)
 
         //头像框
-        GlideApp.with(context)
+        Glide.with(context)
             .load(if (character.isNullOrEmpty()) "" else character)
             .into(dialog_character)
 

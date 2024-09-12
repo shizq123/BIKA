@@ -5,7 +5,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatRoomListBean
 import com.shizq.bika.databinding.ItemChatRoomListBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 
 //新聊天室列表
 class ChatRoomListAdapter :
@@ -18,7 +18,7 @@ class ChatRoomListAdapter :
         position: Int
     ) {
 
-        GlideApp.with(holder.itemView)
+        Glide.with(holder.itemView)
             .load(bean.icon)
             .placeholder(R.drawable.placeholder_avatar_2)
             .into(binding.chatRoomsImage)

@@ -11,6 +11,7 @@ import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
 class SignInViewModel(application: Application) : BaseViewModel(application) {
@@ -35,7 +36,7 @@ class SignInViewModel(application: Application) : BaseViewModel(application) {
 
     fun getSignIn() {
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply {
                 addProperty("email", email)
                 addProperty("password", password)
@@ -58,7 +59,7 @@ class SignInViewModel(application: Application) : BaseViewModel(application) {
 
     fun getForgot() {
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply { addProperty("email", forgot_email) }.asJsonObject.toString()
         )
         val headers = BaseHeaders("auth/forgot-password", "POST").getHeaders()
@@ -78,7 +79,7 @@ class SignInViewModel(application: Application) : BaseViewModel(application) {
 
     fun resetPassword() {
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply {
                 addProperty("answer", forgot_answer)
                 addProperty("email", forgot_email)

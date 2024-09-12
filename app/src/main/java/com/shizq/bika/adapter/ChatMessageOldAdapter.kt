@@ -9,14 +9,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatMessageOldBean
 import com.shizq.bika.databinding.ItemChatMessageOldBinding
 import com.shizq.bika.utils.Base64Util
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.dp
@@ -39,7 +38,6 @@ class ChatMessageOldAdapter :
             binding.chatNotification.visibility = View.VISIBLE
             binding.chatNotification.text = bean.message
         } else if (bean.name != null && bean.name == SPUtil.get(
-                BIKAApplication.contextBase,
                 "user_name",
                 ""
             ) as String
@@ -51,12 +49,12 @@ class ChatMessageOldAdapter :
             binding.chatNameR.text = bean.name
 
             //头像框
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(if (bean.character != null && bean.character != "") bean.character else "")
                 .into(binding.chatCharacterR)
 
             //头像
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(
                     if (bean.avatar != null && bean.avatar != "") {
                         val i: Int = bean.avatar.indexOf("/static/")
@@ -143,12 +141,12 @@ class ChatMessageOldAdapter :
             binding.chatNameL.text = bean.name
 
             //头像框
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(if (bean.character != null && bean.character != "") bean.character else "")
                 .into(binding.chatCharacterL)
 
             //头像 //拆分 利于缓存 省流量 加载更快
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(
                     if (bean.avatar != null && bean.avatar != "") {
                         val i: Int = bean.avatar.indexOf("/static/")

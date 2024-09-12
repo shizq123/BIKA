@@ -11,7 +11,7 @@ import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.shizq.bika.R
 import com.shizq.bika.bean.GameInfoBean
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.dp
 
@@ -63,7 +63,7 @@ class GameScreenshotAdapter(val context: Context) :
 
         fun setData(bean: GameInfoBean.Game, position: Int) {
             val item = bean.screenshots[position]
-            GlideApp.with(itemView)
+            Glide.with(itemView)
                 .load(GlideUrlNewKey(item.fileServer, item.path))
                 .centerCrop()
                 .placeholder(R.drawable.placeholder_transparent)

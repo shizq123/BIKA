@@ -4,7 +4,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.CategoriesBean
 import com.shizq.bika.databinding.ItemCategoriesBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 
 //分类
@@ -17,7 +17,7 @@ class CategoriesAdapter :
         binding: ItemCategoriesBinding,
         position: Int
     ) {
-        GlideApp.with(holder.itemView)
+        Glide.with(holder.itemView)
             .load(
                 //判断是否是手动添加的数据
                 if (bean.imageRes == null) {

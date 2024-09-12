@@ -1,9 +1,9 @@
 plugins {
-    id("com.android.application")
-    id("org.jetbrains.kotlin.android")
-    id("com.google.devtools.ksp")
     id("kotlin-kapt")
-//    id("kotlinx-serialization")
+    alias(libs.plugins.android.application)
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -12,7 +12,7 @@ android {
 
     defaultConfig {
         applicationId = "com.shizq.bika"
-        minSdk = 24 //最低支持Android7.0
+        minSdk = 24
         targetSdk = 34
         versionCode = 8
         versionName = "1.0.7"
@@ -30,18 +30,10 @@ android {
         }
     }
     buildTypes {
-
-        getByName("debug") {
-//            isMinifyEnabled = true
-//            isShrinkResources = true
+        debug {
             signingConfig = signingConfigs.getByName("keyStore")
-//            proguardFiles(
-//                getDefaultProguardFile("proguard-android-optimize.txt"),
-//                "proguard-rules.pro",
-//                "retrofit2.pro"
-//            )
         }
-        getByName("release") {
+        release {
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("keyStore")
@@ -51,10 +43,6 @@ android {
                 "retrofit2.pro"
             )
         }
-    }
-
-    kotlinOptions {
-        jvmTarget = "17"
     }
 
     buildFeatures {
@@ -68,76 +56,56 @@ android {
     }
 
     applicationVariants.all {
-        val variant = this
-//        val versionCodes =
-//            mapOf("armeabi-v7a" to 1, "arm64-v8a" to 2, "x86" to 3, "x86_64" to 4)
-
-        variant.outputs
+        outputs
             .map { it as com.android.build.gradle.internal.api.ApkVariantOutputImpl }
             .forEach { output ->
-//                val abi = if (output.getFilter("ABI") != null)
-//                    output.getFilter("ABI")
-//                else
-//                    "all"
-
-                output.outputFileName = "BIKA_v${variant.versionName}.apk"
-//                if(versionCodes.containsKey(abi))
-//                {
-//                    output.versionCodeOverride = (1000000 * versionCodes[abi]!!).plus(variant.versionCode)
-//                }
-//                else
-//                {
-//                    return@forEach
-//                }
+                output.outputFileName = "BIKA_v${versionName}.apk"
             }
     }
-
-
 }
 
 dependencies {
-    implementation("androidx.test:core-ktx:1.5.0")
-    testImplementation("junit:junit:4.13.2")
-    androidTestImplementation("androidx.test.ext:junit:1.1.5")
-    androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+    implementation(libs.material)
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.appcompat)
 
-    implementation("com.google.android.material:material:1.11.0")
-    implementation("androidx.core:core-ktx:1.12.0")
-    implementation("androidx.appcompat:appcompat:1.6.1")
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.livedata.ktx)
 
-    implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-viewmodel-ktx:2.7.0")
-    implementation("androidx.lifecycle:lifecycle-livedata-ktx:2.7.0")
+    implementation(libs.androidx.recyclerview)
+    implementation(libs.androidx.navigation.fragment.ktx)
+    implementation(libs.androidx.navigation.ui.ktx)
+    implementation(libs.androidx.preference.ktx)
+    implementation(libs.androidx.core.splashscreen)
 
-    implementation("androidx.recyclerview:recyclerview:1.3.2")
-    implementation("androidx.navigation:navigation-fragment-ktx:2.7.7")
-    implementation("androidx.navigation:navigation-ui-ktx:2.7.7")
-    implementation("androidx.preference:preference-ktx:1.2.1")//设置页
-    implementation("androidx.core:core-splashscreen:1.0.1")//启动页
-//    implementation "org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.4.1" //序列化
+    implementation(libs.androidx.room.runtime)
+    implementation(libs.androidx.room.ktx)
+    ksp(libs.androidx.room.compiler)
 
-    implementation("androidx.room:room-runtime:2.6.1") //数据库
-    kapt("androidx.room:room-compiler:2.6.1") //数据库
+    implementation(libs.byrecyclerview)
 
-    implementation("com.github.youlookwhat:ByRecyclerView:1.3.6")
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.retrofit.adapter.rxjava3)
+    implementation(libs.retrofit.converter.kotlinx.serialization)
 
-    implementation("com.squareup.retrofit2:retrofit:2.9.0")
-    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.retrofit2:adapter-rxjava3:2.9.0")
+    implementation(libs.glide)
+    ksp(libs.glide.compiler)
+    implementation(libs.glide.okhttp3)
 
-    implementation("com.github.bumptech.glide:glide:4.14.2")//  Glide
-    kapt("com.github.bumptech.glide:compiler:4.14.2") //  Glide
-    implementation("com.github.bumptech.glide:okhttp3-integration:4.14.2")//  Glide
+    implementation(libs.rxandroid)
 
-//    implementation("io.reactivex.rxjava3:rxjava:3.1.5")
-    implementation("io.reactivex.rxjava3:rxandroid:3.0.0")
+    implementation(libs.pictureselector)
+    implementation(libs.ucrop)
 
-    implementation("io.github.lucksiege:pictureselector:v3.10.7")//图片选择器
-    implementation("io.github.lucksiege:ucrop:v3.10.7")//修剪
+    implementation(libs.photoview)
 
-    implementation("com.github.chrisbanes:PhotoView:2.3.0")
+    implementation(libs.kotlinx.coroutines.core)
+    implementation(libs.kotlinx.coroutines.android)
+    implementation(libs.kotlinx.serialization.json)
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging.interceptor)
 
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.1")
-
+    implementation(libs.commons.codec)
 }

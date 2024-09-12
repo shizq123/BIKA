@@ -16,6 +16,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
 class CommentsViewModel(application: Application) : BaseViewModel(application) {
@@ -179,7 +180,7 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
             comicsOrGames.toString(),
             id.toString(),
             RequestBody.create(
-                MediaType.parse("application/json; charset=UTF-8"),
+                "application/json; charset=UTF-8".toMediaTypeOrNull(),
                 "{\"content\":\"$comments\"}"
             ),
             BaseHeaders("$comicsOrGames/$id/comments", "POST").getHeaderMapAndToken()
@@ -203,7 +204,7 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
         RetrofitUtil.service.seedSubCommentsPost(
             commentId.toString(),
             RequestBody.create(
-                MediaType.parse("application/json; charset=UTF-8"),
+                "application/json; charset=UTF-8".toMediaTypeOrNull(),
                 "{\"content\":\"$comments\"}"
             ),
             BaseHeaders("comments/$commentId", "POST").getHeaderMapAndToken()

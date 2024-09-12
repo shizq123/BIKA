@@ -133,21 +133,21 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
                     CommentsBean.User(
                         "",
                         CommentsBean.User.Avatar(
-                            fileServer = SPUtil.get(this, "user_fileServer", "") as String,
+                            fileServer = SPUtil.get("user_fileServer", "") as String,
                             "",
-                            path = SPUtil.get(this, "user_path", "") as String
+                            path = SPUtil.get("user_path", "") as String
 
                         ),
-                        character = SPUtil.get(this, "user_character", "") as String,
+                        character = SPUtil.get("user_character", "") as String,
                         emptyList(),
                         0,
-                        gender = SPUtil.get(this, "user_gender", "") as String,
-                        level = SPUtil.get(this, "user_level", 1) as Int,
-                        name = SPUtil.get(this, "user_name", "") as String,
+                        gender = SPUtil.get("user_gender", "") as String,
+                        level = SPUtil.get("user_level", 1) as Int,
+                        name = SPUtil.get("user_name", "") as String,
                         "",
-                        slogan = SPUtil.get(this, "user_slogan", "") as String,
-                        title = SPUtil.get(this, "user_title", "") as String,
-                        verified = SPUtil.get(this, "user_verified", false) as Boolean
+                        slogan = SPUtil.get("user_slogan", "") as String,
+                        title = SPUtil.get("user_title", "") as String,
+                        verified = SPUtil.get("user_verified", false) as Boolean
                     ),
                     0,
                     data.content,

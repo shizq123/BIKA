@@ -8,7 +8,6 @@ import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
 import com.google.gson.JsonParser
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.bean.ChatMessageOldBean
 import com.shizq.bika.network.websocket.IReceiveMessage
 import com.shizq.bika.network.websocket.WebSocketManager
@@ -150,9 +149,9 @@ class ChatWebSocketServiceOld : Service() {
         base64Image: String = "",
         base64Audio: String = ""
     ) {
-        val fileServer = SPUtil.get(BIKAApplication.contextBase, "user_fileServer", "") as String
-        val path = SPUtil.get(BIKAApplication.contextBase, "user_path", "") as String
-        val character = SPUtil.get(BIKAApplication.contextBase, "user_character", "") as String
+        val fileServer = SPUtil.get("user_fileServer", "") as String
+        val path = SPUtil.get("user_path", "") as String
+        val character = SPUtil.get("user_character", "") as String
 
         val map = mutableMapOf<String, Any>()
         map["at"] = if (base64Audio == "") atname else ""
@@ -165,20 +164,20 @@ class ChatWebSocketServiceOld : Service() {
             map["character"] = character
         }
 
-        map["email"] = SPUtil.get(BIKAApplication.contextBase, "username", "") as String
-        map["gender"] = SPUtil.get(BIKAApplication.contextBase, "user_gender", "bot") as String
+        map["email"] = SPUtil.get("username", "") as String
+        map["gender"] = SPUtil.get("user_gender", "bot") as String
         map["image"] = base64Image
-        map["level"] = SPUtil.get(BIKAApplication.contextBase, "user_level", 1) as Int
+        map["level"] = SPUtil.get("user_level", 1) as Int
         map["message"] = text
-        map["name"] = SPUtil.get(BIKAApplication.contextBase, "user_name", "") as String
+        map["name"] = SPUtil.get("user_name", "") as String
         map["platform"] = "android"
         map["reply"] = if (base64Audio == "") reply else ""
         map["reply_name"] = if (base64Audio == "") reply_name else ""
-        map["title"] = SPUtil.get(BIKAApplication.contextBase, "user_title", "") as String
+        map["title"] = SPUtil.get("user_title", "") as String
         map["type"] = if (base64Image != "") 4 else if (base64Audio != "") 5 else 3
         map["unique_id"] = ""
-        map["user_id"] = SPUtil.get(BIKAApplication.contextBase, "user_id", "") as String
-        map["verified"] = SPUtil.get(BIKAApplication.contextBase, "user_verified", false) as Boolean
+        map["user_id"] = SPUtil.get("user_id", "") as String
+        map["verified"] = SPUtil.get("user_verified", false) as Boolean
 
         val json = Gson().toJson(map)
         val array = ArrayList<String>()
@@ -191,9 +190,9 @@ class ChatWebSocketServiceOld : Service() {
     }
 
     var init = {
-        val fileServer = SPUtil.get(application, "user_fileServer", "") as String
-        val path = SPUtil.get(application, "user_path", "") as String
-        val character = SPUtil.get(application, "user_character", "") as String
+        val fileServer = SPUtil.get("user_fileServer", "") as String
+        val path = SPUtil.get("user_path", "") as String
+        val character = SPUtil.get("user_character", "") as String
 
         val map = mutableMapOf<String, Any>()
 
@@ -204,21 +203,21 @@ class ChatWebSocketServiceOld : Service() {
             avatarMap["path"] = path
             map["avatar"] = avatarMap
         }
-        map["birthday"] = SPUtil.get(application, "user_birthday", "") as String
+        map["birthday"] = SPUtil.get("user_birthday", "") as String
         if (character != "") {
             map["character"] = character
         }
         map["characters"] = ArrayList<Any>()
-        map["email"] = SPUtil.get(application, "username", "") as String
-        map["exp"] = SPUtil.get(application, "user_exp", 0) as Int
-        map["gender"] = SPUtil.get(application, "user_gender", "bot") as String
-        map["isPunched"] = SPUtil.get(application, "setting_punch", false)
-        map["level"] = SPUtil.get(application, "user_level", 1) as Int
-        map["name"] = SPUtil.get(application, "user_name", "") as String
-        map["slogan"] = SPUtil.get(application, "user_slogan", "") as String
-        map["title"] = SPUtil.get(application, "user_title", "") as String
-        map["_id"] = SPUtil.get(application, "user_id", "") as String
-        map["verified"] = SPUtil.get(application, "user_verified", false) as Boolean
+        map["email"] = SPUtil.get("username", "") as String
+        map["exp"] = SPUtil.get("user_exp", 0) as Int
+        map["gender"] = SPUtil.get("user_gender", "bot") as String
+        map["isPunched"] = SPUtil.get("setting_punch", false)
+        map["level"] = SPUtil.get("user_level", 1) as Int
+        map["name"] = SPUtil.get("user_name", "") as String
+        map["slogan"] = SPUtil.get("user_slogan", "") as String
+        map["title"] = SPUtil.get("user_title", "") as String
+        map["_id"] = SPUtil.get("user_id", "") as String
+        map["verified"] = SPUtil.get("user_verified", false) as Boolean
         map
     }
 }

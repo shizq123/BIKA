@@ -9,14 +9,11 @@ import androidx.core.view.isGone
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivitySearchBinding
-import com.shizq.bika.db.Search
-import com.shizq.bika.ui.account.AccountActivity
+import com.shizq.bika.database.model.SearchEntity
 import com.shizq.bika.ui.comiclist.ComicListActivity
-import com.shizq.bika.utils.SPUtil
 
 class SearchActivity : BaseActivity<ActivitySearchBinding, SearchViewModel>() {
 
@@ -45,8 +42,8 @@ class SearchActivity : BaseActivity<ActivitySearchBinding, SearchViewModel>() {
         binding.searchView.setOnKeyListener { v, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
                 //监听回车键
-                val search=Search(binding.searchView.text.toString())
-                viewModel.insertSearch(search)//添加搜索记录
+                val searchEntity= SearchEntity(binding.searchView.text.toString())
+                viewModel.insertSearch(searchEntity)//添加搜索记录
 
                 val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
                 intent.putExtra("tag", "search")
@@ -93,8 +90,8 @@ class SearchActivity : BaseActivity<ActivitySearchBinding, SearchViewModel>() {
 
                     binding.searchTagsList.addView(chip)
                     chip.setOnClickListener {
-                        val search=Search(i)
-                        viewModel.insertSearch(search)//添加搜索记录
+                        val searchEntity= SearchEntity(i)
+                        viewModel.insertSearch(searchEntity)//添加搜索记录
 
                         val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
                         intent.putExtra("tag", "search")
@@ -121,7 +118,7 @@ class SearchActivity : BaseActivity<ActivitySearchBinding, SearchViewModel>() {
 
                     binding.searchHistoryList.addView(chip)
                     chip.setOnClickListener {
-                        viewModel.insertSearch(Search(i))//添加搜索记录
+                        viewModel.insertSearch(SearchEntity(i))//添加搜索记录
 
                         val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
                         intent.putExtra("tag", "search")

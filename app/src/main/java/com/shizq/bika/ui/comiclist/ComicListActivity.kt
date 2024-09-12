@@ -8,7 +8,6 @@ import android.view.*
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupWindow
-import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.view.isVisible
@@ -22,7 +21,7 @@ import com.shizq.bika.adapter.ComicListAdapter
 import com.shizq.bika.adapter.ComicListAdapter2
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComiclistBinding
-import com.shizq.bika.db.Search
+import com.shizq.bika.database.model.SearchEntity
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import com.shizq.bika.ui.image.ImageActivity
@@ -196,8 +195,8 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         binding.searchView.setOnKeyListener { v, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
                 //监听回车键
-                val search = Search(binding.searchView.text.toString())
-                viewModel.insertSearch(search)//添加搜索记录
+                val searchEntity = SearchEntity(binding.searchView.text.toString())
+                viewModel.insertSearch(searchEntity)//添加搜索记录
 
                 viewModel.value = binding.searchView.text.toString()
                 viewModel.tag = "search"

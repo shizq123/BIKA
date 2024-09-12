@@ -6,7 +6,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.MyCommentsBean
 import com.shizq.bika.databinding.ItemMyCommentsBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.TimeUtil
@@ -24,12 +24,12 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
         parent: ViewGroup,
         viewType: Int
     ): BaseBindingHolder<MyCommentsBean.Comments.Doc, ItemMyCommentsBinding> {
-        fileServer = SPUtil.get(parent.context, "user_fileServer", "") as String
-        path = SPUtil.get(parent.context, "user_path", "") as String
-        character = SPUtil.get(parent.context, "user_character", "") as String
-        name = SPUtil.get(parent.context, "user_name", "") as String
-        gender = SPUtil.get(parent.context, "user_gender", "") as String
-        level = SPUtil.get(parent.context, "user_level", 1) as Int
+        fileServer = SPUtil.get("user_fileServer", "") as String
+        path = SPUtil.get("user_path", "") as String
+        character = SPUtil.get("user_character", "") as String
+        name = SPUtil.get("user_name", "") as String
+        gender = SPUtil.get("user_gender", "") as String
+        level = SPUtil.get("user_level", 1) as Int
 
         return super.onCreateViewHolder(parent, viewType)
     }
@@ -50,7 +50,7 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
 
         if (fileServer != "") {//头像
 
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(
                     GlideUrlNewKey(
                         fileServer,
@@ -63,7 +63,7 @@ class MyCommentsAdapter: BaseBindingAdapter<MyCommentsBean.Comments.Doc, ItemMyC
         }
         if (character != "") { //头像框 新用户没有
 
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(character)
                 .into(binding.itemMyCommentsUserCharacter)
         }

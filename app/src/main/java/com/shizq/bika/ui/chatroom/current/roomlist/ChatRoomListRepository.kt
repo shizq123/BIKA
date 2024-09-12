@@ -1,7 +1,6 @@
 package com.shizq.bika.ui.chatroom.current.roomlist
 
 import com.google.gson.JsonObject
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.bean.ChatRoomListBean
 import com.shizq.bika.bean.ChatRoomSignInBean
 import com.shizq.bika.network.Result
@@ -14,16 +13,17 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
 class ChatRoomListRepository {
     suspend fun getSignInFlow(): Flow<Result<ChatRoomSignInBean>> = flow {
         emit(Result.Loading)
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply {
-                addProperty("email", SPUtil.get(BIKAApplication.contextBase, "username", "") as String)
-                addProperty("password", SPUtil.get(BIKAApplication.contextBase, "password", "") as String)
+                addProperty("email", SPUtil.get("username", "") as String)
+                addProperty("password", SPUtil.get("password", "") as String)
             }.asJsonObject.toString()
         )
         val response = RetrofitUtil.service_live.chatSignInPost(

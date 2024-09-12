@@ -5,7 +5,7 @@ import com.shizq.bika.base.BaseBindingAdapter
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.KnightBean
 import com.shizq.bika.databinding.ItemKnightBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 
 class KnightAdapter : BaseBindingAdapter<KnightBean.Users, ItemKnightBinding>(R.layout.item_knight) {
@@ -17,7 +17,7 @@ class KnightAdapter : BaseBindingAdapter<KnightBean.Users, ItemKnightBinding>(R.
         position: Int
     ) {
         //头像
-        GlideApp.with(holder.itemView)
+        Glide.with(holder.itemView)
             .load(
                 if (bean.avatar != null)
                     GlideUrlNewKey(bean.avatar.fileServer, bean.avatar.path)
@@ -27,7 +27,7 @@ class KnightAdapter : BaseBindingAdapter<KnightBean.Users, ItemKnightBinding>(R.
             .placeholder(R.drawable.placeholder_avatar_2)
             .into(binding.knightUserImage)
         //头像框
-        GlideApp.with(holder.itemView)
+        Glide.with(holder.itemView)
             .load(if (bean.character.isNullOrEmpty()) "" else bean.character)
             .into(binding.knightUserCharacter)
 

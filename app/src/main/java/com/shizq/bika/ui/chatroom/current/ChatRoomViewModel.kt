@@ -4,7 +4,6 @@ import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.UserMention
@@ -15,8 +14,12 @@ import io.reactivex.rxjava3.core.Observer
 import io.reactivex.rxjava3.disposables.Disposable
 import okhttp3.Headers
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 import retrofit2.HttpException
 import java.io.File
 import java.util.*
@@ -74,10 +77,8 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
             map["reply"] = reply
         }
 
-        val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
-            Gson().toJson(map)
-        )
+        val body = Gson().toJson(map)
+            .toRequestBody("application/json; charset=UTF-8".toMediaType())
         val headers = BaseHeaders().getChatHeaderMapAndToken()
         RetrofitUtil.service_live.chatSendMessagePost(body, headers)
             .doOnSubscribe(this)
@@ -123,7 +124,7 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
         )
         val multipartBody =
             MultipartBody.Builder()
-                .setType(MediaType.get("multipart/form-data"))
+                .setType("multipart/form-data".toMediaType())
         multipartBody.addFormDataPart("roomId", roomId)
         multipartBody.addFormDataPart("referenceId", referenceId)
 
@@ -134,7 +135,7 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
         multipartBody.addPart(
             MultipartBody.Part.create(
                 captionHeaders,
-                RequestBody.create(MediaType.parse("text/plain; charset=utf-8"), message)
+                message.toRequestBody("text/plain; charset=utf-8".toMediaType())
             )
         )
 
@@ -142,12 +143,12 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
 
         //图片后面可能for循环添加
         val file = File(path)
-        val body = RequestBody.create(MediaType.parse("application/octet-stream"), file)
+        val body = file.asRequestBody("application/octet-stream".toMediaType())
         multipartBody.addFormDataPart("images", file.name, body)
 
         val multipartBodyBuild = multipartBody.build()
         val headers = BaseHeaders().getChatHeaderMapAndToken()
-        headers["content-type"] = "multipart/form-data; boundary=${multipartBodyBuild.boundary()}"
+        headers["content-type"] = "multipart/form-data; boundary=${multipartBodyBuild.boundary}"
 
         RetrofitUtil.service_live.chatSendImagePost(headers, multipartBodyBuild)
             .doOnSubscribe(this@ChatRoomViewModel)
@@ -188,8 +189,8 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
         referenceId: String,
         userMentions: List<UserMention> = listOf()
     ): String {
-        val fileServer = SPUtil.get(BIKAApplication.contextBase, "user_fileServer", "") as String
-        val path = SPUtil.get(BIKAApplication.contextBase, "user_path", "") as String
+        val fileServer = SPUtil.get("user_fileServer", "") as String
+        val path = SPUtil.get("user_path", "") as String
         val avatarUrl =
             if (fileServer == "") "" else "${fileServer.replace("/static/", "")}/static/$path"
 
@@ -205,8 +206,8 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
         }
 
         val profile = mutableMapOf(
-            "name" to SPUtil.get(BIKAApplication.contextBase, "user_name", "") as String,
-            "level" to SPUtil.get(BIKAApplication.contextBase, "user_level", 1) as Int,
+            "name" to SPUtil.get("user_name", "") as String,
+            "level" to SPUtil.get("user_level", 1) as Int,
             "characters" to listOf<String>(),
             "avatarUrl" to avatarUrl,
         )

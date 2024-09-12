@@ -10,7 +10,6 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ChatRoomListAdapter
 import com.shizq.bika.base.BaseActivity
@@ -21,7 +20,6 @@ import com.shizq.bika.ui.chatroom.current.ChatRoomActivity
 import com.shizq.bika.ui.chatroom.current.blacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.TimeUtil
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.launch
 
 /**
@@ -49,7 +47,7 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
         binding.chatroomRv.adapter = mChatRoomsAdapter
 
         //检查是否有token 没有就进行登录 显示登录提示框
-        if (SPUtil.get(this, "chat_token", "") == "") {
+        if (SPUtil.get("chat_token", "") == "") {
             //没有token 登录聊天室
             showProgressBar(true, "获取用户信息...")
             viewModel.chatSignIn()
@@ -70,7 +68,7 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
         }
 
         binding.chatroomRv.setOnItemClickListener { _, position ->
-            val userLevel = SPUtil.get(this, "user_level", 1) as Int
+            val userLevel = SPUtil.get("user_level", 1) as Int
             val data = mChatRoomsAdapter.getItemData(position)
             //注册天数和等级全符合才能跳转
             if (userLevel >= data.minLevel && TimeUtil().registerDays(data.minRegisterDays)) {
@@ -107,7 +105,7 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
         viewModel.liveDataSignIn.observe(this) {
             //TODO 中途修改密码会登录失败，直接跳转到登录界面
             if (it.token != "") {
-                SPUtil.put(this, "chat_token", it.token)
+                SPUtil.put("chat_token", it.token)
                 viewModel.chatRoomList()
 //            } else if (it.statusCode == 401 && it.message == "API_ERROR_INVALIID_PASSWORD") {
 //                Toast.makeText(this, "账号或密码错误", Toast.LENGTH_SHORT).show()
@@ -116,8 +114,8 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
                     .setTitle("网络错误")
                     .setMessage("code=${it.statusCode} error=${it.error} message=${it.message}")
                     .setPositiveButton("重新登录") { _, _ ->
-                        SPUtil.remove(BIKAApplication.contextBase, "token")
-                        SPUtil.remove(BIKAApplication.contextBase, "chat_token")
+                        SPUtil.remove("token")
+                        SPUtil.remove("chat_token")
                         startActivity(Intent(this, AccountActivity::class.java))
                         finishAffinity()
                     }

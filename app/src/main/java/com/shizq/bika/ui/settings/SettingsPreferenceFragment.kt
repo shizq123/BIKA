@@ -18,7 +18,6 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.R
 import com.shizq.bika.bean.UpdateBean
 import com.shizq.bika.network.RetrofitUtil
@@ -34,6 +33,7 @@ import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.observers.DefaultObserver
 import io.reactivex.rxjava3.schedulers.Schedulers
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import retrofit2.HttpException
 
@@ -73,7 +73,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
 
         //分流
         setting_app_channel?.summary =
-            when (SPUtil.get(context, "setting_app_channel", "2") as String) {
+            when (SPUtil.get("setting_app_channel", "2") as String) {
                 "1" -> "分流一"
                 "2" -> "分流二"
                 else -> "分流三"
@@ -207,8 +207,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                     MaterialAlertDialogBuilder(it)
                         .setTitle("你确定要退出登录吗")
                         .setPositiveButton("确定") { _, _ ->
-                            SPUtil.remove(BIKAApplication.contextBase, "token")
-                            SPUtil.remove(BIKAApplication.contextBase, "chat_token")
+                            SPUtil.remove("token")
+                            SPUtil.remove("chat_token")
                             startActivity(Intent(activity, AccountActivity::class.java))
                             activity?.finishAffinity()
                         }
@@ -265,11 +265,11 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
     private fun changePassword(oldpassword: String, password: String) {
         var old = oldpassword
         if (oldpassword == "") {
-            old = SPUtil.get(BIKAApplication.contextBase, "password", "") as String
+            old = SPUtil.get("password", "") as String
         }
 
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply {
                 addProperty("new_password", password)
                 addProperty("old_password", old)
@@ -286,7 +286,7 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                     if (baseResponse.code == 200) {
 
                         //保存密码
-                        SPUtil.put(BIKAApplication.contextBase, "password", password)
+                        SPUtil.put("password", password)
                         Toast.makeText(activity, "修改密码成功", Toast.LENGTH_SHORT).show()
                     } else {
                         Toast.makeText(

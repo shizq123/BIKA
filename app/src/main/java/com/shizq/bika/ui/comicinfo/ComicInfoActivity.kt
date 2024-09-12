@@ -11,6 +11,7 @@ import androidx.core.view.size
 import androidx.databinding.DataBindingUtil
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
+import com.bumptech.glide.Glide
 import com.google.android.material.chip.Chip
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
@@ -20,7 +21,7 @@ import com.shizq.bika.adapter.RecommendAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComicinfoBinding
 import com.shizq.bika.databinding.ItemEpisodeFooterViewBinding
-import com.shizq.bika.db.History
+import com.shizq.bika.database.model.HistoryEntity
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
@@ -102,7 +103,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
         binding.comicinfoRecommend.adapter = mAdapterRecommend
 
         //加载数据
-        GlideApp.with(this)
+        Glide.with(this)
             .load(GlideUrlNewKey(fileserver, imageurl))
             .placeholder(R.drawable.placeholder_transparent)
             .into(binding.comicinfoImage)
@@ -229,7 +230,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 //                    if (imageurl == "") {
 //                        fileserver = it.data.comic.thumb.fileServer
 //                        imageurl = it.data.comic.thumb.path
-//                        GlideApp.with(this)
+//                        Glide.with(this)
 //                            .load(
 //                                GlideUrlNewKey(
 //                                    it.data.comic.thumb.fileServer,
@@ -323,7 +324,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 //
 //                    //上传者 头像
 //                    if (null != it.data.comic._creator.avatar) {
-//                        GlideApp.with(this)
+//                        Glide.with(this)
 //                            .load(
 //                                GlideUrlNewKey(
 //                                    it.data.comic._creator.avatar.fileServer,
@@ -416,7 +417,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                             if (imageurl == "") {
                                 fileserver = it.data.comic.thumb.fileServer
                                 imageurl = it.data.comic.thumb.path
-                                GlideApp.with(this@ComicInfoActivity)
+                                Glide.with(this@ComicInfoActivity)
                                     .load(
                                         GlideUrlNewKey(
                                             it.data.comic.thumb.fileServer,
@@ -519,7 +520,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
                             //上传者 头像
                             if (null != it.data.comic._creator.avatar) {
-                                GlideApp.with(this@ComicInfoActivity)
+                                Glide.with(this@ComicInfoActivity)
                                     .load(
                                         GlideUrlNewKey(
                                             it.data.comic._creator.avatar.fileServer,
@@ -538,7 +539,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                             //记录历史
                             val historyList = viewModel.getHistory()
                             if (historyList.isNotEmpty()) {
-                                val history = History(
+                                val historyEntity = HistoryEntity(
                                     System.currentTimeMillis(),
                                     historyList[0].title,
                                     historyList[0].fileServer,
@@ -554,12 +555,12 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                                     historyList[0].ep,
                                     historyList[0].page
                                 )
-                                history.id = historyList[0].id
+                                historyEntity.id = historyList[0].id
                                 //这个进行更新 //更新好象要主键
-                                viewModel.updateHistory(history)//更新搜索记录
+                                viewModel.updateHistory(historyEntity)//更新搜索记录
 
                             } else {
-                                val history = History(
+                                val historyEntity = HistoryEntity(
                                     System.currentTimeMillis(),
                                     viewModel.title.toString(),
                                     fileserver,
@@ -576,7 +577,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                                     ""
                                 )
                                 //这个进行更新 //更新好象要主键
-                                viewModel.insertHistory(history)//添加搜索记录
+                                viewModel.insertHistory(historyEntity)//添加搜索记录
                             }
                         }
                     }

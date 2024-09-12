@@ -6,7 +6,7 @@ import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityImageBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 
 //图片展示
@@ -25,7 +25,7 @@ class ImageActivity : BaseActivity<ActivityImageBinding, ImageViewModel>() {
         val fileserver = intent.getStringExtra("fileserver") as String
         val imageurl = intent.getStringExtra("imageurl") as String
 
-        GlideApp
+        Glide
             .with(this)
             .load(
                 if (imageurl != "") {

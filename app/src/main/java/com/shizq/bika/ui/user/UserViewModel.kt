@@ -10,6 +10,7 @@ import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
 import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
 class UserViewModel(application: Application) : BaseViewModel(application) {
@@ -30,7 +31,7 @@ class UserViewModel(application: Application) : BaseViewModel(application) {
             "avatar" to base64Image
         )
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             Gson().toJson(map)
         )
         val headers = BaseHeaders("users/avatar", "PUT").getHeaderMapAndToken()
@@ -52,7 +53,7 @@ class UserViewModel(application: Application) : BaseViewModel(application) {
             "slogan" to slogan
         )
         val body = RequestBody.create(
-            MediaType.parse("application/json; charset=UTF-8"),
+            "application/json; charset=UTF-8".toMediaTypeOrNull(),
             Gson().toJson(map)
         )
         val headers = BaseHeaders("users/profile", "PUT").getHeaderMapAndToken()

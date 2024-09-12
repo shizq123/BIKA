@@ -5,14 +5,13 @@ import android.app.ActivityOptions
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
-import android.text.*
 import android.view.*
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.ActionBarDrawerToggle
 import androidx.recyclerview.widget.GridLayoutManager
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import com.bumptech.glide.Glide
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.CategoriesAdapter
@@ -90,17 +89,17 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
 
     //显示用户信息
     private fun initProfile() {
-        viewModel.fileServer = SPUtil.get(this, "user_fileServer", "") as String
-        viewModel.path = SPUtil.get(this, "user_path", "") as String
-        val character = SPUtil.get(this, "user_character", "") as String
-        val name = SPUtil.get(this, "user_name", "") as String
-        val gender = SPUtil.get(this, "user_gender", "") as String
-        val level = SPUtil.get(this, "user_level", 1) as Int
-        val exp = SPUtil.get(this, "user_exp", 0) as Int
-        val slogan = SPUtil.get(this, "user_slogan", "") as String
+        viewModel.fileServer = SPUtil.get("user_fileServer", "") as String
+        viewModel.path = SPUtil.get("user_path", "") as String
+        val character = SPUtil.get("user_character", "") as String
+        val name = SPUtil.get("user_name", "") as String
+        val gender = SPUtil.get("user_gender", "") as String
+        val level = SPUtil.get("user_level", 1) as Int
+        val exp = SPUtil.get("user_exp", 0) as Int
+        val slogan = SPUtil.get("user_slogan", "") as String
 
         //头像
-        GlideApp.with(this@MainActivity)
+        Glide.with(this@MainActivity)
             .load(GlideUrlNewKey(viewModel.fileServer, viewModel.path))
             .centerCrop()
             .placeholder(R.drawable.placeholder_avatar_2)
@@ -109,7 +108,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                     .findViewById(R.id.main_drawer_imageView) as ImageView
             )
         //头像框
-        GlideApp.with(this@MainActivity)
+        Glide.with(this@MainActivity)
             .load(character)
             .into(
                 binding.mainNavView.getHeaderView(0)
@@ -133,7 +132,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         //title
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_title) as TextView).text =
-            SPUtil.get(this, "user_title", "萌新") as String
+            SPUtil.get("user_title", "萌新") as String
         //自我介绍 签名
         (binding.mainNavView.getHeaderView(0)
             .findViewById(R.id.main_drawer_slogan) as TextView).text =
@@ -273,7 +272,6 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                         intent.data = Uri.parse(
                             "${datas.link}/?token=${
                                 SPUtil.get(
-                                    this,
                                     "token",
                                     ""
                                 )
@@ -316,7 +314,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 if (it.data.user.avatar != null) {//头像
                     fileServer = it.data.user.avatar.fileServer
                     path = it.data.user.avatar.path
-                    GlideApp.with(this@MainActivity)
+                    Glide.with(this@MainActivity)
                         .load(
                             GlideUrlNewKey(
                                 fileServer,
@@ -333,7 +331,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 if (it.data.user.character != null) { //头像框 新用户没有
 
                     character = it.data.user.character
-                    GlideApp.with(this@MainActivity)
+                    Glide.with(this@MainActivity)
                         .load(character)
                         .into(
                             binding.mainNavView.getHeaderView(0)
@@ -371,7 +369,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
 
                 if (!it.data.user.isPunched) {//当前用户未打卡时
                     //是否设置自动打卡
-                    if (SPUtil.get(this, "setting_punch", true) as Boolean) {
+                    if (SPUtil.get("setting_punch", true) as Boolean) {
                         viewModel.punch_In()
                     } else {
                         (binding.mainNavView.getHeaderView(0)
@@ -380,19 +378,19 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
                 }
 
                 //存一下当前用户信息 用于显示个人评论
-                SPUtil.put(this, "user_fileServer", fileServer)
-                SPUtil.put(this, "user_path", path)
-                SPUtil.put(this, "user_character", character)
-                SPUtil.put(this, "user_name", name)
-                SPUtil.put(this, "user_birthday", it.data.user.birthday)
-                SPUtil.put(this, "user_created_at", it.data.user.created_at)
-                SPUtil.put(this, "user_gender", gender)
-                SPUtil.put(this, "user_level", level)
-                SPUtil.put(this, "user_exp", it.data.user.exp)
-                SPUtil.put(this, "user_title", it.data.user.title)
-                SPUtil.put(this, "user_slogan", slogan)
-                SPUtil.put(this, "user_id", it.data.user._id)
-                SPUtil.put(this, "user_verified", it.data.user.verified)
+                SPUtil.put("user_fileServer", fileServer)
+                SPUtil.put("user_path", path)
+                SPUtil.put("user_character", character)
+                SPUtil.put("user_name", name)
+                SPUtil.put("user_birthday", it.data.user.birthday)
+                SPUtil.put("user_created_at", it.data.user.created_at)
+                SPUtil.put("user_gender", gender)
+                SPUtil.put("user_level", level)
+                SPUtil.put("user_exp", it.data.user.exp)
+                SPUtil.put("user_title", it.data.user.title)
+                SPUtil.put("user_slogan", slogan)
+                SPUtil.put("user_id", it.data.user._id)
+                SPUtil.put("user_verified", it.data.user.verified)
 
                 if (viewModel.cList().size <= 10) {
                     //更换头像会重新加载个人信息 防止重复加载
@@ -420,7 +418,7 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
             if (it.code == 200) {
                 //登录成功 保存token
 //                MmkvUtils.putSet("token", bean.data.token)
-                SPUtil.put(this, "token", it.data.token)
+                SPUtil.put("token", it.data.token)
                 showProgressBar(true, "登录成功，检查账号信息...")
                 viewModel.getProfile() //重新加载数据
 
@@ -471,15 +469,15 @@ class MainActivity : BaseActivity<ActivityMainBinding, MainViewModel>() {
         viewModel.liveData_punch_in.observe(this) {
             if (it.code == 200) {
                 //打卡成功 手动加经验来保存
-                var exp = SPUtil.get(this, "user_exp", 0) as Int
-                var level = SPUtil.get(this, "user_level", 1) as Int
+                var exp = SPUtil.get("user_exp", 0) as Int
+                var level = SPUtil.get("user_level", 1) as Int
                 exp += 10
                 if (exp > exp(level)) {
                     level += 1
                 }
                 //保存
-                SPUtil.put(this, "user_level", level)
-                SPUtil.put(this, "user_exp", exp)
+                SPUtil.put("user_level", level)
+                SPUtil.put("user_exp", exp)
                 initProfile()
                 Toast.makeText(this, "自动打卡成功", Toast.LENGTH_SHORT).show()
             } else {

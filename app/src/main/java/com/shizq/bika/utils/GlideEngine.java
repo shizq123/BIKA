@@ -3,6 +3,7 @@ package com.shizq.bika.utils;
 import android.content.Context;
 import android.widget.ImageView;
 
+import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.resource.bitmap.CenterCrop;
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners;
 import com.luck.picture.lib.engine.ImageEngine;
@@ -23,7 +24,7 @@ public class GlideEngine implements ImageEngine {
         if (!ActivityCompatHelper.assertValidRequest(context)) {
             return;
         }
-        GlideApp.with(context)
+        Glide.with(context)
                 .load(url)
                 .into(imageView);
     }
@@ -33,7 +34,7 @@ public class GlideEngine implements ImageEngine {
         if (!ActivityCompatHelper.assertValidRequest(context)) {
             return;
         }
-        GlideApp.with(context)
+        Glide.with(context)
                 .load(url)
                 .override(maxWidth, maxHeight)
                 .into(imageView);
@@ -51,7 +52,7 @@ public class GlideEngine implements ImageEngine {
         if (!ActivityCompatHelper.assertValidRequest(context)) {
             return;
         }
-        GlideApp.with(context)
+        Glide.with(context)
                 .asBitmap()
                 .load(url)
                 .override(200, 200)
@@ -74,7 +75,7 @@ public class GlideEngine implements ImageEngine {
         if (!ActivityCompatHelper.assertValidRequest(context)) {
             return;
         }
-        GlideApp.with(context)
+        Glide.with(context)
                 .load(url)
                 .override(200, 200)
                 .centerCrop()
@@ -84,12 +85,12 @@ public class GlideEngine implements ImageEngine {
 
     @Override
     public void pauseRequests(Context context) {
-        GlideApp.with(context).pauseRequests();
+        Glide.with(context).pauseRequests();
     }
 
     @Override
     public void resumeRequests(Context context) {
-        GlideApp.with(context).resumeRequests();
+        Glide.with(context).resumeRequests();
     }
 
     private GlideEngine() {

@@ -8,7 +8,7 @@ import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.databinding.ItemChatMessageSendBinding
-import com.shizq.bika.utils.GlideApp
+import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
 import com.shizq.bika.utils.dp
 import com.shizq.bika.widget.UserViewDialog
@@ -33,7 +33,7 @@ class ChatMessageSendHolder (viewGroup: ViewGroup, layoutId: Int) :
         }
 
         //头像
-        GlideApp.with(holder.itemView)
+        Glide.with(holder.itemView)
             .load(
                 if (profile.avatarUrl != null && profile.avatarUrl != "") {
                     val i: Int = profile.avatarUrl.indexOf("/static/")
@@ -86,7 +86,7 @@ class ChatMessageSendHolder (viewGroup: ViewGroup, layoutId: Int) :
             }
             if (reply.type == "IMAGE_MESSAGE") {
                 binding.chatReplyImage.visibility = View.VISIBLE
-                GlideApp.with(holder.itemView)
+                Glide.with(holder.itemView)
                     .load(reply.image)
                     .placeholder(R.drawable.placeholder_avatar_2)
                     .into(binding.chatReplyImage)
@@ -137,7 +137,7 @@ class ChatMessageSendHolder (viewGroup: ViewGroup, layoutId: Int) :
             } else {
                 binding.chatContentR.visibility = View.GONE
             }
-            GlideApp.with(holder.itemView)
+            Glide.with(holder.itemView)
                 .load(message.medias[0])
                 .placeholder(R.drawable.placeholder_avatar_2)
                 .into(binding.chatContentImageR)

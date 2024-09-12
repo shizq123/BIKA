@@ -1,6 +1,5 @@
 package com.shizq.bika.network.base
 
-import com.shizq.bika.BIKAApplication
 import com.shizq.bika.network.HmacSHA256Util
 import com.shizq.bika.utils.SPUtil
 import java.util.*
@@ -15,7 +14,7 @@ class BaseHeaders(private val urlEnd: String = "", val type: String = "") {
         val map: MutableMap<String, String> = HashMap()
         map["api-key"] = apikey
         map["accept"] = "application/vnd.picacomic.com.v1+json"
-        map["app-channel"] = SPUtil.get(BIKAApplication.contextBase, "setting_app_channel", "2") as String
+        map["app-channel"] = SPUtil.get("setting_app_channel", "2") as String
         map["time"] = time
         map["nonce"] = nonce
         map["signature"] = signature
@@ -30,7 +29,7 @@ class BaseHeaders(private val urlEnd: String = "", val type: String = "") {
 
     fun getHeaderMapAndToken(): Map<String, String> {
         val map = getHeaders()
-        map["authorization"] = SPUtil.get(BIKAApplication.contextBase, "token", "") as String
+        map["authorization"] = SPUtil.get("token", "") as String
         return map
     }
 
@@ -44,7 +43,7 @@ class BaseHeaders(private val urlEnd: String = "", val type: String = "") {
 
     fun getChatHeaderMapAndToken(): MutableMap<String, String> {
         val map = getChatHeaders()
-        map["authorization"] = "Bearer " + SPUtil.get(BIKAApplication.contextBase, "chat_token", "") as String
+        map["authorization"] = "Bearer " + SPUtil.get("chat_token", "") as String
         return map
     }
 }

@@ -4,6 +4,7 @@ import android.os.Bundle
 import android.view.MenuItem
 import android.view.View
 import android.widget.Toast
+import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.textfield.TextInputEditText
 import com.luck.picture.lib.basic.PictureSelector
@@ -32,30 +33,30 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
         setSupportActionBar(binding.userInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        val fileServer = SPUtil.get(this, "user_fileServer", "") as String
-        val path = SPUtil.get(this, "user_path", "") as String
-        val character = SPUtil.get(this, "user_character", "") as String
+        val fileServer = SPUtil.get("user_fileServer", "") as String
+        val path = SPUtil.get("user_path", "") as String
+        val character = SPUtil.get("user_character", "") as String
 
         if (fileServer != "") {
-            GlideApp.with(this)
+            Glide.with(this)
                 .load(GlideUrlNewKey(fileServer, path))
                 .centerCrop()
                 .placeholder(R.drawable.placeholder_avatar_2)
                 .into(binding.userAvatar)
         }
         if (character != "") {
-            GlideApp.with(this)
+            Glide.with(this)
                 .load(character)
                 .into(binding.userCharacter)
         }
 
-        binding.userNickname.text = SPUtil.get(this, "user_name", "") as String
-        binding.userUsername.text = SPUtil.get(this, "username", "") as String
+        binding.userNickname.text = SPUtil.get("user_name", "") as String
+        binding.userUsername.text = SPUtil.get("username", "") as String
         binding.userBirthday.text =
-            TimeUtil().getBirthday(SPUtil.get(this, "user_birthday", "") as String)
+            TimeUtil().getBirthday(SPUtil.get("user_birthday", "") as String)
         binding.userCreatedAt.text =
-            TimeUtil().getBirthday(SPUtil.get(this, "user_created_at", "") as String)
-        binding.userSlogan.text = SPUtil.get(this, "user_slogan", "") as String
+            TimeUtil().getBirthday(SPUtil.get("user_created_at", "") as String)
+        binding.userSlogan.text = SPUtil.get("user_slogan", "") as String
 
         initListener()
     }
@@ -75,7 +76,7 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
                 }
                 .forResult(object : OnResultCallbackListener<LocalMedia> {
                     override fun onResult(result: ArrayList<LocalMedia>) {
-                        GlideApp.with(this@UserActivity)
+                        Glide.with(this@UserActivity)
                             .load(R.drawable.placeholder_avatar_2)
                             .into(binding.userAvatar)
 
@@ -119,9 +120,9 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
                 binding.userSloganLayout.isEnabled = true
                 Toast.makeText(this, "更换头像失败", Toast.LENGTH_SHORT).show()
                 //失败切换为原来的头像
-                val fileServer = SPUtil.get(this, "user_fileServer", "") as String
-                val path = SPUtil.get(this, "user_path", "") as String
-                GlideApp.with(this)
+                val fileServer = SPUtil.get("user_fileServer", "") as String
+                val path = SPUtil.get("user_path", "") as String
+                Glide.with(this)
                     .load(
                         if (path != "") {
                             GlideUrlNewKey(fileServer, path)
@@ -158,7 +159,7 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
                 if (it.data.user.avatar != null) { //头像
                     fileServer = it.data.user.avatar.fileServer
                     path = it.data.user.avatar.path
-                    GlideApp.with(this)
+                    Glide.with(this)
                         .load(GlideUrlNewKey(fileServer, path))
                         .centerCrop()
                         .placeholder(R.drawable.placeholder_avatar_2)
@@ -166,7 +167,7 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
                 }
                 if (it.data.user.character != null) { //头像框 新用户没有
                     character = it.data.user.character
-                    GlideApp.with(this)
+                    Glide.with(this)
                         .load(character)
                         .into(binding.userCharacter)
                 }
@@ -175,12 +176,11 @@ class UserActivity : BaseActivity<ActivityUserBinding, UserViewModel>() {
                     if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan
 
                 //存一下当前用户信息
-                SPUtil.put(this, "user_fileServer", fileServer)
-                SPUtil.put(this, "user_path", path)
-                SPUtil.put(this, "user_level", it.data.user.level)
-                SPUtil.put(this, "user_exp", it.data.user.exp)
+                SPUtil.put("user_fileServer", fileServer)
+                SPUtil.put("user_path", path)
+                SPUtil.put("user_level", it.data.user.level)
+                SPUtil.put("user_exp", it.data.user.exp)
                 SPUtil.put(
-                    this,
                     "user_slogan",
                     if (it.data.user.slogan.isNullOrBlank()) "" else it.data.user.slogan
                 )

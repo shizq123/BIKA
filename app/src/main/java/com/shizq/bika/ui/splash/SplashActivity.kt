@@ -7,7 +7,6 @@ import android.os.Bundle
 import android.view.View
 import androidx.core.splashscreen.SplashScreen
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.lifecycle.Observer
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -73,28 +72,22 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
 
 
         //节点
-        viewModel.liveData_init.observe(this, Observer { initBean: InitBean ->
+        viewModel.liveData_init.observe(this) { initBean: InitBean ->
             if (initBean.status == "ok") {
                 //查看是否有默认节点 没有就存一个
-
-
                 //保存两个host地址
                 //2024.3.8 能跑以后改
-                if (!initBean.addresses.isNullOrEmpty()) {
-                SPUtil.put(this,"addresses1",initBean.addresses[0])
-                SPUtil.put(this,"addresses2",initBean.addresses[1])
-                }else if (!initBean.address.isNullOrEmpty()) {
-                    //2024.3.8 哔咔数据改变
-                    SPUtil.put(this,"addresses1",initBean.address[0])
-                    SPUtil.put(this,"addresses2",initBean.address[1])
+                if (initBean.addresses.isNotEmpty()) {
+                    SPUtil.put("addresses1", initBean.addresses[0])
+                    SPUtil.put("addresses2", initBean.addresses[1])
                 } else {
                     //2024.3.8 防闪退加入哔咔常用的ip(以后不确定能用)
-                    SPUtil.put(this,"addresses1","172.67.194.19")
-                    SPUtil.put(this,"addresses2","104.21.20.188")
+                    SPUtil.put("addresses1", "172.67.194.19")
+                    SPUtil.put("addresses2", "104.21.20.188")
                 }
 
                 //检查是否有token 没有就进行登录 显示登录提示框
-                if (SPUtil.get(this,"token", "") == "") {
+                if (SPUtil.get("token", "") == "") {
                     //没有token 挑转到登录页面
                     startActivity(AccountActivity::class.java)
                     finish()
@@ -105,14 +98,13 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
                 }
             } else {
                 //请求init失败 提示网络错误
-                showProgressBar(false,"网络错误，点击重试")
-
+                showProgressBar(false, "网络错误，点击重试")
             }
-        })
+        }
         //节点 其他网络失败
-        viewModel.liveData_init_error.observe(this, Observer {
-            showProgressBar(false,"网络错误，点击重试\n$it")
-        })
+        viewModel.liveData_init_error.observe(this) {
+            showProgressBar(false, "网络错误，点击重试\n$it")
+        }
 
         //网络重试点击事件监听
         binding.loadLayout.setOnClickListener {

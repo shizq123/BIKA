@@ -1,15 +1,13 @@
-package com.shizq.bika.db
+package com.shizq.bika.database.model
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity
-class Search(
-
+@Entity(tableName = "Search")
+data class SearchEntity(
     @ColumnInfo(name = "text")
-    var text: String
-){
+    val text: String,
     @PrimaryKey(autoGenerate = true)
-    var id:Long=0
-}
+    val id: Long = 0
+)

@@ -6,13 +6,15 @@ import android.view.Menu
 import android.view.MenuItem
 import android.view.View
 import android.view.WindowManager
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ReaderAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityReaderBinding
-import com.shizq.bika.db.History
+import com.shizq.bika.database.model.HistoryEntity
+import kotlinx.coroutines.launch
 
 //阅读漫画页
 class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
@@ -36,7 +38,7 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
         setSupportActionBar(binding.readerInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        mAdapter= ReaderAdapter()
+        mAdapter = ReaderAdapter()
         binding.readerRv.layoutManager = LinearLayoutManager(this)
         binding.readerRv.adapter = mAdapter
 
@@ -65,7 +67,7 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
                 binding.readerInclude.toolbar.title = it.data.ep.title
                 binding.readerLoadLayout.visibility = View.GONE//隐藏加载进度条页面
                 mAdapter.addData(it.data.pages.docs)
-                binding.pageNumber.text=it.data.pages.total.toString()
+                binding.pageNumber.text = it.data.pages.total.toString()
 
                 if (it.data.pages.pages == it.data.pages.page) {
                     binding.readerRv.loadMoreEnd()//没有更多数据
@@ -75,7 +77,10 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
                 }
             } else {
                 if (viewModel.page <= 1) {//当首次加载时出现网络错误
-                    showProgressBar(true, "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}")
+                    showProgressBar(
+                        true,
+                        "网络错误，点击重试\ncode=${it.code} error=${it.error} message=${it.message}"
+                    )
                 } else {
                     //不是第一页时 网络错误可能是分页加载时出现的网络错误
                     binding.readerRv.loadMoreFail()
@@ -106,28 +111,29 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
     override fun onPause() {
         super.onPause()
         //保存历史记录
-        val historyList=viewModel.getHistory()
-        if (historyList.isNotEmpty()) {
-            val history = History(
-                System.currentTimeMillis(),
-                historyList[0].title,
-                historyList[0].fileServer,
-                historyList[0].path,
-                historyList[0].comic_or_game,
-                historyList[0].author,
-                historyList[0].comic_or_game_id,
-                historyList[0].sort,
-                historyList[0].epsCount,
-                historyList[0].pagesCount,
-                historyList[0].finished,
-                historyList[0].likeCount,
-                historyList[0].ep, //TODO 这里更新章节
-                historyList[0].page //TODO 这里更新页数
-            )
-            history.id = historyList[0].id
-            //这个进行更新 //更新好象要主键
-            viewModel.updateHistory(history)//更新记录
-
+        lifecycleScope.launch {
+            val historyList = viewModel.getHistory()
+            if (historyList.isNotEmpty()) {
+                val historyEntity = HistoryEntity(
+                    System.currentTimeMillis(),
+                    historyList[0].title,
+                    historyList[0].fileServer,
+                    historyList[0].path,
+                    historyList[0].comic_or_game,
+                    historyList[0].author,
+                    historyList[0].comic_or_game_id,
+                    historyList[0].sort,
+                    historyList[0].epsCount,
+                    historyList[0].pagesCount,
+                    historyList[0].finished,
+                    historyList[0].likeCount,
+                    historyList[0].ep, //TODO 这里更新章节
+                    historyList[0].page //TODO 这里更新页数
+                )
+                historyEntity.id = historyList[0].id
+                //这个进行更新 //更新好象要主键
+                viewModel.updateHistory(historyEntity)//更新记录
+            }
         }
     }
 

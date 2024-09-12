@@ -1,53 +1,52 @@
-package com.shizq.bika.db
+package com.shizq.bika.database.model
 
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
-@Entity
-class History(
+@Entity(tableName = "HISTORY")
+data class HistoryEntity(
     @ColumnInfo(name = "time")
-    var time: Long = 0,
+    val time: Long = 0,
 
     @ColumnInfo(name = "title")
-    var title: String,
+    val title: String,
 
     @ColumnInfo(name = "fileServer")
-    var fileServer: String,
+    val fileServer: String,
 
     @ColumnInfo(name = "path")
-    var path: String,
+    val path: String,
 
     @ColumnInfo(name = "comic_or_game")
-    var comic_or_game: String,
+    val comic_or_game: String,
 
     @ColumnInfo(name = "author")
-    var author: String,
+    val author: String,
 
     @ColumnInfo(name = "comic_or_game_id")
-    var comic_or_game_id: String,
+    val comic_or_game_id: String,
 
     @ColumnInfo(name = "sort")//分类
-    var sort: String,
+    val sort: String,
 
     @ColumnInfo(name = "epsCount")//总章
-    var epsCount: String,
+    val epsCount: String,
 
     @ColumnInfo(name = "pagesCount")//总页
-    var pagesCount: String,
+    val pagesCount: String,
 
     @ColumnInfo(name = "finished")//是否完结
-    var finished: Boolean,
+    val finished: Boolean,
 
     @ColumnInfo(name = "likeCount")//爱心数
-    var likeCount: String,
+    val likeCount: String,
 
     @ColumnInfo(name = "ep")//观看到第几章
-    var ep: String,
+    val ep: String,
 
     @ColumnInfo(name = "page")//观看到第几页
-    var page: String,
-){
+    val page: String,
     @PrimaryKey(autoGenerate = true)
-    var id:Long=0
-}
+    var id: Long = 0
+)

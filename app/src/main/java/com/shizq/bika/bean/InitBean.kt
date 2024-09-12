@@ -1,9 +1,12 @@
 package com.shizq.bika.bean
 
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
 data class InitBean(
-    val adKeyword: String,
-    val addresses: List<String>,
-    val address: List<String>,
-    val status: String,
-    val waka: String
+    @SerialName("addresses")
+    val addresses: List<String> = listOf(),
+    @SerialName("status")
+    val status: String = "",
 )
