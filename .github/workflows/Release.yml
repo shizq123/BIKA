@@ -66,6 +66,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: app/build/outputs/apk/release/Bika_${{ github.ref_name }}.apk
-          asset_name: Bika_${{ github.ref_name }}.apk
+          asset_path: app/build/outputs/apk/release/BIKA_${{ github.ref_name }}.apk
+          asset_name: BIKA_${{ github.ref_name }}.apk
           asset_content_type: application/vnd.android.package-archive
