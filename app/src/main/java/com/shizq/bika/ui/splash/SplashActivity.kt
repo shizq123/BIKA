@@ -21,11 +21,9 @@ import com.shizq.bika.utils.SPUtil
 
 @SuppressLint("CustomSplashScreen")
 class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
-    private lateinit var splashScreen: SplashScreen
-
     override fun initParam() {
         super.initParam()
-        splashScreen = installSplashScreen()
+        installSplashScreen()
     }
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
@@ -37,39 +35,13 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
     }
 
     override fun initData() {
-        showProgressBar(true,"获取版本信息...")//加载时 view不可点击
-        viewModel.getLatestVersion()//版本检测
+        showProgressBar(true, "获取节点信息...")
+        viewModel.getInit()// 网络请求获取 节点一节点二
     }
 
     @SuppressLint("SetTextI18n")
     override fun initViewObservable() {
         super.initViewObservable()
-
-        //更新
-        viewModel.liveData_latest_version.observe(this) {
-            if (it != null && it.version.toInt() > AppVersion().code()) {
-                MaterialAlertDialogBuilder(this)
-                    .setTitle("新版本 v${it.short_version}")
-                    .setMessage(it.release_notes)
-                    .setCancelable(false)
-                    .setPositiveButton("更新") { _, _ ->
-                        val intent = Intent()
-                        intent.action = "android.intent.action.VIEW"
-                        intent.data = Uri.parse(it.download_url)
-                        startActivity(intent)
-                        finish()
-                    }
-                    .setNegativeButton("取消"){_, _ ->
-                        showProgressBar(true,"获取节点信息...")
-                        viewModel.getInit()// 网络请求获取 节点一节点二
-                    }
-                    .show()
-            } else {
-                showProgressBar(true,"获取节点信息...")
-                viewModel.getInit()// 网络请求获取 节点一节点二
-            }
-        }
-
 
         //节点
         viewModel.liveData_init.observe(this) { initBean: InitBean ->
@@ -77,9 +49,11 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
                 //查看是否有默认节点 没有就存一个
                 //保存两个host地址
                 //2024.3.8 能跑以后改
-                if (initBean.addresses.isNotEmpty()) {
-                    SPUtil.put("addresses1", initBean.addresses[0])
-                    SPUtil.put("addresses2", initBean.addresses[1])
+                val addresses = initBean.addresses
+                if (addresses.isNotEmpty()) {
+                    addresses.forEachIndexed { index, string ->
+                        SPUtil.put("address${index + 1}", string)
+                    }
                 } else {
                     //2024.3.8 防闪退加入哔咔常用的ip(以后不确定能用)
                     SPUtil.put("addresses1", "172.67.194.19")
@@ -108,14 +82,14 @@ class SplashActivity : BaseActivity<ActivitySplashBinding, SplashViewModel>() {
 
         //网络重试点击事件监听
         binding.loadLayout.setOnClickListener {
-            showProgressBar(true,"获取节点信息...")
+            showProgressBar(true, "获取节点信息...")
             viewModel.getInit()
         }
     }
 
-    private fun showProgressBar(show: Boolean, string: String){
-        binding.loadProgressBar.visibility=if (show)View.VISIBLE else View.GONE
-        binding.loadError.visibility=if (show)View.GONE else View.VISIBLE
+    private fun showProgressBar(show: Boolean, string: String) {
+        binding.loadProgressBar.visibility = if (show) View.VISIBLE else View.GONE
+        binding.loadError.visibility = if (show) View.GONE else View.VISIBLE
         binding.loadText.text = string
         binding.loadLayout.isEnabled = !show
     }
