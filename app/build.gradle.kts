@@ -8,14 +8,14 @@ plugins {
 
 android {
     namespace = "com.shizq.bika"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.shizq.bika"
         minSdk = 24
         targetSdk = 34
         versionCode = 8
-        versionName = "1.0.7"
+        versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -30,9 +30,6 @@ android {
         }
     }
     buildTypes {
-        debug {
-            signingConfig = signingConfigs.getByName("keyStore")
-        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
