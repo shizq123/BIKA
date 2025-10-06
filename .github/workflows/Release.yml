@@ -13,8 +13,7 @@ jobs:
     timeout-minutes: 120
 
     permissions:
-      actions: 'write'
-      contents: 'write'
+      contents: write
 
     steps:
       - name: Enable KVM group perms
