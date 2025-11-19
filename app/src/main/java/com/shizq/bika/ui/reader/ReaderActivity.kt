@@ -50,6 +50,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -192,7 +193,11 @@ class ReaderActivity : ComponentActivity() {
             },
             gestureHost = {
                 val gestureState = rememberGestureState(centerRatio = 0.4f)
-                val screenHeight = maxHeight
+                val screenHeightDp = maxHeight
+                val screenHeightInPixels = with(LocalDensity.current) {
+                    screenHeightDp.toPx() * 0.7f
+                }
+
                 Box(
                     Modifier
                         .fillMaxSize()
@@ -202,14 +207,14 @@ class ReaderActivity : ComponentActivity() {
                                 GestureAction.PrevPage -> {
                                     // 逻辑：向上滚动一屏
                                     scope.launch {
-                                        listState.animateScrollBy(-screenHeight.value)
+                                        listState.animateScrollBy(-screenHeightInPixels)
                                     }
                                 }
 
                                 GestureAction.NextPage -> {
                                     // 逻辑：向下滚动一屏
                                     scope.launch {
-                                        listState.animateScrollBy(screenHeight.value)
+                                        listState.animateScrollBy(screenHeightInPixels)
                                     }
                                 }
 
