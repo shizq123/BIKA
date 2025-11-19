@@ -19,9 +19,9 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.EpisodeAdapter
 import com.shizq.bika.adapter.RecommendAdapter
 import com.shizq.bika.base.BaseActivity
+import com.shizq.bika.database.model.HistoryEntity
 import com.shizq.bika.databinding.ActivityComicinfoBinding
 import com.shizq.bika.databinding.ItemEpisodeFooterViewBinding
-import com.shizq.bika.database.model.HistoryEntity
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
@@ -211,11 +211,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
         fun Read() {
             //开始阅读 默认从第一话开始 以后加历史记录
-            val intent = Intent(this@ComicInfoActivity, ReaderActivity::class.java)
-            intent.putExtra("bookId", viewModel.bookId)
-            intent.putExtra("order", 1)//查看的第几个章节
-            intent.putExtra("totalEps", viewModel.totalEps)//总共多少章节
-            startActivity(intent)
+            ReaderActivity.start(this@ComicInfoActivity, viewModel.bookId, 1, viewModel.totalEps)
         }
     }
 
@@ -662,6 +658,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                             mAdapterRecommend.addNewData(it.data.comics)
                         }
                     }
+
                     else -> {}
                 }
             }
@@ -669,7 +666,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
         //漫画喜欢
         lifecycleScope.launch {
-            viewModel.like.collect{
+            viewModel.like.collect {
                 binding.comicinfoProgressbar.visibility = View.GONE
                 when (it) {
                     is Result.Success -> {
@@ -687,6 +684,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                             Toast.LENGTH_SHORT
                         ).show()
                     }
+
                     else -> {}
                 }
             }
@@ -694,7 +692,7 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
         //漫画收藏
         lifecycleScope.launch {
-            viewModel.favourite.collect{
+            viewModel.favourite.collect {
                 binding.comicinfoProgressbar.visibility = View.GONE
                 when (it) {
                     is Result.Success -> {
@@ -716,17 +714,19 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                             Toast.LENGTH_SHORT
                         ).show()
                     }
+
                     else -> {}
                 }
             }
         }
 
         binding.comicInfoEpsRv.setOnItemClickListener { v, position ->
-            val intent = Intent(this@ComicInfoActivity, ReaderActivity::class.java)
-            intent.putExtra("bookId", viewModel.bookId)
-            intent.putExtra("order", mAdapterEpisode.data[position].order)//查看的第几个章节
-            intent.putExtra("totalEps", viewModel.totalEps)//总共多少章节
-            startActivity(intent)
+            ReaderActivity.start(
+                v.context,
+                viewModel.bookId,
+                mAdapterEpisode.data[position].order,
+                viewModel.totalEps
+            )
         }
         episodeFooterBinding.episodeFooterLayout.setOnClickListener {
             episodeFooterBinding.episodeFooterLayout.isEnabled = false
