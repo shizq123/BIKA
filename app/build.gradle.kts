@@ -1,9 +1,9 @@
 plugins {
-    id("kotlin-kapt")
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.bika.android.application)
+    alias(libs.plugins.bika.android.application.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    id("kotlin-kapt")
 }
 
 android {
@@ -45,11 +45,6 @@ android {
     buildFeatures {
         viewBinding = true
         dataBinding = true
-    }
-
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_17
-        targetCompatibility = JavaVersion.VERSION_17
     }
 
     applicationVariants.all {
