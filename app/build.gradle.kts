@@ -58,6 +58,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.material.iconsExtended)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.adaptive)
     implementation(libs.androidx.compose.material3.adaptive.layout)
@@ -125,4 +126,6 @@ dependencies {
     implementation("androidx.paging:paging-compose:3.4.0-alpha04")
 
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:3.0.0")
+
+    implementation(libs.coil.kt.compose)
 }
