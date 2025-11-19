@@ -1,5 +1,6 @@
 package com.shizq.bika.network
 
+import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -45,6 +46,9 @@ object RetrofitUtil {
     val service_live: ApiService by lazy {
         getRetrofit(LIVE_SERVER).create(ApiService::class.java)
     }
+    val kotlinJson = Json {
+        ignoreUnknownKeys = true
+    }
 
     private fun getRetrofit(url: String): Retrofit {
         if (retrofit == null || URL != url) {
@@ -52,6 +56,7 @@ object RetrofitUtil {
             retrofit = Retrofit.Builder()
                 .baseUrl(url)
                 .client(client)
+                .addConverterFactory(kotlinJson.asConverterFactory("application/json; charset=UTF8".toMediaType()))
                 .addConverterFactory(GsonConverterFactory.create())
                 .addConverterFactory(json.asConverterFactory("application/json; charset=UTF8".toMediaType()))
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
