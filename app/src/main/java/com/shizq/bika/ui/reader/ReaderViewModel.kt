@@ -1,59 +1,37 @@
 package com.shizq.bika.ui.reader
 
-import android.app.Application
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shizq.bika.base.BaseViewModel
-import com.shizq.bika.bean.ComicsPictureBean
-import com.shizq.bika.database.BikaDatabase
-import com.shizq.bika.database.model.HistoryEntity
-import com.shizq.bika.network.RetrofitUtil
-import com.shizq.bika.network.base.BaseHeaders
-import com.shizq.bika.network.base.BaseObserver
-import com.shizq.bika.network.base.BaseResponse
-import kotlinx.coroutines.launch
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.cachedIn
+import com.shizq.bika.paging.ComicPagingSource
+import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
+import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 
-class ReaderViewModel(application: Application) : BaseViewModel(application) {
-    var order = 1
-    var bookId: String? = null
-    var page = 0
-    var totalEps = 1 //总章数
+class ReaderViewModel(
+    private val savedStateHandle: SavedStateHandle,
+) : ViewModel() {
+    private val idFlow = savedStateHandle.getStateFlow(EXTRA_ID, "")
+    private val orderFlow = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
 
-    val liveData_picture: MutableLiveData<BaseResponse<ComicsPictureBean>> by lazy {
-        MutableLiveData<BaseResponse<ComicsPictureBean>>()
-    }
-
-    fun comicsPicture() {
-        page++
-        RetrofitUtil.service.comicsPictureGet(
-            bookId.toString(),
-            order.toString(),
-            page.toString(),
-            BaseHeaders("comics/$bookId/order/$order/pages?page=$page", "GET").getHeaderMapAndToken())
-            .doOnSubscribe(this@ReaderViewModel)
-            .subscribe(object : BaseObserver<ComicsPictureBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<ComicsPictureBean>) {
-                    liveData_picture.postValue(baseResponse)
+    val comicPagingFlow = combine(idFlow, orderFlow, ::Pair)
+        .flatMapLatest { (id, order) ->
+            Pager(
+                config = PagingConfig(
+                    pageSize = 40,
+                    prefetchDistance = 5,
+                    enablePlaceholders = false,
+                    initialLoadSize = 40
+                ),
+                pagingSourceFactory = {
+                    ComicPagingSource(id, order)
                 }
-
-                override fun onCodeError(baseResponse: BaseResponse<ComicsPictureBean>) {
-                    page--
-                    liveData_picture.postValue(baseResponse)
-                }
-
-            })
-    }
-
-    private val historyRepository = BikaDatabase(application).historyDao()
-    //通过 漫画的id查询
-    suspend fun getHistory(): List<HistoryEntity>{
-        return historyRepository.gatHistory(bookId!!)
-    }
-
-    fun updateHistory(vararg historyEntity: HistoryEntity) {
-        viewModelScope.launch {
-            historyRepository.updateHistory(*historyEntity)
+            )
+                .flow
+                .cachedIn(viewModelScope)
         }
-    }
-
 }
