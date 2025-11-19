@@ -123,4 +123,6 @@ dependencies {
 
     implementation("androidx.paging:paging-runtime:3.4.0-alpha04")
     implementation("androidx.paging:paging-compose:3.4.0-alpha04")
+
+    implementation("com.squareup.retrofit2:converter-kotlinx-serialization:3.0.0")
 }
