@@ -16,7 +16,7 @@ import androidx.compose.ui.unit.IntSize
 @Composable
 fun rememberGestureState(
     centerRatio: Float = 0.33f,
-    readingDirection: ReadingDirection = ReadingDirection.EndToStart
+    readingDirection: ReadingDirection = ReadingDirection.StartToEnd
 ): GestureState {
     return remember(centerRatio, readingDirection) {
         GestureState(centerRatio, readingDirection)
