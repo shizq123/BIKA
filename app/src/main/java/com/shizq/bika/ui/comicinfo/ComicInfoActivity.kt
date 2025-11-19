@@ -211,7 +211,13 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
 
         fun Read() {
             //开始阅读 默认从第一话开始 以后加历史记录
-            ReaderActivity.start(this@ComicInfoActivity, viewModel.bookId, 1, viewModel.totalEps)
+            ReaderActivity.start(
+                this@ComicInfoActivity,
+                viewModel.bookId,
+                1,
+                viewModel.totalEps,
+                viewModel.title!!
+            )
         }
     }
 
@@ -725,7 +731,8 @@ class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewMo
                 v.context,
                 viewModel.bookId,
                 mAdapterEpisode.data[position].order,
-                viewModel.totalEps
+                viewModel.totalEps,
+                viewModel.title!!
             )
         }
         episodeFooterBinding.episodeFooterLayout.setOnClickListener {

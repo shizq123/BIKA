@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -20,27 +21,33 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -49,8 +56,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
@@ -62,6 +69,13 @@ import coil.request.ImageRequest
 import coil.size.Size
 import com.shizq.bika.R
 import com.shizq.bika.paging.ComicPage
+import com.shizq.bika.paging.PagingMetadata
+import com.shizq.bika.ui.reader.bar.BottomBar
+import com.shizq.bika.ui.reader.bar.TopBar
+import com.shizq.bika.ui.reader.gesture.GestureAction
+import com.shizq.bika.ui.reader.gesture.readerControls
+import com.shizq.bika.ui.reader.gesture.rememberGestureState
+import kotlinx.coroutines.launch
 
 //阅读漫画页
 class ReaderActivity : ComponentActivity() {
@@ -73,7 +87,7 @@ class ReaderActivity : ComponentActivity() {
             window.attributes.layoutInDisplayCutoutMode =
                 WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_SHORT_EDGES
         }
-        hideSystemUI()
+
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContent {
@@ -85,42 +99,130 @@ class ReaderActivity : ComponentActivity() {
     @Composable
     fun ReaderScreen(viewModel: ReaderViewModel, onBackClick: () -> Unit) {
         val lazyPagingItems = viewModel.comicPagingFlow.collectAsLazyPagingItems()
-
+        val title by PagingMetadata.title.collectAsStateWithLifecycle()
+        val pageCount by PagingMetadata.totalElements.collectAsStateWithLifecycle()
+        val currentPageIndex by viewModel.currentPage.collectAsStateWithLifecycle()
         ReaderContent(
             lazyPagingItems,
+            title = title,
+            currentPageIndex = currentPageIndex,
+            onPageChange = { viewModel.currentPage.value = it },
+            pageCount = pageCount,
             onBackClick = onBackClick
         )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun ReaderContent(lazyPagingItems: LazyPagingItems<ComicPage>, onBackClick: () -> Unit) {
-        val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+    fun ReaderContent(
+        lazyPagingItems: LazyPagingItems<ComicPage>,
+        onBackClick: () -> Unit,
+        pageCount: Int,
+        currentPageIndex: Int,
+        onPageChange: (Int) -> Unit,
+        title: String
+    ) {
+        val listState = rememberLazyListState()
+        val scope = rememberCoroutineScope()
 
-        Scaffold(
+        var showMenu by rememberSaveable { mutableStateOf(false) }
+        LaunchedEffect(showMenu) {
+            if (showMenu) {
+                showSystemUI()
+            } else {
+                hideSystemUI()
+            }
+        }
+        ReaderScaffold(
+            showMenu = showMenu,
             topBar = {
-                TopAppBar(
-                    title = { },
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(
-                                Icons.AutoMirrored.Filled.ArrowBack,
-                                null
-                            )
+                TopBar(title = { Text(title) }, onBackClick = onBackClick)
+            },
+            bottomBar = {
+                BottomBar(
+                    progressIndicator = {
+                        if (pageCount > 0) {
+                            Text(text = "${currentPageIndex + 1} / $pageCount")
                         }
                     },
-                    scrollBehavior = scrollBehavior,
+                    progressSlider = {
+                        Slider(
+                            value = currentPageIndex.toFloat(),
+                            onValueChange = {
+                                onPageChange(it.toInt())
+                            },
+                            onValueChangeFinished = {
+                                scope.launch {
+                                    listState.animateScrollToItem(currentPageIndex)
+                                }
+                            },
+                            valueRange = 0f..(pageCount.coerceAtLeast(0)).toFloat()
+                        )
+                    },
+                    startActions = {
+                        IconButton(onClick = { /* 打开目录 */ }) {
+                            Icon(Icons.Default.Menu, "目录")
+                        }
+                    },
+                    middleActions = {
+                        IconButton(onClick = { /* 上一话 */ }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "上一话")
+                        }
+                        IconButton(onClick = { /* 下一话 */ }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowForward, "下一话")
+                        }
+                    },
+                    endActions = {
+                        IconButton(onClick = { /* 打开设置 */ }) {
+                            Icon(Icons.Default.Settings, "设置")
+                        }
+                    }
                 )
             },
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(Color.Black)
-            ) {
-                LazyColumn(modifier = Modifier.fillMaxSize()) {
+            floatingIndicators = {
+                val current = listState.firstVisibleItemIndex + 1
+                Text(
+                    text = "$current / $pageCount",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                    modifier = Modifier
+                        .background(Color.Black.copy(alpha = 0.6f), MaterialTheme.shapes.small)
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+            },
+            gestureHost = {
+                val gestureState = rememberGestureState(centerRatio = 0.4f)
+                val screenHeight = maxHeight
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .readerControls(state = gestureState) { action ->
+                            when (action) {
+                                GestureAction.ToggleMenu -> showMenu = !showMenu
+                                GestureAction.PrevPage -> {
+                                    // 逻辑：向上滚动一屏
+                                    scope.launch {
+                                        listState.animateScrollBy(-screenHeight.value)
+                                    }
+                                }
+
+                                GestureAction.NextPage -> {
+                                    // 逻辑：向下滚动一屏
+                                    scope.launch {
+                                        listState.animateScrollBy(screenHeight.value)
+                                    }
+                                }
+
+                                GestureAction.None -> {}
+                            }
+                        }
+                )
+            },
+            content = {
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize()
+                ) {
                     items(
                         count = lazyPagingItems.itemCount,
                         key = lazyPagingItems.itemKey { it.id },
@@ -130,61 +232,9 @@ class ReaderActivity : ComponentActivity() {
                             ComicPageItem(page, index)
                         }
                     }
-
-                    // 3. 底部加载状态处理 (Loading More)
-                    when (lazyPagingItems.loadState.append) {
-                        is LoadState.Loading -> {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator(color = Color.White)
-                                }
-                            }
-                        }
-
-                        is LoadState.Error -> {
-                            item {
-                                ErrorFooter(
-                                    onRetry = { lazyPagingItems.retry() }
-                                )
-                            }
-                        }
-
-                        else -> {}
-                    }
                 }
-
-                // 4. 首次加载全屏状态处理 (Loading / Error)
-                when (lazyPagingItems.loadState.refresh) {
-                    is LoadState.Loading -> {
-                        CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                    }
-
-                    is LoadState.Error -> {
-                        ErrorView(
-                            msg = "加载失败",
-                            onRetry = { lazyPagingItems.retry() },
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
-
-                    else -> {}
-                }
-
-                // 5. 页面指示器 (可选)
-                // Paging 3 获取当前页码比较麻烦，通常简单显示 "已加载 X 张"
-                PageIndicator(
-                    total = lazyPagingItems.itemCount,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 16.dp)
-                )
             }
-        }
+        )
     }
 
     @Composable
@@ -198,7 +248,6 @@ class ReaderActivity : ComponentActivity() {
         val imageRequest = remember(page.url) {
             ImageRequest.Builder(context)
                 .data(page.url)
-                .bitmapConfig(android.graphics.Bitmap.Config.RGB_565)
                 .memoryCachePolicy(CachePolicy.ENABLED)
                 .crossfade(false)
                 .size(Size.ORIGINAL)
@@ -408,11 +457,13 @@ class ReaderActivity : ComponentActivity() {
         internal const val EXTRA_ID = "com.shizq.bika.reader.EXTRA_BOOK_ID"
         internal const val EXTRA_ORDER = "com.shizq.bika.reader.EXTRA_ORDER"
         internal const val EXTRA_TOTAL_EPS = "com.shizq.bika.reader.EXTRA_TOTAL_EPS"
-        fun start(context: Context, bookId: String, order: Int, totalEps: Int) {
+        internal const val EXTRA_TITLE = "com.shizq.bika.reader.EXTRA_TITLE"
+        fun start(context: Context, bookId: String, order: Int, totalEps: Int, title: String) {
             val intent = Intent(context, ReaderActivity::class.java)
             intent.putExtra(EXTRA_ID, bookId)
             intent.putExtra(EXTRA_ORDER, order)
             intent.putExtra(EXTRA_TOTAL_EPS, totalEps)
+            intent.putExtra(EXTRA_TITLE, title)
             context.startActivity(intent)
         }
     }
