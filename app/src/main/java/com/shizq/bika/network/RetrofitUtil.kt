@@ -56,9 +56,8 @@ object RetrofitUtil {
             retrofit = Retrofit.Builder()
                 .baseUrl(url)
                 .client(client)
-                .addConverterFactory(kotlinJson.asConverterFactory("application/json; charset=UTF8".toMediaType()))
                 .addConverterFactory(GsonConverterFactory.create())
-                .addConverterFactory(json.asConverterFactory("application/json; charset=UTF8".toMediaType()))
+                .addConverterFactory(kotlinJson.asConverterFactory("application/json; charset=UTF8".toMediaType()))
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
                 .build()
         }
