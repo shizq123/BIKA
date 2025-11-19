@@ -1,10 +1,50 @@
 package com.shizq.bika.network
 
-import com.shizq.bika.bean.*
+import com.shizq.bika.bean.ActionBean
+import com.shizq.bika.bean.Box
+import com.shizq.bika.bean.CategoriesBean
+import com.shizq.bika.bean.ChatMessageBean
+import com.shizq.bika.bean.ChatRoomBlackListBean
+import com.shizq.bika.bean.ChatRoomBlackListDeleteBean
+import com.shizq.bika.bean.ChatRoomBlockUserBean
+import com.shizq.bika.bean.ChatRoomListBean
+import com.shizq.bika.bean.ChatRoomListOldBean
+import com.shizq.bika.bean.ChatRoomProfileBean
+import com.shizq.bika.bean.ChatRoomSignInBean
+import com.shizq.bika.bean.CollectionsBean
+import com.shizq.bika.bean.ComicEpisodeData
+import com.shizq.bika.bean.ComicInfoBean
+import com.shizq.bika.bean.ComicListBean
+import com.shizq.bika.bean.ComicListBean2
+import com.shizq.bika.bean.ComicsPictureBean
+import com.shizq.bika.bean.CommentsBean
+import com.shizq.bika.bean.EpisodeBean
+import com.shizq.bika.bean.GameInfoBean
+import com.shizq.bika.bean.GamesBean
+import com.shizq.bika.bean.InitBean
+import com.shizq.bika.bean.KeywordsBean
+import com.shizq.bika.bean.KnightBean
+import com.shizq.bika.bean.MyCommentsBean
+import com.shizq.bika.bean.NotificationsBean
+import com.shizq.bika.bean.PicaAppsBean
+import com.shizq.bika.bean.PicaInitBean
+import com.shizq.bika.bean.ProfileBean
+import com.shizq.bika.bean.PunchInBean
+import com.shizq.bika.bean.RecommendBean
+import com.shizq.bika.bean.ReportBean
+import com.shizq.bika.bean.SignInBean
+import com.shizq.bika.bean.UpdateBean
 import com.shizq.bika.network.base.BaseResponse
 import io.reactivex.rxjava3.core.Observable
 import okhttp3.RequestBody
-import retrofit2.http.*
+import retrofit2.http.Body
+import retrofit2.http.DELETE
+import retrofit2.http.GET
+import retrofit2.http.HeaderMap
+import retrofit2.http.POST
+import retrofit2.http.PUT
+import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface ApiService {
     //节点
@@ -177,6 +217,14 @@ interface ApiService {
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ComicsPictureBean>>
 
+    @GET("comics/{bookId}/order/{order}/pages")
+    suspend fun comicsPictureGet2(
+        @Path("bookId") bookId: String,
+        @Path("order") order: Int,
+        @Query("page") page: Int,
+        @HeaderMap headers: Map<String, String>
+    ): Box<ComicEpisodeData>
+
     //评论列表
     @GET("{comics_games}/{id}/comments")
     suspend fun comicsCommentsGet(
@@ -317,7 +365,7 @@ interface ApiService {
     @GET("chat")
     suspend fun oldChatRoomListGet(
         @HeaderMap headers: Map<String, String>
-    ):BaseResponse<ChatRoomListOldBean>
+    ): BaseResponse<ChatRoomListOldBean>
 
     //上传头像 //抓包得出上传的分辨率是200*200 //聊天室抓包，图片其中一边的最大分辨率是800
     @PUT("users/avatar")
