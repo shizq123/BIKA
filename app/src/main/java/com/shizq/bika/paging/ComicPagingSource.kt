@@ -4,6 +4,7 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
+import kotlinx.coroutines.flow.update
 
 class ComicPagingSource(
     val id: String,
@@ -25,14 +26,17 @@ class ComicPagingSource(
             if (response.code != 200) {
                 return LoadResult.Error(Exception(response.message))
             }
-            val pageInfo = data.pages
+
+            val pageInfo = data.pages.also { pages ->
+                PagingMetadata.totalElements.update { pages.total }
+            }
+            PagingMetadata.title.update { data.ep.title }
+
             LoadResult.Page(
                 data = pageInfo.docs.map { doc ->
-                    // 处理 URL 拼接
                     val fileServer = doc.media.fileServer
                     val path = doc.media.path
-                    val fullUrl =
-                        if (fileServer.endsWith("/")) "${fileServer}static/$path" else "$fileServer/static/$path"
+                    val fullUrl = "$fileServer/static/$path"
 
                     ComicPage(id = doc.id, url = fullUrl)
                 },
