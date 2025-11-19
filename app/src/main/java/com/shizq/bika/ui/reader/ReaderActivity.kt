@@ -1,6 +1,8 @@
 package com.shizq.bika.ui.reader
 
 import android.annotation.SuppressLint
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -12,8 +14,8 @@ import com.shizq.bika.BR
 import com.shizq.bika.R
 import com.shizq.bika.adapter.ReaderAdapter
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.databinding.ActivityReaderBinding
 import com.shizq.bika.database.model.HistoryEntity
+import com.shizq.bika.databinding.ActivityReaderBinding
 import kotlinx.coroutines.launch
 
 //阅读漫画页
@@ -27,6 +29,7 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
     override fun initVariableId(): Int {
         return BR.viewModel
     }
+
 
     override fun initData() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)//屏幕常亮
@@ -137,4 +140,16 @@ class ReaderActivity : BaseActivity<ActivityReaderBinding, ReaderViewModel>() {
         }
     }
 
+    companion object {
+        internal const val EXTRA_BOOK_ID = "com.shizq.bika.reader.EXTRA_BOOK_ID"
+        internal const val EXTRA_ORDER = "com.shizq.bika.reader.EXTRA_ORDER"
+        internal const val EXTRA_TOTAL_EPS = "com.shizq.bika.reader.EXTRA_TOTAL_EPS"
+        fun start(context: Context, bookId: String, order: Int, totalEps: Int) {
+            val intent = Intent(context, ReaderActivity::class.java)
+            intent.putExtra(EXTRA_BOOK_ID, bookId)
+            intent.putExtra(EXTRA_ORDER, order)
+            intent.putExtra(EXTRA_TOTAL_EPS, totalEps)
+            context.startActivity(intent)
+        }
+    }
 }
