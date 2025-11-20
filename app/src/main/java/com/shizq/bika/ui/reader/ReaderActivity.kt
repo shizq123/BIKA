@@ -10,7 +10,13 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -22,6 +28,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
@@ -39,6 +46,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -125,7 +133,7 @@ class ReaderActivity : ComponentActivity() {
     ) {
         val listState = rememberLazyListState()
         val scope = rememberCoroutineScope()
-
+        val flingBehavior = ScrollableDefaults.flingBehavior()
         var showMenu by rememberSaveable { mutableStateOf(false) }
         LaunchedEffect(showMenu) {
             if (showMenu) {
@@ -181,7 +189,7 @@ class ReaderActivity : ComponentActivity() {
                 )
             },
             floatingIndicators = {
-                val current = listState.firstVisibleItemIndex + 1
+                val current by remember { derivedStateOf { listState.firstVisibleItemIndex + 1 } }
                 Text(
                     text = "$current / $pageCount",
                     style = MaterialTheme.typography.labelMedium,
@@ -192,41 +200,60 @@ class ReaderActivity : ComponentActivity() {
                 )
             },
             gestureHost = {
-                val gestureState = rememberGestureState(centerRatio = 0.4f)
-                val screenHeightDp = maxHeight
-                val screenHeightInPixels = with(LocalDensity.current) {
-                    screenHeightDp.toPx() * 0.7f
+                val screenHeightInPixels = with(LocalDensity.current) { maxHeight.toPx() }
+
+                val gestureState = rememberGestureState { action ->
+                    when (action) {
+                        GestureAction.ToggleMenu -> showMenu = !showMenu
+                        GestureAction.PrevPage -> {
+                            scope.launch {
+                                listState.animateScrollBy(-screenHeightInPixels * 0.8f)
+                            }
+                        }
+
+                        GestureAction.NextPage -> {
+                            scope.launch {
+                                listState.animateScrollBy(screenHeightInPixels * 0.8f)
+                            }
+                        }
+
+                        GestureAction.None -> {}
+                    }
                 }
 
                 Box(
                     Modifier
                         .fillMaxSize()
-                        .readerControls(state = gestureState) { action ->
-                            when (action) {
-                                GestureAction.ToggleMenu -> showMenu = !showMenu
-                                GestureAction.PrevPage -> {
-                                    // 逻辑：向上滚动一屏
-                                    scope.launch {
-                                        listState.animateScrollBy(-screenHeightInPixels)
+                        .scrollable(
+                            state = rememberScrollState(),
+                            orientation = Orientation.Vertical,
+                            flingBehavior = flingBehavior
+                        )
+                        .draggable(
+                            orientation = Orientation.Vertical,
+                            state = rememberDraggableState { delta ->
+                                scope.launch { listState.scrollBy(-delta) }
+                            },
+                            onDragStopped = { velocity ->
+                                scope.launch {
+                                    with(flingBehavior) {
+                                        listState.scroll {
+                                            performFling(-velocity)
+                                        }
                                     }
                                 }
-
-                                GestureAction.NextPage -> {
-                                    // 逻辑：向下滚动一屏
-                                    scope.launch {
-                                        listState.animateScrollBy(screenHeightInPixels)
-                                    }
-                                }
-
-                                GestureAction.None -> {}
                             }
-                        }
+                        )
+                        .readerControls(
+                            gestureState = gestureState,
+                        )
                 )
             },
             content = {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier.fillMaxSize(),
+                    flingBehavior = flingBehavior,
                 ) {
                     items(
                         count = lazyPagingItems.itemCount,

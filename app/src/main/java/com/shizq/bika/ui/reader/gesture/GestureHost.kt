@@ -7,6 +7,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -16,20 +17,26 @@ import androidx.compose.ui.unit.IntSize
 @Composable
 fun rememberGestureState(
     centerRatio: Float = 0.33f,
-    readingDirection: ReadingDirection = ReadingDirection.StartToEnd
+    readingDirection: ReadingDirection = ReadingDirection.StartToEnd,
+    onAction: (GestureAction) -> Unit
 ): GestureState {
+    val latestOnAction by rememberUpdatedState(onAction)
+
     return remember(centerRatio, readingDirection) {
-        GestureState(centerRatio, readingDirection)
+        GestureState(
+            initialCenterRatio = centerRatio,
+            initialDirection = readingDirection,
+            onAction = { action -> latestOnAction(action) }
+        )
     }
 }
 
 fun Modifier.readerControls(
-    state: GestureState,
-    onTap: (GestureAction) -> Unit
-): Modifier = pointerInput(state) {
+    gestureState: GestureState
+): Modifier = pointerInput(Unit) {
     detectTapGestures { offset ->
-        val action = state.calculateAction(offset, size)
-        onTap(action)
+        val action = gestureState.calculateAction(offset, size)
+        gestureState.onAction(action)
     }
 }
 
@@ -53,8 +60,9 @@ enum class ReadingDirection {
 
 @Stable
 class GestureState(
-    initialCenterRatio: Float = 0.33f,
-    initialDirection: ReadingDirection = ReadingDirection.StartToEnd
+    initialCenterRatio: Float,
+    initialDirection: ReadingDirection,
+    val onAction: (GestureAction) -> Unit
 ) {
     /**
      * 中间区域宽度占比 (0.0 - 1.0)

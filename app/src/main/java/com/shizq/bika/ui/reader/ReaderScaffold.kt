@@ -81,11 +81,18 @@ fun ReaderScaffold(
     ) {
         // 1. 阅读器内容层 (最底层)
         // 这里不加 WindowInsets padding，让图片可以延伸到状态栏下方(沉浸式)
-        Box(modifier = Modifier.fillMaxSize(), content = content)
+        Box(
+            Modifier
+                .background(Color.Transparent)
+                .matchParentSize(), // no window insets for video
+        ) {
+            content()
+            Box(Modifier.matchParentSize()) // 防止点击事件传播到 video 里
+        }
 
         // 2. 手势交互层
         // 覆盖在内容之上，用于捕获点击屏幕中央呼出菜单的操作，或者处理特定的热区
-        BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        BoxWithConstraints(modifier = Modifier.matchParentSize()) {
             gestureHost()
         }
 
@@ -120,7 +127,7 @@ fun ReaderScaffold(
         }
 
         // 5. 控制器 UI 层 (TopBar & BottomBar)
-        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
             Column(modifier = Modifier.fillMaxSize()) {
 
                 // Top Bar Region
