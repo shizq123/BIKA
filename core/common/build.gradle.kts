@@ -1,11 +1,12 @@
 plugins {
     alias(libs.plugins.bika.android.library)
+    alias(libs.plugins.bika.hilt)
 }
 
 android {
-    namespace = "com.shizq.bika.core.model"
+    namespace = "com.shizq.bika.core.common"
 }
 
 dependencies {
-    implementation(libs.kotlinx.serialization.core)
+    implementation(libs.kotlinx.coroutines.core)
 }
