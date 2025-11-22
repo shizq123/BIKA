@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ComicPagingSource
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
@@ -15,13 +16,14 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 
 class ReaderViewModel(
-    savedStateHandle: SavedStateHandle,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val idFlow = savedStateHandle.getStateFlow(EXTRA_ID, "")
     private val orderFlow = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
-    val chapterPagingFlow = idFlow.flatMapLatest {
+    val currentChapterId = savedStateHandle.getStateFlow<String?>(CHAPTER_ID, null)
+    val chapterPagingFlow = idFlow.flatMapLatest { id ->
         Pager(config = PagingConfig(pageSize = 40)) {
-            ChapterListPagingSource(it)
+            ChapterListPagingSource(id)
         }
             .flow
             .cachedIn(viewModelScope)
@@ -35,4 +37,16 @@ class ReaderViewModel(
                 .flow
                 .cachedIn(viewModelScope)
         }
+
+    fun loadChapter(chapter: Chapter) {
+        savedStateHandle[CHAPTER_ID] = chapter.id
+        savedStateHandle[EXTRA_ORDER] = chapter.order
+    }
 }
+
+private const val CHAPTER_ID = "chapter_id"
+
+data class ChapterItemUiState(
+    val chapter: Chapter,
+    val isCurrent: Boolean = false
+)

@@ -39,6 +39,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -49,13 +50,13 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -63,6 +64,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -117,6 +119,8 @@ class ReaderActivity : ComponentActivity() {
 
         val comicPages = viewModel.comicPagingFlow.collectAsLazyPagingItems()
         val chapterPages = viewModel.chapterPagingFlow.collectAsLazyPagingItems()
+        val currentChapterId by viewModel.currentChapterId.collectAsStateWithLifecycle()
+
         ReaderContent(
             comicPages = comicPages,
             chapters = chapterPages,
@@ -124,7 +128,9 @@ class ReaderActivity : ComponentActivity() {
             currentPageIndex = currentPageIndex,
             onPageChange = { viewModel.currentPage.value = it },
             pageCount = pageCount,
-            onBackClick = onBackClick
+            onBackClick = onBackClick,
+            currentChapterId = currentChapterId,
+            onChapterChange = viewModel::loadChapter
         )
     }
 
@@ -137,19 +143,27 @@ class ReaderActivity : ComponentActivity() {
         pageCount: Int,
         currentPageIndex: Int,
         onPageChange: (Int) -> Unit,
-        onBackClick: () -> Unit
+        onBackClick: () -> Unit,
+        currentChapterId: String?,
+        onChapterChange: (Chapter) -> Unit
     ) {
         val listState = rememberLazyListState()
         val scope = rememberCoroutineScope()
         val flingBehavior = ScrollableDefaults.flingBehavior()
         var showMenu by rememberSaveable { mutableStateOf(false) }
-        var showCatalogue by remember { mutableStateOf(false) }
+        var showChapterList by remember { mutableStateOf(false) }
         LaunchedEffect(showMenu) {
             if (showMenu) {
                 showSystemUI()
             } else {
                 hideSystemUI()
             }
+        }
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.firstVisibleItemIndex }
+                .collect { index ->
+                    onPageChange(index)
+                }
         }
         ReaderScaffold(
             showMenu = showMenu,
@@ -178,7 +192,7 @@ class ReaderActivity : ComponentActivity() {
                         )
                     },
                     startActions = {
-                        IconButton(onClick = { showCatalogue = true }) {
+                        IconButton(onClick = { showChapterList = true }) {
                             Icon(Icons.Default.Menu, "目录")
                         }
                     },
@@ -198,9 +212,8 @@ class ReaderActivity : ComponentActivity() {
                 )
             },
             floatingMessage = {
-                val current by remember { derivedStateOf { listState.firstVisibleItemIndex + 1 } }
                 Text(
-                    text = "$current / $pageCount",
+                    text = "$currentPageIndex / $pageCount",
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White,
                     modifier = Modifier
@@ -210,25 +223,29 @@ class ReaderActivity : ComponentActivity() {
             },
             sideSheet = {
                 AnimatedVisibility(
-                    showCatalogue,
+                    showChapterList,
                     enter = slideInHorizontally(tween()),
                     exit = slideOutHorizontally(tween()),
                 ) {
                     SideSheetLayout(
                         title = { Text("目录") },
-                        onDismissRequest = { showCatalogue = false },
+                        onDismissRequest = { showChapterList = false },
                         closeButton = {
-                            IconButton(onClick = { showCatalogue = false }) {
+                            IconButton(onClick = { showChapterList = false }) {
                                 Icon(Icons.Default.Close, contentDescription = "关闭目录")
                             }
                         }
                     ) {
+
                         ChapterList(
                             chapters = chapters,
                             onChapterClick = { newChapterId ->
-                                showCatalogue = false // 点击章节后关闭面板
+                                onChapterChange(newChapterId)
+                                showChapterList = false // 点击章节后关闭面板
+                                showMenu = false
                             },
-                            modifier = Modifier.padding(top = 8.dp)
+                            modifier = Modifier.padding(top = 8.dp),
+                            currentChapterId = currentChapterId
                         )
                     }
                 }
@@ -373,7 +390,8 @@ class ReaderActivity : ComponentActivity() {
     @Composable
     fun ChapterList(
         chapters: LazyPagingItems<Chapter>,
-        onChapterClick: (chapterId: String) -> Unit,
+        currentChapterId: String?, // 新增：传入当前选中的ID
+        onChapterClick: (Chapter) -> Unit,
         modifier: Modifier = Modifier
     ) {
         LazyColumn(
@@ -391,10 +409,17 @@ class ReaderActivity : ComponentActivity() {
             }
 
             items(chapters.itemCount, key = chapters.itemKey { it.id }) { index ->
-                chapters[index]?.let {
+                val chapter = chapters[index]
+
+                if (chapter != null) {
+                    val itemState = ChapterItemUiState(
+                        chapter = chapter,
+                        isCurrent = chapter.id == currentChapterId
+                    )
+
                     ChapterListItem(
-                        chapter = it,
-                        onClick = { onChapterClick(it.id) }
+                        state = itemState,
+                        onClick = { onChapterClick(chapter) }
                     )
                 }
             }
@@ -403,15 +428,16 @@ class ReaderActivity : ComponentActivity() {
 
     @Composable
     fun ChapterListItem(
-        chapter: Chapter,
+        state: ChapterItemUiState,
         onClick: () -> Unit
     ) {
-        val backgroundColor = if (true) {
+        val backgroundColor = if (state.isCurrent) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         } else {
             Color.Transparent
         }
-        val titleColor = if (true) {
+
+        val titleColor = if (state.isCurrent) {
             MaterialTheme.colorScheme.primary
         } else {
             MaterialTheme.colorScheme.onSurface
@@ -420,24 +446,29 @@ class ReaderActivity : ComponentActivity() {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable(onClick = onClick) // Make the whole row clickable
+                .clickable(onClick = onClick)
                 .background(backgroundColor)
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = chapter.title,
+                    text = state.chapter.title,
                     style = MaterialTheme.typography.bodyLarge,
                     color = titleColor,
-//                    fontWeight = if (chapter.isSelected) FontWeight.Bold else FontWeight.Normal
+                    fontWeight = if (state.isCurrent) FontWeight.Bold else FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
+
                 Text(
-                    text = chapter.title,
+                    text = state.chapter.title,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+            }
+
+            if (state.isCurrent) {
+                Icon(Icons.Default.PlayArrow, contentDescription = "Playing", tint = titleColor)
             }
         }
     }
