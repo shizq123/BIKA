@@ -36,8 +36,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.PlayArrow
@@ -203,12 +201,7 @@ class ReaderActivity : ComponentActivity() {
                         }
                     },
                     middleActions = {
-                        IconButton(onClick = { /* 上一话 */ }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, "上一话")
-                        }
-                        IconButton(onClick = { /* 下一话 */ }) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowForward, "下一话")
-                        }
+
                     },
                     endActions = {
                         IconButton(onClick = { /* 打开设置 */ }) {
