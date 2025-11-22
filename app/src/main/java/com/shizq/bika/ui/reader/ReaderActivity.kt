@@ -179,9 +179,7 @@ class ReaderActivity : ComponentActivity() {
                     },
                     progressSlider = {
                         var sliderPosition by remember(currentPageIndex) {
-                            mutableFloatStateOf(
-                                currentPageIndex.toFloat()
-                            )
+                            mutableFloatStateOf(currentPageIndex.toFloat())
                         }
                         Slider(
                             value = sliderPosition,
