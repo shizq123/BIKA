@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.reader
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.os.Build
@@ -51,6 +52,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -89,6 +91,7 @@ import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.gesture.GestureAction
 import com.shizq.bika.ui.reader.gesture.readerControls
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 //阅读漫画页
@@ -116,10 +119,10 @@ class ReaderActivity : ComponentActivity() {
         val pageCount by PagingMetadata.totalElements.collectAsStateWithLifecycle()
 
         val currentPageIndex by viewModel.currentPage.collectAsStateWithLifecycle()
+        val currentChapterIndex by viewModel.chapterIndex.collectAsStateWithLifecycle()
 
         val comicPages = viewModel.comicPagingFlow.collectAsLazyPagingItems()
         val chapterPages = viewModel.chapterPagingFlow.collectAsLazyPagingItems()
-        val currentChapterId by viewModel.currentChapterId.collectAsStateWithLifecycle()
 
         ReaderContent(
             comicPages = comicPages,
@@ -129,7 +132,7 @@ class ReaderActivity : ComponentActivity() {
             onPageChange = { viewModel.currentPage.value = it },
             pageCount = pageCount,
             onBackClick = onBackClick,
-            currentChapterId = currentChapterId,
+            highlightedChapter = currentChapterIndex,
             onChapterChange = viewModel::loadChapter
         )
     }
@@ -144,7 +147,7 @@ class ReaderActivity : ComponentActivity() {
         currentPageIndex: Int,
         onPageChange: (Int) -> Unit,
         onBackClick: () -> Unit,
-        currentChapterId: String?,
+        highlightedChapter: Int,
         onChapterChange: (Chapter) -> Unit
     ) {
         val listState = rememberLazyListState()
@@ -152,15 +155,12 @@ class ReaderActivity : ComponentActivity() {
         val flingBehavior = ScrollableDefaults.flingBehavior()
         var showMenu by rememberSaveable { mutableStateOf(false) }
         var showChapterList by remember { mutableStateOf(false) }
-        LaunchedEffect(showMenu) {
-            if (showMenu) {
-                showSystemUI()
-            } else {
-                hideSystemUI()
-            }
-        }
+
+        SystemUiController(showSystemUI = showMenu)
+
         LaunchedEffect(listState) {
             snapshotFlow { listState.firstVisibleItemIndex }
+                .distinctUntilChanged()
                 .collect { index ->
                     onPageChange(index)
                 }
@@ -178,17 +178,25 @@ class ReaderActivity : ComponentActivity() {
                         }
                     },
                     progressSlider = {
+                        var sliderPosition by remember(currentPageIndex) {
+                            mutableFloatStateOf(
+                                currentPageIndex.toFloat()
+                            )
+                        }
                         Slider(
-                            value = currentPageIndex.toFloat(),
+                            value = sliderPosition,
                             onValueChange = {
+                                sliderPosition = it
                                 onPageChange(it.toInt())
                             },
                             onValueChangeFinished = {
+                                val targetPage = sliderPosition.toInt()
+                                onPageChange(targetPage)
                                 scope.launch {
-                                    listState.animateScrollToItem(currentPageIndex)
+                                    listState.scrollToItem(targetPage)
                                 }
                             },
-                            valueRange = 0f..(pageCount.coerceAtLeast(0)).toFloat()
+                            valueRange = 0f..(pageCount.coerceAtLeast(1) - 1).toFloat()
                         )
                     },
                     startActions = {
@@ -245,7 +253,7 @@ class ReaderActivity : ComponentActivity() {
                                 showMenu = false
                             },
                             modifier = Modifier.padding(top = 8.dp),
-                            currentChapterId = currentChapterId
+                            currentChapterId = highlightedChapter
                         )
                     }
                 }
@@ -390,7 +398,7 @@ class ReaderActivity : ComponentActivity() {
     @Composable
     fun ChapterList(
         chapters: LazyPagingItems<Chapter>,
-        currentChapterId: String?, // 新增：传入当前选中的ID
+        currentChapterId: Int,
         onChapterClick: (Chapter) -> Unit,
         modifier: Modifier = Modifier
     ) {
@@ -408,18 +416,16 @@ class ReaderActivity : ComponentActivity() {
                 HorizontalDivider()
             }
 
-            items(chapters.itemCount, key = chapters.itemKey { it.id }) { index ->
-                val chapter = chapters[index]
-
-                if (chapter != null) {
-                    val itemState = ChapterItemUiState(
-                        chapter = chapter,
-                        isCurrent = chapter.id == currentChapterId
-                    )
-
+            items(
+                count = chapters.itemCount,
+                key = chapters.itemKey { it.id }
+            ) { index ->
+                chapters[index]?.let { chapter ->
+                    val isCurrent = chapter.order == currentChapterId
                     ChapterListItem(
-                        state = itemState,
-                        onClick = { onChapterClick(chapter) }
+                        chapter = chapter,
+                        isCurrent = isCurrent,
+                        onClick = { onChapterClick(chapter) },
                     )
                 }
             }
@@ -428,16 +434,17 @@ class ReaderActivity : ComponentActivity() {
 
     @Composable
     fun ChapterListItem(
-        state: ChapterItemUiState,
+        chapter: Chapter,
+        isCurrent: Boolean,
         onClick: () -> Unit
     ) {
-        val backgroundColor = if (state.isCurrent) {
+        val backgroundColor = if (isCurrent) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
         } else {
             Color.Transparent
         }
 
-        val titleColor = if (state.isCurrent) {
+        val titleColor = if (isCurrent) {
             MaterialTheme.colorScheme.primary
         } else {
             MaterialTheme.colorScheme.onSurface
@@ -453,41 +460,45 @@ class ReaderActivity : ComponentActivity() {
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = state.chapter.title,
+                    text = chapter.title,
                     style = MaterialTheme.typography.bodyLarge,
                     color = titleColor,
-                    fontWeight = if (state.isCurrent) FontWeight.Bold else FontWeight.Normal
+                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
                 )
                 Spacer(modifier = Modifier.height(4.dp))
 
                 Text(
-                    text = state.chapter.title,
+                    text = chapter.title,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
 
-            if (state.isCurrent) {
+            if (isCurrent) {
                 Icon(Icons.Default.PlayArrow, contentDescription = "Playing", tint = titleColor)
             }
         }
     }
 
-    private fun hideSystemUI() {
-        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
+    @Composable
+    private fun SystemUiController(showSystemUI: Boolean) {
+        val context = LocalContext.current
+        val window = (context as? Activity)?.window ?: return
 
-        windowInsetsController.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+        LaunchedEffect(window, showSystemUI) {
+            val controller = WindowCompat.getInsetsController(window, window.decorView)
+            controller.systemBarsBehavior =
+                WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-        windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
+            if (showSystemUI) {
+                controller.show(WindowInsetsCompat.Type.systemBars())
+            } else {
+                controller.hide(WindowInsetsCompat.Type.systemBars())
+            }
+        }
     }
 
-    private fun showSystemUI() {
-        val windowInsetsController = WindowCompat.getInsetsController(window, window.decorView)
-        windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
-    }
-
-//    override fun initViewObservable() {
+    //    override fun initViewObservable() {
 //        viewModel.liveData_picture.observe(this) {
 //            if (it.code == 200) {
 //                binding.readerInclude.toolbar.title = it.data.ep.title

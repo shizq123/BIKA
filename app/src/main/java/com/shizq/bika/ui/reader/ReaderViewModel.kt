@@ -19,8 +19,7 @@ class ReaderViewModel(
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val idFlow = savedStateHandle.getStateFlow(EXTRA_ID, "")
-    private val orderFlow = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
-    val currentChapterId = savedStateHandle.getStateFlow<String?>(CHAPTER_ID, null)
+    val chapterIndex = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
     val chapterPagingFlow = idFlow.flatMapLatest { id ->
         Pager(config = PagingConfig(pageSize = 40)) {
             ChapterListPagingSource(id)
@@ -29,7 +28,7 @@ class ReaderViewModel(
             .cachedIn(viewModelScope)
     }
     val currentPage = MutableStateFlow(0)
-    val comicPagingFlow = combine(idFlow, orderFlow, ::Pair)
+    val comicPagingFlow = combine(idFlow, chapterIndex, ::Pair)
         .flatMapLatest { (id, order) ->
             Pager(config = PagingConfig(pageSize = 40)) {
                 ComicPagingSource(id, order)
@@ -39,12 +38,9 @@ class ReaderViewModel(
         }
 
     fun loadChapter(chapter: Chapter) {
-        savedStateHandle[CHAPTER_ID] = chapter.id
         savedStateHandle[EXTRA_ORDER] = chapter.order
     }
 }
-
-private const val CHAPTER_ID = "chapter_id"
 
 data class ChapterItemUiState(
     val chapter: Chapter,
