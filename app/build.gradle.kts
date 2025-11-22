@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.bika.android.application)
     alias(libs.plugins.bika.android.application.compose)
+    alias(libs.plugins.bika.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
     id("kotlin-kapt")
