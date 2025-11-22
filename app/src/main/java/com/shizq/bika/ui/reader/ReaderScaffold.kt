@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.dp
  *
  * - 内容层: [content] (Pager, LazyColumn, Webview 等)
  * - 交互层: [gestureHost] (用于检测点击屏幕中央呼出菜单，或处理边缘翻页区域)
- * - 信息层: [floatingIndicators] (页码、时间、电量等，当菜单隐藏时显示)
+ * - 信息层: [floatingMessage] (页码、时间、电量等，当菜单隐藏时显示)
  * - 遮罩层: [topBar] 和 [bottomBar] (带有渐变背景)
  * - 侧边栏: [sideSheet] (例如章节列表)
  *
@@ -50,7 +50,7 @@ import androidx.compose.ui.unit.dp
  * @param gestureHost 覆盖在内容之上的手势区域。通常用于检测点击事件以切换 [showMenu]。
  * @param topBar 顶部栏，包含返回、标题、设置等。
  * @param bottomBar 底部栏，包含进度条、下一话等。
- * @param floatingIndicators 悬浮指示器，例如右下角的页码/时间，通常在 [showMenu] 为 false 时显示。
+ * @param floatingMessage 悬浮指示器，例如右下角的页码/时间，通常在 [showMenu] 为 false 时显示。
  * @param sideSheet 侧边栏/抽屉，用于显示章节目录等。
  * @param contentWindowInsets 窗口边距设置。
  */
@@ -63,7 +63,7 @@ fun ReaderScaffold(
     bottomBar: @Composable ColumnScope.() -> Unit = {},
     content: @Composable BoxScope.() -> Unit = {},
     gestureHost: @Composable BoxWithConstraintsScope.() -> Unit = {},
-    floatingIndicators: @Composable BoxScope.() -> Unit = {},
+    floatingMessage: @Composable BoxScope.() -> Unit = {},
     loadingContent: @Composable BoxScope.() -> Unit = {},
     sideSheet: @Composable BoxScope.() -> Unit = {},
 ) {
@@ -84,10 +84,10 @@ fun ReaderScaffold(
         Box(
             Modifier
                 .background(Color.Transparent)
-                .matchParentSize(), // no window insets for video
+                .matchParentSize(),
         ) {
             content()
-            Box(Modifier.matchParentSize()) // 防止点击事件传播到 video 里
+            Box(Modifier.matchParentSize())
         }
 
         // 2. 手势交互层
@@ -99,7 +99,7 @@ fun ReaderScaffold(
         // 3. 悬浮指示器 (当菜单隐藏时显示的页码、系统时间等)
         // 通常显示在右下角或底部
         AnimatedVisibility(
-            visible = showMenu,
+            visible = !showMenu,
             enter = fadeIn(),
             exit = fadeOut(),
             modifier = Modifier.align(Alignment.BottomEnd)
@@ -110,8 +110,7 @@ fun ReaderScaffold(
                     .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Bottom + WindowInsetsSides.End))
             ) {
                 ProvideTextStyle(MaterialTheme.typography.labelSmall) {
-                    // 稍微加一点阴影或背景以防图片太白看不清，这里假设 floatingIndicators 自己处理了背景
-                    floatingIndicators()
+                    floatingMessage()
                 }
             }
         }

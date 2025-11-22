@@ -8,8 +8,13 @@ import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.gestures.animateScrollBy
@@ -19,12 +24,12 @@ import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.gestures.scrollable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,17 +37,15 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,7 +63,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -77,6 +79,7 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Size
 import com.shizq.bika.R
+import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ComicPage
 import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.bar.BottomBar
@@ -100,19 +103,23 @@ class ReaderActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContent {
-            val viewModel: ReaderViewModel = viewModel()
-            ReaderScreen(viewModel, onBackClick = { finish() })
+
+            ReaderScreen(onBackClick = { finish() })
         }
     }
 
     @Composable
-    fun ReaderScreen(viewModel: ReaderViewModel, onBackClick: () -> Unit) {
-        val lazyPagingItems = viewModel.comicPagingFlow.collectAsLazyPagingItems()
+    fun ReaderScreen(viewModel: ReaderViewModel = viewModel(), onBackClick: () -> Unit) {
         val title by PagingMetadata.title.collectAsStateWithLifecycle()
         val pageCount by PagingMetadata.totalElements.collectAsStateWithLifecycle()
+
         val currentPageIndex by viewModel.currentPage.collectAsStateWithLifecycle()
+
+        val comicPages = viewModel.comicPagingFlow.collectAsLazyPagingItems()
+        val chapterPages = viewModel.chapterPagingFlow.collectAsLazyPagingItems()
         ReaderContent(
-            lazyPagingItems,
+            comicPages = comicPages,
+            chapters = chapterPages,
             title = title,
             currentPageIndex = currentPageIndex,
             onPageChange = { viewModel.currentPage.value = it },
@@ -124,17 +131,19 @@ class ReaderActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ReaderContent(
-        lazyPagingItems: LazyPagingItems<ComicPage>,
-        onBackClick: () -> Unit,
+        comicPages: LazyPagingItems<ComicPage>,
+        chapters: LazyPagingItems<Chapter>,
+        title: String,
         pageCount: Int,
         currentPageIndex: Int,
         onPageChange: (Int) -> Unit,
-        title: String
+        onBackClick: () -> Unit
     ) {
         val listState = rememberLazyListState()
         val scope = rememberCoroutineScope()
         val flingBehavior = ScrollableDefaults.flingBehavior()
         var showMenu by rememberSaveable { mutableStateOf(false) }
+        var showCatalogue by remember { mutableStateOf(false) }
         LaunchedEffect(showMenu) {
             if (showMenu) {
                 showSystemUI()
@@ -169,7 +178,7 @@ class ReaderActivity : ComponentActivity() {
                         )
                     },
                     startActions = {
-                        IconButton(onClick = { /* 打开目录 */ }) {
+                        IconButton(onClick = { showCatalogue = true }) {
                             Icon(Icons.Default.Menu, "目录")
                         }
                     },
@@ -188,7 +197,7 @@ class ReaderActivity : ComponentActivity() {
                     }
                 )
             },
-            floatingIndicators = {
+            floatingMessage = {
                 val current by remember { derivedStateOf { listState.firstVisibleItemIndex + 1 } }
                 Text(
                     text = "$current / $pageCount",
@@ -198,6 +207,31 @@ class ReaderActivity : ComponentActivity() {
                         .background(Color.Black.copy(alpha = 0.6f), MaterialTheme.shapes.small)
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                 )
+            },
+            sideSheet = {
+                AnimatedVisibility(
+                    showCatalogue,
+                    enter = slideInHorizontally(tween()),
+                    exit = slideOutHorizontally(tween()),
+                ) {
+                    SideSheetLayout(
+                        title = { Text("目录") },
+                        onDismissRequest = { showCatalogue = false },
+                        closeButton = {
+                            IconButton(onClick = { showCatalogue = false }) {
+                                Icon(Icons.Default.Close, contentDescription = "关闭目录")
+                            }
+                        }
+                    ) {
+                        ChapterList(
+                            chapters = chapters,
+                            onChapterClick = { newChapterId ->
+                                showCatalogue = false // 点击章节后关闭面板
+                            },
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
             },
             gestureHost = {
                 val screenHeightInPixels = with(LocalDensity.current) { maxHeight.toPx() }
@@ -256,10 +290,10 @@ class ReaderActivity : ComponentActivity() {
                     flingBehavior = flingBehavior,
                 ) {
                     items(
-                        count = lazyPagingItems.itemCount,
-                        key = lazyPagingItems.itemKey { it.id },
+                        count = comicPages.itemCount,
+                        key = comicPages.itemKey { it.id },
                     ) { index ->
-                        val page = lazyPagingItems[index]
+                        val page = comicPages[index]
                         if (page != null) {
                             ComicPageItem(page, index)
                         }
@@ -337,61 +371,74 @@ class ReaderActivity : ComponentActivity() {
     }
 
     @Composable
-    fun PageIndicator(total: Int, modifier: Modifier = Modifier) {
-        Surface(
-            modifier = modifier,
-            shape = MaterialTheme.shapes.medium,
-            color = Color.Black.copy(alpha = 0.6f),
-            contentColor = Color.White
+    fun ChapterList(
+        chapters: LazyPagingItems<Chapter>,
+        onChapterClick: (chapterId: String) -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        LazyColumn(
+            modifier = modifier
+                .fillMaxSize()
+                .padding(vertical = 8.dp)
         ) {
-            Text(
-                text = "Total: $total",
-                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
+            item {
+                Text(
+                    text = "章节列表",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+                HorizontalDivider()
+            }
 
-    @Composable
-    fun ErrorView(msg: String, onRetry: () -> Unit, modifier: Modifier = Modifier) {
-        Column(
-            modifier = modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = Icons.Default.Warning,
-                contentDescription = "Error",
-                tint = MaterialTheme.colorScheme.error,
-                modifier = Modifier.size(48.dp)
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "加载失败，点击重试",
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Text(
-                text = msg,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(onClick = onRetry) {
-                Text("重试")
+            items(chapters.itemCount, key = chapters.itemKey { it.id }) { index ->
+                chapters[index]?.let {
+                    ChapterListItem(
+                        chapter = it,
+                        onClick = { onChapterClick(it.id) }
+                    )
+                }
             }
         }
     }
 
     @Composable
-    fun ErrorFooter(onRetry: () -> Unit) {
-        Button(
-            onClick = onRetry,
+    fun ChapterListItem(
+        chapter: Chapter,
+        onClick: () -> Unit
+    ) {
+        val backgroundColor = if (true) {
+            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        } else {
+            Color.Transparent
+        }
+        val titleColor = if (true) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.onSurface
+        }
+
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = Color.Red)
+                .clickable(onClick = onClick) // Make the whole row clickable
+                .background(backgroundColor)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("加载失败，点击重试")
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = chapter.title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = titleColor,
+//                    fontWeight = if (chapter.isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = chapter.title,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 
