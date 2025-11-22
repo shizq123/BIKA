@@ -4,10 +4,9 @@ plugins {
 }
 
 android {
-    namespace = "com.shizq.bika.core.common"
+    namespace = "com.shizq.bika.core.model"
 }
 
 dependencies {
-    implementation(libs.kotlinx.coroutines.core)
-    testImplementation(libs.kotlinx.coroutines.test)
+    implementation(libs.kotlinx.serialization.core)
 }
