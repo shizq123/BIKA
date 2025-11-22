@@ -2,6 +2,7 @@ package com.shizq.bika.network
 
 import com.shizq.bika.bean.ActionBean
 import com.shizq.bika.bean.Box
+import com.shizq.bika.bean.Catalogue
 import com.shizq.bika.bean.CategoriesBean
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.ChatRoomBlackListBean
@@ -207,6 +208,14 @@ interface ApiService {
         @Query("page") page: String,
         @HeaderMap headers: Map<String, String>
     ): BaseResponse<EpisodeBean>
+
+    //漫画章节
+    @GET("comics/{bookId}/eps")
+    suspend fun comicsEpisodeGet2(
+        @Path("bookId") id: String,
+        @Query("page") page: Int,
+        @HeaderMap headers: Map<String, String>
+    ): Box<Catalogue>
 
     //漫画内容图片
     @GET("comics/{bookId}/order/{order}/pages")
