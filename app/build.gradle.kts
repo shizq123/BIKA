@@ -58,6 +58,7 @@ android {
 
 dependencies {
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.material.iconsExtended)
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.material3.adaptive)
@@ -94,6 +95,7 @@ dependencies {
 
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
+
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.byrecyclerview)
