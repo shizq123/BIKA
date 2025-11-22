@@ -47,6 +47,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -89,6 +90,7 @@ import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.gesture.GestureAction
 import com.shizq.bika.ui.reader.gesture.readerControls
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
+import com.shizq.bika.ui.reader.settings.ReaderSettingScreen
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
@@ -154,6 +156,8 @@ class ReaderActivity : ComponentActivity() {
         var showMenu by rememberSaveable { mutableStateOf(false) }
         var showChapterList by remember { mutableStateOf(false) }
 
+        var showSettings by rememberSaveable { mutableStateOf(false) }
+        val settingsSheetState = rememberModalBottomSheetState(true)
         SystemUiController(showSystemUI = showMenu)
 
         LaunchedEffect(listState) {
@@ -204,7 +208,7 @@ class ReaderActivity : ComponentActivity() {
 
                     },
                     endActions = {
-                        IconButton(onClick = { /* 打开设置 */ }) {
+                        IconButton(onClick = { showSettings = true }) {
                             Icon(Icons.Default.Settings, "设置")
                         }
                     }
@@ -317,6 +321,19 @@ class ReaderActivity : ComponentActivity() {
                 }
             }
         )
+
+        if (showSettings) {
+            ReaderSettingScreen(settingsSheetState) {
+                scope.launch { settingsSheetState.hide() }.invokeOnCompletion {
+                    if (!settingsSheetState.isVisible) {
+                        showSettings = false
+                    }
+                }
+            }
+
+            // 底部留白，防止在全面屏手机上贴底太近
+            Spacer(modifier = Modifier.height(16.dp))
+        }
     }
 
     @Composable
