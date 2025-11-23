@@ -3,6 +3,7 @@ package com.shizq.bika.ui.reader
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ActivityInfo
 import android.os.Build
 import android.os.Bundle
 import android.view.WindowManager
@@ -82,6 +83,8 @@ import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Size
 import com.shizq.bika.R
+import com.shizq.bika.core.context.findActivity
+import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ComicPage
 import com.shizq.bika.paging.PagingMetadata
@@ -109,7 +112,6 @@ class ReaderActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         setContent {
-
             ReaderScreen(onBackClick = { finish() })
         }
     }
@@ -125,6 +127,9 @@ class ReaderActivity : ComponentActivity() {
         val comicPages = viewModel.comicPagingFlow.collectAsLazyPagingItems()
         val chapterPages = viewModel.chapterPagingFlow.collectAsLazyPagingItems()
 
+        val currentOrientation by viewModel.screenOrientationFlow.collectAsStateWithLifecycle()
+        OrientationEffect(currentOrientation)
+
         ReaderContent(
             comicPages = comicPages,
             chapters = chapterPages,
@@ -136,6 +141,22 @@ class ReaderActivity : ComponentActivity() {
             highlightedChapter = currentChapterIndex,
             onChapterChange = viewModel::updateChapterOrder
         )
+    }
+
+    @Composable
+    fun OrientationEffect(currentOrientation: ScreenOrientation) {
+        val context = LocalContext.current
+        LaunchedEffect(currentOrientation) {
+            val activity = context.findActivity()
+            activity?.requestedOrientation = when (currentOrientation) {
+                ScreenOrientation.System -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                ScreenOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                ScreenOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                ScreenOrientation.LockPortrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                ScreenOrientation.LockLandscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                ScreenOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+            }
+        }
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
