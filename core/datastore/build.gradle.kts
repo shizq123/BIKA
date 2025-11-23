@@ -13,5 +13,7 @@ dependencies {
 
     implementation(projects.core.common)
 
+    implementation(libs.kotlinx.serialization.json)
+
     testImplementation(libs.kotlinx.coroutines.test)
 }
