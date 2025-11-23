@@ -11,11 +11,14 @@ import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ComicPagingSource
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 
-class ReaderViewModel(
+@HiltViewModel
+class ReaderViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val idFlow = savedStateHandle.getStateFlow(EXTRA_ID, "")
