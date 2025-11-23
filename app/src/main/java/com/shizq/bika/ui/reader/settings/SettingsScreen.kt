@@ -24,85 +24,96 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shizq.bika.core.model.ReadingMode
+import com.shizq.bika.core.model.ScreenOrientation
+import com.shizq.bika.core.model.TouchArea
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
+    viewModel: SettingsViewModel = hiltViewModel(),
     settingsSheetState: SheetState,
     onDismissRequest: () -> Unit
 ) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = settingsSheetState
     ) {
-        SettingsContent()
+        SettingsContent(
+            uiState = uiState,
+            onReadingModeChanged = viewModel::updateReadingMode,
+            onScreenOrientationChanged = viewModel::updateScreenOrientation,
+            onTouchAreaChanged = viewModel::updateTouchArea
+        )
     }
 }
 
 @Composable
-fun SettingsContent() {
-    var selectedMode by remember { mutableStateOf(ReadingMode.Strip) }
-    var selectedOrientation by remember { mutableStateOf(ScreenOrientation.Portrait) }
-    var selectedTouchArea by remember { mutableStateOf(TouchArea.Sides) }
-
-    Surface(
-        modifier = Modifier
-            .fillMaxWidth()
-            .fillMaxHeight(0.7f),
-        color = MaterialTheme.colorScheme.surfaceContainerLow
-    ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            Column(
+fun SettingsContent(
+    uiState: SettingsUiState,
+    onReadingModeChanged: (ReadingMode) -> Unit,
+    onScreenOrientationChanged: (ScreenOrientation) -> Unit,
+    onTouchAreaChanged: (TouchArea) -> Unit
+) {
+    when (uiState) {
+        SettingsUiState.Loading -> {}
+        is SettingsUiState.Success -> {
+            Surface(
                 modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.7f),
+                color = MaterialTheme.colorScheme.surfaceContainerLow
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .verticalScroll(rememberScrollState())
+                            .padding(horizontal = 16.dp, vertical = 8.dp)
+                    ) {
+                        Spacer(modifier = Modifier.height(16.dp))
 
-                SectionTitle("阅读模式", isSubTitle = true)
-                OptionFlowRow(
-                    options = ReadingMode.entries,
-                    selectedOption = selectedMode,
-                    onOptionSelected = { selectedMode = it },
-                    labelProvider = { it.label }
-                )
+                        SectionTitle("阅读模式", isSubTitle = true)
+                        OptionFlowRow(
+                            options = ReadingMode.entries,
+                            selectedOption = uiState.userData.readingMode,
+                            onOptionSelected = onReadingModeChanged,
+                            labelProvider = { it.label }
+                        )
 
-                Spacer(modifier = Modifier.height(24.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                // 组：屏幕方向
-                SectionTitle("屏幕方向", isSubTitle = true)
-                OptionFlowRow(
-                    options = ScreenOrientation.entries,
-                    selectedOption = selectedOrientation,
-                    onOptionSelected = { selectedOrientation = it },
-                    labelProvider = { it.label }
-                )
+                        SectionTitle("屏幕方向", isSubTitle = true)
+                        OptionFlowRow(
+                            options = ScreenOrientation.entries,
+                            selectedOption = uiState.userData.screenOrientation,
+                            onOptionSelected = onScreenOrientationChanged,
+                            labelProvider = { it.label }
+                        )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(24.dp))
 
-                Spacer(modifier = Modifier.height(16.dp))
+                        SectionTitle("点按区域", isSubTitle = true)
+                        OptionFlowRow(
+                            options = TouchArea.entries,
+                            selectedOption = uiState.userData.touchArea,
+                            onOptionSelected = onTouchAreaChanged,
+                            labelProvider = { it.label }
+                        )
 
-                SectionTitle("点按区域", isSubTitle = true)
-                OptionFlowRow(
-                    options = TouchArea.entries,
-                    selectedOption = selectedTouchArea,
-                    onOptionSelected = { selectedTouchArea = it },
-                    labelProvider = { it.label }
-                )
-
-                Spacer(modifier = Modifier.height(32.dp))
+                        Spacer(modifier = Modifier.height(32.dp))
+                    }
+                }
             }
         }
     }
@@ -196,38 +207,5 @@ fun SelectableChip(
                 textAlign = TextAlign.Center
             )
         }
-    }
-}
-
-enum class ReadingMode(val label: String) {
-    //    SingleLR("单页式（从左到右）"),
-//    SingleRL("单页式（从右到左）"),
-//    SingleTB("单页式（从上到下）"),
-    Strip("条漫"),
-//    StripGap("条漫（页间有空隙）")
-}
-
-enum class ScreenOrientation(val label: String) {
-    //    System("跟随系统"),
-    Portrait("竖屏"),
-//    Landscape("横屏"),
-//    LockPortrait("锁定竖屏"),
-//    LockLandscape("锁定横屏"),
-//    ReversePortrait("反向竖屏")
-}
-
-enum class TouchArea(val label: String) {
-    //    LShape("L 形"),
-//    Kindle("Kindle"),
-    Sides("两侧"),
-//    LeftRight("左右"),
-//    Off("关闭")
-}
-
-@Preview
-@Composable
-fun PreviewSettings() {
-    MaterialTheme {
-        SettingsContent()
     }
 }

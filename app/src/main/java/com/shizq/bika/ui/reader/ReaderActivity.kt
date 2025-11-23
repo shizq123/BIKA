@@ -324,7 +324,7 @@ class ReaderActivity : ComponentActivity() {
         )
 
         if (showSettings) {
-            SettingsScreen(settingsSheetState) {
+            SettingsScreen(settingsSheetState = settingsSheetState) {
                 scope.launch { settingsSheetState.hide() }.invokeOnCompletion {
                     if (!settingsSheetState.isVisible) {
                         showSettings = false
