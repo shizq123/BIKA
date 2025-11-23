@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 data class UserPreferences(
     val readingMode: ReadingMode = ReadingMode.Strip,
     val screenOrientation: ScreenOrientation = ScreenOrientation.Portrait,
-    val touchArea: TouchArea = TouchArea.Sides
+    val tapZoneLayout: TapZoneLayout = TapZoneLayout.Sides,
 )
 
 enum class ReadingMode(val label: String) {
@@ -25,11 +25,10 @@ enum class ScreenOrientation(val label: String) {
     LockLandscape("锁定横屏"), // 严格横屏
     ReversePortrait("反向竖屏")
 }
-enum class TouchArea(val label: String) {
-    //        LShape("L 形"),
-//    Kindle("Kindle"),
-    Sides("两侧"),
 
-    //    LeftRight("左右"),
-    Off("关闭")
+enum class ReaderAction {
+    NextPage,   // 下一页
+    PrevPage,   // 上一页
+    ToggleMenu, // 开关菜单
+    None        // 无操作
 }

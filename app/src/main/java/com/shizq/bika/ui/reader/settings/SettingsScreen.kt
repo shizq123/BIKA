@@ -33,7 +33,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
-import com.shizq.bika.core.model.TouchArea
+import com.shizq.bika.core.model.TapZoneLayout
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -51,7 +51,7 @@ fun SettingsScreen(
             uiState = uiState,
             onReadingModeChanged = viewModel::updateReadingMode,
             onScreenOrientationChanged = viewModel::updateScreenOrientation,
-            onTouchAreaChanged = viewModel::updateTouchArea
+            onTapZoneLayoutChanged = viewModel::setTapZoneLayout
         )
     }
 }
@@ -61,7 +61,7 @@ fun SettingsContent(
     uiState: SettingsUiState,
     onReadingModeChanged: (ReadingMode) -> Unit,
     onScreenOrientationChanged: (ScreenOrientation) -> Unit,
-    onTouchAreaChanged: (TouchArea) -> Unit
+    onTapZoneLayoutChanged: (TapZoneLayout) -> Unit
 ) {
     when (uiState) {
         SettingsUiState.Loading -> {}
@@ -105,9 +105,9 @@ fun SettingsContent(
 
                         SectionTitle("点按区域", isSubTitle = true)
                         OptionFlowRow(
-                            options = TouchArea.entries,
-                            selectedOption = uiState.userData.touchArea,
-                            onOptionSelected = onTouchAreaChanged,
+                            options = TapZoneLayout.entries,
+                            selectedOption = uiState.userData.tapZoneLayout,
+                            onOptionSelected = onTapZoneLayoutChanged,
                             labelProvider = { it.label }
                         )
 

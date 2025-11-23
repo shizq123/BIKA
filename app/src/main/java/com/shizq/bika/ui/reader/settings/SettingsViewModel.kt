@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
-import com.shizq.bika.core.model.TouchArea
+import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -39,9 +39,9 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun updateTouchArea(area: TouchArea) {
+    fun setTapZoneLayout(layout: TapZoneLayout) {
         viewModelScope.launch {
-            userPreferencesDataSource.setTouchArea(area)
+            userPreferencesDataSource.setTapZoneLayout(layout)
         }
     }
 }
