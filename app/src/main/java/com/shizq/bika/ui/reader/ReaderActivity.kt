@@ -70,8 +70,8 @@ import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
@@ -91,10 +91,11 @@ import com.shizq.bika.ui.reader.gesture.GestureAction
 import com.shizq.bika.ui.reader.gesture.readerControls
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.settings.ReaderSettingScreen
+import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
-//阅读漫画页
+@AndroidEntryPoint
 class ReaderActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
@@ -114,7 +115,7 @@ class ReaderActivity : ComponentActivity() {
     }
 
     @Composable
-    fun ReaderScreen(viewModel: ReaderViewModel = viewModel(), onBackClick: () -> Unit) {
+    fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
         val title by PagingMetadata.title.collectAsStateWithLifecycle()
         val pageCount by PagingMetadata.totalElements.collectAsStateWithLifecycle()
 
