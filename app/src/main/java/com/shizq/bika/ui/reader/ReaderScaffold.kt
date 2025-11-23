@@ -156,7 +156,6 @@ fun ReaderScaffold(
                     Column(
                         Modifier
                             .fillMaxWidth()
-                            .windowInsetsPadding(contentWindowInsets.only(WindowInsetsSides.Bottom))
                     ) {
                         CompositionLocalProvider(LocalContentColor provides Color.White) {
                             bottomBar()
