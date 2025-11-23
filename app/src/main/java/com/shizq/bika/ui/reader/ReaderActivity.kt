@@ -82,6 +82,7 @@ import coil.compose.SubcomposeAsyncImageContent
 import coil.request.CachePolicy
 import coil.request.ImageRequest
 import coil.size.Size
+import com.shizq.bika.BuildConfig
 import com.shizq.bika.R
 import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.model.ReaderAction
@@ -330,10 +331,12 @@ class ReaderActivity : ComponentActivity() {
                         )
                         .readerControls(gestureState = gestureState)
                 )
-                DebugTouchAreaOverlay(
-                    mode = touchInputMode,
-                    isRtl = isRtlMode
-                )
+                if (BuildConfig.DEBUG) {
+                    DebugTouchAreaOverlay(
+                        mode = touchInputMode,
+                        isRtl = isRtlMode
+                    )
+                }
             },
             content = {
                 LazyColumn(
