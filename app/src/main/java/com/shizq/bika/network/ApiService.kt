@@ -34,7 +34,6 @@ import com.shizq.bika.bean.PunchInBean
 import com.shizq.bika.bean.RecommendBean
 import com.shizq.bika.bean.ReportBean
 import com.shizq.bika.bean.SignInBean
-import com.shizq.bika.bean.UpdateBean
 import com.shizq.bika.network.base.BaseResponse
 import io.reactivex.rxjava3.core.Observable
 import okhttp3.RequestBody
@@ -51,10 +50,6 @@ interface ApiService {
     //节点
     @GET("init")
     fun initGet(): Observable<InitBean>
-
-    //检测版本更新
-    @GET("api/v0.1/apps/shizq123hh/bika/distribution_groups/Release/releases/latest")
-    fun updateGet(): Observable<UpdateBean>
 
     //平台 info 不清楚用途
     @GET("init")

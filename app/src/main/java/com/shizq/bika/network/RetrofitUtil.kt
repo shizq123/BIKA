@@ -15,7 +15,6 @@ object RetrofitUtil {
 
     private const val INFO = "http://68.183.234.72"
     private const val BASE_URL = "https://picaapi.picacomic.com"
-    private const val UPDATE = "https://appcenter.ms"
     var LIVE_SERVER = "https://live-server.bidobido.xyz"//新聊天室
     private var URL: String? = null //用于记录
 
@@ -37,10 +36,6 @@ object RetrofitUtil {
 
     val service_init: ApiService by lazy {
         getRetrofit(INFO).create(ApiService::class.java)
-    }
-
-    val service_update: ApiService by lazy {
-        getRetrofit(UPDATE).create(ApiService::class.java)
     }
 
     val service_live: ApiService by lazy {

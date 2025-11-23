@@ -1,7 +1,6 @@
 package com.shizq.bika.ui.settings
 
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -18,21 +17,17 @@ import com.google.android.material.textfield.TextInputLayout
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import com.google.gson.reflect.TypeToken
+import com.shizq.bika.BuildConfig
 import com.shizq.bika.R
-import com.shizq.bika.bean.UpdateBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseResponse
 import com.shizq.bika.ui.account.AccountActivity
-import com.shizq.bika.utils.AppVersion
 import com.shizq.bika.utils.GlideCacheUtil
 import com.shizq.bika.utils.SPUtil
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.core.Observer
-import io.reactivex.rxjava3.disposables.Disposable
 import io.reactivex.rxjava3.observers.DefaultObserver
 import io.reactivex.rxjava3.schedulers.Schedulers
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 import retrofit2.HttpException
@@ -69,7 +64,8 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
         setting_night.summary = setting_night.value
 
         //当前版本
-        setting_app_ver?.summary = "当前版本：${AppVersion().name()}(${AppVersion().code()})"
+        setting_app_ver?.summary =
+            "当前版本：${BuildConfig.VERSION_NAME}(${BuildConfig.VERSION_CODE})"
 
         //分流
         setting_app_channel?.summary =
@@ -104,12 +100,10 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
             }
 
             "setting_app_ver" -> {
-                checkUpdates()
                 return true
             }
 
             "setting_change_password" -> {
-
                 activity?.let {
                     val dia = MaterialAlertDialogBuilder(it)
                         .setTitle("修改密码")
@@ -447,47 +441,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                     dia.dismiss()
                 }
             }
-
         }
-    }
-
-    fun checkUpdates() {
-        RetrofitUtil.service_update.updateGet()
-            .compose { upstream ->
-                upstream.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-            }
-            .subscribe(object : Observer<UpdateBean> {
-                override fun onNext(t: UpdateBean) {
-                    if (t != null) {
-                        if (t.version.toInt() > AppVersion().code()) {
-                            context?.let {
-                                MaterialAlertDialogBuilder(it)
-                                    .setTitle("新版本 v${t.short_version}")
-                                    .setMessage(t.release_notes)
-                                    .setPositiveButton("更新") { _, _ ->
-                                        val intent = Intent()
-                                        intent.action = "android.intent.action.VIEW"
-                                        intent.data = Uri.parse(t.download_url)
-                                        startActivity(intent)
-                                    }
-                                    .setNegativeButton("取消", null)
-                                    .show()
-                            }
-                        } else {
-                            Toast.makeText(activity, "您当前已经是最新版本", Toast.LENGTH_SHORT).show()
-                        }
-                    } else {
-                        Toast.makeText(activity, "检查更新失败，请稍后再试", Toast.LENGTH_SHORT).show()
-                    }
-
-                }
-
-                override fun onError(e: Throwable) {
-                    Toast.makeText(activity, "检查更新失败，请稍后再试", Toast.LENGTH_SHORT).show()
-                }
-
-                override fun onSubscribe(d: Disposable) {}
-                override fun onComplete() {}
-            })
     }
 }
