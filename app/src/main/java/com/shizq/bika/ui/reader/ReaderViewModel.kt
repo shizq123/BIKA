@@ -40,7 +40,7 @@ class ReaderViewModel @Inject constructor(
                 .cachedIn(viewModelScope)
         }
 
-    fun loadChapter(chapter: Chapter) {
+    fun updateChapterOrder(chapter: Chapter) {
         savedStateHandle[EXTRA_ORDER] = chapter.order
     }
 }

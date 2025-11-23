@@ -134,7 +134,7 @@ class ReaderActivity : ComponentActivity() {
             pageCount = pageCount,
             onBackClick = onBackClick,
             highlightedChapter = currentChapterIndex,
-            onChapterChange = viewModel::loadChapter
+            onChapterChange = viewModel::updateChapterOrder
         )
     }
 
