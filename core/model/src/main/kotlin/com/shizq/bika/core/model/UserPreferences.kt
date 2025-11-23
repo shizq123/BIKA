@@ -4,18 +4,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class UserPreferences(
-    val readingMode: ReadingMode = ReadingMode.Strip,
+    val readingMode: ReadingMode = ReadingMode.WEBTOON,
     val screenOrientation: ScreenOrientation = ScreenOrientation.Portrait,
     val tapZoneLayout: TapZoneLayout = TapZoneLayout.Sides,
 )
-
-enum class ReadingMode(val label: String) {
-    //        SingleLR("单页式（从左到右）"),
-//    SingleRL("单页式（从右到左）"),
-//    SingleTB("单页式（从上到下）"),
-    Strip("条漫"),
-//    StripGap("条漫（页间有空隙）")
-}
 
 enum class ScreenOrientation(val label: String) {
     System("跟随系统"),
