@@ -36,7 +36,7 @@ import androidx.compose.ui.unit.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ReaderSettingScreen(
+fun SettingsScreen(
     settingsSheetState: SheetState,
     onDismissRequest: () -> Unit
 ) {
@@ -44,12 +44,12 @@ fun ReaderSettingScreen(
         onDismissRequest = onDismissRequest,
         sheetState = settingsSheetState
     ) {
-        ReaderSettingsContent()
+        SettingsContent()
     }
 }
 
 @Composable
-fun ReaderSettingsContent() {
+fun SettingsContent() {
     var selectedMode by remember { mutableStateOf(ReadingMode.Strip) }
     var selectedOrientation by remember { mutableStateOf(ScreenOrientation.Portrait) }
     var selectedTouchArea by remember { mutableStateOf(TouchArea.Sides) }
@@ -226,8 +226,8 @@ enum class TouchArea(val label: String) {
 
 @Preview
 @Composable
-fun PreviewReaderSettings() {
+fun PreviewSettings() {
     MaterialTheme {
-        ReaderSettingsContent()
+        SettingsContent()
     }
 }

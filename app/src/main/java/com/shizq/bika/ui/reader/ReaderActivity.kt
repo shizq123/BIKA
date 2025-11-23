@@ -90,7 +90,7 @@ import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.gesture.GestureAction
 import com.shizq.bika.ui.reader.gesture.readerControls
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
-import com.shizq.bika.ui.reader.settings.ReaderSettingScreen
+import com.shizq.bika.ui.reader.settings.SettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -324,7 +324,7 @@ class ReaderActivity : ComponentActivity() {
         )
 
         if (showSettings) {
-            ReaderSettingScreen(settingsSheetState) {
+            SettingsScreen(settingsSheetState) {
                 scope.launch { settingsSheetState.hide() }.invokeOnCompletion {
                     if (!settingsSheetState.isVisible) {
                         showSettings = false
