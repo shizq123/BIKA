@@ -44,7 +44,6 @@ fun DebugTouchAreaOverlay(
             val canvasHeight = size.height
 
             // 1. 定义采样精度 (列数和行数)
-            // 数量越多边缘越平滑，但 20x40 对调试来说足够了
             val cols = 20
             val rows = 40
 
@@ -58,7 +57,6 @@ fun DebugTouchAreaOverlay(
                     val centerX = i * cellWidth + cellWidth / 2
                     val centerY = j * cellHeight + cellHeight / 2
 
-                    // 3. 【核心】调用 TouchArea 的真实逻辑获取动作
                     val action = mode.resolve(
                         x = centerX,
                         y = centerY,
