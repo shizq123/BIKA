@@ -3,5 +3,4 @@ package com.shizq.bika.core.model
 import kotlinx.serialization.Serializable
 
 @Serializable
-class UserPreferences {
-}
+data class UserPreferences(val name: String = "")
