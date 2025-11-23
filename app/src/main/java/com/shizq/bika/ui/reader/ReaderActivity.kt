@@ -84,13 +84,14 @@ import coil.request.ImageRequest
 import coil.size.Size
 import com.shizq.bika.R
 import com.shizq.bika.core.context.findActivity
+import com.shizq.bika.core.model.ReaderAction
 import com.shizq.bika.core.model.ScreenOrientation
+import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ComicPage
 import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
-import com.shizq.bika.ui.reader.gesture.GestureAction
 import com.shizq.bika.ui.reader.gesture.readerControls
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.settings.SettingsScreen
@@ -130,6 +131,7 @@ class ReaderActivity : ComponentActivity() {
         val currentOrientation by viewModel.screenOrientationFlow.collectAsStateWithLifecycle()
         OrientationEffect(currentOrientation)
 
+        val tapZoneProfile by viewModel.tapZoneLayoutFlow.collectAsStateWithLifecycle()
         ReaderContent(
             comicPages = comicPages,
             chapters = chapterPages,
@@ -139,7 +141,8 @@ class ReaderActivity : ComponentActivity() {
             pageCount = pageCount,
             onBackClick = onBackClick,
             highlightedChapter = currentChapterIndex,
-            onChapterChange = viewModel::updateChapterOrder
+            onChapterChange = viewModel::updateChapterOrder,
+            touchInputMode = tapZoneProfile
         )
     }
 
@@ -159,6 +162,9 @@ class ReaderActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * @param isRtlMode 是否日漫模式（从右向左）
+     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ReaderContent(
@@ -170,7 +176,9 @@ class ReaderActivity : ComponentActivity() {
         onPageChange: (Int) -> Unit,
         onBackClick: () -> Unit,
         highlightedChapter: Int,
-        onChapterChange: (Chapter) -> Unit
+        onChapterChange: (Chapter) -> Unit,
+        touchInputMode: TapZoneLayout,
+        isRtlMode: Boolean = false
     ) {
         val listState = rememberLazyListState()
         val scope = rememberCoroutineScope()
@@ -278,24 +286,24 @@ class ReaderActivity : ComponentActivity() {
             gestureHost = {
                 val screenHeightInPixels = with(LocalDensity.current) { maxHeight.toPx() }
 
-                val gestureState = rememberGestureState { action ->
-                    when (action) {
-                        GestureAction.ToggleMenu -> showMenu = !showMenu
-                        GestureAction.PrevPage -> {
-                            scope.launch {
-                                listState.animateScrollBy(-screenHeightInPixels * 0.8f)
-                            }
-                        }
-
-                        GestureAction.NextPage -> {
-                            scope.launch {
+                val gestureState = rememberGestureState(
+                    layout = touchInputMode,
+//                    initialDirection = readingDirection,
+                    onAction = { action ->
+                        when (action) {
+                            ReaderAction.NextPage -> scope.launch {
                                 listState.animateScrollBy(screenHeightInPixels * 0.8f)
                             }
-                        }
 
-                        GestureAction.None -> {}
+                            ReaderAction.PrevPage -> scope.launch {
+                                listState.animateScrollBy(-screenHeightInPixels * 0.8f)
+                            }
+
+                            ReaderAction.ToggleMenu -> showMenu = !showMenu
+                            ReaderAction.None -> {}
+                        }
                     }
-                }
+                )
 
                 Box(
                     Modifier
@@ -320,9 +328,11 @@ class ReaderActivity : ComponentActivity() {
                                 }
                             }
                         )
-                        .readerControls(
-                            gestureState = gestureState,
-                        )
+                        .readerControls(gestureState = gestureState)
+                )
+                DebugTouchAreaOverlay(
+                    mode = touchInputMode,
+                    isRtl = isRtlMode
                 )
             },
             content = {
