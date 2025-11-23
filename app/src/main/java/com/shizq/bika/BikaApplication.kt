@@ -5,7 +5,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import com.google.android.material.color.DynamicColors
 import com.shizq.bika.utils.SPUtil
 
-class BIKAApplication : Application() {
+class BikaApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         DynamicColors.applyToActivitiesIfAvailable(this)//根据壁纸修改App主题颜色
