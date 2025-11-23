@@ -9,17 +9,13 @@ plugins {
 
 android {
     namespace = "com.shizq.bika"
-    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.shizq.bika"
-        minSdk = 24
-        targetSdk = 34
         versionCode = 8
         versionName = "1.0.8"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
     }
 
     signingConfigs {
@@ -59,6 +55,8 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.datastore)
+
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.foundation.layout)
     implementation(libs.androidx.compose.material.iconsExtended)
