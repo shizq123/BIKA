@@ -38,11 +38,40 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 
 /**
- * 漫画/图片阅读器框架.
+ * 漫画/图片阅读器的通用基础骨架 (Scaffold)。
  *
- * @param onTap 当用户点击阅读区域时的回调。
- *              参数 [Offset] 为点击坐标，[IntSize] 为当前视图总大小。
- *              你可以根据坐标判断是点击了屏幕中央(呼出菜单)还是左右两侧(翻页)。
+ * 该组件采用了**沉浸式**设计，并负责管理阅读器中各个 UI 图层的堆叠顺序 (Z-Order) 和交互事件的分发。
+ *
+ * ### 图层层级 (由下至上):
+ * 1. **内容层 (Content)**: 放置 [content] (如 `HorizontalPager`, `LazyColumn`)。
+ *    - 该层直接绑定了点击监听 ([onTap])。
+ *    - 能够处理滑动 (Scroll/Drag) 事件，且不会被点击监听拦截。
+ * 2. **悬浮信息层 (Floating Message)**: 放置 [floatingMessage] (如右下角的页码、时间、电量)。
+ *    - 仅在菜单隐藏 ([showMenu] = false) 时显示。
+ * 3. **加载层 (Loading)**: 放置 [loadingContent]，居中显示加载状态。
+ * 4. **菜单层 (Overlay)**: 放置 [topBar] 和 [bottomBar]。
+ *    - 带有进入/退出动画。
+ *    - 内部已做点击拦截处理，防止点击菜单栏时误触下方的翻页逻辑。
+ * 5. **侧边栏层 (Side Sheet)**: 放置 [sideSheet] (如章节目录)。
+ *    - 位于最顶层，通常配合 ModalDrawer 或自定义动画使用。
+ *
+ * ### 交互逻辑说明:
+ * - **滑动**: 滑动事件直接由 [content] 内部的组件消费（因为 `pointerInput` 不拦截 Scroll）。
+ * - **点击**: 当用户点击屏幕且未被内部组件（如按钮）消费时，触发 [onTap] 回调。
+ *
+ * @param showMenu 控制顶部栏 ([topBar]) 和底部栏 ([bottomBar]) 的可见性。
+ * @param modifier 应用于根布局的修饰符。
+ * @param contentWindowInsets 窗口边距设置，默认为 [WindowInsets.safeContent]。
+ * @param topBar 顶部菜单栏内容。通常包含返回按钮、标题等。
+ * @param bottomBar 底部菜单栏内容。通常包含进度条、设置面板等。
+ * @param content 阅读器的核心内容区域。**注意**：请勿在此处再次包裹 `Box` 处理点击，否则可能导致滑动冲突。
+ * @param onTap 点击内容区域时的回调。
+ *              - [Offset]: 点击位置的坐标 (相对于 content)。
+ *              - [IntSize]: content 区域的总尺寸。
+ *              - **用途**: 你可以在此回调中计算点击位置（例如：点击中间呼出菜单，点击左侧上一页，点击右侧下一页）。
+ * @param floatingMessage 菜单隐藏时显示的悬浮挂件（例如："第 5/20 页"）。
+ * @param loadingContent 加载中的提示内容。
+ * @param sideSheet 侧滑菜单或设置面板内容。
  */
 @Composable
 fun ReaderScaffold(
