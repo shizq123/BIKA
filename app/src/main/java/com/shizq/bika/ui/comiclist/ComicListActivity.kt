@@ -1,10 +1,15 @@
 package com.shizq.bika.ui.comiclist
 
 import android.app.ActivityOptions
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.SparseBooleanArray
-import android.view.*
+import android.view.KeyEvent
+import android.view.Menu
+import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.view.inputmethod.InputMethodManager
 import android.widget.ImageView
 import android.widget.PopupWindow
@@ -20,8 +25,8 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.ComicListAdapter
 import com.shizq.bika.adapter.ComicListAdapter2
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.databinding.ActivityComiclistBinding
 import com.shizq.bika.database.model.SearchEntity
+import com.shizq.bika.databinding.ActivityComiclistBinding
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import com.shizq.bika.ui.image.ImageActivity
@@ -111,6 +116,14 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             false,
             false
         )
+
+        fun start(context: Context, tag: String, title: String, value: String) {
+            val intent = Intent(context, ComicListActivity::class.java)
+            intent.putExtra("tag", tag)
+            intent.putExtra("title", title)
+            intent.putExtra("value", value)
+            context.startActivity(intent)
+        }
     }
 
     private lateinit var mComicListAdapter: ComicListAdapter
@@ -562,12 +575,12 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
 //        }
 
 
-        binding.comiclistRv.setOnLoadMoreListener{
+        binding.comiclistRv.setOnLoadMoreListener {
             viewModel.getComicList()
         }
 
         //网络重试点击事件监听
-        binding.comiclistLoadLayout.setOnClickListener{
+        binding.comiclistLoadLayout.setOnClickListener {
             skeletonScreen.show()
             showProgressBar(true, "")
             if (viewModel.tag.equals("random")) {
@@ -579,11 +592,11 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         }
 
         //大图PopupWindow
-        mPopupWindow.setOnDismissListener{
+        mPopupWindow.setOnDismissListener {
             //恢复状态栏
             StatusBarUtil.show(this@ComicListActivity)
         }
-        popupView.setOnClickListener{
+        popupView.setOnClickListener {
             mPopupWindow.dismiss()
         }
     }
