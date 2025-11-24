@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.shizq.bika.core.common"
+    namespace = "com.shizq.bika.core.datastore"
 }
 
 dependencies {
