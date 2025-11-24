@@ -3,19 +3,25 @@ package com.shizq.bika.ui.main
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
@@ -24,31 +30,48 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.shizq.bika.R
 import com.shizq.bika.ui.apps.AppsActivity
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.games.GamesActivity
+import com.shizq.bika.ui.history.HistoryActivity
 import com.shizq.bika.ui.leaderboard.LeaderboardActivity
 import com.shizq.bika.ui.search.SearchActivity
+import com.shizq.bika.ui.user.UserActivity
 import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
@@ -79,15 +102,20 @@ class MainActivity : ComponentActivity() {
     fun DashboardContent(dashboardState: DashboardUiState, onRetry: () -> Unit) {
         val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
-
+        BackHandler(enabled = drawerState.isOpen) {
+            scope.launch {
+                drawerState.close()
+            }
+        }
         ModalNavigationDrawer(
             drawerState = drawerState,
             drawerContent = {
                 ModalDrawerSheet {
-                    DashboardDrawerContent()
+                    DashboardDrawerContent(UserProfile())
                 }
             },
         ) {
+            val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
             Scaffold(
                 topBar = {
                     TopAppBar(
@@ -107,9 +135,13 @@ class MainActivity : ComponentActivity() {
                             ) {
                                 Icon(Icons.Default.Search, contentDescription = "Search")
                             }
-                        }
+                        },
+                        scrollBehavior = scrollBehavior,
                     )
-                }
+                },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
             ) { innerPadding ->
                 val state: LazyGridState = rememberLazyGridState()
                 Box(
@@ -141,7 +173,10 @@ class MainActivity : ComponentActivity() {
                                 columns = GridCells.Fixed(3),
                                 state = state,
                             ) {
-                                items(dashboardState.dashboardEntries) { section ->
+                                items(
+                                    dashboardState.dashboardEntries,
+                                    key = { it.hashCode() }
+                                ) { section ->
                                     when (section) {
                                         is DashboardEntry.Native -> FeatureEntry(
                                             section.imageResId,
@@ -228,8 +263,160 @@ class MainActivity : ComponentActivity() {
     }
 
     @Composable
-    fun DashboardDrawerContent() {
+    fun DashboardDrawerContent(
+        userProfile: UserProfile,
+        modifier: Modifier = Modifier,
+        onPunchIn: () -> Unit = {},
+        onAvatarClick: () -> Unit = {},
+    ) {
+        Column(modifier = modifier) {
+            Column(
+                modifier = modifier.padding(16.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // 头像容器
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clickable { onAvatarClick() }) {
+                        AsyncImage(
+                            model = ImageRequest.Builder(LocalContext.current)
+                                .data(userProfile.avatarUrl)
+                                .placeholder(R.drawable.placeholder_avatar_2) // 假设资源存在
+                                .build(),
+                            contentDescription = "Avatar",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clip(CircleShape)
+                        )
+                        // 头像框
+                        if (userProfile.frameUrl.isNotEmpty()) {
+                            AsyncImage(
+                                model = userProfile.frameUrl,
+                                contentDescription = "Frame",
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
+                    }
 
+                    Spacer(modifier = Modifier.width(16.dp))
+
+                    Column {
+                        Text(
+                            text = userProfile.name,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "Lv.${userProfile.level}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = userProfile.title,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    val genderText = when (userProfile.gender) {
+                        "m" -> "(绅士)"
+                        "f" -> "(淑女)"
+                        else -> "(机器人)"
+                    }
+                    Text(text = genderText, style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = userProfile.slogan.ifEmpty { "这个人很懒，什么都没写" },
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row {
+                    Text(
+                        text = "修改资料",
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clickable {
+                                startActivity(Intent(this@MainActivity, UserActivity::class.java))
+                            }
+                            .padding(end = 16.dp)
+                    )
+
+                    if (!userProfile.isPunched) {
+                        Text(
+                            text = "打卡",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable { onPunchIn() }
+                        )
+                    }
+                }
+            }
+
+            HorizontalDivider()
+
+            // --- Menu Items ---
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                NavigationDrawerItem(
+                    label = { Text("首页") },
+                    selected = true, // 这里简单处理，实际应根据路由判断
+                    onClick = { /* Stay here */ },
+                    icon = { Icon(painterResource(R.drawable.ic_home), null) }, // 需替换对应图标
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+                NavigationDrawerItem(
+                    label = { Text("历史记录") },
+                    selected = false,
+                    onClick = {
+                        startActivity(Intent(this@MainActivity, HistoryActivity::class.java))
+                    },
+                    icon = { Icon(painterResource(R.drawable.ic_history), null) },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+//            NavigationDrawerItem(
+//                label = { Text("我的收藏") },
+//                selected = false,
+//                onClick = {
+//                    val intent = Intent(context, ComicListActivity::class.java).apply {
+//                        putExtra("tag", "favourite")
+//                        putExtra("title", "我的收藏")
+//                    }
+//                    onNavigate(intent)
+//                },
+//                icon = { Icon(painterResource(R.drawable.ic_bookmark), null) },
+//                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+//            )
+//            NavigationDrawerItem(
+//                label = { Text("我的消息") },
+//                selected = false,
+//                onClick = { onNavigate(Intent(context, NotificationsActivity::class.java)) },
+//                icon = { Icon(painterResource(R.drawable.ic_email), null) },
+//                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+//            )
+//             NavigationDrawerItem(
+//                label = { Text("我的评论") },
+//                selected = false,
+//                onClick = { onNavigate(Intent(context, MyCommentsActivity::class.java)) },
+//                icon = { Icon(painterResource(R.drawable.ic_comment), null) },
+//                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+//            )
+//            NavigationDrawerItem(
+//                label = { Text("设置") },
+//                selected = false,
+//                onClick = { onNavigate(Intent(context, SettingsActivity::class.java)) },
+//                icon = { Icon(painterResource(R.drawable.ic_settings), null) },
+//                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+//            )
+            }
+        }
     }
 
 //    private lateinit var adapter_categories: CategoriesAdapter
