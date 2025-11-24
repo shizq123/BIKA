@@ -4,6 +4,7 @@ import com.shizq.bika.bean.ActionBean
 import com.shizq.bika.bean.Box
 import com.shizq.bika.bean.Catalogue
 import com.shizq.bika.bean.CategoriesBean
+import com.shizq.bika.bean.Category
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.ChatRoomBlackListBean
 import com.shizq.bika.bean.ChatRoomBlackListDeleteBean
@@ -115,6 +116,11 @@ interface ApiService {
     fun categoriesGet(
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<CategoriesBean>>
+
+    @GET("categories")
+    suspend fun categoriesGet2(
+        @HeaderMap headers: Map<String, String>
+    ): Box<Category>
 
     //骑士榜
     @GET("comics/knight-leaderboard")
