@@ -54,14 +54,9 @@ class DashboardViewModel @Inject constructor() : ViewModel() {
         )
 
     private fun getFullUrl(media: Media): String {
-        val fileServer = media.fileServer
         val path = media.path
 
-        return if (fileServer.endsWith("/")) {
-            "$fileServer$path"
-        } else {
-            "$fileServer/static/$path"
-        }
+        return "https://s3.picacomic.com/static/$path"
     }
 
     fun getProfile() {
