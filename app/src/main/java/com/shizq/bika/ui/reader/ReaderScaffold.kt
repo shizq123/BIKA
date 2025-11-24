@@ -7,10 +7,10 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.BoxWithConstraintsScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -31,28 +31,18 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 
 /**
  * 漫画/图片阅读器框架.
  *
- * 布局层级由下至上:
- *
- * - 内容层: [content] (Pager, LazyColumn, Webview 等)
- * - 交互层: [gestureHost] (用于检测点击屏幕中央呼出菜单，或处理边缘翻页区域)
- * - 信息层: [floatingMessage] (页码、时间、电量等，当菜单隐藏时显示)
- * - 遮罩层: [topBar] 和 [bottomBar] (带有渐变背景)
- * - 侧边栏: [sideSheet] (例如章节列表)
- *
- * @param showMenu 当前菜单(TopBar/BottomBar)是否可见
- * @param content 阅读器的主要内容，例如 `HorizontalPager` 或 `LazyColumn`。
- * @param gestureHost 覆盖在内容之上的手势区域。通常用于检测点击事件以切换 [showMenu]。
- * @param topBar 顶部栏，包含返回、标题、设置等。
- * @param bottomBar 底部栏，包含进度条、下一话等。
- * @param floatingMessage 悬浮指示器，例如右下角的页码/时间，通常在 [showMenu] 为 false 时显示。
- * @param sideSheet 侧边栏/抽屉，用于显示章节目录等。
- * @param contentWindowInsets 窗口边距设置。
+ * @param onTap 当用户点击阅读区域时的回调。
+ *              参数 [Offset] 为点击坐标，[IntSize] 为当前视图总大小。
+ *              你可以根据坐标判断是点击了屏幕中央(呼出菜单)还是左右两侧(翻页)。
  */
 @Composable
 fun ReaderScaffold(
@@ -62,12 +52,11 @@ fun ReaderScaffold(
     topBar: @Composable RowScope.() -> Unit = {},
     bottomBar: @Composable ColumnScope.() -> Unit = {},
     content: @Composable BoxScope.() -> Unit = {},
-    gestureHost: @Composable BoxWithConstraintsScope.() -> Unit = {},
+    onTap: (Offset, IntSize) -> Unit = { _, _ -> },
     floatingMessage: @Composable BoxScope.() -> Unit = {},
     loadingContent: @Composable BoxScope.() -> Unit = {},
     sideSheet: @Composable BoxScope.() -> Unit = {},
 ) {
-    // 定义进入和退出的动画，模拟 VideoScaffold 中的 MotionScheme
     val enterTransition = fadeIn(tween(200)) + slideInVertically(tween(200)) { -it / 2 }
     val exitTransition = fadeOut(tween(200)) + slideOutVertically(tween(200)) { -it / 2 }
     val bottomEnterTransition = fadeIn(tween(200)) + slideInVertically(tween(200)) { it / 2 }
@@ -79,25 +68,21 @@ fun ReaderScaffold(
             .background(MaterialTheme.colorScheme.background),
         contentAlignment = Alignment.Center,
     ) {
-        // 1. 阅读器内容层 (最底层)
-        // 这里不加 WindowInsets padding，让图片可以延伸到状态栏下方(沉浸式)
-        Box(
-            Modifier
+        // 1. 内容交互层 (Core Layer)
+        BoxWithConstraints(
+            modifier = Modifier
+                .matchParentSize()
                 .background(Color.Transparent)
-                .matchParentSize(),
+                .pointerInput(Unit) {
+                    detectTapGestures { offset ->
+                        onTap(offset, size)
+                    }
+                }
         ) {
             content()
-            Box(Modifier.matchParentSize())
         }
 
-        // 2. 手势交互层
-        // 覆盖在内容之上，用于捕获点击屏幕中央呼出菜单的操作，或者处理特定的热区
-        BoxWithConstraints(modifier = Modifier.matchParentSize()) {
-            gestureHost()
-        }
-
-        // 3. 悬浮指示器 (当菜单隐藏时显示的页码、系统时间等)
-        // 通常显示在右下角或底部
+        // 2. 悬浮指示器 (Floating Message)
         AnimatedVisibility(
             visible = !showMenu,
             enter = fadeIn(),
@@ -115,7 +100,7 @@ fun ReaderScaffold(
             }
         }
 
-        // 4. 加载/提示层
+        // 3. 加载层
         Box(
             modifier = Modifier
                 .matchParentSize()
@@ -125,15 +110,21 @@ fun ReaderScaffold(
             loadingContent()
         }
 
-        // 5. 控制器 UI 层 (TopBar & BottomBar)
-        Box(modifier = Modifier.matchParentSize(), contentAlignment = Alignment.Center) {
-            Column(modifier = Modifier.fillMaxSize()) {
-
-                // Top Bar Region
-                AnimatedVisibility(
-                    visible = showMenu,
-                    enter = enterTransition,
-                    exit = exitTransition,
+        // 4. 菜单层 (UI Overlay) - 这一层不应该拦截非自身的点击
+        // 使用 Box(matchParentSize) 可能会导致点击穿透问题，
+        // 这里只让 TopBar 和 BottomBar 占据它们实际需要的空间，中间留空。
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Top Bar
+            AnimatedVisibility(
+                visible = showMenu,
+                enter = enterTransition,
+                exit = exitTransition,
+            ) {
+                // 拦截点击，防止点击 TopBar 时触发下面的翻页/菜单隐藏
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .pointerInput(Unit) { detectTapGestures {} }
                 ) {
                     Row(
                         Modifier.fillMaxWidth(),
@@ -144,19 +135,23 @@ fun ReaderScaffold(
                         }
                     }
                 }
+            }
 
-                Spacer(Modifier.weight(1f))
+            Spacer(Modifier.weight(1f))
 
-                // Bottom Bar Region
-                AnimatedVisibility(
-                    visible = showMenu,
-                    enter = bottomEnterTransition,
-                    exit = bottomExitTransition,
+            // Bottom Bar
+            AnimatedVisibility(
+                visible = showMenu,
+                enter = bottomEnterTransition,
+                exit = bottomExitTransition,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        // 同样拦截点击
+                        .pointerInput(Unit) { detectTapGestures {} }
                 ) {
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                    ) {
+                    Column(Modifier.fillMaxWidth()) {
                         CompositionLocalProvider(LocalContentColor provides Color.White) {
                             bottomBar()
                         }
@@ -165,9 +160,7 @@ fun ReaderScaffold(
             }
         }
 
-        // 6. 侧边栏/抽屉层 (例如目录)
-        // 通常覆盖在所有内容之上，除了系统手势区域
-        // 这里使用 Box 包装，具体动画（如 slideIn）交给 sideSheet 内部实现或使用 ModalNavigationDrawer
+        // 5. 侧边栏 (Side Sheet)
         Box(
             modifier = Modifier
                 .matchParentSize()
