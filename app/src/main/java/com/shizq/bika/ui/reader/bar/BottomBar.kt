@@ -12,14 +12,83 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProvideTextStyle
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+
+//  bottomBar = {
+//            // 使用单独的组件处理 Slider 逻辑，避免 ReaderContent 过度重组
+//            ReaderBottomBar(
+//                currentPageIndex = currentPageIndex,
+//                pageCount = pageCount,
+//                onPageJump = { targetPage ->
+//                    onPageChange(targetPage)
+//                    scope.launch {
+//                        if (readingMode.viewerType == ViewerType.Pager) {
+//                            pagerState.scrollToPage(targetPage)
+//                        } else {
+//                            listState.scrollToItem(targetPage)
+//                        }
+//                    }
+//                },
+//                onShowChapterList = { showChapterList = true },
+//                onShowSettings = { showSettings = true }
+//            )
+@Composable
+fun ReaderBottomBar(
+    currentPageIndex: Int,
+    pageCount: Int,
+    onPageJump: (Int) -> Unit,
+    onShowChapterList: () -> Unit,
+    onShowSettings: () -> Unit
+) {
+    // 内部维护 Slider 的临时状态，防止拖动时 UI 抖动
+    var sliderValue by remember(currentPageIndex) { mutableFloatStateOf(currentPageIndex.toFloat()) }
+
+    BottomBar(
+        progressIndicator = {
+            if (pageCount > 0) {
+                Text(text = "${sliderValue.toInt() + 1} / $pageCount")
+            }
+        },
+        progressSlider = {
+            Slider(
+                value = sliderValue,
+                onValueChange = { sliderValue = it },
+                onValueChangeFinished = {
+                    onPageJump(sliderValue.toInt())
+                },
+                valueRange = 0f..(pageCount.coerceAtLeast(1) - 1).toFloat()
+            )
+        },
+        startActions = {
+            IconButton(onClick = onShowChapterList) {
+                Icon(Icons.Default.Menu, "目录")
+            }
+        },
+        middleActions = {},
+        endActions = {
+            IconButton(onClick = onShowSettings) {
+                Icon(Icons.Default.Settings, "设置")
+            }
+        }
+    )
+}
 
 /**
  * 漫画阅读器的底部控制栏. 通常包含进度滑块、页码指示器以及章节切换按钮.
