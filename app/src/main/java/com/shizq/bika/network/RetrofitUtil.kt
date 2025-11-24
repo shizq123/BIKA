@@ -18,7 +18,7 @@ object RetrofitUtil {
     var LIVE_SERVER = "https://live-server.bidobido.xyz"//新聊天室
     private var URL: String? = null //用于记录
 
-    private val client = OkHttpClient.Builder()
+    val client = OkHttpClient.Builder()
         .connectTimeout(30, TimeUnit.SECONDS)
         .readTimeout(30, TimeUnit.SECONDS)
         .writeTimeout(30, TimeUnit.SECONDS)

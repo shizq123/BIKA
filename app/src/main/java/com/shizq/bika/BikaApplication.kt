@@ -2,12 +2,17 @@ package com.shizq.bika
 
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.compose.ui.util.trace
+import coil.ImageLoader
+import coil.ImageLoaderFactory
+import coil.util.DebugLogger
 import com.google.android.material.color.DynamicColors
+import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.HiltAndroidApp
 
 @HiltAndroidApp
-class BikaApplication : Application() {
+class BikaApplication : Application(), ImageLoaderFactory {
     override fun onCreate() {
         super.onCreate()
         DynamicColors.applyToActivitiesIfAvailable(this)//根据壁纸修改App主题颜色
@@ -22,5 +27,19 @@ class BikaApplication : Application() {
                 else -> AppCompatDelegate.MODE_NIGHT_NO
             }
         )
+    }
+
+    override fun newImageLoader(): ImageLoader {
+        return trace("ImageLoader") {
+            ImageLoader.Builder(this)
+                .callFactory { RetrofitUtil.client }
+                .respectCacheHeaders(false)
+                .apply {
+                    if (BuildConfig.DEBUG) {
+                        logger(DebugLogger())
+                    }
+                }
+                .build()
+        }
     }
 }
