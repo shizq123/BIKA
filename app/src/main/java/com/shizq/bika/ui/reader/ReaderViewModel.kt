@@ -7,14 +7,12 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.ReadingMode
-import com.shizq.bika.core.model.ScreenOrientation
-import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ComicPagingSource
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
+import com.shizq.bika.ui.reader.layout.ReaderConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -29,25 +27,19 @@ class ReaderViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
 ) : ViewModel() {
-    val screenOrientationFlow = userPreferencesDataSource.userData
-        .map { it.screenOrientation }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            ScreenOrientation.System
+    val readerPreferencesFlow = userPreferencesDataSource.userData.map {
+        ReaderConfig(
+            volumeKeyNavigation = it.volumeKeyNavigation,
+            readingMode = it.readingMode,
+            screenOrientation = it.screenOrientation,
+            tapZoneLayout = it.tapZoneLayout
         )
-    val tapZoneLayoutFlow = userPreferencesDataSource.userData.map { it.tapZoneLayout }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            TapZoneLayout.Sides
-        )
-    val readingModeFlow = userPreferencesDataSource.userData.map { it.readingMode }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            ReadingMode.WEBTOON
-        )
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5000),
+        ReaderConfig.Default
+    )
+
     private val idFlow = savedStateHandle.getStateFlow(EXTRA_ID, "")
     val chapterIndex = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
     val chapterPagingFlow = idFlow.flatMapLatest { id ->

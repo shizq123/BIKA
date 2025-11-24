@@ -7,22 +7,42 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.model.ReadingMode
+import com.shizq.bika.core.model.ScreenOrientation
+import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.ViewerType
 import com.shizq.bika.paging.ComicPage
 
 @Stable
 data class ReaderContext(
     val layout: ReaderLayout,
-    val controller: ReaderController
+    val controller: ReaderController,
+    val config: ReaderConfig = ReaderConfig.Default
 )
+
+data class ReaderConfig(
+    val volumeKeyNavigation: Boolean,
+    val readingMode: ReadingMode,
+    val screenOrientation: ScreenOrientation,
+    val tapZoneLayout: TapZoneLayout,
+) {
+    companion object {
+        val Default = ReaderConfig(
+            volumeKeyNavigation = false,
+            readingMode = ReadingMode.WEBTOON,
+            screenOrientation = ScreenOrientation.Portrait,
+            tapZoneLayout = TapZoneLayout.LShape,
+        )
+    }
+}
 
 @Composable
 fun rememberReaderContext(
     readingMode: ReadingMode,
     comicPages: LazyPagingItems<ComicPage>,
+    config: ReaderConfig = ReaderConfig.Default,
     currentPageIndex: Int
 ): ReaderContext {
-    return remember(readingMode) {
+    return remember(readingMode, config, comicPages) {
         when (readingMode.viewerType) {
             ViewerType.Scrolling -> {
                 val listState = LazyListState(currentPageIndex)
@@ -32,7 +52,7 @@ fun rememberReaderContext(
                     listState = listState,
                     hasPageGap = readingMode.hasPageGap
                 )
-                ReaderContext(strategy, controller)
+                ReaderContext(strategy, controller, config)
             }
 
             ViewerType.Pager -> {
@@ -43,7 +63,7 @@ fun rememberReaderContext(
                     direction = readingMode.direction,
                     isRtl = readingMode.isRtl
                 )
-                ReaderContext(strategy, controller)
+                ReaderContext(strategy, controller, config)
             }
         }
     }

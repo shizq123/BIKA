@@ -60,15 +60,14 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.context.findActivity
-import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
-import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ComicPage
 import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
+import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
@@ -104,12 +103,8 @@ class ReaderActivity : ComponentActivity() {
         val comicPages = viewModel.comicPagingFlow.collectAsLazyPagingItems()
         val chapterPages = viewModel.chapterPagingFlow.collectAsLazyPagingItems()
 
-        val currentOrientation by viewModel.screenOrientationFlow.collectAsStateWithLifecycle()
-        OrientationEffect(currentOrientation)
-
-        val tapZoneProfile by viewModel.tapZoneLayoutFlow.collectAsStateWithLifecycle()
-        val currentReadingMode by viewModel.readingModeFlow.collectAsStateWithLifecycle()
-
+        val readerPreferences by viewModel.readerPreferencesFlow.collectAsStateWithLifecycle()
+        OrientationEffect(readerPreferences.screenOrientation)
         ReaderContent(
             comicPages = comicPages,
             chapters = chapterPages,
@@ -120,8 +115,7 @@ class ReaderActivity : ComponentActivity() {
             onBackClick = onBackClick,
             highlightedChapter = currentChapterIndex,
             onChapterChange = viewModel::updateChapterOrder,
-            touchInputMode = tapZoneProfile,
-            readingMode = currentReadingMode,
+            readerPreferences = readerPreferences,
         )
     }
 
@@ -141,9 +135,6 @@ class ReaderActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * @param isRtlMode 是否日漫模式（从右向左）
-     */
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ReaderContent(
@@ -156,11 +147,15 @@ class ReaderActivity : ComponentActivity() {
         onBackClick: () -> Unit,
         highlightedChapter: Int,
         onChapterChange: (Chapter) -> Unit,
-        touchInputMode: TapZoneLayout,
-        readingMode: ReadingMode,
-        isRtlMode: Boolean = false
+        readerPreferences: ReaderConfig
     ) {
-        val readerContext = rememberReaderContext(readingMode, comicPages, currentPageIndex)
+
+        val readerContext = rememberReaderContext(
+            readerPreferences.readingMode,
+            comicPages,
+            readerPreferences,
+            currentPageIndex
+        )
 
         val scope = rememberCoroutineScope()
 
@@ -254,7 +249,7 @@ class ReaderActivity : ComponentActivity() {
                 }
             },
             content = {
-                val gestureState = rememberGestureState(touchInputMode)
+                val gestureState = rememberGestureState(readerPreferences.tapZoneLayout)
                 ReaderLayout(
                     readerContext = readerContext,
                     gestureState = gestureState,

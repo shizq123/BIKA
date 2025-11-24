@@ -44,6 +44,11 @@ class SettingsViewModel @Inject constructor(
             userPreferencesDataSource.setTapZoneLayout(layout)
         }
     }
+    fun setVolumeKeyNavigation(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setIsVolumeKeyNavigation(enabled)
+        }
+    }
 }
 
 sealed interface SettingsUiState {

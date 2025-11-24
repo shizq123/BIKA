@@ -30,4 +30,10 @@ class UserPreferencesDataSource @Inject constructor(
             currentPreferences.copy(tapZoneLayout = layout)
         }
     }
+
+    suspend fun setIsVolumeKeyNavigation(enabled: Boolean) {
+        userPreferences.updateData { currentPreferences ->
+            currentPreferences.copy(volumeKeyNavigation = enabled)
+        }
+    }
 }
