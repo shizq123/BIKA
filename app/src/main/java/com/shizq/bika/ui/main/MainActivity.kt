@@ -1,16 +1,26 @@
 package com.shizq.bika.ui.main
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -25,9 +35,21 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shizq.bika.ui.apps.AppsActivity
+import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
+import com.shizq.bika.ui.collections.CollectionsActivity
+import com.shizq.bika.ui.comiclist.ComicListActivity
+import com.shizq.bika.ui.comment.CommentsActivity
+import com.shizq.bika.ui.games.GamesActivity
+import com.shizq.bika.ui.leaderboard.LeaderboardActivity
+import com.shizq.bika.ui.search.SearchActivity
+import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -46,12 +68,15 @@ class MainActivity : ComponentActivity() {
     @Composable
     fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
         val dashboardSections by viewModel.sectionsFlow.collectAsStateWithLifecycle()
-        DashboardContent(dashboardSections)
+        DashboardContent(
+            dashboardState = dashboardSections,
+            onRetry = viewModel::restart
+        )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun DashboardContent(dashboardState: DashboardUiState) {
+    fun DashboardContent(dashboardState: DashboardUiState, onRetry: () -> Unit) {
         val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
 
@@ -73,37 +98,64 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         actions = {
-                            IconButton(onClick = {
-//                                context.startActivity(Intent(context, SearchActivity::class.java))
-                            }) {
+                            IconButton(
+                                onClick = {
+                                    startActivity(
+                                        Intent(this@MainActivity, SearchActivity::class.java)
+                                    )
+                                }
+                            ) {
                                 Icon(Icons.Default.Search, contentDescription = "Search")
                             }
                         }
                     )
                 }
             ) { innerPadding ->
-                when (dashboardState) {
-                    is DashboardUiState.Error -> {}
-                    DashboardUiState.Loading -> {}
-                    is DashboardUiState.Success -> {
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(3),
-                            modifier = Modifier.padding(innerPadding)
-                        ) {
-                            items(dashboardState.sections) { section ->
-                                when (section) {
-                                    is Section.Local -> FeatureEntry(
-                                        section.imageResId,
-                                        section.titleResId
-                                    ) {
+                val state: LazyGridState = rememberLazyGridState()
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    when (dashboardState) {
+                        DashboardUiState.Loading -> {
+                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        }
 
-                                    }
+                        is DashboardUiState.Error -> {
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(text = "加载失败: ${dashboardState.message}")
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(onClick = onRetry) {
+                                    Text("重试")
+                                }
+                            }
+                        }
 
-                                    is Section.Remote -> FeatureEntry(
-                                        section.imageUrl,
-                                        section.title,
-                                    ) {
+                        is DashboardUiState.Success -> {
+                            LazyVerticalGrid(
+                                columns = GridCells.Fixed(3),
+                                state = state,
+                            ) {
+                                items(dashboardState.dashboardEntries) { section ->
+                                    when (section) {
+                                        is DashboardEntry.Native -> FeatureEntry(
+                                            section.imageResId,
+                                            section.titleResId
+                                        ) {
+                                            navigateToDashboardEntry(section)
+                                        }
 
+                                        is DashboardEntry.Remote -> FeatureEntry(
+                                            section.imageUrl,
+                                            section.title,
+                                        ) {
+                                            navigateToDashboardEntry(section)
+                                        }
                                     }
                                 }
                             }
@@ -112,6 +164,67 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    fun navigateToDashboardEntry(entry: DashboardEntry) {
+        when (entry) {
+            is DashboardEntry.Native -> {
+                when (entry.type) {
+                    EntryType.RECOMMEND -> start(CollectionsActivity::class.java)
+
+                    EntryType.LEADERBOARD -> start(LeaderboardActivity::class.java)
+
+                    EntryType.GAME -> start(GamesActivity::class.java)
+
+                    EntryType.APPS -> start(AppsActivity::class.java)
+
+                    EntryType.CHAT -> start(ChatRoomListActivity::class.java)
+
+                    EntryType.FORUM -> {
+                        val intent = Intent(this, CommentsActivity::class.java).apply {
+                            putExtra("id", "5822a6e3ad7ede654696e482")
+                            putExtra("comics_games", "comics")
+                        }
+                        startActivity(intent)
+                    }
+
+                    EntryType.LATEST, EntryType.RANDOM -> {
+                        val targetClass = ComicListActivity::class.java
+                        val intent = Intent(this, targetClass).apply {
+                            val tagValue =
+                                if (entry.type == EntryType.LATEST) "latest" else "random"
+                            val titleValue = getString(entry.titleResId)
+
+                            putExtra("tag", tagValue)
+                            putExtra("title", titleValue)
+                            putExtra("value", titleValue)
+                        }
+                        startActivity(intent)
+                    }
+                }
+            }
+
+            is DashboardEntry.Remote -> {
+                if (entry.isWeb && !entry.link.isNullOrEmpty()) {
+                    val token = SPUtil.get("token", "")
+                    val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
+                    val fullUrl = "${entry.link}/?token=$token&secret=$secret"
+
+                    val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
+                    startActivity(intent)
+                } else {
+                    val intent = Intent(this, ComicListActivity::class.java)
+                    intent.putExtra("tag", "categories")
+                    intent.putExtra("title", entry.title)
+                    intent.putExtra("value", entry.title)
+                    startActivity(intent)
+                }
+            }
+        }
+    }
+
+    private fun start(clazz: Class<*>) {
+        startActivity(Intent(this, clazz))
     }
 
     @Composable
@@ -308,78 +421,6 @@ class MainActivity : ComponentActivity() {
 //            true
 //        }
 //
-//        binding.mainRv.setOnItemClickListener { v, position ->
-//            val intent = Intent(this, ComicListActivity::class.java)
-//            val datas = adapter_categories.getItemData(position)
-//            when (datas.imageRes) {
-//                //根据ResId来判断 以后改
-//                R.drawable.bika -> {
-//                    startActivity(Intent(this, CollectionsActivity::class.java))
-//                }
-//                R.drawable.cat_leaderboard -> {
-//                    startActivity(Intent(this, LeaderboardActivity::class.java))
-//                }
-//                R.drawable.cat_game -> {
-//                    startActivity(Intent(this, GamesActivity::class.java))
-//                }
-//                R.drawable.cat_love_pica -> {
-//                    startActivity(Intent(this, AppsActivity::class.java))
-//                }
-//                R.drawable.ic_chat -> {
-//                    startActivity(Intent(this, ChatRoomListActivity::class.java))
-//                }
-//                R.drawable.cat_forum -> {
-//                    val intentComments = Intent(this, CommentsActivity::class.java)
-//                    intentComments.putExtra("id", "5822a6e3ad7ede654696e482")
-//                    intentComments.putExtra("comics_games", "comics")
-//                    startActivity(intentComments)
-//                }
-//                R.drawable.cat_latest -> {
-//                    intent.putExtra("tag", "latest")
-//                    intent.putExtra("title", datas.title)
-//                    intent.putExtra("value", datas.title)
-//                    startActivity(intent)
-//                }
-//                R.drawable.cat_random -> {
-//                    intent.putExtra("tag", "random")
-//                    intent.putExtra("title", datas.title)
-//                    intent.putExtra("value", datas.title)
-//                    startActivity(intent)
-//                }
-//                else -> {
-//                    if (datas.isWeb) {
-//                        val intent = Intent()
-//                        intent.action = "android.intent.action.VIEW"
-//                        intent.data = Uri.parse(
-//                            "${datas.link}/?token=${
-//                                SPUtil.get(
-//                                    "token",
-//                                    ""
-//                                )
-//                            }&secret=pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
-//                        )
-//                        startActivity(intent)
-//                    } else {
-//                        intent.putExtra("tag", "categories")
-//                        intent.putExtra("title", datas.title)
-//                        intent.putExtra("value", datas.title)
-//                        startActivity(intent)
-//                    }
-//                }
-//            }
-//
-//        }
-//        //网络重试点击事件监听
-//        binding.mainLoadLayout.setOnClickListener {
-//            skeletonScreen.show()
-//            if (ERROR == ERROR_PROFILE) {
-//                showProgressBar(true, "检查账号信息...")
-//                viewModel.getProfile()
-//            } else {
-//                showProgressBar(true, "获取主页信息...")
-//                viewModel.getCategories()
-//            }
-//        }
 //    }
 //
 //    @SuppressLint("SetTextI18n")

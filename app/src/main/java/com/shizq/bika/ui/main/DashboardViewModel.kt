@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.JsonObject
 import com.shizq.bika.bean.Media
+import com.shizq.bika.core.coroutine.FlowRestarter
+import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
@@ -19,6 +21,8 @@ import okhttp3.RequestBody
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor() : ViewModel() {
+    private val dashboardRestarter = FlowRestarter()
+
     val sectionsFlow = flow {
         emit(Result.Loading)
         try {
@@ -26,7 +30,7 @@ class DashboardViewModel @Inject constructor() : ViewModel() {
             val response = RetrofitUtil.service.categoriesGet2(headers)
 
             val remoteSections = response.data?.categories?.map { it ->
-                Section.Remote(
+                DashboardEntry.Remote(
                     title = it.title,
                     imageUrl = getFullUrl(it.thumb),
                     id = it.id,
@@ -35,7 +39,7 @@ class DashboardViewModel @Inject constructor() : ViewModel() {
                 )
             } ?: emptyList()
 
-            emit(Result.Success(staticSections + remoteSections))
+            emit(Result.Success(dashboardEntries + remoteSections))
 
         } catch (e: Exception) {
             emit(Result.Error(e))
@@ -47,12 +51,16 @@ class DashboardViewModel @Inject constructor() : ViewModel() {
             is Result.Success -> DashboardUiState.Success(result.data)
         }
     }
+        .restartable(dashboardRestarter)
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             DashboardUiState.Loading
         )
 
+    fun restart() {
+        dashboardRestarter.restart()
+    }
     private fun getFullUrl(media: Media): String {
         val path = media.path
 
