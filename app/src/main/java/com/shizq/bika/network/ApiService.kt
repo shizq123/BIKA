@@ -17,7 +17,6 @@ import com.shizq.bika.bean.ComicEpisodeData
 import com.shizq.bika.bean.ComicInfoBean
 import com.shizq.bika.bean.ComicListBean
 import com.shizq.bika.bean.ComicListBean2
-import com.shizq.bika.bean.ComicsPictureBean
 import com.shizq.bika.bean.CommentsBean
 import com.shizq.bika.bean.EpisodeBean
 import com.shizq.bika.bean.GameInfoBean
@@ -211,15 +210,6 @@ interface ApiService {
         @Query("page") page: Int,
         @HeaderMap headers: Map<String, String>
     ): Box<Catalogue>
-
-    //漫画内容图片
-    @GET("comics/{bookId}/order/{order}/pages")
-    fun comicsPictureGet(
-        @Path("bookId") bookId: String,
-        @Path("order") order: String,
-        @Query("page") page: String,
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicsPictureBean>>
 
     @GET("comics/{bookId}/order/{order}/pages")
     suspend fun comicsPictureGet2(
