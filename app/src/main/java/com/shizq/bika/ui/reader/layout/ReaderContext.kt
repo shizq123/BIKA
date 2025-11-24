@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.reader.layout
 
-import androidx.compose.foundation.gestures.ScrollableDefaults
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.runtime.Composable
@@ -20,27 +19,24 @@ data class ReaderContext(
 @Composable
 fun rememberReaderContext(
     readingMode: ReadingMode,
-    comicPages: LazyPagingItems<ComicPage>
+    comicPages: LazyPagingItems<ComicPage>,
+    currentPageIndex: Int
 ): ReaderContext {
-    val listFlingBehavior = ScrollableDefaults.flingBehavior()
-//    val pagerState =  rememberPagerState{comicPages.itemCount }
-//    val pagerFlingBehavior = PagerDefaults.flingBehavior(state = pagerState)
     return remember(readingMode) {
         when (readingMode.viewerType) {
             ViewerType.Scrolling -> {
-                val listState = LazyListState()
+                val listState = LazyListState(currentPageIndex)
                 val controller =
-                    WebtoonController(listState, listFlingBehavior, comicPages.itemCount)
+                    WebtoonController(listState, comicPages.itemCount)
                 val strategy = WebtoonLayout(
                     listState = listState,
-                    flingBehavior = listFlingBehavior,
                     hasPageGap = readingMode.hasPageGap
                 )
                 ReaderContext(strategy, controller)
             }
 
             ViewerType.Pager -> {
-                val pagerState = PagerState { comicPages.itemCount }
+                val pagerState = PagerState(currentPageIndex) { comicPages.itemCount }
                 val controller = PagerController(pagerState, comicPages.itemCount)
                 val strategy = PagerLayout(
                     pagerState = pagerState,

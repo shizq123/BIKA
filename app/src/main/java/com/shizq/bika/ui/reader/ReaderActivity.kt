@@ -68,6 +68,8 @@ import com.shizq.bika.paging.ComicPage
 import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
+import com.shizq.bika.ui.reader.gesture.rememberGestureState
+import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
@@ -158,10 +160,10 @@ class ReaderActivity : ComponentActivity() {
         readingMode: ReadingMode,
         isRtlMode: Boolean = false
     ) {
-        val readerContext = rememberReaderContext(readingMode, comicPages)
+        val readerContext = rememberReaderContext(readingMode, comicPages, currentPageIndex)
 
         val scope = rememberCoroutineScope()
-//        val gestureState = rememberGestureState()
+
         var showMenu by rememberSaveable { mutableStateOf(false) }
         var showChapterList by remember { mutableStateOf(false) }
 
@@ -191,7 +193,6 @@ class ReaderActivity : ComponentActivity() {
                                 onPageChange(it.toInt())
                             },
                             onValueChangeFinished = {
-                                onPageChange(currentPageIndex)
                                 scope.launch {
                                     controller.scrollToPage(currentPageIndex)
                                 }
@@ -216,7 +217,7 @@ class ReaderActivity : ComponentActivity() {
             },
             floatingMessage = {
                 Text(
-                    text = "$currentPageIndex / $pageCount",
+                    text = "${currentPageIndex + 1} / $pageCount",
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White,
                     modifier = Modifier
@@ -239,7 +240,6 @@ class ReaderActivity : ComponentActivity() {
                             }
                         }
                     ) {
-
                         ChapterList(
                             chapters = chapters,
                             onChapterClick = { newChapterId ->
@@ -254,10 +254,12 @@ class ReaderActivity : ComponentActivity() {
                 }
             },
             content = {
+                val gestureState = rememberGestureState(touchInputMode)
                 ReaderLayout(
                     readerContext = readerContext,
+                    gestureState = gestureState,
                     comicPages = comicPages,
-                    currentPage = currentPageIndex,
+                    toggleMenuVisibility = { showMenu = !showMenu }
                 ) {
                     onPageChange(it)
                 }

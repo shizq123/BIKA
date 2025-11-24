@@ -1,7 +1,6 @@
 package com.shizq.bika.ui.reader.layout
 
 import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
@@ -27,7 +26,7 @@ class PagerLayout(
     override fun Content(
         comicPages: LazyPagingItems<ComicPage>,
         modifier: Modifier,
-        onCurrentPageChanged: (Int) -> Unit
+        onCurrentPageChanged: (Int) -> Unit,
     ) {
         LaunchedEffect(pagerState) {
             snapshotFlow { pagerState.currentPage }
@@ -65,24 +64,14 @@ class PagerController(
     override val totalPages: Int
 ) : ReaderController {
     override val visibleItemIndex: Int get() = pagerState.currentPage
-
-    override suspend fun scrollToPage(index: Int) {
-        pagerState.scrollToPage(index)
-    }
-
-    override suspend fun scrollBy(value: Float) {
-        pagerState.scrollBy(value)
-    }
-
-    override suspend fun animateScrollBy(value: Float) {
+    override suspend fun nextPage(value: Float) {
         pagerState.animateScrollBy(value)
     }
 
-    override suspend fun animateScrollToItem(index: Int) {
-        pagerState.animateScrollToPage(index)
+    override suspend fun prevPage(value: Float) {
+        pagerState.animateScrollBy(-value)
     }
-
-    override suspend fun performFling(initialVelocity: Float) {
-
+    override suspend fun scrollToPage(index: Int) {
+        pagerState.scrollToPage(index)
     }
 }

@@ -7,10 +7,7 @@ interface ReaderController {
     val visibleItemIndex: Int
     val totalPages: Int
 
+    suspend fun nextPage(value: Float)
+    suspend fun prevPage(value: Float)
     suspend fun scrollToPage(index: Int)
-    suspend fun scrollBy(value: Float)
-    suspend fun animateScrollBy(value: Float)
-
-    suspend fun animateScrollToItem(index: Int)
-    suspend fun performFling(initialVelocity: Float)
 }

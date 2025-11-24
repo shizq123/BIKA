@@ -23,9 +23,7 @@ class GestureState(
     private val tapZoneLayout: TapZoneLayout,
     private val readingDirection: ReadingDirection,
 ) {
-    fun onReaderTap(offset: Offset, size: IntSize): ReaderAction {
-        if (size.width <= 0 || size.height <= 0) return ReaderAction.None
-
+    fun calculateAction(offset: Offset, size: IntSize): ReaderAction {
         val isRtl = readingDirection == Rtl
 
         return tapZoneLayout.resolve(
