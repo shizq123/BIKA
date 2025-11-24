@@ -14,17 +14,8 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.gestures.ScrollableDefaults
-import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.draggable
-import androidx.compose.foundation.gestures.rememberDraggableState
-import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.gestures.scrollable
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -32,10 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Menu
@@ -52,20 +40,15 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
@@ -76,16 +59,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
-import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
-import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.size.Size
-import com.shizq.bika.BuildConfig
-import com.shizq.bika.R
 import com.shizq.bika.core.context.findActivity
-import com.shizq.bika.core.model.ReaderAction
+import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.paging.Chapter
@@ -93,11 +68,9 @@ import com.shizq.bika.paging.ComicPage
 import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
-import com.shizq.bika.ui.reader.gesture.readerControls
-import com.shizq.bika.ui.reader.gesture.rememberGestureState
+import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -133,17 +106,20 @@ class ReaderActivity : ComponentActivity() {
         OrientationEffect(currentOrientation)
 
         val tapZoneProfile by viewModel.tapZoneLayoutFlow.collectAsStateWithLifecycle()
+        val currentReadingMode by viewModel.readingModeFlow.collectAsStateWithLifecycle()
+
         ReaderContent(
             comicPages = comicPages,
             chapters = chapterPages,
             title = title,
+            pageCount = pageCount,
             currentPageIndex = currentPageIndex,
             onPageChange = { viewModel.currentPage.value = it },
-            pageCount = pageCount,
             onBackClick = onBackClick,
             highlightedChapter = currentChapterIndex,
             onChapterChange = viewModel::updateChapterOrder,
-            touchInputMode = tapZoneProfile
+            touchInputMode = tapZoneProfile,
+            readingMode = currentReadingMode,
         )
     }
 
@@ -179,25 +155,23 @@ class ReaderActivity : ComponentActivity() {
         highlightedChapter: Int,
         onChapterChange: (Chapter) -> Unit,
         touchInputMode: TapZoneLayout,
+        readingMode: ReadingMode,
         isRtlMode: Boolean = false
     ) {
-        val listState = rememberLazyListState()
+        val readerContext = rememberReaderContext(readingMode, comicPages)
+
         val scope = rememberCoroutineScope()
-        val flingBehavior = ScrollableDefaults.flingBehavior()
+//        val gestureState = rememberGestureState()
         var showMenu by rememberSaveable { mutableStateOf(false) }
         var showChapterList by remember { mutableStateOf(false) }
 
         var showSettings by rememberSaveable { mutableStateOf(false) }
         val settingsSheetState = rememberModalBottomSheetState(true)
+
         SystemUiController(showSystemUI = showMenu)
 
-        LaunchedEffect(listState) {
-            snapshotFlow { listState.firstVisibleItemIndex }
-                .distinctUntilChanged()
-                .collect { index ->
-                    onPageChange(index)
-                }
-        }
+        val controller = readerContext.controller
+
         ReaderScaffold(
             showMenu = showMenu,
             topBar = {
@@ -211,20 +185,15 @@ class ReaderActivity : ComponentActivity() {
                         }
                     },
                     progressSlider = {
-                        var sliderPosition by remember(currentPageIndex) {
-                            mutableFloatStateOf(currentPageIndex.toFloat())
-                        }
                         Slider(
-                            value = sliderPosition,
+                            value = currentPageIndex.toFloat(),
                             onValueChange = {
-                                sliderPosition = it
                                 onPageChange(it.toInt())
                             },
                             onValueChangeFinished = {
-                                val targetPage = sliderPosition.toInt()
-                                onPageChange(targetPage)
+                                onPageChange(currentPageIndex)
                                 scope.launch {
-                                    listState.scrollToItem(targetPage)
+                                    controller.scrollToPage(currentPageIndex)
                                 }
                             },
                             valueRange = 0f..(pageCount.coerceAtLeast(1) - 1).toFloat()
@@ -284,75 +253,13 @@ class ReaderActivity : ComponentActivity() {
                     }
                 }
             },
-            gestureHost = {
-                val screenHeightInPixels = with(LocalDensity.current) { maxHeight.toPx() }
-
-                val gestureState = rememberGestureState(
-                    layout = touchInputMode,
-//                    initialDirection = readingDirection,
-                    onAction = { action ->
-                        when (action) {
-                            ReaderAction.NextPage -> scope.launch {
-                                listState.animateScrollBy(screenHeightInPixels * 0.8f)
-                            }
-
-                            ReaderAction.PrevPage -> scope.launch {
-                                listState.animateScrollBy(-screenHeightInPixels * 0.8f)
-                            }
-
-                            ReaderAction.ToggleMenu -> showMenu = !showMenu
-                            ReaderAction.None -> {}
-                        }
-                    }
-                )
-
-                Box(
-                    Modifier
-                        .fillMaxSize()
-                        .scrollable(
-                            state = rememberScrollState(),
-                            orientation = Orientation.Vertical,
-                            flingBehavior = flingBehavior
-                        )
-                        .draggable(
-                            orientation = Orientation.Vertical,
-                            state = rememberDraggableState { delta ->
-                                scope.launch { listState.scrollBy(-delta) }
-                            },
-                            onDragStopped = { velocity ->
-                                scope.launch {
-                                    with(flingBehavior) {
-                                        listState.scroll {
-                                            performFling(-velocity)
-                                        }
-                                    }
-                                }
-                            }
-                        )
-                        .readerControls(gestureState = gestureState)
-                )
-                if (BuildConfig.DEBUG) {
-                    DebugTouchAreaOverlay(
-                        mode = touchInputMode,
-                        isRtl = isRtlMode
-                    )
-                }
-            },
             content = {
-                LazyColumn(
-                    state = listState,
-                    modifier = Modifier.fillMaxSize(),
-                    flingBehavior = flingBehavior,
+                ReaderLayout(
+                    readerContext = readerContext,
+                    comicPages = comicPages,
+                    currentPage = currentPageIndex,
                 ) {
-                    items(
-                        count = comicPages.itemCount,
-                        key = comicPages.itemKey { it.id },
-                    ) { index ->
-                        val page = comicPages[index]
-                        if (page != null) {
-                            ComicPageItem(page, index)
-                        }
-                    }
+                    onPageChange(it)
                 }
             }
         )
@@ -368,73 +275,6 @@ class ReaderActivity : ComponentActivity() {
 
             // 底部留白，防止在全面屏手机上贴底太近
             Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-
-    @Composable
-    fun ComicPageItem(
-        page: ComicPage,
-        index: Int,
-        modifier: Modifier = Modifier
-    ) {
-        val context = LocalContext.current
-
-        val imageRequest = remember(page.url) {
-            ImageRequest.Builder(context)
-                .data(page.url)
-                .memoryCachePolicy(CachePolicy.ENABLED)
-                .crossfade(false)
-                .size(Size.ORIGINAL)
-                .build()
-        }
-
-        // 外层容器
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .wrapContentHeight()
-        ) {
-            SubcomposeAsyncImage(
-                model = imageRequest,
-                contentDescription = "Page ${index + 1}",
-                modifier = Modifier.fillMaxWidth(),
-                contentScale = ContentScale.FillWidth
-            ) {
-                val state = painter.state
-
-                when (state) {
-                    is AsyncImagePainter.State.Loading, is AsyncImagePainter.State.Empty -> {
-                        // === 加载中状态 ===
-                        // 使用 Box 包裹，以便在占位图之上叠加文字
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.Center // 1. 关键：设定内容左侧垂直居中对齐
-                        ) {
-                            // A. 占位图 (铺满)
-                            Image(
-                                painter = painterResource(id = R.drawable.placeholder_transparent_low),
-                                contentDescription = null,
-                                contentScale = ContentScale.FillWidth,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            // B. 页码文字 (显示在左侧)
-                            Text(
-                                text = "${index + 1}",
-                                style = MaterialTheme.typography.headlineMedium,
-                                color = Color.Gray
-                            )
-                        }
-                    }
-
-                    is AsyncImagePainter.State.Success -> {
-                        SubcomposeAsyncImageContent()
-                    }
-
-                    is AsyncImagePainter.State.Error -> {
-                    }
-                }
-            }
         }
     }
 

@@ -7,6 +7,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.paging.Chapter
@@ -40,6 +41,12 @@ class ReaderViewModel @Inject constructor(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             TapZoneLayout.Sides
+        )
+    val readingModeFlow = userPreferencesDataSource.userData.map { it.readingMode }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            ReadingMode.WEBTOON
         )
     private val idFlow = savedStateHandle.getStateFlow(EXTRA_ID, "")
     val chapterIndex = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
