@@ -6,6 +6,7 @@ import com.google.gson.JsonObject
 import com.shizq.bika.bean.Media
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
+import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import com.shizq.bika.network.RetrofitUtil
@@ -22,7 +23,9 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody.Companion.toRequestBody
 
 @HiltViewModel
-class DashboardViewModel @Inject constructor() : ViewModel() {
+class DashboardViewModel @Inject constructor(
+    private val userCredentialsDataSource: UserCredentialsDataSource,
+) : ViewModel() {
     private val dashboardRestarter = FlowRestarter()
 
     val dashboardUiState = flow {
@@ -112,13 +115,21 @@ class DashboardViewModel @Inject constructor() : ViewModel() {
 
     fun onLogin() {
         viewModelScope.launch {
+            userCredentialsDataSource.setToken(SPUtil.get("token", "") as String)
+            userCredentialsDataSource.setUsername(SPUtil.get("username", "") as String)
+            userCredentialsDataSource.setPassword(SPUtil.get("password", "") as String)
+        }
+        viewModelScope.launch {
             val body = JsonObject().apply {
                 addProperty("email", SPUtil.get("username", "") as String)
                 addProperty("password", SPUtil.get("password", "") as String)
             }.asJsonObject.toString()
                 .toRequestBody("application/json; charset=UTF-8".toMediaTypeOrNull())
             val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
-            RetrofitUtil.service.signInPost2(body, headers)
+            val signInPost2 = RetrofitUtil.service.signInPost2(body, headers)
+            signInPost2.data?.let {
+                userCredentialsDataSource.setToken(it.token)
+            }
         }
     }
 }
