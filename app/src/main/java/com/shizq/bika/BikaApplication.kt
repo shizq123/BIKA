@@ -2,17 +2,18 @@ package com.shizq.bika
 
 import android.app.Application
 import androidx.appcompat.app.AppCompatDelegate
-import androidx.compose.ui.util.trace
-import coil.ImageLoader
-import coil.ImageLoaderFactory
-import coil.util.DebugLogger
+import coil3.ImageLoader
+import coil3.PlatformContext
+import coil3.SingletonImageLoader
 import com.google.android.material.color.DynamicColors
-import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.HiltAndroidApp
+import jakarta.inject.Inject
 
 @HiltAndroidApp
-class BikaApplication : Application(), ImageLoaderFactory {
+class BikaApplication : Application(), SingletonImageLoader.Factory {
+    @Inject
+    lateinit var imageLoader: ImageLoader
     override fun onCreate() {
         super.onCreate()
         DynamicColors.applyToActivitiesIfAvailable(this)//根据壁纸修改App主题颜色
@@ -29,17 +30,5 @@ class BikaApplication : Application(), ImageLoaderFactory {
         )
     }
 
-    override fun newImageLoader(): ImageLoader {
-        return trace("ImageLoader") {
-            ImageLoader.Builder(this)
-                .callFactory { RetrofitUtil.client }
-                .respectCacheHeaders(false)
-                .apply {
-                    if (BuildConfig.DEBUG) {
-                        logger(DebugLogger())
-                    }
-                }
-                .build()
-        }
-    }
+    override fun newImageLoader(context: PlatformContext): ImageLoader = imageLoader
 }
