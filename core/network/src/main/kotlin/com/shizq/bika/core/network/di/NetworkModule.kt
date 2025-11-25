@@ -6,6 +6,7 @@ import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
 import com.shizq.bika.core.network.BuildConfig
+import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -45,6 +46,9 @@ internal object NetworkModule {
         }
         defaultRequest {
             url("https://picaapi.picacomic.com")
+        }
+        bikaAuth {
+
         }
         install(ContentNegotiation) {
             json(
