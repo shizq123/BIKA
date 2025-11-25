@@ -109,6 +109,7 @@ class MainActivity : ComponentActivity() {
         val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
         LaunchedEffect(Unit) {
             viewModel.onLogin()
+            viewModel.onCheckIn()
         }
         DashboardContent(
             dashboardState = dashboardUiState,
