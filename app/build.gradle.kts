@@ -55,8 +55,8 @@ android {
 }
 
 dependencies {
-    implementation(projects.core.common)
     implementation(projects.core.datastore)
+    implementation(projects.core.network)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.foundation.layout)
