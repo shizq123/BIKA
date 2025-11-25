@@ -34,6 +34,7 @@ import com.shizq.bika.bean.PunchInBean
 import com.shizq.bika.bean.RecommendBean
 import com.shizq.bika.bean.ReportBean
 import com.shizq.bika.bean.SignInBean
+import com.shizq.bika.bean.UserProfile
 import com.shizq.bika.network.base.BaseResponse
 import io.reactivex.rxjava3.core.Observable
 import okhttp3.RequestBody
@@ -63,6 +64,11 @@ interface ApiService {
     fun profileGet(
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ProfileBean>>
+
+    @GET("users/profile")
+    suspend fun profileGet2(
+        @HeaderMap headers: Map<String, String>
+    ): Box<UserProfile>
 
     //打卡签到
     @POST("users/punch-in")

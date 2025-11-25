@@ -6,12 +6,14 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,10 +24,16 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -39,12 +47,15 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,7 +81,10 @@ import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.ui.history.HistoryActivity
 import com.shizq.bika.ui.leaderboard.LeaderboardActivity
+import com.shizq.bika.ui.mycomments.MyCommentsActivity
+import com.shizq.bika.ui.notifications.NotificationsActivity
 import com.shizq.bika.ui.search.SearchActivity
+import com.shizq.bika.ui.settings.SettingsActivity
 import com.shizq.bika.ui.user.UserActivity
 import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.AndroidEntryPoint
@@ -90,16 +104,22 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
-        val dashboardSections by viewModel.sectionsFlow.collectAsStateWithLifecycle()
+        val dashboardUiState by viewModel.dashboardUiState.collectAsStateWithLifecycle()
+        val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
         DashboardContent(
-            dashboardState = dashboardSections,
+            dashboardState = dashboardUiState,
+            userProfileUiState = userProfileUiState,
             onRetry = viewModel::restart
         )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun DashboardContent(dashboardState: DashboardUiState, onRetry: () -> Unit) {
+    fun DashboardContent(
+        dashboardState: DashboardUiState,
+        userProfileUiState: UserProfileUiState,
+        onRetry: () -> Unit
+    ) {
         val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
         BackHandler(enabled = drawerState.isOpen) {
@@ -111,7 +131,7 @@ class MainActivity : ComponentActivity() {
             drawerState = drawerState,
             drawerContent = {
                 ModalDrawerSheet {
-                    DashboardDrawerContent(UserProfile())
+                    DashboardDrawerContent(userProfileUiState)
                 }
             },
         ) {
@@ -264,231 +284,233 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun DashboardDrawerContent(
-        userProfile: UserProfile,
+        userProfile: UserProfileUiState,
         modifier: Modifier = Modifier,
-        onPunchIn: () -> Unit = {},
-        onAvatarClick: () -> Unit = {},
+        onCheckIn: () -> Unit = {},
     ) {
-        Column(modifier = modifier) {
-            Column(
-                modifier = modifier.padding(16.dp)
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // 头像容器
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .clickable { onAvatarClick() }) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(userProfile.avatarUrl)
-                                .placeholder(R.drawable.placeholder_avatar_2) // 假设资源存在
-                                .build(),
-                            contentDescription = "Avatar",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .clip(CircleShape)
-                        )
-                        // 头像框
-                        if (userProfile.frameUrl.isNotEmpty()) {
-                            AsyncImage(
-                                model = userProfile.frameUrl,
-                                contentDescription = "Frame",
-                                modifier = Modifier.fillMaxSize()
-                            )
-                        }
-                    }
+        when (userProfile) {
+            is UserProfileUiState.Error -> {
 
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column {
-                        Text(
-                            text = userProfile.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Lv.${userProfile.level}",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
-                            text = userProfile.title,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    val genderText = when (userProfile.gender) {
-                        "m" -> "(绅士)"
-                        "f" -> "(淑女)"
-                        else -> "(机器人)"
-                    }
-                    Text(text = genderText, style = MaterialTheme.typography.bodySmall)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = userProfile.slogan.ifEmpty { "这个人很懒，什么都没写" },
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Row {
-                    Text(
-                        text = "修改资料",
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .clickable {
-                                startActivity(Intent(this@MainActivity, UserActivity::class.java))
-                            }
-                            .padding(end = 16.dp)
-                    )
-
-                    if (!userProfile.isPunched) {
-                        Text(
-                            text = "打卡",
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.clickable { onPunchIn() }
-                        )
-                    }
-                }
             }
 
-            HorizontalDivider()
+            UserProfileUiState.Loading -> {}
+            is UserProfileUiState.Success -> {
+                Column(modifier = modifier) {
+                    UserProfileCard(
+                        state = userProfile,
+                        onCheckInClick = onCheckIn,
+                        onEditProfile = {
+                            startActivity(Intent(this@MainActivity, UserActivity::class.java))
+                        }
+                    )
+                    HorizontalDivider()
 
-            // --- Menu Items ---
-            Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                NavigationDrawerItem(
-                    label = { Text("首页") },
-                    selected = true, // 这里简单处理，实际应根据路由判断
-                    onClick = { /* Stay here */ },
-                    icon = { Icon(painterResource(R.drawable.ic_home), null) }, // 需替换对应图标
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-                NavigationDrawerItem(
-                    label = { Text("历史记录") },
-                    selected = false,
-                    onClick = {
-                        startActivity(Intent(this@MainActivity, HistoryActivity::class.java))
-                    },
-                    icon = { Icon(painterResource(R.drawable.ic_history), null) },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                )
-//            NavigationDrawerItem(
-//                label = { Text("我的收藏") },
-//                selected = false,
-//                onClick = {
-//                    val intent = Intent(context, ComicListActivity::class.java).apply {
-//                        putExtra("tag", "favourite")
-//                        putExtra("title", "我的收藏")
-//                    }
-//                    onNavigate(intent)
-//                },
-//                icon = { Icon(painterResource(R.drawable.ic_bookmark), null) },
-//                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-//            )
-//            NavigationDrawerItem(
-//                label = { Text("我的消息") },
-//                selected = false,
-//                onClick = { onNavigate(Intent(context, NotificationsActivity::class.java)) },
-//                icon = { Icon(painterResource(R.drawable.ic_email), null) },
-//                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-//            )
-//             NavigationDrawerItem(
-//                label = { Text("我的评论") },
-//                selected = false,
-//                onClick = { onNavigate(Intent(context, MyCommentsActivity::class.java)) },
-//                icon = { Icon(painterResource(R.drawable.ic_comment), null) },
-//                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-//            )
-//            NavigationDrawerItem(
-//                label = { Text("设置") },
-//                selected = false,
-//                onClick = { onNavigate(Intent(context, SettingsActivity::class.java)) },
-//                icon = { Icon(painterResource(R.drawable.ic_settings), null) },
-//                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-//            )
+                    // --- Menu Items ---
+                    Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                        NavigationDrawerItem(
+                            label = { Text("首页") },
+                            selected = true, // 这里简单处理，实际应根据路由判断
+                            onClick = { /* Stay here */ },
+                            icon = { Icon(painterResource(R.drawable.ic_home), null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                        NavigationDrawerItem(
+                            label = { Text("历史记录") },
+                            selected = false,
+                            onClick = {
+                                startActivity(
+                                    Intent(
+                                        this@MainActivity,
+                                        HistoryActivity::class.java
+                                    )
+                                )
+                            },
+                            icon = { Icon(painterResource(R.drawable.ic_history), null) },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                        NavigationDrawerItem(
+                            label = { Text("我的收藏") },
+                            selected = false,
+                            onClick = {
+                                val intent =
+                                    Intent(this@MainActivity, ComicListActivity::class.java).apply {
+                                        putExtra("tag", "favourite")
+                                        putExtra("title", "我的收藏")
+                                    }
+                                startActivity(intent)
+                            },
+                            icon = { Icon(Icons.Filled.Favorite, "Favorite") },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                        NavigationDrawerItem(
+                            label = { Text("我的消息") },
+                            selected = false,
+                            onClick = {
+                                startActivity(
+                                    Intent(
+                                        this@MainActivity,
+                                        NotificationsActivity::class.java
+                                    )
+                                )
+                            },
+                            icon = { Icon(Icons.Filled.Email, "Email") },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                        NavigationDrawerItem(
+                            label = { Text("我的评论") },
+                            selected = false,
+                            onClick = {
+                                startActivity(
+                                    Intent(
+                                        this@MainActivity,
+                                        MyCommentsActivity::class.java
+                                    )
+                                )
+                            },
+                            icon = { Icon(Icons.AutoMirrored.Filled.Comment, "Comment") },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                        NavigationDrawerItem(
+                            label = { Text("设置") },
+                            selected = false,
+                            onClick = {
+                                startActivity(
+                                    Intent(
+                                        this@MainActivity,
+                                        SettingsActivity::class.java
+                                    )
+                                )
+                            },
+                            icon = { Icon(Icons.Filled.Settings, "Settings") },
+                            modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                        )
+                    }
+                }
             }
         }
     }
-    
-//
-//
-//    private fun initListener() {
-//        //侧滑
-//        binding.drawerLayout.addDrawerListener(
-//            ActionBarDrawerToggle(
-//                this@MainActivity,
-//                binding.drawerLayout,
-//                binding.toolbar,
-//                R.string.drawer_show,
-//                R.string.drawer_hide
-//            )
-//        )
-//        (binding.mainNavView.getHeaderView(0)
-//            .findViewById<TextView>(R.id.main_drawer_modify)!!).setOnClickListener {
-//            startActivity(Intent(this@MainActivity, UserActivity::class.java))
-//        }
-//        (binding.mainNavView.getHeaderView(0)
-//            .findViewById<TextView>(R.id.main_drawer_punch_in)!!).setOnClickListener {
-//            (binding.mainNavView.getHeaderView(0)
-//                .findViewById<TextView>(R.id.main_drawer_punch_in)!!).visibility=View.GONE
-//            viewModel.punch_In()
-//        }
-//        (binding.mainNavView.getHeaderView(0)
-//            .findViewById<ImageView>(R.id.main_drawer_character)!!).setOnClickListener {
-//            if (viewModel.userId != "" && viewModel.fileServer != "") {
-//                //判断用户是否登录是否有头像，是就查看头像大图
-//                val intent = Intent(this, ImageActivity::class.java)
-//                intent.putExtra("fileserver", viewModel.fileServer)
-//                intent.putExtra("imageurl", viewModel.path)
-//                val options = ActivityOptions.makeSceneTransitionAnimation(
-//                    this,
-//                    (binding.mainNavView.getHeaderView(0)
-//                        .findViewById<ImageView>(R.id.main_drawer_imageView)!!),
-//                    "image"
-//                )
-//                startActivity(intent, options.toBundle())
-//            }
-//        }
-//        binding.mainNavView.setNavigationItemSelectedListener {
-//            binding.mainNavView.setCheckedItem(it)
-//            when (it.itemId) {
-//                R.id.drawer_menu_history -> {
-//                    startActivity(HistoryActivity::class.java)
-//                }
-//                R.id.drawer_menu_bookmark -> {
-//                    val intent = Intent(this@MainActivity, ComicListActivity::class.java)
-//                    intent.putExtra("tag", "favourite")
-//                    intent.putExtra("title", "我的收藏")
-//                    intent.putExtra("value", "我的收藏")
-//                    startActivity(intent)
-//
-//                }
-//                R.id.drawer_menu_mail -> {
-//                    startActivity(NotificationsActivity::class.java)
-//
-//                }
-//                R.id.drawer_menu_chat -> {
-//                    startActivity(MyCommentsActivity::class.java)
-//
-//                }
-//                R.id.drawer_menu_settings -> {
-//                    startActivity(SettingsActivity::class.java)
-//                }
-//
-//            }
-//            true
-//        }
-//
-//    }
-//
 
+    @Composable
+    fun UserProfileCard(
+        state: UserProfileUiState.Success,
+        modifier: Modifier = Modifier,
+        onCheckInClick: () -> Unit,
+        onEditProfile: () -> Unit,
+    ) {
+        val user = state.user
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(contentAlignment = Alignment.Center) {
+                    AsyncImage(
+                        model = ImageRequest.Builder(LocalContext.current)
+                            .data(user.avatarUrl)
+                            .crossfade(true)
+                            .placeholder(R.drawable.placeholder_avatar_2)
+                            .error(R.drawable.placeholder_avatar_2)
+                            .build(),
+                        contentDescription = "Avatar",
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clip(CircleShape)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(16.dp))
+
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = user.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = user.levelDisplay,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = user.title,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier
+                                .border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary,
+                                    RoundedCornerShape(4.dp)
+                                )
+                                .padding(horizontal = 4.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val genderText = remember(user.gender) {
+                    when (user.gender) {
+                        "m" -> "绅士"
+                        "f" -> "淑女"
+                        else -> "机器人"
+                    }
+                }
+
+                Surface(
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(4.dp)
+                ) {
+                    Text(
+                        text = genderText,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Text(
+                    text = user.slogan.ifEmpty { "这个人很懒，什么都没写" },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = onEditProfile
+                ) {
+                    Text(text = "修改资料")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = onCheckInClick,
+                    enabled = !user.hasCheckedIn,
+                    colors = ButtonDefaults.buttonColors(
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    Text(text = if (user.hasCheckedIn) "已打卡" else "打卡")
+                }
+            }
+        }
+    }
 }

@@ -7,6 +7,7 @@ import com.shizq.bika.bean.Media
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.result.Result
+import com.shizq.bika.core.result.asResult
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.utils.SPUtil
@@ -23,7 +24,7 @@ import okhttp3.RequestBody
 class DashboardViewModel @Inject constructor() : ViewModel() {
     private val dashboardRestarter = FlowRestarter()
 
-    val sectionsFlow = flow {
+    val dashboardUiState = flow {
         emit(Result.Loading)
         try {
             val headers = BaseHeaders("categories", "GET").getHeaderMapAndToken()
@@ -57,46 +58,53 @@ class DashboardViewModel @Inject constructor() : ViewModel() {
             SharingStarted.WhileSubscribed(5000),
             DashboardUiState.Loading
         )
+    val userProfileUiState = flow {
+        val profileGet2 = RetrofitUtil.service.profileGet2(
+            BaseHeaders("users/profile", "GET").getHeaderMapAndToken()
+        )
+        emit(profileGet2)
+    }.asResult()
+        .map { result ->
+            when (result) {
+                Result.Loading -> UserProfileUiState.Loading
+                is Result.Error -> UserProfileUiState.Error(result.exception.message ?: "")
+                is Result.Success -> {
+                    val user = result.data.data!!.user
+                    UserProfileUiState.Success(
+                        User(
+                            name = user.name,
+                            avatarUrl = getFullUrl(user.avatar),
+                            characters = user.characters,
+                            level = user.level,
+                            exp = user.exp,
+                            title = user.title,
+                            gender = user.gender,
+                            slogan = user.slogan,
+                            hasCheckedIn = user.isPunched,
+                        )
+                    )
+                }
+            }
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            UserProfileUiState.Loading
+        )
 
     fun restart() {
         dashboardRestarter.restart()
     }
+
     private fun getFullUrl(media: Media): String {
         val path = media.path
 
         return "https://s3.picacomic.com/static/$path"
     }
 
-    fun getProfile() {
-//        RetrofitUtil.service.profileGet(BaseHeaders("users/profile", "GET").getHeaderMapAndToken())
-//            .doOnSubscribe(this@MainViewModel)
-//            .subscribe(object : BaseObserver<ProfileBean>() {
-//                override fun onSuccess(baseResponse: BaseResponse<ProfileBean>) {
-//                    // 请求成功
-//                    liveData_profile.postValue(baseResponse)
-//                }
-//
-//                override fun onCodeError(baseResponse: BaseResponse<ProfileBean>) {
-//                    liveData_profile.postValue(baseResponse)
-//                }
-//
-//            })
-    }
-
     fun punch_In() {
         val headers = BaseHeaders("users/punch-in", "POST").getHeaderMapAndToken()
-//        RetrofitUtil.service.punchInPOST(headers)
-//            .doOnSubscribe(this@MainViewModel)
-//            .subscribe(object : BaseObserver<PunchInBean>() {
-//                override fun onSuccess(baseResponse: BaseResponse<PunchInBean>) {
-//                    liveData_punch_in.postValue(baseResponse)
-//                }
-//
-//                override fun onCodeError(baseResponse: BaseResponse<PunchInBean>) {
-//                    liveData_punch_in.postValue(baseResponse)
-//
-//                }
-//            })
+        RetrofitUtil.service.punchInPOST(headers)
     }
 
     fun getSignIn() {
@@ -107,18 +115,7 @@ class DashboardViewModel @Inject constructor() : ViewModel() {
                 addProperty("password", SPUtil.get("password", "") as String)
             }.asJsonObject.toString()
         )
-//        val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
-//        RetrofitUtil.service.signInPost(body, headers)
-//            .doOnSubscribe(this@MainViewModel)
-//            .subscribe(object : BaseObserver<SignInBean>() {
-//                override fun onSuccess(baseResponse: BaseResponse<SignInBean>) {
-//                    liveData_signin.postValue(baseResponse)
-//                }
-//
-//                override fun onCodeError(baseResponse: BaseResponse<SignInBean>) {
-//                    liveData_signin.postValue(baseResponse)
-//                }
-//            })
-//    }
+        val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
+        RetrofitUtil.service.signInPost(body, headers)
     }
 }
