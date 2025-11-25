@@ -14,12 +14,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
-import coil.compose.AsyncImagePainter
-import coil.compose.SubcomposeAsyncImage
-import coil.compose.SubcomposeAsyncImageContent
-import coil.request.CachePolicy
-import coil.request.ImageRequest
-import coil.size.Size
+import coil3.compose.AsyncImagePainter
+import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.SubcomposeAsyncImageContent
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import coil3.size.Size
 import com.shizq.bika.R
 import com.shizq.bika.paging.ComicPage
 

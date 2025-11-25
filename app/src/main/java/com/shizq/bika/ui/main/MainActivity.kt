@@ -71,8 +71,10 @@ import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil.compose.AsyncImage
-import coil.request.ImageRequest
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.error
+import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.ui.apps.AppsActivity
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
@@ -418,7 +420,6 @@ class MainActivity : ComponentActivity() {
                     AsyncImage(
                         model = ImageRequest.Builder(LocalContext.current)
                             .data(user.avatarUrl)
-                            .crossfade(true)
                             .placeholder(R.drawable.placeholder_avatar_2)
                             .error(R.drawable.placeholder_avatar_2)
                             .build(),
