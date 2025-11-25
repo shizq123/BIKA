@@ -10,6 +10,8 @@ import io.ktor.utils.io.KtorDsl
 import org.apache.commons.codec.digest.HmacAlgorithms
 import org.apache.commons.codec.digest.HmacUtils
 import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 
@@ -45,6 +47,7 @@ public class BikaAuthConfig {
     }
 }
 
+@OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
 public val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
     createClientPlugin("BikaSignatureAuth", ::BikaAuthConfig) {
 

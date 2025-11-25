@@ -15,6 +15,7 @@ import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -115,7 +116,11 @@ class DashboardViewModel @Inject constructor(
 
     fun onLogin() {
         viewModelScope.launch {
-            userCredentialsDataSource.setToken(SPUtil.get("token", "") as String)
+            val credentials = userCredentialsDataSource.userData.first()
+            if (credentials.token == null) {
+                userCredentialsDataSource.setToken(SPUtil.get("token", "") as String)
+            }
+
             userCredentialsDataSource.setUsername(SPUtil.get("username", "") as String)
             userCredentialsDataSource.setPassword(SPUtil.get("password", "") as String)
         }

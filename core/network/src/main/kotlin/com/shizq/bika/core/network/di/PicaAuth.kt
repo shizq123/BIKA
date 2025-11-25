@@ -2,6 +2,7 @@ package com.shizq.bika.core.network.di
 
 import org.apache.commons.codec.digest.HmacAlgorithms
 import org.apache.commons.codec.digest.HmacUtils
+import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 internal object PicaAuth {
@@ -10,6 +11,7 @@ internal object PicaAuth {
 
     private fun getAppChannel(): String = "1"
 
+    @OptIn(ExperimentalUuidApi::class)
     fun generate(path: String, method: String): Map<String, String> {
         val cleanPath = path.removePrefix("/")
 
