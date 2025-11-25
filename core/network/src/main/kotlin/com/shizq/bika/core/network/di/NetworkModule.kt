@@ -5,6 +5,7 @@ import androidx.tracing.trace
 import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
+import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BuildConfig
 import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
@@ -26,6 +27,7 @@ import io.ktor.client.request.header
 import io.ktor.http.encodedPath
 import io.ktor.serialization.kotlinx.json.json
 import jakarta.inject.Singleton
+import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 
@@ -40,7 +42,10 @@ internal object NetworkModule {
 
     @Provides
     @Singleton
-    fun providesHttpClient(okHttpCallFactory: OkHttpClient): HttpClient = HttpClient(OkHttp) {
+    fun providesHttpClient(
+        okHttpCallFactory: OkHttpClient,
+        userCredentialsDataSource: UserCredentialsDataSource,
+    ): HttpClient = HttpClient(OkHttp) {
         engine {
             preconfigured = okHttpCallFactory
         }
@@ -48,7 +53,9 @@ internal object NetworkModule {
             url("https://picaapi.picacomic.com")
         }
         bikaAuth {
-
+            token {
+                userCredentialsDataSource.userData.first().token
+            }
         }
         install(ContentNegotiation) {
             json(
