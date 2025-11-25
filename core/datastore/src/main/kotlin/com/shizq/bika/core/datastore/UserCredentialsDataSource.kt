@@ -14,4 +14,16 @@ class UserCredentialsDataSource @Inject constructor(
             it.copy(token = token)
         }
     }
+
+    suspend fun setUsername(username: String?) {
+        userCredentials.updateData {
+            it.copy(username = username)
+        }
+    }
+
+    suspend fun setPassword(password: String?) {
+        userCredentials.updateData {
+            it.copy(password = password)
+        }
+    }
 }
