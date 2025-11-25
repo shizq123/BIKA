@@ -36,12 +36,6 @@ import okhttp3.OkHttpClient
 internal object NetworkModule {
     @Provides
     @Singleton
-    fun providesNetworkJson(): Json = Json {
-        ignoreUnknownKeys = true
-    }
-
-    @Provides
-    @Singleton
     fun providesHttpClient(
         okHttpCallFactory: OkHttpClient,
         userCredentialsDataSource: UserCredentialsDataSource,
