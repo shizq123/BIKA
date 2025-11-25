@@ -54,6 +54,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -106,9 +107,13 @@ class MainActivity : ComponentActivity() {
     fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
         val dashboardUiState by viewModel.dashboardUiState.collectAsStateWithLifecycle()
         val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
+        LaunchedEffect(Unit) {
+            viewModel.onLogin()
+        }
         DashboardContent(
             dashboardState = dashboardUiState,
             userProfileUiState = userProfileUiState,
+            onCheckInClick = viewModel::onCheckIn,
             onRetry = viewModel::restart
         )
     }
@@ -118,6 +123,7 @@ class MainActivity : ComponentActivity() {
     fun DashboardContent(
         dashboardState: DashboardUiState,
         userProfileUiState: UserProfileUiState,
+        onCheckInClick: () -> Unit,
         onRetry: () -> Unit
     ) {
         val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
@@ -131,7 +137,10 @@ class MainActivity : ComponentActivity() {
             drawerState = drawerState,
             drawerContent = {
                 ModalDrawerSheet {
-                    DashboardDrawerContent(userProfileUiState)
+                    DashboardDrawerContent(
+                        userProfile = userProfileUiState,
+                        onCheckInClick = onCheckInClick
+                    )
                 }
             },
         ) {
@@ -286,7 +295,7 @@ class MainActivity : ComponentActivity() {
     fun DashboardDrawerContent(
         userProfile: UserProfileUiState,
         modifier: Modifier = Modifier,
-        onCheckIn: () -> Unit = {},
+        onCheckInClick: () -> Unit = {},
     ) {
         when (userProfile) {
             is UserProfileUiState.Error -> {
@@ -298,7 +307,7 @@ class MainActivity : ComponentActivity() {
                 Column(modifier = modifier) {
                     UserProfileCard(
                         state = userProfile,
-                        onCheckInClick = onCheckIn,
+                        onCheckInClick = onCheckInClick,
                         onEditProfile = {
                             startActivity(Intent(this@MainActivity, UserActivity::class.java))
                         }

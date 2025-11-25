@@ -17,8 +17,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor() : ViewModel() {
@@ -102,20 +103,22 @@ class DashboardViewModel @Inject constructor() : ViewModel() {
         return "https://s3.picacomic.com/static/$path"
     }
 
-    fun punch_In() {
-        val headers = BaseHeaders("users/punch-in", "POST").getHeaderMapAndToken()
-        RetrofitUtil.service.punchInPOST(headers)
+    fun onCheckIn() {
+        viewModelScope.launch {
+            val headers = BaseHeaders("users/punch-in", "POST").getHeaderMapAndToken()
+            RetrofitUtil.service.punchInPOST(headers)
+        }
     }
 
-    fun getSignIn() {
-        val body = RequestBody.create(
-            "application/json; charset=UTF-8".toMediaTypeOrNull(),
-            JsonObject().apply {
+    fun onLogin() {
+        viewModelScope.launch {
+            val body = JsonObject().apply {
                 addProperty("email", SPUtil.get("username", "") as String)
                 addProperty("password", SPUtil.get("password", "") as String)
             }.asJsonObject.toString()
-        )
-        val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
-        RetrofitUtil.service.signInPost(body, headers)
+                .toRequestBody("application/json; charset=UTF-8".toMediaTypeOrNull())
+            val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
+            RetrofitUtil.service.signInPost2(body, headers)
+        }
     }
 }

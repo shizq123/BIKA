@@ -25,6 +25,7 @@ import com.shizq.bika.bean.GamesBean
 import com.shizq.bika.bean.InitBean
 import com.shizq.bika.bean.KeywordsBean
 import com.shizq.bika.bean.KnightBean
+import com.shizq.bika.bean.LoginData
 import com.shizq.bika.bean.MyCommentsBean
 import com.shizq.bika.bean.NotificationsBean
 import com.shizq.bika.bean.PicaAppsBean
@@ -82,6 +83,12 @@ interface ApiService {
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<SignInBean>>
+
+    @POST("auth/sign-in")
+    suspend fun signInPost2(
+        @Body requestBody: RequestBody,
+        @HeaderMap headers: Map<String, String>
+    ): Box<LoginData>
 
     //注册
     @POST("auth/register")

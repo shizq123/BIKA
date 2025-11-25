@@ -1,5 +1,7 @@
 package com.shizq.bika.bean
 
+import kotlinx.serialization.Serializable
+
 data class SignInBean(
     val token: String,
     val question1: String,
@@ -8,5 +10,7 @@ data class SignInBean(
     val password: String
 )
 
-
-
+@Serializable
+data class LoginData(
+    val token: String
+)
