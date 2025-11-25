@@ -130,5 +130,5 @@ dependencies {
 
     implementation("com.squareup.retrofit2:converter-kotlinx-serialization:3.0.0")
 
-    implementation(libs.coil.kt.compose)
+    implementation(libs.coil.compose)
 }
