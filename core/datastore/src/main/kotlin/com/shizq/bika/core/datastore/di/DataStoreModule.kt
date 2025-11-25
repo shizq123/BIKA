@@ -7,6 +7,7 @@ import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStoreFile
 import com.shizq.bika.core.coroutine.ApplicationScope
+import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.model.UserCredentials
 import com.shizq.bika.core.model.UserPreferences
 import dagger.Module
 import dagger.Provides
@@ -60,5 +61,36 @@ object DataStoreModule {
             scope = CoroutineScope(scope.coroutineContext + Dispatchers.IO),
         ) {
             context.dataStoreFile("user_preferences")
+        }
+
+    @Provides
+    @Singleton
+    internal fun providesUserCredentialsDataStore(
+        @ApplicationContext context: Context,
+        @ApplicationScope scope: CoroutineScope,
+    ): DataStore<UserCredentials> =
+        DataStoreFactory.create(
+            serializer = object : Serializer<UserCredentials> {
+                override suspend fun readFrom(input: InputStream): UserCredentials {
+                    try {
+                        return DataStoreJson.decodeFromStream(UserCredentials.serializer(), input)
+                    } catch (e: Exception) {
+                        throw CorruptionException("Failed to decode data", e)
+                    }
+                }
+
+                override suspend fun writeTo(
+                    t: UserCredentials,
+                    output: OutputStream
+                ) {
+                    DataStoreJson.encodeToStream(UserCredentials.serializer(), t, output)
+                }
+
+                override val defaultValue: UserCredentials
+                    get() = UserCredentials()
+            },
+            scope = CoroutineScope(scope.coroutineContext + Dispatchers.IO),
+        ) {
+            context.dataStoreFile("user_credentials")
         }
 }
