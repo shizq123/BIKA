@@ -7,6 +7,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BuildConfig
+import com.shizq.bika.core.network.plugin.ResponseTransformer
 import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
 import dagger.Provides
@@ -50,6 +51,7 @@ internal object NetworkModule {
                 userCredentialsDataSource.userData.first().token
             }
         }
+        install(ResponseTransformer)
         install(ContentNegotiation) {
             json(
                 Json {
