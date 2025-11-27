@@ -8,5 +8,5 @@ data class UserPreferences(
     val screenOrientation: ScreenOrientation = ScreenOrientation.Portrait,
     val tapZoneLayout: TapZoneLayout = TapZoneLayout.Sides,
     val volumeKeyNavigation: Boolean = true,
-    val blocked: Set<String> = emptySet(),
+    val channels: List<Channel> = ChannelDataSource.allChannels,
 )

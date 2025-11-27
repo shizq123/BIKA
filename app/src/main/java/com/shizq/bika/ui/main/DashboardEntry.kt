@@ -24,17 +24,21 @@ sealed interface DashboardEntry {
 }
 
 val dashboardEntries = listOf(
-    DashboardEntry.Native(R.string.categories_recommend, R.drawable.bika, EntryType.RECOMMEND),
+    DashboardEntry.Native(R.string.categories_recommend, R.drawable.ic_bika, EntryType.RECOMMEND),
     DashboardEntry.Native(
         R.string.categories_leaderboard,
-        R.drawable.cat_leaderboard,
+        R.drawable.ic_cat_ranking,
         EntryType.LEADERBOARD
     ),
-    DashboardEntry.Native(R.string.categories_game, R.drawable.cat_game, EntryType.GAME),
-    DashboardEntry.Native(R.string.categories_apps, R.drawable.cat_love_pica, EntryType.APPS),
-    DashboardEntry.Native(R.string.categories_forum, R.drawable.cat_forum, EntryType.FORUM),
-    DashboardEntry.Native(R.string.categories_latest, R.drawable.cat_latest, EntryType.LATEST),
-    DashboardEntry.Native(R.string.categories_random, R.drawable.cat_random, EntryType.RANDOM),
+    DashboardEntry.Native(R.string.categories_game, R.drawable.ic_cat_game_rec, EntryType.GAME),
+    DashboardEntry.Native(R.string.categories_apps, R.drawable.ic_cat_mini_app, EntryType.APPS),
+    DashboardEntry.Native(
+        R.string.categories_forum,
+        R.drawable.ic_cat_message_board,
+        EntryType.FORUM
+    ),
+    DashboardEntry.Native(R.string.categories_latest, R.drawable.ic_cat_recent, EntryType.LATEST),
+    DashboardEntry.Native(R.string.categories_random, R.drawable.ic_cat_random, EntryType.RANDOM),
 )
 
 enum class EntryType {

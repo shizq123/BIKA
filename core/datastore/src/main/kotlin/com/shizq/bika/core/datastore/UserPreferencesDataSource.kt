@@ -1,6 +1,7 @@
 package com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore
 
 import androidx.datastore.core.DataStore
+import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
@@ -34,6 +35,12 @@ class UserPreferencesDataSource @Inject constructor(
     suspend fun setIsVolumeKeyNavigation(enabled: Boolean) {
         userPreferences.updateData { currentPreferences ->
             currentPreferences.copy(volumeKeyNavigation = enabled)
+        }
+    }
+
+    suspend fun updateChannels(channels: List<Channel>) {
+        userPreferences.updateData { currentPreferences ->
+            currentPreferences.copy(channels = channels)
         }
     }
 }

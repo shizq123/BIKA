@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,23 +16,28 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -48,6 +54,7 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -56,11 +63,14 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -76,6 +86,7 @@ import coil3.request.ImageRequest
 import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
+import com.shizq.bika.core.model.Channel
 import com.shizq.bika.ui.apps.AppsActivity
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.collections.CollectionsActivity
@@ -109,6 +120,7 @@ class MainActivity : ComponentActivity() {
     fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
         val dashboardUiState by viewModel.dashboardUiState.collectAsStateWithLifecycle()
         val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
+        val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
         LaunchedEffect(Unit) {
             viewModel.onLogin()
             viewModel.onCheckIn()
@@ -117,7 +129,9 @@ class MainActivity : ComponentActivity() {
             dashboardState = dashboardUiState,
             userProfileUiState = userProfileUiState,
             onCheckInClick = viewModel::onCheckIn,
-            onRetry = viewModel::restart
+            channelSettingsUiState = channelSettingsUiState,
+            onRetry = viewModel::restart,
+            onChannelConfigChange = viewModel::updateChannelPreferences
         )
     }
 
@@ -127,7 +141,9 @@ class MainActivity : ComponentActivity() {
         dashboardState: DashboardUiState,
         userProfileUiState: UserProfileUiState,
         onCheckInClick: () -> Unit,
-        onRetry: () -> Unit
+        onRetry: () -> Unit,
+        channelSettingsUiState: List<Channel>,
+        onChannelConfigChange: (Channel, Boolean) -> Unit
     ) {
         val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
@@ -158,6 +174,72 @@ class MainActivity : ComponentActivity() {
                             }
                         },
                         actions = {
+                            var showChannelSettings by remember { mutableStateOf(false) }
+
+                            IconButton(onClick = { showChannelSettings = true }) {
+                                Icon(Icons.Filled.FilterList, contentDescription = "Channel Filter")
+                            }
+                            if (showChannelSettings) {
+                                AlertDialog(
+                                    onDismissRequest = { showChannelSettings = false },
+                                    title = {
+                                        Text("频道显示设置")
+                                    },
+                                    text = {
+                                        Box(modifier = Modifier.heightIn(max = 400.dp)) {
+                                            LazyColumn(
+                                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                items(
+                                                    items = channelSettingsUiState,
+                                                    key = { it.displayName }
+                                                ) { channel ->
+                                                    Row(
+                                                        modifier = Modifier
+                                                            .fillMaxWidth()
+                                                            .clickable {
+                                                                onChannelConfigChange(
+                                                                    channel,
+                                                                    !channel.isActive
+                                                                )
+                                                            }
+                                                            .padding(vertical = 8.dp),
+                                                        verticalAlignment = Alignment.CenterVertically,
+                                                        horizontalArrangement = Arrangement.SpaceBetween
+                                                    ) {
+                                                        Text(
+                                                            text = channel.displayName,
+                                                            style = MaterialTheme.typography.bodyLarge
+                                                        )
+                                                        Switch(
+                                                            checked = channel.isActive,
+                                                            onCheckedChange = { isChecked ->
+                                                                onChannelConfigChange(
+                                                                    channel,
+                                                                    isChecked
+                                                                )
+                                                            },
+                                                            modifier = Modifier.scale(0.9f)
+                                                        )
+                                                    }
+                                                    HorizontalDivider(
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
+                                                            alpha = 0.2f
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                    // 3. 按钮放在标准位置
+                                    confirmButton = {
+                                        TextButton(onClick = { showChannelSettings = false }) {
+                                            Text("完成")
+                                        }
+                                    },
+                                )
+                            }
+
                             IconButton(
                                 onClick = {
                                     startActivity(

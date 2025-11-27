@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.main
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.JsonObject
@@ -7,12 +8,16 @@ import com.shizq.bika.bean.Media
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserCredentialsDataSource
+import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -26,9 +31,20 @@ import okhttp3.RequestBody.Companion.toRequestBody
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource,
+    private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val network: BikaDataSource,
+    @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val dashboardRestarter = FlowRestarter()
-
+    val userChannelPreferences = userPreferencesDataSource.userData.map { it.channels }
+        .map { channels ->
+            channels.filter { it.isActive }
+        }
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList(),
+        )
     val dashboardUiState = flow {
         emit(Result.Loading)
         try {
@@ -105,6 +121,22 @@ class DashboardViewModel @Inject constructor(
         val path = media.path
 
         return "https://s3.picacomic.com/static/$path"
+    }
+
+    fun updateChannelPreferences(targetChannel: Channel, enable: Boolean) {
+        viewModelScope.launch {
+            val currentList = userChannelPreferences.value
+
+            val newList = currentList.map { item ->
+                if (item.displayName == targetChannel.displayName) {
+                    item.copy(isActive = enable)
+                } else {
+                    item
+                }
+            }
+
+            userPreferencesDataSource.updateChannels(newList)
+        }
     }
 
     fun onCheckIn() {
