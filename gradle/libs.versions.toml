@@ -38,6 +38,7 @@ okhttp = "5.3.2"
 okhttp3Integration = "5.0.5"
 photoview = "2.3.0"
 pictureselector = "v3.10.7"
+reorderable = "3.0.0"
 retrofit = "3.0.0"
 rxandroid = "3.0.2"
 [libraries]
@@ -121,6 +122,7 @@ okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-intercepto
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 photoview = { module = "com.github.chrisbanes:PhotoView", version.ref = "photoview" }
 pictureselector = { module = "io.github.lucksiege:pictureselector", version.ref = "pictureselector" }
+reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 retrofit-adapter-rxjava3 = { module = "com.squareup.retrofit2:adapter-rxjava3", version.ref = "retrofit" }
 retrofit-converter-kotlinx-serialization = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
