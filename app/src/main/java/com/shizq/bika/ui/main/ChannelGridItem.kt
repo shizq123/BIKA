@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.main
 
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -21,58 +22,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 
 @Composable
-fun FeatureEntry(
-    url: String,
-    labelText: String,
+fun ChannelGridItem(
+    iconRes: Int,
+    label: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Column(
-        modifier = modifier
-            .padding(8.dp)
-            .width(IntrinsicSize.Min)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                onClick = onClick
-            )
-    ) {
-        Card(
-            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(1f)
-        ) {
-            AsyncImage(
-                model = url,
-                contentDescription = labelText,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize()
-            )
-        }
-
-        Spacer(modifier = Modifier.height(8.dp))
-
-        Text(
-            text = labelText,
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
-}
-
-@Composable
-fun FeatureEntry(
-    iconResId: Int,
-    labelResId: Int,
-    modifier: Modifier = Modifier,
-    onClick: () -> Unit
-) {
-    val labelText = stringResource(labelResId)
+    Log.d("ChannelGridItem", "$iconRes $label")
     Column(
         modifier = modifier
             .padding(8.dp)
@@ -90,8 +49,8 @@ fun FeatureEntry(
                 .aspectRatio(1f)
         ) {
             Image(
-                painterResource(iconResId),
-                contentDescription = labelText,
+                painterResource(iconRes),
+                contentDescription = label,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier.fillMaxSize()
             )
@@ -100,7 +59,7 @@ fun FeatureEntry(
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = labelText,
+            text = label,
             style = MaterialTheme.typography.bodyMedium,
         )
     }
