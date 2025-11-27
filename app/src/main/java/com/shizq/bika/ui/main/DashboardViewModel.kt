@@ -134,6 +134,7 @@ class DashboardViewModel @Inject constructor(
             val signInPost2 = RetrofitUtil.service.signInPost2(body, headers)
             signInPost2.data?.let {
                 userCredentialsDataSource.setToken(it.token)
+                SPUtil.put("token", it.token)
             }
         }
     }
