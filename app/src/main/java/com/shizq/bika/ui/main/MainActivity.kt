@@ -70,6 +70,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -78,13 +79,19 @@ import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
+import com.shizq.bika.ui.apps.AppsActivity
+import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
+import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
+import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.ui.history.HistoryActivity
+import com.shizq.bika.ui.leaderboard.LeaderboardActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.notifications.NotificationsActivity
 import com.shizq.bika.ui.search.SearchActivity
 import com.shizq.bika.ui.settings.SettingsActivity
 import com.shizq.bika.ui.user.UserActivity
+import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -153,7 +160,7 @@ class MainActivity : ComponentActivity() {
                 activeChannels = activeChannels,
                 allChannels = channelSettingsUiState,
                 onChannelToggled = onChannelToggled,
-                onDrawerClose = { scope.launch { drawerState.close() } }
+                onDrawerOpen = { scope.launch { drawerState.open() } }
             )
         }
     }
@@ -164,7 +171,7 @@ class MainActivity : ComponentActivity() {
         activeChannels: List<Channel>,
         allChannels: List<Channel>,
         onChannelToggled: (Channel, Boolean) -> Unit,
-        onDrawerClose: () -> Unit,
+        onDrawerOpen: () -> Unit,
     ) {
         val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
         Scaffold(
@@ -172,7 +179,7 @@ class MainActivity : ComponentActivity() {
                 TopAppBar(
                     title = { Text("哔咔") },
                     navigationIcon = {
-                        IconButton(onClick = onDrawerClose) {
+                        IconButton(onClick = onDrawerOpen) {
                             Icon(Icons.Default.Menu, contentDescription = "打开菜单")
                         }
                     },
@@ -237,11 +244,59 @@ class MainActivity : ComponentActivity() {
                         ChannelGridItem(
                             iconRes = resId, label = item.displayName,
                         ) {
-
-                            }
+                            navigation(item)
                         }
+                    }
                 }
             }
+        }
+    }
+
+    fun navigation(channel: Channel) {
+        if (channel.link == null) {
+            when (channel.displayName) {
+                "推荐" -> start(CollectionsActivity::class.java)
+                "排行榜" -> start(LeaderboardActivity::class.java)
+                "游戏推荐" -> start(GamesActivity::class.java)
+                "哔咔小程序" -> start(AppsActivity::class.java)
+                "留言板" -> start(ChatRoomListActivity::class.java)
+                "最近更新" -> {
+                    val targetClass = ComicListActivity::class.java
+                    val intent = Intent(this, targetClass).apply {
+
+                        putExtra("tag", "latest")
+                        putExtra("title", channel.displayName)
+                        putExtra("value", channel.displayName)
+                    }
+                    startActivity(intent)
+                }
+
+                "随机本子" -> {
+                    val targetClass = ComicListActivity::class.java
+                    val intent = Intent(this, targetClass).apply {
+
+                        putExtra("tag", "random")
+                        putExtra("title", channel.displayName)
+                        putExtra("value", channel.displayName)
+                    }
+                    startActivity(intent)
+                }
+
+                else -> {
+                    val intent = Intent(this, ComicListActivity::class.java)
+                    intent.putExtra("tag", "categories")
+                    intent.putExtra("title", channel.displayName)
+                    intent.putExtra("value", channel.displayName)
+                    startActivity(intent)
+                }
+            }
+        } else {
+            val token = SPUtil.get("token", "")
+            val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
+            val fullUrl = "${channel.link}/?token=$token&secret=$secret"
+
+            val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
+            startActivity(intent)
         }
     }
 //    fun navigateToDashboardEntry(entry: DashboardEntry) {
@@ -284,19 +339,9 @@ class MainActivity : ComponentActivity() {
 //
 //            is DashboardEntry.Remote -> {
 //                if (entry.isWeb && !entry.link.isNullOrEmpty()) {
-//                    val token = SPUtil.get("token", "")
-//                    val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
-//                    val fullUrl = "${entry.link}/?token=$token&secret=$secret"
-//
-//                    val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
-//                    startActivity(intent)
+
 //                } else {
-//                    val intent = Intent(this, ComicListActivity::class.java)
-//                    intent.putExtra("tag", "categories")
-//                    intent.putExtra("title", entry.title)
-//                    intent.putExtra("value", entry.title)
-//                    startActivity(intent)
-//                }
+
 //            }
 //        }
 //    }
