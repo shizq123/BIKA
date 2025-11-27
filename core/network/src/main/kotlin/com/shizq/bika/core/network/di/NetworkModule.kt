@@ -25,6 +25,7 @@ import io.ktor.serialization.kotlinx.json.json
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.json.Json
+import okhttp3.Dns
 import okhttp3.OkHttpClient
 
 @Module
@@ -33,11 +34,11 @@ internal object NetworkModule {
     @Provides
     @Singleton
     fun providesHttpClient(
-        okHttpCallFactory: OkHttpClient,
+        okHttpClient: OkHttpClient,
         userCredentialsDataSource: UserCredentialsDataSource,
     ): HttpClient = HttpClient(OkHttp) {
         engine {
-            preconfigured = okHttpCallFactory
+            preconfigured = okHttpClient
         }
         defaultRequest {
             url("https://picaapi.picacomic.com")
@@ -63,7 +64,11 @@ internal object NetworkModule {
     @Provides
     @Singleton
     fun okHttpCallFactory(): OkHttpClient = trace("OkHttpClient") {
-        OkHttpClient.Builder().build()
+        OkHttpClient.Builder()
+            .dns {
+                Dns.SYSTEM.lookup("104.19.53.76")
+            }
+            .build()
     }
 
     @Provides
