@@ -6,7 +6,6 @@ import androidx.lifecycle.viewModelScope
 import com.google.gson.JsonObject
 import com.shizq.bika.bean.Media
 import com.shizq.bika.core.coroutine.FlowRestarter
-import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.Channel
@@ -36,48 +35,12 @@ class DashboardViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val dashboardRestarter = FlowRestarter()
-    val userChannelPreferences = userPreferencesDataSource.userData.map { it.channels }
-        .map { channels ->
-            channels.filter { it.isActive }
-        }
+    val userChannelPreferences = userPreferencesDataSource.userData
+        .map { it.channels.filterNot { channel -> channel.displayName == "哔咔聊天室" } }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             emptyList(),
-        )
-    val dashboardUiState = flow {
-        emit(Result.Loading)
-        try {
-            val headers = BaseHeaders("categories", "GET").getHeaderMapAndToken()
-            val response = RetrofitUtil.service.categoriesGet2(headers)
-
-            val remoteSections = response.data?.categories?.map { it ->
-                DashboardEntry.Remote(
-                    title = it.title,
-                    imageUrl = getFullUrl(it.thumb),
-                    id = it.id,
-                    isWeb = it.isWeb,
-                    link = it.link
-                )
-            } ?: emptyList()
-
-            emit(Result.Success(dashboardEntries + remoteSections))
-
-        } catch (e: Exception) {
-            emit(Result.Error(e))
-        }
-    }.map { result ->
-        when (result) {
-            is Result.Error -> DashboardUiState.Error(result.exception.message ?: "")
-            Result.Loading -> DashboardUiState.Loading
-            is Result.Success -> DashboardUiState.Success(result.data)
-        }
-    }
-        .restartable(dashboardRestarter)
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5000),
-            DashboardUiState.Loading
         )
     val userProfileUiState = flow {
         val profileGet2 = RetrofitUtil.service.profileGet2(
@@ -123,9 +86,10 @@ class DashboardViewModel @Inject constructor(
         return "https://s3.picacomic.com/static/$path"
     }
 
-    fun updateChannelPreferences(targetChannel: Channel, enable: Boolean) {
+    fun onChannelToggled(targetChannel: Channel, enable: Boolean) {
         viewModelScope.launch {
-            val currentList = userChannelPreferences.value
+            val userPreferences = userPreferencesDataSource.userData.first()
+            val currentList = userPreferences.channels
 
             val newList = currentList.map { item ->
                 if (item.displayName == targetChannel.displayName) {
@@ -139,6 +103,8 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
+    // performAutoCheckIn
+    // performInitialLogin
     fun onCheckIn() {
         viewModelScope.launch {
             val headers = BaseHeaders("users/punch-in", "POST").getHeaderMapAndToken()

@@ -7,7 +7,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,17 +15,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -37,10 +33,8 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,7 +48,6 @@ import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -70,7 +63,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -78,7 +70,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -87,20 +78,13 @@ import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
-import com.shizq.bika.ui.apps.AppsActivity
-import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
-import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
-import com.shizq.bika.ui.comment.CommentsActivity
-import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.ui.history.HistoryActivity
-import com.shizq.bika.ui.leaderboard.LeaderboardActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.notifications.NotificationsActivity
 import com.shizq.bika.ui.search.SearchActivity
 import com.shizq.bika.ui.settings.SettingsActivity
 import com.shizq.bika.ui.user.UserActivity
-import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -118,7 +102,6 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
-        val dashboardUiState by viewModel.dashboardUiState.collectAsStateWithLifecycle()
         val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
         val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
         LaunchedEffect(Unit) {
@@ -126,24 +109,24 @@ class MainActivity : ComponentActivity() {
             viewModel.onCheckIn()
         }
         DashboardContent(
-            dashboardState = dashboardUiState,
+//            dashboardState = dashboardUiState,
             userProfileUiState = userProfileUiState,
             onCheckInClick = viewModel::onCheckIn,
             channelSettingsUiState = channelSettingsUiState,
             onRetry = viewModel::restart,
-            onChannelConfigChange = viewModel::updateChannelPreferences
+            onChannelToggled = viewModel::onChannelToggled
         )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun DashboardContent(
-        dashboardState: DashboardUiState,
+//        dashboardState: DashboardUiState,
         userProfileUiState: UserProfileUiState,
         onCheckInClick: () -> Unit,
         onRetry: () -> Unit,
         channelSettingsUiState: List<Channel>,
-        onChannelConfigChange: (Channel, Boolean) -> Unit
+        onChannelToggled: (Channel, Boolean) -> Unit
     ) {
         val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
@@ -163,214 +146,160 @@ class MainActivity : ComponentActivity() {
                 }
             },
         ) {
-            val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = { Text("哔咔") },
-                        navigationIcon = {
-                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
-                                Icon(Icons.Default.Menu, contentDescription = "Menu")
-                            }
-                        },
-                        actions = {
-                            var showChannelSettings by remember { mutableStateOf(false) }
+            val activeChannels = remember(channelSettingsUiState) {
+                channelSettingsUiState.filter { it.isActive }
+            }
+            DashboardContent(
+                activeChannels = activeChannels,
+                allChannels = channelSettingsUiState,
+                onChannelToggled = onChannelToggled,
+                onDrawerClose = { scope.launch { drawerState.close() } }
+            )
+        }
+    }
 
-                            IconButton(onClick = { showChannelSettings = true }) {
-                                Icon(Icons.Filled.FilterList, contentDescription = "Channel Filter")
-                            }
-                            if (showChannelSettings) {
-                                AlertDialog(
-                                    onDismissRequest = { showChannelSettings = false },
-                                    title = {
-                                        Text("频道显示设置")
-                                    },
-                                    text = {
-                                        Box(modifier = Modifier.heightIn(max = 400.dp)) {
-                                            LazyColumn(
-                                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                items(
-                                                    items = channelSettingsUiState,
-                                                    key = { it.displayName }
-                                                ) { channel ->
-                                                    Row(
-                                                        modifier = Modifier
-                                                            .fillMaxWidth()
-                                                            .clickable {
-                                                                onChannelConfigChange(
-                                                                    channel,
-                                                                    !channel.isActive
-                                                                )
-                                                            }
-                                                            .padding(vertical = 8.dp),
-                                                        verticalAlignment = Alignment.CenterVertically,
-                                                        horizontalArrangement = Arrangement.SpaceBetween
-                                                    ) {
-                                                        Text(
-                                                            text = channel.displayName,
-                                                            style = MaterialTheme.typography.bodyLarge
-                                                        )
-                                                        Switch(
-                                                            checked = channel.isActive,
-                                                            onCheckedChange = { isChecked ->
-                                                                onChannelConfigChange(
-                                                                    channel,
-                                                                    isChecked
-                                                                )
-                                                            },
-                                                            modifier = Modifier.scale(0.9f)
-                                                        )
-                                                    }
-                                                    HorizontalDivider(
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                                            alpha = 0.2f
-                                                        )
-                                                    )
-                                                }
-                                            }
-                                        }
-                                    },
-                                    // 3. 按钮放在标准位置
-                                    confirmButton = {
-                                        TextButton(onClick = { showChannelSettings = false }) {
-                                            Text("完成")
-                                        }
-                                    },
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun DashboardContent(
+        activeChannels: List<Channel>,
+        allChannels: List<Channel>,
+        onChannelToggled: (Channel, Boolean) -> Unit,
+        onDrawerClose: () -> Unit,
+    ) {
+        val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text("哔咔") },
+                    navigationIcon = {
+                        IconButton(onClick = onDrawerClose) {
+                            Icon(Icons.Default.Menu, contentDescription = "打开菜单")
+                        }
+                    },
+                    actions = {
+                        var showChannelSettings by remember { mutableStateOf(false) }
+
+                        IconButton(onClick = { showChannelSettings = true }) {
+                            Icon(Icons.Filled.FilterList, contentDescription = "Channel Filter")
+                        }
+                        if (showChannelSettings) {
+                            ChannelSettingsDialog(
+                                channels = allChannels,
+                                onDismiss = { showChannelSettings = false },
+                                onChannelToggled
+                            )
+                        }
+
+                        IconButton(
+                            onClick = {
+                                startActivity(
+                                    Intent(
+                                        this@MainActivity,
+                                        SearchActivity::class.java
+                                    )
                                 )
                             }
+                        ) {
+                            Icon(
+                                Icons.Default.Search,
+                                contentDescription = "Search"
+                            )
+                        }
+                    },
+                    scrollBehavior = scrollBehavior,
+                )
+            },
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+        ) { innerPadding ->
+            val state: LazyGridState = rememberLazyGridState()
 
-                            IconButton(
-                                onClick = {
-                                    startActivity(
-                                        Intent(this@MainActivity, SearchActivity::class.java)
-                                    )
-                                }
-                            ) {
-                                Icon(Icons.Default.Search, contentDescription = "Search")
-                            }
-                        },
-                        scrollBehavior = scrollBehavior,
-                    )
-                },
+            val context = LocalContext.current
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                state = state,
                 modifier = Modifier
                     .fillMaxSize()
-                    .nestedScroll(scrollBehavior.nestedScrollConnection),
-            ) { innerPadding ->
-                val state: LazyGridState = rememberLazyGridState()
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(innerPadding),
-                    contentAlignment = Alignment.Center
-                ) {
-                    when (dashboardState) {
-                        DashboardUiState.Loading -> {
-                            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                        }
+                    .padding(innerPadding),
+            ) {
+                items(
+                    activeChannels,
+                    key = { it.hashCode() }
+                ) { item ->
+                    if (item.isActive) {
+                        val resId = context.resources.getIdentifier(
+                            item.resName,
+                            "drawable",
+                            context.packageName
+                        )
 
-                        is DashboardUiState.Error -> {
-                            Column(
-                                modifier = Modifier.align(Alignment.Center),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(text = "加载失败: ${dashboardState.message}")
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(onClick = onRetry) {
-                                    Text("重试")
-                                }
+                        ChannelGridItem(
+                            iconRes = resId, label = item.displayName,
+                        ) {
+
                             }
                         }
-
-                        is DashboardUiState.Success -> {
-                            LazyVerticalGrid(
-                                columns = GridCells.Fixed(3),
-                                state = state,
-                            ) {
-                                items(
-                                    dashboardState.dashboardEntries,
-                                    key = { it.hashCode() }
-                                ) { section ->
-                                    when (section) {
-                                        is DashboardEntry.Native -> FeatureEntry(
-                                            section.imageResId,
-                                            section.titleResId
-                                        ) {
-                                            navigateToDashboardEntry(section)
-                                        }
-
-                                        is DashboardEntry.Remote -> FeatureEntry(
-                                            section.imageUrl,
-                                            section.title,
-                                        ) {
-                                            navigateToDashboardEntry(section)
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
                 }
             }
         }
     }
-
-    fun navigateToDashboardEntry(entry: DashboardEntry) {
-        when (entry) {
-            is DashboardEntry.Native -> {
-                when (entry.type) {
-                    EntryType.RECOMMEND -> start(CollectionsActivity::class.java)
-
-                    EntryType.LEADERBOARD -> start(LeaderboardActivity::class.java)
-
-                    EntryType.GAME -> start(GamesActivity::class.java)
-
-                    EntryType.APPS -> start(AppsActivity::class.java)
-
-                    EntryType.CHAT -> start(ChatRoomListActivity::class.java)
-
-                    EntryType.FORUM -> {
-                        val intent = Intent(this, CommentsActivity::class.java).apply {
-                            putExtra("id", "5822a6e3ad7ede654696e482")
-                            putExtra("comics_games", "comics")
-                        }
-                        startActivity(intent)
-                    }
-
-                    EntryType.LATEST, EntryType.RANDOM -> {
-                        val targetClass = ComicListActivity::class.java
-                        val intent = Intent(this, targetClass).apply {
-                            val tagValue =
-                                if (entry.type == EntryType.LATEST) "latest" else "random"
-                            val titleValue = getString(entry.titleResId)
-
-                            putExtra("tag", tagValue)
-                            putExtra("title", titleValue)
-                            putExtra("value", titleValue)
-                        }
-                        startActivity(intent)
-                    }
-                }
-            }
-
-            is DashboardEntry.Remote -> {
-                if (entry.isWeb && !entry.link.isNullOrEmpty()) {
-                    val token = SPUtil.get("token", "")
-                    val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
-                    val fullUrl = "${entry.link}/?token=$token&secret=$secret"
-
-                    val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
-                    startActivity(intent)
-                } else {
-                    val intent = Intent(this, ComicListActivity::class.java)
-                    intent.putExtra("tag", "categories")
-                    intent.putExtra("title", entry.title)
-                    intent.putExtra("value", entry.title)
-                    startActivity(intent)
-                }
-            }
-        }
-    }
+//    fun navigateToDashboardEntry(entry: DashboardEntry) {
+//        when (entry) {
+//            is DashboardEntry.Native -> {
+//                when (entry.type) {
+//                    EntryType.RECOMMEND -> start(CollectionsActivity::class.java)
+//
+//                    EntryType.LEADERBOARD -> start(LeaderboardActivity::class.java)
+//
+//                    EntryType.GAME -> start(GamesActivity::class.java)
+//
+//                    EntryType.APPS -> start(AppsActivity::class.java)
+//
+//                    EntryType.CHAT -> start(ChatRoomListActivity::class.java)
+//
+//                    EntryType.FORUM -> {
+//                        val intent = Intent(this, CommentsActivity::class.java).apply {
+//                            putExtra("id", "5822a6e3ad7ede654696e482")
+//                            putExtra("comics_games", "comics")
+//                        }
+//                        startActivity(intent)
+//                    }
+//
+//                    EntryType.LATEST, EntryType.RANDOM -> {
+//                        val targetClass = ComicListActivity::class.java
+//                        val intent = Intent(this, targetClass).apply {
+//                            val tagValue =
+//                                if (entry.type == EntryType.LATEST) "latest" else "random"
+//                            val titleValue = getString(entry.titleResId)
+//
+//                            putExtra("tag", tagValue)
+//                            putExtra("title", titleValue)
+//                            putExtra("value", titleValue)
+//                        }
+//                        startActivity(intent)
+//                    }
+//                }
+//            }
+//
+//            is DashboardEntry.Remote -> {
+//                if (entry.isWeb && !entry.link.isNullOrEmpty()) {
+//                    val token = SPUtil.get("token", "")
+//                    val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
+//                    val fullUrl = "${entry.link}/?token=$token&secret=$secret"
+//
+//                    val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
+//                    startActivity(intent)
+//                } else {
+//                    val intent = Intent(this, ComicListActivity::class.java)
+//                    intent.putExtra("tag", "categories")
+//                    intent.putExtra("title", entry.title)
+//                    intent.putExtra("value", entry.title)
+//                    startActivity(intent)
+//                }
+//            }
+//        }
+//    }
 
     private fun start(clazz: Class<*>) {
         startActivity(Intent(this, clazz))
@@ -394,7 +323,12 @@ class MainActivity : ComponentActivity() {
                         state = userProfile,
                         onCheckInClick = onCheckInClick,
                         onEditProfile = {
-                            startActivity(Intent(this@MainActivity, UserActivity::class.java))
+                            startActivity(
+                                Intent(
+                                    this@MainActivity,
+                                    UserActivity::class.java
+                                )
+                            )
                         }
                     )
                     HorizontalDivider()
@@ -419,7 +353,12 @@ class MainActivity : ComponentActivity() {
                                     )
                                 )
                             },
-                            icon = { Icon(painterResource(R.drawable.ic_history), null) },
+                            icon = {
+                                Icon(
+                                    painterResource(R.drawable.ic_history),
+                                    null
+                                )
+                            },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                         )
                         NavigationDrawerItem(
@@ -427,7 +366,10 @@ class MainActivity : ComponentActivity() {
                             selected = false,
                             onClick = {
                                 val intent =
-                                    Intent(this@MainActivity, ComicListActivity::class.java).apply {
+                                    Intent(
+                                        this@MainActivity,
+                                        ComicListActivity::class.java
+                                    ).apply {
                                         putExtra("tag", "favourite")
                                         putExtra("title", "我的收藏")
                                     }
@@ -461,7 +403,12 @@ class MainActivity : ComponentActivity() {
                                     )
                                 )
                             },
-                            icon = { Icon(Icons.AutoMirrored.Filled.Comment, "Comment") },
+                            icon = {
+                                Icon(
+                                    Icons.AutoMirrored.Filled.Comment,
+                                    "Comment"
+                                )
+                            },
                             modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                         )
                         NavigationDrawerItem(
