@@ -71,11 +71,15 @@ public val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
             val type = request.method.value
 
             // urlEnd + time + nonce + type + apikey
-            val rawData = urlEnd + time + nonce + type + apiKey
+            val rawData = (urlEnd + time + nonce + type + apiKey).lowercase()
             val signature = HmacUtils(HmacAlgorithms.HMAC_SHA_256, secretKey).hmacHex(rawData)
             request.headers.apply {
                 append("api-key", apiKey)
-                append("accept", "application/vnd.picacomic.com.v1+json")
+
+                append(HttpHeaders.ContentType, "application/json; charset=UTF-8")
+                set(HttpHeaders.Accept, "application/vnd.picacomic.com.v1+json")
+                remove(HttpHeaders.AcceptCharset)
+
                 append("app-channel", appChannel)
                 append("time", time)
                 append("nonce", nonce)
