@@ -15,17 +15,17 @@ object ChannelDataSource {
         Channel("随机本子", "ic_cat_random"),
 
         // --- 哔咔特有分区 ---
-        Channel("援助嗶咔", "ic_cat_support"),
-        Channel("嗶咔小禮物", "ic_cat_gift"),
-        Channel("小電影", "ic_cat_movie"),
-        Channel("小里番", "ic_cat_hanime"),
-        Channel("嗶咔畫廊", "ic_cat_gallery"),
-        Channel("嗶咔商店", "ic_cat_store"),
+        Channel("援助嗶咔", "ic_cat_support", link = "https://donate.bidobido.xyz"),
+        Channel("嗶咔小禮物", "ic_cat_gift", link = "https://gift-web.bidobido.xyz"),
+        Channel("小電影", "ic_cat_movie", link = "https://adult-movie.bidobido.xyz"),
+        Channel("小里番", "ic_cat_hanime", link = "https://adult-animate.bidobido.xyz"),
+        Channel("嗶咔畫廊", "ic_cat_gallery", link = "https://paint-web.bidobido.xyz"),
+        Channel("嗶咔商店", "ic_cat_store", link = "https://online-shop-web.bidobido.xyz"),
         Channel("大家都在看", "ic_cat_trending"),
         Channel("大濕推薦", "ic_cat_master_choice"),
         Channel("那年今天", "ic_cat_history"),
         Channel("官方都在看", "ic_cat_staff_pick"),
-        Channel("嗶咔運動", "ic_cat_sport"),
+        Channel("嗶咔運動", "ic_cat_sport", link = "https://move-web.bidobido.xyz"),
         Channel("嗶咔漢化", "ic_cat_translated"),
 
         // --- 漫画属性 ---
@@ -79,4 +79,5 @@ data class Channel(
     val displayName: String,
     val resName: String,
     val isActive: Boolean = true,
+    val link: String? = null,
 )
