@@ -3,7 +3,7 @@ package com.shizq.bika.core.model
 object ChannelDataSource {
     private val rawData = listOf(
         // --- App 功能区 ---
-        ChannelConfig("推荐", "ic_cat_recommend"),
+        ChannelConfig("推荐", "ic_bika"),
         ChannelConfig("排行榜", "ic_cat_ranking"),
         ChannelConfig("游戏推荐", "ic_cat_game_rec"),
         ChannelConfig("哔咔小程序", "ic_cat_mini_app"),
