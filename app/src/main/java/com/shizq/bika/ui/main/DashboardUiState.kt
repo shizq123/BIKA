@@ -4,7 +4,8 @@ sealed interface DashboardUiState {
     data object Loading : DashboardUiState
 
     data class Success(
-        val dashboardEntries: List<DashboardEntry>,
+        val name: String,
+//        val dashboardEntries: List<DashboardEntry>,
 //        val selectedTopicId: String?,
     ) : DashboardUiState
 
