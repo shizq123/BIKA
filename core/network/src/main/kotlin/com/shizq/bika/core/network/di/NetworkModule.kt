@@ -21,6 +21,8 @@ import io.ktor.client.plugins.logging.ANDROID
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.http.ContentType
+import io.ktor.http.withCharset
 import io.ktor.serialization.kotlinx.json.json
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.first
@@ -52,12 +54,13 @@ internal object NetworkModule {
             json(
                 Json {
                     ignoreUnknownKeys = true
-                }
+                },
+                ContentType.Application.Json.withCharset(Charsets.UTF_8)
             )
         }
         Logging {
             logger = Logger.ANDROID
-            level = LogLevel.BODY
+            level = LogLevel.ALL
         }
     }
 
