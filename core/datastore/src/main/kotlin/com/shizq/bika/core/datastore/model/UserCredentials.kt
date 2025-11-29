@@ -1,4 +1,4 @@
-package com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.model
+package com.shizq.bika.core.datastore.model
 
 import kotlinx.serialization.Serializable
 
