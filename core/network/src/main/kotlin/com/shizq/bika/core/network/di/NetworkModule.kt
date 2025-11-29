@@ -3,7 +3,6 @@ package com.shizq.bika.core.network.di
 import android.content.Context
 import androidx.tracing.trace
 import coil3.ImageLoader
-import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.request.CachePolicy
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
@@ -85,9 +84,6 @@ internal object NetworkModule {
         @ApplicationContext application: Context,
     ): ImageLoader = trace("ImageLoader") {
         ImageLoader.Builder(application)
-            .components {
-                add(OkHttpNetworkFetcherFactory(okHttpCallFactory))
-            }
             .apply {
                 if (BuildConfig.DEBUG) {
                     networkCachePolicy(CachePolicy.DISABLED)
