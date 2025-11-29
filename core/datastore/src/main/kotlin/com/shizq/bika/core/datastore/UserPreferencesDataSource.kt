@@ -1,4 +1,4 @@
-package com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore
+package com.shizq.bika.core.datastore
 
 import androidx.datastore.core.DataStore
 import com.shizq.bika.core.model.Channel

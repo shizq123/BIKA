@@ -6,8 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.google.gson.JsonObject
 import com.shizq.bika.bean.Media
 import com.shizq.bika.core.coroutine.FlowRestarter
-import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserCredentialsDataSource
-import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.datastore.UserCredentialsDataSource
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result

@@ -6,7 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
-import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ComicPagingSource
