@@ -8,7 +8,6 @@ import coil3.request.CachePolicy
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BuildConfig
-import com.shizq.bika.core.network.plugin.AuthInterceptor
 import com.shizq.bika.core.network.plugin.ResponseTransformer
 import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
@@ -73,7 +72,8 @@ internal object NetworkModule {
     fun okHttpCallFactory(): OkHttpClient = trace("OkHttpClient") {
         OkHttpClient.Builder()
             .dns {
-                Dns.SYSTEM.lookup("104.19.53.76")
+                listOf("172.67.194.19", "104.21.20.188", "104.19.53.76")
+                    .flatMap { Dns.SYSTEM.lookup(it) }
             }
             .build()
     }
@@ -83,14 +83,11 @@ internal object NetworkModule {
     fun imageLoader(
         okHttpCallFactory: OkHttpClient,
         @ApplicationContext application: Context,
-        authInterceptor: AuthInterceptor
     ): ImageLoader = trace("ImageLoader") {
         ImageLoader.Builder(application)
             .components {
                 add(OkHttpNetworkFetcherFactory(okHttpCallFactory))
-//                add(authInterceptor)
             }
-
             .apply {
                 if (BuildConfig.DEBUG) {
                     networkCachePolicy(CachePolicy.DISABLED)
