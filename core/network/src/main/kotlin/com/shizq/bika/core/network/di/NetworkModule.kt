@@ -5,8 +5,9 @@ import androidx.tracing.trace
 import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
-import com.shizq.bika.core.datastore.di.com.shizq.bika.core.datastore.UserCredentialsDataSource
+import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BuildConfig
+import com.shizq.bika.core.network.plugin.AuthInterceptor
 import com.shizq.bika.core.network.plugin.ResponseTransformer
 import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
@@ -81,10 +82,12 @@ internal object NetworkModule {
     fun imageLoader(
         okHttpCallFactory: OkHttpClient,
         @ApplicationContext application: Context,
+        authInterceptor: AuthInterceptor
     ): ImageLoader = trace("ImageLoader") {
         ImageLoader.Builder(application)
             .components {
                 add(OkHttpNetworkFetcherFactory(okHttpCallFactory))
+                add(authInterceptor)
             }
             .apply {
                 if (BuildConfig.DEBUG) {
