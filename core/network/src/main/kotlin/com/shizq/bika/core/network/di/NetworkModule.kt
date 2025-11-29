@@ -90,9 +90,10 @@ internal object NetworkModule {
                 add(OkHttpNetworkFetcherFactory(okHttpCallFactory))
 //                add(authInterceptor)
             }
-            .networkCachePolicy(CachePolicy.DISABLED)
+
             .apply {
                 if (BuildConfig.DEBUG) {
+                    networkCachePolicy(CachePolicy.DISABLED)
                     logger(DebugLogger())
                 }
             }
