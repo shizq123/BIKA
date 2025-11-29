@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.main
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.JsonObject
@@ -16,7 +15,6 @@ import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
@@ -32,11 +30,10 @@ class DashboardViewModel @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val network: BikaDataSource,
-    @ApplicationContext private val context: Context,
 ) : ViewModel() {
     private val dashboardRestarter = FlowRestarter()
     val userChannelPreferences = userPreferencesDataSource.userData
-        .map { it.channels.filterNot { channel -> channel.displayName == "哔咔聊天室" } }
+        .map { it.channels }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
@@ -102,7 +99,11 @@ class DashboardViewModel @Inject constructor(
             userPreferencesDataSource.updateChannels(newList)
         }
     }
-
+    fun onChannelsReordered(newOrderedList: List<Channel>) {
+        viewModelScope.launch {
+            userPreferencesDataSource.updateChannels(newOrderedList)
+        }
+    }
     // performAutoCheckIn
     // performInitialLogin
     fun onCheckIn() {

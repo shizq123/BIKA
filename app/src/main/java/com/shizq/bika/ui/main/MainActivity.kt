@@ -121,7 +121,8 @@ class MainActivity : ComponentActivity() {
             onCheckInClick = viewModel::onCheckIn,
             channelSettingsUiState = channelSettingsUiState,
             onRetry = viewModel::restart,
-            onChannelToggled = viewModel::onChannelToggled
+            onChannelToggled = viewModel::onChannelToggled,
+            onOrderChange = viewModel::onChannelsReordered
         )
     }
 
@@ -133,7 +134,8 @@ class MainActivity : ComponentActivity() {
         onCheckInClick: () -> Unit,
         onRetry: () -> Unit,
         channelSettingsUiState: List<Channel>,
-        onChannelToggled: (Channel, Boolean) -> Unit
+        onChannelToggled: (Channel, Boolean) -> Unit,
+        onOrderChange: (List<Channel>) -> Unit,
     ) {
         val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
         val scope = rememberCoroutineScope()
@@ -160,7 +162,8 @@ class MainActivity : ComponentActivity() {
                 activeChannels = activeChannels,
                 allChannels = channelSettingsUiState,
                 onChannelToggled = onChannelToggled,
-                onDrawerOpen = { scope.launch { drawerState.open() } }
+                onDrawerOpen = { scope.launch { drawerState.open() } },
+                onOrderChange = onOrderChange,
             )
         }
     }
@@ -171,6 +174,7 @@ class MainActivity : ComponentActivity() {
         activeChannels: List<Channel>,
         allChannels: List<Channel>,
         onChannelToggled: (Channel, Boolean) -> Unit,
+        onOrderChange: (List<Channel>) -> Unit,
         onDrawerOpen: () -> Unit,
     ) {
         val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
@@ -193,7 +197,8 @@ class MainActivity : ComponentActivity() {
                             ChannelSettingsDialog(
                                 channels = allChannels,
                                 onDismiss = { showChannelSettings = false },
-                                onChannelToggled
+                                onChannelToggle = onChannelToggled,
+                                onOrderChange = onOrderChange
                             )
                         }
 
@@ -242,7 +247,9 @@ class MainActivity : ComponentActivity() {
                         )
 
                         ChannelGridItem(
-                            iconRes = resId, label = item.displayName,
+                            iconRes = resId,
+                            label = item.displayName,
+                            modifier = Modifier.animateItem(),
                         ) {
                             navigation(item)
                         }
