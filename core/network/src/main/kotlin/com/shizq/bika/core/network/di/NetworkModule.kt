@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.tracing.trace
 import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
+import coil3.request.CachePolicy
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BuildConfig
@@ -87,8 +88,9 @@ internal object NetworkModule {
         ImageLoader.Builder(application)
             .components {
                 add(OkHttpNetworkFetcherFactory(okHttpCallFactory))
-                add(authInterceptor)
+//                add(authInterceptor)
             }
+            .networkCachePolicy(CachePolicy.DISABLED)
             .apply {
                 if (BuildConfig.DEBUG) {
                     logger(DebugLogger())
