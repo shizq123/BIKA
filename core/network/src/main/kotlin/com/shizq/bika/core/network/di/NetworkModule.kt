@@ -22,11 +22,9 @@ import io.ktor.client.plugins.logging.ANDROID
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
-import io.ktor.http.ContentType
-import io.ktor.http.withCharset
 import io.ktor.serialization.kotlinx.json.json
 import jakarta.inject.Singleton
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.json.Json
 import okhttp3.Dns
 import okhttp3.OkHttpClient
@@ -46,23 +44,20 @@ internal object NetworkModule {
         defaultRequest {
             url("https://picaapi.picacomic.com")
         }
-        bikaAuth {
-            token {
-                userCredentialsDataSource.userData.first().token
-            }
-        }
         install(ResponseTransformer)
         install(ContentNegotiation) {
             json(
-                Json {
-                    ignoreUnknownKeys = true
-                },
-                ContentType.Application.Json.withCharset(Charsets.UTF_8)
+                Json { ignoreUnknownKeys = true }
             )
         }
         Logging {
             logger = Logger.ANDROID
             level = LogLevel.ALL
+        }
+        bikaAuth {
+            token {
+                userCredentialsDataSource.userData.firstOrNull()?.token
+            }
         }
     }
 
