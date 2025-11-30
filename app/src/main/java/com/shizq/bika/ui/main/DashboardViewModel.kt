@@ -2,8 +2,6 @@ package com.shizq.bika.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.gson.JsonObject
-import com.shizq.bika.bean.Media
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -11,8 +9,6 @@ import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
-import com.shizq.bika.network.RetrofitUtil
-import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -22,8 +18,6 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody.Companion.toRequestBody
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
@@ -40,21 +34,18 @@ class DashboardViewModel @Inject constructor(
             emptyList(),
         )
     val userProfileUiState = flow {
-        val profileGet2 = RetrofitUtil.service.profileGet2(
-            BaseHeaders("users/profile", "GET").getHeaderMapAndToken()
-        )
-        emit(profileGet2)
+        emit(network.fetchUserProfile())
     }.asResult()
         .map { result ->
             when (result) {
                 Result.Loading -> UserProfileUiState.Loading
                 is Result.Error -> UserProfileUiState.Error(result.exception.message ?: "")
                 is Result.Success -> {
-                    val user = result.data.data!!.user
+                    val user = result.data.user
                     UserProfileUiState.Success(
                         User(
                             name = user.name,
-                            avatarUrl = getFullUrl(user.avatar),
+                            avatarUrl = user.imageUrl,
                             characters = user.characters,
                             level = user.level,
                             exp = user.exp,
@@ -77,12 +68,6 @@ class DashboardViewModel @Inject constructor(
         dashboardRestarter.restart()
     }
 
-    private fun getFullUrl(media: Media): String {
-        val path = media.path
-
-        return "https://s3.picacomic.com/static/$path"
-    }
-
     fun onChannelToggled(targetChannel: Channel, enable: Boolean) {
         viewModelScope.launch {
             val userPreferences = userPreferencesDataSource.userData.first()
@@ -99,42 +84,31 @@ class DashboardViewModel @Inject constructor(
             userPreferencesDataSource.updateChannels(newList)
         }
     }
+
     fun onChannelsReordered(newOrderedList: List<Channel>) {
         viewModelScope.launch {
             userPreferencesDataSource.updateChannels(newOrderedList)
         }
     }
+
     // performAutoCheckIn
     // performInitialLogin
     fun onCheckIn() {
         viewModelScope.launch {
-            val headers = BaseHeaders("users/punch-in", "POST").getHeaderMapAndToken()
-            RetrofitUtil.service.punchInPOST(headers)
+//            network.getUserProfile2()
         }
     }
 
     fun onLogin() {
         viewModelScope.launch {
-            val credentials = userCredentialsDataSource.userData.first()
-            if (credentials.token == null) {
-                userCredentialsDataSource.setToken(SPUtil.get("token", "") as String)
-            }
+            val username = SPUtil.get("username", "") as String
+            val password = SPUtil.get("password", "") as String
+            userCredentialsDataSource.setUsername(username)
+            userCredentialsDataSource.setPassword(password)
+            val loginData = network.login(username, password)
 
-            userCredentialsDataSource.setUsername(SPUtil.get("username", "") as String)
-            userCredentialsDataSource.setPassword(SPUtil.get("password", "") as String)
-        }
-        viewModelScope.launch {
-            val body = JsonObject().apply {
-                addProperty("email", SPUtil.get("username", "") as String)
-                addProperty("password", SPUtil.get("password", "") as String)
-            }.asJsonObject.toString()
-                .toRequestBody("application/json; charset=UTF-8".toMediaTypeOrNull())
-            val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
-            val signInPost2 = RetrofitUtil.service.signInPost2(body, headers)
-            signInPost2.data?.let {
-                userCredentialsDataSource.setToken(it.token)
-                SPUtil.put("token", it.token)
-            }
+            userCredentialsDataSource.setToken(loginData.token)
+            SPUtil.put("password", loginData.token)
         }
     }
 }
