@@ -4,109 +4,88 @@ import io.ktor.client.HttpClientConfig
 import io.ktor.client.plugins.api.ClientPlugin
 import io.ktor.client.plugins.api.Send
 import io.ktor.client.plugins.api.createClientPlugin
+import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
+import io.ktor.http.contentType
 import io.ktor.http.encodedPath
+import io.ktor.http.withCharset
 import io.ktor.utils.io.KtorDsl
+import io.ktor.utils.io.charsets.Charsets
 import org.apache.commons.codec.digest.HmacAlgorithms
 import org.apache.commons.codec.digest.HmacUtils
-import kotlin.time.Clock
-import kotlin.time.ExperimentalTime
-import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
+import java.util.UUID
 
-
-/**
- * 安装 Bika/Pica 漫画 API 签名与验证插件。
- */
-public fun HttpClientConfig<*>.bikaAuth(block: BikaAuthConfig.() -> Unit) {
+fun HttpClientConfig<*>.bikaAuth(block: BikaAuthConfig.() -> Unit = {}) {
     install(BikaSignatureAuth) {
         block()
     }
 }
 
-/**
- * Bika 插件配置类
- */
 @KtorDsl
-public class BikaAuthConfig {
-    public var apiKey: String = "C69BAF41DA5ABD1FFEDC6D2FEA56B"
-    public var secretKey: String =
-        $$"~d}$Q7$eIni=V)9\\RK/P.RM4;9[7|@/CA}b~OW!3?EV`:<>M7pddUBL5n|0/*Cn";
-    public var appChannel: String = "2"
-    public var appVersion: String = "2.2.1.3.3.4"
-    public var appBuildVersion: String = "45"
-    public var appPlatform: String = "android"
-    public var appUuid: String = "defaultUuid"
-    public var imageQuality: String = "original"
-    public var userAgent: String = "okhttp/3.8.1"
+class BikaAuthConfig {
+    var apiKey: String = "C69BAF41DA5ABD1FFEDC6D2FEA56B"
+    var secretKey: String = "~d}\$Q7\$eIni=V)9\\RK/P.RM4;9[7|@/CA}b~OW!3?EV`:<>M7pddUBL5n|0/*Cn"
+
+    var appChannel: String = "2"
+    var appVersion: String = "2.2.1.2.3.3"
+    var appBuildVersion: String = "44"
+    var appUuid: String = "defaultUuid"
+    var appPlatform: String = "android"
 
     internal var tokenProvider: suspend () -> String? = { null }
-
-    public fun token(block: suspend () -> String?) {
+    fun token(block: suspend () -> String?) {
         tokenProvider = block
     }
 }
 
-@OptIn(ExperimentalUuidApi::class, ExperimentalTime::class)
-public val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
+/**
+ * 插件主体
+ */
+val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
     createClientPlugin("BikaSignatureAuth", ::BikaAuthConfig) {
+        val config = pluginConfig
 
-        val apiKey = pluginConfig.apiKey
-        val secretKey = pluginConfig.secretKey
-        val appChannel = pluginConfig.appChannel
-        val appVersion = pluginConfig.appVersion
-        val appBuildVersion = pluginConfig.appBuildVersion
-        val appPlatform = pluginConfig.appPlatform
-        val appUuid = pluginConfig.appUuid
-        val imageQuality = pluginConfig.imageQuality
-        val defaultUserAgent = pluginConfig.userAgent
-        val tokenProvider = pluginConfig.tokenProvider
+        onRequest { request, _ ->
+            val nonce = UUID.randomUUID().toString().replace("-", "")
+            val time = (System.currentTimeMillis() / 1000).toString()
 
-        on(Send) { request ->
-            val nonce = Uuid.random().toString().replace("-", "")
+            val urlPath = request.url.encodedPath
+            val method = request.method.value
 
-            val time = (Clock.System.now().toEpochMilliseconds() / 1000).toString()
+            val rawData = (urlPath + time + nonce + method + config.apiKey).lowercase()
 
-            val urlEnd = request.url.encodedPath.removePrefix("/")
-            val type = request.method.value
+            val signature =
+                HmacUtils(HmacAlgorithms.HMAC_SHA_256, config.secretKey).hmacHex(rawData)
 
-            // urlEnd + time + nonce + type + apikey
-            val rawData = (urlEnd + time + nonce + type + apiKey).lowercase()
-            val signature = HmacUtils(HmacAlgorithms.HMAC_SHA_256, secretKey).hmacHex(rawData)
+            request.contentType(ContentType.Application.Json.withCharset(Charsets.UTF_8))
             request.headers.apply {
-                append("api-key", apiKey)
 
-                append(HttpHeaders.ContentType, "application/json; charset=UTF-8")
-                set(HttpHeaders.Accept, "application/vnd.picacomic.com.v1+json")
-                remove(HttpHeaders.AcceptCharset)
-
-                append("app-channel", appChannel)
+                append("api-key", config.apiKey)
+                append("accept", "application/vnd.picacomic.com.v1+json")
+                append("app-channel", config.appChannel)
                 append("time", time)
                 append("nonce", nonce)
                 append("signature", signature)
-                append("app-version", appVersion)
-                append("app-uuid", appUuid)
-                append("image-quality", imageQuality)
-                append("app-platform", appPlatform)
-                append("app-build-version", appBuildVersion)
 
-                if (!contains(HttpHeaders.UserAgent)) {
-                    append(HttpHeaders.UserAgent, defaultUserAgent)
-                }
+                append("app-version", config.appVersion)
+                append("app-uuid", config.appUuid)
+                append("app-platform", config.appPlatform)
+                append("app-build-version", config.appBuildVersion)
 
-                val token = tokenProvider()
-                if (!token.isNullOrBlank()) {
-                    if (request.url.encodedPath.contains("chat")) { // 简单判断示例
-                        append(HttpHeaders.Authorization, "Bearer $token")
-                        set(HttpHeaders.UserAgent, "Dart/2.19 (dart:io)")
-                        set("api-version", "1.0.3")
-                        set(HttpHeaders.ContentType, "application/json; charset=UTF-8")
-                    } else {
-                        append(HttpHeaders.Authorization, token)
-                    }
+                append("image-quality", "original")
+                append("User-Agent", "okhttp/3.8.1")
+
+                config.tokenProvider()?.let {
+                    append(HttpHeaders.Authorization, it)
                 }
             }
+        }
 
+        on(Send) { request ->
+            request.headers.run {
+                remove(HttpHeaders.AcceptCharset)
+                remove(HttpHeaders.Accept, "application/json")
+            }
             proceed(request)
         }
     }
