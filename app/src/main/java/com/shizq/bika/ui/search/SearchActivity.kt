@@ -30,6 +30,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
@@ -48,7 +49,6 @@ import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -88,6 +88,7 @@ class SearchActivity : ComponentActivity() {
                 startActivity(intent)
             },
             onClearRecentSearches = searchViewModel::clearRecentSearches,
+            onBackClicked = ::finish
         )
     }
 
@@ -96,16 +97,17 @@ class SearchActivity : ComponentActivity() {
     fun SearchContent(
         searchQuery: String,
         recentSearchesUiState: RecentSearchQueriesUiState,
-        onSearchQueryChanged: (String) -> Unit,
-        onSearchTriggered: (String) -> Unit,
-        onClearRecentSearches: () -> Unit
+        onSearchQueryChanged: (String) -> Unit = {},
+        onSearchTriggered: (String) -> Unit = {},
+        onClearRecentSearches: () -> Unit = {},
+        onBackClicked: () -> Unit = {},
     ) {
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = { Text("搜索") },
                     navigationIcon = {
-                        IconButton(onClick = { finish() }) {
+                        IconButton(onClick = onBackClicked) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
@@ -137,9 +139,9 @@ class SearchActivity : ComponentActivity() {
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(text = "历史", style = MaterialTheme.typography.titleMedium)
-//                                TextButton(onClick = { searchHistory.clear() }) {
-//                                    Text("清空")
-//                                }
+                                TextButton(onClick = onClearRecentSearches) {
+                                    Text("清空")
+                                }
                             }
                             Spacer(modifier = Modifier.height(4.dp))
                             FlowRow(
@@ -149,7 +151,10 @@ class SearchActivity : ComponentActivity() {
                             ) {
                                 recentSearchesUiState.recentQueries.fastForEach { recentSearchQuery ->
                                     AssistChip(
-                                        onClick = { onSearchQueryChanged(recentSearchQuery.query) },
+                                        onClick = {
+                                            onSearchQueryChanged(recentSearchQuery.query)
+                                            onSearchTriggered(recentSearchQuery.query)
+                                        },
                                         label = { Text(recentSearchQuery.query) }
                                     )
                                 }
@@ -173,7 +178,10 @@ class SearchActivity : ComponentActivity() {
                             ) {
                                 recentSearchesUiState.hotKeywords.fastForEach { tag ->
                                     AssistChip(
-                                        onClick = { onSearchQueryChanged(tag) },
+                                        onClick = {
+                                            onSearchQueryChanged(tag)
+                                            onSearchTriggered(tag)
+                                        },
                                         label = { Text(tag) }
                                     )
                                 }
@@ -260,15 +268,6 @@ class SearchActivity : ComponentActivity() {
         )
         LaunchedEffect(Unit) {
             focusRequester.requestFocus()
-        }
-    }
-
-    @Preview(showBackground = true)
-    @Composable
-    fun SearchScreenPreview() {
-        // You would wrap this in your app's theme
-        MaterialTheme {
-            SearchScreen()
         }
     }
 }
