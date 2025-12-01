@@ -108,7 +108,7 @@ class DashboardViewModel @Inject constructor(
             val loginData = network.login(username, password)
 
             userCredentialsDataSource.setToken(loginData.token)
-            SPUtil.put("password", loginData.token)
+            SPUtil.put("token", loginData.token)
         }
     }
 }
