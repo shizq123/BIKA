@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network
 
+import com.shizq.bika.core.network.model.KeywordsResponse
 import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
 import com.shizq.bika.core.network.model.ProfileData
@@ -36,5 +37,8 @@ class BikaDataSource @Inject constructor(
 
     suspend fun fetchCategories() {
         client.get("categories")
+    }
+    suspend fun getKeywords(): KeywordsResponse {
+        return client.get("keywords").body()
     }
 }
