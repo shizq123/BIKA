@@ -22,7 +22,11 @@ import io.ktor.client.plugins.logging.ANDROID
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
 import io.ktor.client.plugins.logging.Logging
+import io.ktor.http.ContentType
+import io.ktor.http.contentType
+import io.ktor.http.withCharset
 import io.ktor.serialization.kotlinx.json.json
+import io.ktor.utils.io.charsets.Charsets
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.json.Json
@@ -43,6 +47,7 @@ internal object NetworkModule {
         }
         defaultRequest {
             url("https://picaapi.picacomic.com")
+            contentType(ContentType.Application.Json.withCharset(Charsets.UTF_8))
         }
         install(ResponseTransformer)
         install(ContentNegotiation) {
