@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.search
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -52,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shizq.bika.ui.comiclist.ComicListActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -76,7 +78,15 @@ class SearchActivity : ComponentActivity() {
             searchQuery = searchQuery,
             recentSearchesUiState = recentSearchQueriesUiState,
             onSearchQueryChanged = searchViewModel::onSearchQueryChanged,
-            onSearchTriggered = searchViewModel::onSearchTriggered,
+            onSearchTriggered = {
+                searchViewModel.onSearchTriggered(it)
+
+                val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
+                intent.putExtra("tag", "search")
+                intent.putExtra("title", it)
+                intent.putExtra("value", it)
+                startActivity(intent)
+            },
             onClearRecentSearches = searchViewModel::clearRecentSearches,
         )
     }
@@ -93,13 +103,7 @@ class SearchActivity : ComponentActivity() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = {
-                        SearchTextField(
-                            searchQuery = searchQuery,
-                            onSearchQueryChanged = onSearchQueryChanged,
-                            onSearchTriggered = onSearchTriggered,
-                        )
-                    },
+                    title = { Text("搜索") },
                     navigationIcon = {
                         IconButton(onClick = { finish() }) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -118,6 +122,11 @@ class SearchActivity : ComponentActivity() {
                             .fillMaxSize()
                             .verticalScroll(rememberScrollState())
                     ) {
+                        SearchTextField(
+                            searchQuery = searchQuery,
+                            onSearchQueryChanged = onSearchQueryChanged,
+                            onSearchTriggered = onSearchTriggered,
+                        )
                         // Search History Section
                         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                             Row(
@@ -135,6 +144,8 @@ class SearchActivity : ComponentActivity() {
                             Spacer(modifier = Modifier.height(4.dp))
                             FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                itemVerticalAlignment = Alignment.CenterVertically,
                             ) {
                                 recentSearchesUiState.recentQueries.fastForEach { recentSearchQuery ->
                                     AssistChip(
@@ -148,7 +159,7 @@ class SearchActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(20.dp))
 
                         // Popular Searches Section
-                        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
                             Text(
                                 text = "大家都在搜",
                                 style = MaterialTheme.typography.titleMedium,
@@ -157,6 +168,8 @@ class SearchActivity : ComponentActivity() {
                             Spacer(modifier = Modifier.height(4.dp))
                             FlowRow(
                                 modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                itemVerticalAlignment = Alignment.CenterVertically,
                             ) {
                                 recentSearchesUiState.hotKeywords.fastForEach { tag ->
                                     AssistChip(
