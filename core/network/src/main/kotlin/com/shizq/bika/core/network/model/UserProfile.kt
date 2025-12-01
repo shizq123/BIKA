@@ -35,7 +35,7 @@ data class UserProfile(
     val avatar: Media
 ) {
     val imageUrl: String
-        get() = "https://s3.picacomic.com/static/static/${avatar.path}"
+        get() = "https://s3.picacomic.com/static/${avatar.path}"
     val imageUrl2: String
         get() = "${avatar.fileServer}/static/${avatar.path}"
 }
