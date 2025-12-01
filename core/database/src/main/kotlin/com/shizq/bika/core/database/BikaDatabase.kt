@@ -4,10 +4,11 @@ import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.shizq.bika.core.database.dao.RecentSearchQueryDao
+import com.shizq.bika.core.database.model.RecentSearchQueryEntity
 import com.shizq.bika.core.database.util.InstantConverter
 
 @Database(
-    entities = [RecentSearchQueryDao::class],
+    entities = [RecentSearchQueryEntity::class],
     version = 1,
     exportSchema = true,
 )
