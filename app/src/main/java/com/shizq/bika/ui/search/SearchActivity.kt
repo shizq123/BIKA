@@ -1,12 +1,10 @@
 package com.shizq.bika.ui.search
 
-import android.content.Intent
 import android.os.Bundle
-import android.view.KeyEvent
-import android.view.View
-import android.view.inputmethod.InputMethodManager
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -16,289 +14,239 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.AssistChip
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.view.isGone
-import com.google.android.material.chip.Chip
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.shizq.bika.BR
-import com.shizq.bika.R
-import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.database.model.SearchEntity
-import com.shizq.bika.databinding.ActivitySearchBinding
-import com.shizq.bika.ui.comiclist.ComicListActivity
+import androidx.compose.ui.util.fastForEach
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dagger.hilt.android.AndroidEntryPoint
 
-class SearchActivity : BaseActivity<ActivitySearchBinding, SearchViewModel>() {
-
-    override fun initContentView(savedInstanceState: Bundle?): Int {
-        return R.layout.activity_search
-    }
-
-    override fun initVariableId(): Int {
-        return BR.viewModel
-    }
-
-    override fun initData() {
-        setSupportActionBar(binding.toolbar)
-        viewModel.getKey()//显示搜索推荐词
-        binding.searchView.requestFocus()
-        initListener()
-
-
-    }
-
-    private fun initListener() {
-        binding.toolbar.setNavigationOnClickListener {
-            finish()
+@AndroidEntryPoint
+class SearchActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+        setContent {
+            SearchScreen()
         }
-
-        binding.searchView.setOnKeyListener { v, keyCode, event ->
-            if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
-                //监听回车键
-                val searchEntity = SearchEntity(binding.searchView.text.toString())
-                viewModel.insertSearch(searchEntity)//添加搜索记录
-
-                val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
-                intent.putExtra("tag", "search")
-                intent.putExtra("title", binding.searchView.text.toString())
-                intent.putExtra("value", binding.searchView.text.toString())
-                startActivity(intent)
-
-            }
-            false
-        }
-
-        binding.clearText.setOnClickListener {
-            binding.searchView.setText("")
-        }
-
-        binding.searchKeyboard.setOnClickListener {
-            showKeyboard()
-        }
-        binding.searchHistoryListClear.setOnClickListener {
-            //提示框 清空全部
-            MaterialAlertDialogBuilder(this)
-                .setTitle("确定清空全部历史记录吗")
-                .setPositiveButton("确定") { _, _ ->
-                    viewModel.deleteAllSearch()
-                }
-                .setNegativeButton("取消", null)
-                .show()
-
-        }
-    }
-
-    override fun initViewObservable() {
-        viewModel.liveDataSearchKey.observe(this) {
-            binding.searchProgressbar.isGone = true
-
-            if (it.code == 200) {
-                val tags = mutableListOf<String>()
-                tags.addAll(it.data.keywords)
-                for (i in tags) {
-                    val chip = Chip(this@SearchActivity)
-                    chip.text = i
-                    chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
-//                        chip.minHeight=0
-
-                    binding.searchTagsList.addView(chip)
-                    chip.setOnClickListener {
-                        val searchEntity = SearchEntity(i)
-                        viewModel.insertSearch(searchEntity)//添加搜索记录
-
-                        val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
-                        intent.putExtra("tag", "search")
-                        intent.putExtra("title", i)
-                        intent.putExtra("value", i)
-                        startActivity(intent)
-                    }
-                }
-
-            }
-        }
-
-        viewModel.allSearchLive.observe(this) {
-            //搜索历史
-            if (it.isNotEmpty()) {
-                binding.searchHistoryListLayout.visibility = View.VISIBLE
-                binding.searchHistoryList.removeAllViews()
-
-                for (i in it) {
-                    val chip = Chip(this@SearchActivity)
-                    chip.text = i
-                    chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
-//                        chip.minHeight=0
-
-                    binding.searchHistoryList.addView(chip)
-                    chip.setOnClickListener {
-                        viewModel.insertSearch(SearchEntity(i))//添加搜索记录
-
-                        val intent = Intent(this@SearchActivity, ComicListActivity::class.java)
-                        intent.putExtra("tag", "search")
-                        intent.putExtra("title", i)
-                        intent.putExtra("value", i)
-                        startActivity(intent)
-                    }
-                }
-            } else {
-                binding.searchHistoryListLayout.visibility = View.GONE
-            }
-        }
-    }
-
-    private fun hideKeyboard() {
-        val view = binding.searchView
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.hideSoftInputFromWindow(view.windowToken, 0)
-    }
-
-    private fun showKeyboard() {
-
-        val imm = getSystemService(INPUT_METHOD_SERVICE) as InputMethodManager
-        imm.showSoftInput(binding.searchView, 0)
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun SearchScreen(
-        // In a real app, you would pass a ViewModel instance
-        // viewModel: SearchViewModel
+        searchViewModel: SearchViewModel = hiltViewModel()
     ) {
-        var searchQuery by remember { mutableStateOf("") }
-        var isLoading by remember { mutableStateOf(false) }
-        val searchHistory = remember { mutableStateListOf("Comic 1", "Another Search", "Bika") }
-        val popularSearches = remember {
-            listOf(
-                "New Comics",
-                "Popular",
-                "Action",
-                "Adventure",
-                "Fantasy",
-                "Magic"
-            )
-        }
+        val recentSearchQueriesUiState by searchViewModel.recentSearchQueriesUiState.collectAsStateWithLifecycle()
+        val searchQuery by searchViewModel.searchQuery.collectAsStateWithLifecycle()
 
+        SearchContent(
+            searchQuery = searchQuery,
+            recentSearchesUiState = recentSearchQueriesUiState,
+            onSearchQueryChanged = searchViewModel::onSearchQueryChanged,
+            onSearchTriggered = searchViewModel::onSearchTriggered,
+            onClearRecentSearches = searchViewModel::clearRecentSearches,
+        )
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun SearchContent(
+        searchQuery: String,
+        recentSearchesUiState: RecentSearchQueriesUiState,
+        onSearchQueryChanged: (String) -> Unit,
+        onSearchTriggered: (String) -> Unit,
+        onClearRecentSearches: () -> Unit
+    ) {
         Scaffold(
             topBar = {
                 TopAppBar(
                     title = {
-                        TextField(
-                            value = searchQuery,
-                            onValueChange = { searchQuery = it },
-                            placeholder = { Text(stringResource(R.string.action_search)) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
+                        SearchTextField(
+                            searchQuery = searchQuery,
+                            onSearchQueryChanged = onSearchQueryChanged,
+                            onSearchTriggered = onSearchTriggered,
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { /* Handle back navigation */ }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        IconButton(onClick = { finish() }) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     },
-                    actions = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Clear text")
-                            }
-                        }
-                    }
                 )
             },
-        ) { paddingValues ->
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    // Search History Section
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "历史", style = MaterialTheme.typography.titleMedium)
-                            TextButton(onClick = { searchHistory.clear() }) {
-                                Text("清空")
+        ) { innerPadding ->
+            when (recentSearchesUiState) {
+                is RecentSearchQueriesUiState.Error -> {}
+                RecentSearchQueriesUiState.Loading -> {}
+                is RecentSearchQueriesUiState.Success -> {
+                    Column(
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                    ) {
+                        // Search History Section
+                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 16.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(text = "历史", style = MaterialTheme.typography.titleMedium)
+//                                TextButton(onClick = { searchHistory.clear() }) {
+//                                    Text("清空")
+//                                }
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                recentSearchesUiState.recentQueries.fastForEach { recentSearchQuery ->
+                                    AssistChip(
+                                        onClick = { onSearchQueryChanged(recentSearchQuery.query) },
+                                        label = { Text(recentSearchQuery.query) }
+                                    )
+                                }
                             }
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            searchHistory.forEach { historyItem ->
-                                AssistChip(
-                                    onClick = { searchQuery = historyItem },
-                                    label = { Text(historyItem) }
-                                )
+
+                        Spacer(modifier = Modifier.height(20.dp))
+
+                        // Popular Searches Section
+                        Column(modifier = Modifier.padding(horizontal = 20.dp)) {
+                            Text(
+                                text = "大家都在搜",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(vertical = 4.dp)
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            FlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                recentSearchesUiState.hotKeywords.fastForEach { tag ->
+                                    AssistChip(
+                                        onClick = { onSearchQueryChanged(tag) },
+                                        label = { Text(tag) }
+                                    )
+                                }
                             }
                         }
                     }
-
-                    Spacer(modifier = Modifier.height(20.dp))
-
-                    // Popular Searches Section
-                    Column(modifier = Modifier.padding(horizontal = 20.dp)) {
-                        Text(
-                            text = "大家都在搜",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            popularSearches.forEach { tag ->
-                                AssistChip(
-                                    onClick = { searchQuery = tag },
-                                    label = { Text(tag) }
-                                )
-                            }
-                        }
-                    }
-                }
-
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 }
             }
+        }
+    }
+
+    @Composable
+    private fun SearchTextField(
+        searchQuery: String,
+        onSearchQueryChanged: (String) -> Unit,
+        onSearchTriggered: (String) -> Unit,
+    ) {
+        val focusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
+
+        val onSearchExplicitlyTriggered = {
+            keyboardController?.hide()
+            onSearchTriggered(searchQuery)
+        }
+
+        TextField(
+            colors = TextFieldDefaults.colors(
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                disabledIndicatorColor = Color.Transparent,
+            ),
+            leadingIcon = {
+                Icon(
+                    imageVector = Icons.Rounded.Search,
+                    contentDescription = "搜索",
+                    tint = MaterialTheme.colorScheme.onSurface,
+                )
+            },
+            trailingIcon = {
+                if (searchQuery.isNotEmpty()) {
+                    IconButton(
+                        onClick = {
+                            onSearchQueryChanged("")
+                        },
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = "清除搜索文本",
+                            tint = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
+                }
+            },
+            onValueChange = {
+                if ("\n" !in it) onSearchQueryChanged(it)
+            },
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+                .focusRequester(focusRequester)
+                .onKeyEvent {
+                    if (it.key == Key.Enter) {
+                        if (searchQuery.isBlank()) return@onKeyEvent false
+                        onSearchExplicitlyTriggered()
+                        true
+                    } else {
+                        false
+                    }
+                }
+                .testTag("searchTextField"),
+            shape = RoundedCornerShape(32.dp),
+            value = searchQuery,
+            keyboardOptions = KeyboardOptions(
+                imeAction = ImeAction.Search,
+            ),
+            keyboardActions = KeyboardActions(
+                onSearch = {
+                    if (searchQuery.isBlank()) return@KeyboardActions
+                    onSearchExplicitlyTriggered()
+                },
+            ),
+            maxLines = 1,
+            singleLine = true,
+        )
+        LaunchedEffect(Unit) {
+            focusRequester.requestFocus()
         }
     }
 
