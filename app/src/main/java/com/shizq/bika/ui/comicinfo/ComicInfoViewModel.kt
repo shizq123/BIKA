@@ -4,11 +4,9 @@ import android.app.Application
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ActionBean
-import com.shizq.bika.bean.EpisodeBean
 import com.shizq.bika.bean.ComicInfoBean
+import com.shizq.bika.bean.EpisodeBean
 import com.shizq.bika.bean.RecommendBean
-import com.shizq.bika.database.BikaDatabase
-import com.shizq.bika.database.model.HistoryEntity
 import com.shizq.bika.network.Result
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -84,21 +82,21 @@ class ComicInfoViewModel(application: Application) : BaseViewModel(application) 
         }
     }
 
-    private val historyDao = BikaDatabase(application).historyDao()
+//    private val historyDao = BikaDatabase(application).historyDao()
 
     //通过 漫画的id查询
-    suspend fun getHistory(): List<HistoryEntity> {
-        return historyDao.gatHistory(bookId)
-    }
+//    suspend fun getHistory(): List<HistoryEntity> {
+//        return historyDao.gatHistory(bookId)
+//    }
 
-    fun updateHistory(vararg historyEntity: HistoryEntity) {
-        viewModelScope.launch {
-            historyDao.updateHistory(*historyEntity)
-        }
-    }
+//    fun updateHistory(vararg historyEntity: HistoryEntity) {
+//        viewModelScope.launch {
+//            historyDao.updateHistory(*historyEntity)
+//        }
+//    }
 
-    fun insertHistory(vararg historyEntity: HistoryEntity) {
-        viewModelScope.launch { historyDao.insertHistory(*historyEntity) }
-    }
+//    fun insertHistory(vararg historyEntity: HistoryEntity) {
+//        viewModelScope.launch { historyDao.insertHistory(*historyEntity) }
+//    }
 
 }

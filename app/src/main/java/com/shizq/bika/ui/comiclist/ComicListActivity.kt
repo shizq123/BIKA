@@ -25,7 +25,6 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.ComicListAdapter
 import com.shizq.bika.adapter.ComicListAdapter2
 import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.database.model.SearchEntity
 import com.shizq.bika.databinding.ActivityComiclistBinding
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
@@ -208,8 +207,8 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
         binding.searchView.setOnKeyListener { v, keyCode, event ->
             if (keyCode == KeyEvent.KEYCODE_ENTER && event.action == KeyEvent.ACTION_DOWN) {
                 //监听回车键
-                val searchEntity = SearchEntity(binding.searchView.text.toString())
-                viewModel.insertSearch(searchEntity)//添加搜索记录
+//                val searchEntity = SearchEntity(binding.searchView.text.toString())
+//                viewModel.insertSearch(searchEntity)//添加搜索记录
 
                 viewModel.value = binding.searchView.text.toString()
                 viewModel.tag = "search"
