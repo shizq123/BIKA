@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.search
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.data.repository.RecentSearchRepository
@@ -20,12 +21,14 @@ import kotlinx.coroutines.launch
 class SearchViewModel @Inject constructor(
     private val networkApi: BikaDataSource,
     private val recentSearchRepository: RecentSearchRepository,
+    private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val recentSearchesFlow = recentSearchRepository.getRecentSearchQueries(limit = 256)
-
     private val keywordsResultFlow: Flow<Result<KeywordsResponse>> = flow {
         emit(networkApi.getKeywords())
     }.asResult()
+
+    val searchQuery = savedStateHandle.getStateFlow(key = SEARCH_QUERY, initialValue = "")
 
     val recentSearchQueriesUiState = combine(
         keywordsResultFlow,
@@ -48,6 +51,9 @@ class SearchViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = RecentSearchQueriesUiState.Loading
         )
+    fun onSearchQueryChanged(query: String) {
+        savedStateHandle[SEARCH_QUERY] = query
+    }
 
     fun onSearchTriggered(query: String) {
         if (query.isBlank()) return
@@ -62,3 +68,5 @@ class SearchViewModel @Inject constructor(
         }
     }
 }
+
+private const val SEARCH_QUERY = "searchQuery"
