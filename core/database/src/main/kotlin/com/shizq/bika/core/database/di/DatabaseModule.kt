@@ -21,5 +21,7 @@ internal object DatabaseModule {
         context,
         BikaDatabase::class.java,
         "bika-database",
-    ).build()
+    )
+        .fallbackToDestructiveMigration(true)
+        .build()
 }
