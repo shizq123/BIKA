@@ -1,60 +1,64 @@
 package com.shizq.bika.ui.search
 
-import android.app.Application
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shizq.bika.base.BaseViewModel
-import com.shizq.bika.bean.KeywordsBean
-import com.shizq.bika.database.BikaDatabase
-import com.shizq.bika.database.model.SearchEntity
-import com.shizq.bika.network.RetrofitUtil
-import com.shizq.bika.network.base.BaseHeaders
-import com.shizq.bika.network.base.BaseObserver
-import com.shizq.bika.network.base.BaseResponse
+import com.shizq.bika.core.data.repository.RecentSearchRepository
+import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.model.KeywordsResponse
+import com.shizq.bika.network.Result
+import com.shizq.bika.network.asResult
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-class SearchViewModel(application: Application) : BaseViewModel(application) {
-    val liveDataSearchKey: MutableLiveData<BaseResponse<KeywordsBean>> by lazy {
-        MutableLiveData<BaseResponse<KeywordsBean>>()
+@HiltViewModel
+class SearchViewModel @Inject constructor(
+    private val networkApi: BikaDataSource,
+    private val recentSearchRepository: RecentSearchRepository,
+) : ViewModel() {
+    private val recentSearchesFlow = recentSearchRepository.getRecentSearchQueries(limit = 256)
+
+    private val keywordsResultFlow: Flow<Result<KeywordsResponse>> = flow {
+        emit(networkApi.getKeywords())
+    }.asResult()
+
+    val recentSearchQueriesUiState = combine(
+        keywordsResultFlow,
+        recentSearchesFlow
+    ) { keywordsResult, recentSearches ->
+        when (keywordsResult) {
+            is Result.Loading -> RecentSearchQueriesUiState.Loading
+            is Result.Error -> RecentSearchQueriesUiState.Error(
+                keywordsResult.exception?.message ?: ""
+            )
+
+            is Result.Success -> RecentSearchQueriesUiState.Success(
+                hotKeywords = keywordsResult.data.keywords,
+                recentQueries = recentSearches
+            )
+        }
     }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = RecentSearchQueriesUiState.Loading
+        )
 
-    fun getKey() {
-        val headers = BaseHeaders("keywords", "GET").getHeaderMapAndToken()
-
-        RetrofitUtil.service.keywordsGet(headers)
-            .doOnSubscribe(this@SearchViewModel)
-            .subscribe(object : BaseObserver<KeywordsBean>() {
-
-                override fun onSuccess(baseResponse: BaseResponse<KeywordsBean>) {
-                    liveDataSearchKey.postValue(baseResponse)
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<KeywordsBean>) {
-                    liveDataSearchKey.postValue(baseResponse)
-                }
-            })
-    }
-
-    private val searchRepository = BikaDatabase(application).searchDao()
-    val allSearchLive: LiveData<List<String>>
-        get() = searchRepository.allSearchLive
-
-    fun insertSearch(vararg searchEntities: SearchEntity) {
+    fun onSearchTriggered(query: String) {
+        if (query.isBlank()) return
         viewModelScope.launch {
-            searchRepository.insertSearch(*searchEntities)
+            recentSearchRepository.insertOrReplaceRecentSearch(searchQuery = query)
         }
     }
 
-    fun deleteSearch(vararg searchEntities: SearchEntity) {
+    fun clearRecentSearches() {
         viewModelScope.launch {
-            searchRepository.deleteSearch(*searchEntities)
-        }
-    }
-
-    fun deleteAllSearch() {
-        viewModelScope.launch {
-            searchRepository.deleteAllSearch()
+            recentSearchRepository.clearRecentSearches()
         }
     }
 }
