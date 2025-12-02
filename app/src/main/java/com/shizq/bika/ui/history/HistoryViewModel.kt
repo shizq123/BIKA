@@ -1,32 +1,31 @@
 package com.shizq.bika.ui.history
 
-import android.app.Application
-import com.shizq.bika.base.BaseViewModel
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.shizq.bika.core.database.dao.HistoryDao
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
-class HistoryViewModel (application: Application) : BaseViewModel(application) {
-    var page=0
+@HiltViewModel
+class HistoryViewModel @Inject constructor(
+    private val historyDao: HistoryDao,
+) : ViewModel() {
+    val historiesWithReadChapters = historyDao.getHistoriesWithReadChapters()
+        .stateIn(
+            viewModelScope,
+            SharingStarted.WhileSubscribed(5000),
+            emptyList()
+        )
 
-//    private val historyDao = BikaDatabase(application).historyDao()
+    fun clearHistory() {
 
-    //查询第一页
-//    val firstPageHistoryEntityLive: LiveData<List<HistoryEntity>>
-//        get() = historyDao.firstPageHistoryEntityLive
+    }
 
-    //分页查询 （未验证能不能用）
-//  suspend  fun getAllHistory(): List<HistoryEntity>{
-//        page += 20
-//        return historyDao.gatAllHistory(page)
-//    }
-
-//    fun deleteHistory(vararg historyEntity: HistoryEntity) {
-//        viewModelScope.launch {
-//            historyDao.deleteHistory(*historyEntity)
-//        }
-//    }
-//
-//    fun deleteAllHistory() {
-//        viewModelScope.launch {
-//            historyDao.deleteAllHistory()
-//        }
-//    }
+    fun clearAllHistory() {
+        viewModelScope.launch {
+        }
+    }
 }
