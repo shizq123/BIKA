@@ -13,7 +13,8 @@ import io.ktor.utils.io.KtorDsl
 import io.ktor.utils.io.charsets.Charsets
 import org.apache.commons.codec.digest.HmacAlgorithms
 import org.apache.commons.codec.digest.HmacUtils
-import java.util.UUID
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 fun HttpClientConfig<*>.bikaAuth(block: BikaAuthConfig.() -> Unit = {}) {
     install(BikaSignatureAuth) {
@@ -41,12 +42,13 @@ class BikaAuthConfig {
 /**
  * 插件主体
  */
+@OptIn(ExperimentalUuidApi::class)
 val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
     createClientPlugin("BikaSignatureAuth", ::BikaAuthConfig) {
         val config = pluginConfig
 
         onRequest { request, _ ->
-            val nonce = UUID.randomUUID().toString().replace("-", "")
+            val nonce = Uuid.random().toHexString()
             val time = (System.currentTimeMillis() / 1000).toString()
 
             val urlPath = request.url.encodedPath
