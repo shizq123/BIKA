@@ -11,6 +11,7 @@ import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.serializer
 
 public val ResponseTransformer: ClientPlugin<Unit> = createClientPlugin("ResponseTransformer") {
+    val json = Json { ignoreUnknownKeys = true }
     transformResponseBody { response, content, requestedType ->
         if (!response.status.isSuccess() || requestedType.type == Unit::class) {
             return@transformResponseBody content
@@ -18,7 +19,7 @@ public val ResponseTransformer: ClientPlugin<Unit> = createClientPlugin("Respons
 
         val targetKotlinType = requestedType.kotlinType ?: return@transformResponseBody content
 
-        val decodedContent = Json.decodeFromStream(
+        val decodedContent = json.decodeFromStream(
             Box.serializer(serializer(targetKotlinType)),
             content.toInputStream()
         )
