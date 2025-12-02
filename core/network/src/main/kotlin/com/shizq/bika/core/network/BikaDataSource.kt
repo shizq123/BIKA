@@ -1,13 +1,16 @@
 package com.shizq.bika.core.network
 
 import com.shizq.bika.core.network.model.ComicData
+import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.KeywordsData
 import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
 import com.shizq.bika.core.network.model.ProfileData
+import com.shizq.bika.core.network.model.RecommendationData
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
+import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
@@ -46,5 +49,15 @@ class BikaDataSource @Inject constructor(
 
     suspend fun getComicDetails(id: String): ComicData {
         return client.get("comics/$id").body()
+    }
+
+    suspend fun getRecommendations(id: String): RecommendationData {
+        return client.get("comics/$id/recommendation").body()
+    }
+
+    suspend fun getComicEpisodes(id: String, page: Int): EpisodeData {
+        return client.get("comics/$id/eps") {
+            parameter("page", page)
+        }.body()
     }
 }
