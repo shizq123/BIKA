@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class KeywordsResponse(
+data class KeywordsData(
     @SerialName("keywords")
     val keywords: List<String>
 )
