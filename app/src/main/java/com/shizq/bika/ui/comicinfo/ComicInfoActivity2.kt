@@ -1,5 +1,7 @@
 package com.shizq.bika.ui.comicinfo
 
+import android.content.Context
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -34,6 +36,13 @@ class ComicInfoActivity2 : ComponentActivity() {
             Column(modifier = Modifier.padding(innerPadding)) {
 
             }
+        }
+    }
+
+    companion object {
+        fun start(context: Context, id: String) {
+            val intent = Intent(context, ComicInfoActivity2::class.java)
+            intent.putExtra("id", id)
         }
     }
 }

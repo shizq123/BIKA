@@ -28,6 +28,7 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComiclistBinding
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
+import com.shizq.bika.ui.comicinfo.ComicInfoActivity2
 import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.StatusBarUtil
 import kotlinx.coroutines.launch
@@ -341,12 +342,13 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             val intent = Intent(this@ComicListActivity, ComicInfoActivity::class.java)
             if (viewModel.tag.equals("random")) {
                 val data = mComicListAdapter2.getItemData(position)
-                intent.putExtra("id", data._id)
-                intent.putExtra("fileserver", data.thumb.fileServer)
-                intent.putExtra("imageurl", data.thumb.path)
-                intent.putExtra("title", data.title)
-                intent.putExtra("author", data.author)
-                intent.putExtra("totalViews", data.totalViews.toString())
+                ComicInfoActivity2.start(this@ComicListActivity, data._id)
+//                intent.putExtra("id", data._id)
+//                intent.putExtra("fileserver", data.thumb.fileServer)
+//                intent.putExtra("imageurl", data.thumb.path)
+//                intent.putExtra("title", data.title)
+//                intent.putExtra("author", data.author)
+//                intent.putExtra("totalViews", data.totalViews.toString())
 
 //                val imageView=v.findViewById<ImageView>(R.id.comiclist_item_image)
 //                val titleView=v.findViewById<TextView>(R.id.comiclist_item_title)

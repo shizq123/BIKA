@@ -1,17 +1,16 @@
 package com.shizq.bika.adapter
 
 import android.content.Context
-import android.content.Intent
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.shizq.bika.R
 import com.shizq.bika.bean.CollectionsBean
-import com.shizq.bika.ui.comicinfo.ComicInfoActivity
-import com.bumptech.glide.Glide
+import com.shizq.bika.ui.comicinfo.ComicInfoActivity2
 import com.shizq.bika.utils.GlideUrlNewKey
 
 class CollectionsItemAdapter (val context: Context) : RecyclerView.Adapter<CollectionsItemAdapter.ViewHolder>() {
@@ -39,19 +38,20 @@ class CollectionsItemAdapter (val context: Context) : RecyclerView.Adapter<Colle
         holder.setData(datas[position])
 
         holder.itemView.setOnClickListener { v ->
-            val intent = Intent(context, ComicInfoActivity::class.java)
-            intent.putExtra("id", datas[position]._id)
-            intent.putExtra("fileserver", datas[position].thumb.fileServer)
-            intent.putExtra("imageurl", datas[position].thumb.path)
-            intent.putExtra("title", datas[position].title)
-            intent.putExtra("author", datas[position].author)
-            intent.putExtra("totalViews", "")
+//            val intent = Intent(context, ComicInfoActivity::class.java)
+//            intent.putExtra("id", datas[position]._id)
+//            intent.putExtra("fileserver", datas[position].thumb.fileServer)
+//            intent.putExtra("imageurl", datas[position].thumb.path)
+//            intent.putExtra("title", datas[position].title)
+//            intent.putExtra("author", datas[position].author)
+//            intent.putExtra("totalViews", "")
 //            val options = ActivityOptions.makeSceneTransitionAnimation(
 //                context as Activity,
 //                holder.mImageView,
 //                "image")
 //            context.startActivity(intent,options.toBundle())
-            context.startActivity(intent)
+//            context.startActivity(intent)
+            ComicInfoActivity2.start(context, datas[position]._id)
         }
     }
 
