@@ -5,7 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.data.repository.RecentSearchRepository
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.network.model.KeywordsResponse
+import com.shizq.bika.core.network.model.KeywordsData
 import com.shizq.bika.network.Result
 import com.shizq.bika.network.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -24,7 +24,7 @@ class SearchViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
 ) : ViewModel() {
     private val recentSearchesFlow = recentSearchRepository.getRecentSearchQueries(limit = 256)
-    private val keywordsResultFlow: Flow<Result<KeywordsResponse>> = flow {
+    private val keywordsResultFlow: Flow<Result<KeywordsData>> = flow {
         emit(networkApi.getKeywords())
     }.asResult()
 
