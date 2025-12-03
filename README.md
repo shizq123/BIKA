@@ -35,7 +35,7 @@ Material Design 3(Material You)<br>
 
 # 💝致谢
 
-[@SOCK-MAGIC](https://github.com/SOCK-MAGIC) 阅读器功能
+[@SOCK-MAGIC](https://github.com/SOCK-MAGIC) 阅读器功能<br>
 [@niuhuan](https://github.com/niuhuan) 优化功能
 
 # 
