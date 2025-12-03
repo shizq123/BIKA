@@ -24,6 +24,7 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
+        maven { setUrl("https://www.jitpack.io") }
     }
 }
 
