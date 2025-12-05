@@ -357,20 +357,21 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
 
             } else {
                 val data = mComicListAdapter.getItemData(position)
-                intent.putExtra("id", data._id)
-                intent.putExtra("fileserver", data.thumb.fileServer)
-                intent.putExtra("imageurl", data.thumb.path)
-                intent.putExtra("title", data.title)
-                intent.putExtra("author", data.author)
-                intent.putExtra("totalViews", data.totalViews.toString())
+//                intent.putExtra("id", data._id)
+//                intent.putExtra("fileserver", data.thumb.fileServer)
+//                intent.putExtra("imageurl", data.thumb.path)
+//                intent.putExtra("title", data.title)
+//                intent.putExtra("author", data.author)
+//                intent.putExtra("totalViews", data.totalViews.toString())
 
 //                val imageView=v.findViewById<ImageView>(R.id.comiclist_item_image)
 //                val titleView=v.findViewById<TextView>(R.id.comiclist_item_title)
 //                val options = ActivityOptions.makeSceneTransitionAnimation(this,UtilPair.create(imageView, "image"), UtilPair.create(titleView, "title"))
 //                startActivity(intent, options.toBundle())
 
+                ComicInfoActivity2.start(this@ComicListActivity, data._id)
             }
-            startActivity(intent)
+//            startActivity(intent)
         }
         binding.comiclistRv.setOnItemChildClickListener { view, position ->
             if (view.id == R.id.comiclist_item_image) {
