@@ -388,12 +388,21 @@ class ReaderActivity : ComponentActivity() {
         internal const val EXTRA_ORDER = "com.shizq.bika.reader.EXTRA_ORDER"
         internal const val EXTRA_TOTAL_EPS = "com.shizq.bika.reader.EXTRA_TOTAL_EPS"
         internal const val EXTRA_TITLE = "com.shizq.bika.reader.EXTRA_TITLE"
+
+        @Deprecated("Deprecated in Kotlin", ReplaceWith("start(context, bookId, order)"))
         fun start(context: Context, bookId: String, order: Int, totalEps: Int, title: String) {
             val intent = Intent(context, ReaderActivity::class.java)
             intent.putExtra(EXTRA_ID, bookId)
             intent.putExtra(EXTRA_ORDER, order)
             intent.putExtra(EXTRA_TOTAL_EPS, totalEps)
             intent.putExtra(EXTRA_TITLE, title)
+            context.startActivity(intent)
+        }
+
+        fun start(context: Context, bookId: String, order: Int) {
+            val intent = Intent(context, ReaderActivity::class.java)
+            intent.putExtra(EXTRA_ID, bookId)
+            intent.putExtra(EXTRA_ORDER, order)
             context.startActivity(intent)
         }
     }
