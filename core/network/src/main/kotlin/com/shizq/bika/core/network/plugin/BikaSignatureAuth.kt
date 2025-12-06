@@ -7,7 +7,6 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import io.ktor.http.encodedPath
 import io.ktor.http.withCharset
 import io.ktor.utils.io.KtorDsl
 import io.ktor.utils.io.charsets.Charsets
@@ -51,7 +50,7 @@ val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
             val nonce = Uuid.random().toHexString()
             val time = (System.currentTimeMillis() / 1000).toString()
 
-            val urlPath = request.url.encodedPath
+            val urlPath = request.url.toString().replace("https://picaapi.picacomic.com/", "")
             val method = request.method.value
 
             val rawData = (urlPath + time + nonce + method + config.apiKey).lowercase()
