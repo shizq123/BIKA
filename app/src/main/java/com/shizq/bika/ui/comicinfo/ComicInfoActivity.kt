@@ -142,9 +142,7 @@ class ComicInfoActivity : ComponentActivity() {
                                 )
                             },
                             onClick = {
-                                (comicDetailState as? ComicDetailUiState.Success)?.detail?.id?.let {
-                                    onContinueReading(it, 1)
-                                }
+                                onContinueReading(comicDetailState.detail.id, 1)
                             },
                         )
                     },
