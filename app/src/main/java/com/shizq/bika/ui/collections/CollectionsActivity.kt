@@ -4,10 +4,8 @@ import android.os.Bundle
 import android.view.MenuItem
 import android.view.ViewGroup
 import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.shizq.bika.BR
 import com.shizq.bika.R
-import com.shizq.bika.adapter.CollectionsAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityCollectionsBinding
 import com.shizq.bika.network.Result
@@ -18,7 +16,7 @@ import kotlinx.coroutines.launch
  */
 
 class CollectionsActivity : BaseActivity<ActivityCollectionsBinding, CollectionsViewModel>() {
-    private lateinit var adapter: CollectionsAdapter
+//    private lateinit var adapter: CollectionsAdapter
 
     override fun initContentView(savedInstanceState: Bundle?): Int {
         return R.layout.activity_collections
@@ -33,14 +31,14 @@ class CollectionsActivity : BaseActivity<ActivityCollectionsBinding, Collections
         setSupportActionBar(binding.collectionsInclude.toolbar)
         supportActionBar?.setDisplayHomeAsUpEnabled(true)
 
-        adapter = CollectionsAdapter(this)
-        binding.collectionsRv.layoutManager = LinearLayoutManager(this)
-        binding.collectionsRv.adapter = adapter
-
-        showProgressBar(true, "")
-        if (adapter.itemCount < 1) {
-            viewModel.getData()
-        }
+//        adapter = CollectionsAdapter(this)
+//        binding.collectionsRv.layoutManager = LinearLayoutManager(this)
+//        binding.collectionsRv.adapter = adapter
+//
+//        showProgressBar(true, "")
+//        if (adapter.itemCount < 1) {
+//            viewModel.getData()
+//        }
 
         //网络重试点击事件监听
         binding.collectionsLoadLayout.setOnClickListener {
@@ -65,9 +63,9 @@ class CollectionsActivity : BaseActivity<ActivityCollectionsBinding, Collections
                 when (it) {
                     is Result.Success -> {
                         binding.collectionsLoadLayout.visibility = ViewGroup.GONE
-                        if (adapter.itemCount < 1) {
-                            adapter.addData(it.data.collections)
-                        }
+//                        if (adapter.itemCount < 1) {
+//                            adapter.addData(it.data.collections)
+//                        }
                     }
 
                     is Result.Error -> {
