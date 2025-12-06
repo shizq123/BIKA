@@ -28,7 +28,6 @@ import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityComiclistBinding
 import com.shizq.bika.network.Result
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
-import com.shizq.bika.ui.comicinfo.ComicInfoActivity2
 import com.shizq.bika.ui.image.ImageActivity
 import com.shizq.bika.utils.StatusBarUtil
 import kotlinx.coroutines.launch
@@ -342,7 +341,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
             val intent = Intent(this@ComicListActivity, ComicInfoActivity::class.java)
             if (viewModel.tag.equals("random")) {
                 val data = mComicListAdapter2.getItemData(position)
-                ComicInfoActivity2.start(this@ComicListActivity, data._id)
+                ComicInfoActivity.start(this@ComicListActivity, data._id)
 //                intent.putExtra("id", data._id)
 //                intent.putExtra("fileserver", data.thumb.fileServer)
 //                intent.putExtra("imageurl", data.thumb.path)
@@ -369,7 +368,7 @@ class ComicListActivity : BaseActivity<ActivityComiclistBinding, ComicListViewMo
 //                val options = ActivityOptions.makeSceneTransitionAnimation(this,UtilPair.create(imageView, "image"), UtilPair.create(titleView, "title"))
 //                startActivity(intent, options.toBundle())
 
-                ComicInfoActivity2.start(this@ComicListActivity, data._id)
+                ComicInfoActivity.start(this@ComicListActivity, data._id)
             }
 //            startActivity(intent)
         }

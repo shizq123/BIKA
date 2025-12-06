@@ -1,102 +1,96 @@
 package com.shizq.bika.ui.comicinfo
 
-import android.app.Application
+import androidx.lifecycle.SavedStateHandle
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shizq.bika.base.BaseViewModel
-import com.shizq.bika.bean.ActionBean
-import com.shizq.bika.bean.ComicInfoBean
-import com.shizq.bika.bean.EpisodeBean
-import com.shizq.bika.bean.RecommendBean
-import com.shizq.bika.network.Result
-import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.model.Episode
+import com.shizq.bika.core.result.Result
+import com.shizq.bika.core.result.asResult
+import com.shizq.bika.paging.EpisodePagingSource
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
-class ComicInfoViewModel(application: Application) : BaseViewModel(application) {
-    var bookId: String = ""
-    var title: String? = null
-    var author: String? = null
-    var totalViews: String? = null
-    var episodePage = 0
-    var creatorId: String = ""
-    var totalEps: Int = 1
-    var creator: ComicInfoBean.Comic.Creator? = null
-
-    private val repository = ComicInfoRepository()
-
-    private val _comicInfo = MutableStateFlow<Result<ComicInfoBean>?>(null)
-    val comicInfo: StateFlow<Result<ComicInfoBean>?> = _comicInfo
-    private val _episode = MutableStateFlow<Result<EpisodeBean>?>(null)
-    val episode: StateFlow<Result<EpisodeBean>?> = _episode
-    private val _like = MutableStateFlow<Result<ActionBean>?>(null)
-    val like: StateFlow<Result<ActionBean>?> = _like
-    private val _recommend = MutableStateFlow<Result<RecommendBean>?>(null)
-    val recommend: StateFlow<Result<RecommendBean>?> = _recommend
-    private val _favourite = MutableStateFlow<Result<ActionBean>?>(null)
-    val favourite: StateFlow<Result<ActionBean>?> = _favourite
-
-    //漫画信息
-    fun getInfo() {
-        viewModelScope.launch {
-            repository.getInfoFlow(bookId).collect {
-                _comicInfo.value = it
+@HiltViewModel
+class ComicInfoViewModel @Inject constructor(
+    private val savedStateHandle: SavedStateHandle,
+    private val network: BikaDataSource,
+) : ViewModel() {
+    private val comicIdFlow: StateFlow<String?> = savedStateHandle.getStateFlow("id", null)
+    val comicDetailUiState: StateFlow<ComicDetailUiState> = comicIdFlow
+        .flatMapLatest { id ->
+            if (id == null) {
+                flowOf(Result.Loading)
+            } else {
+                flow { emit(network.getComicDetails(id)) }.asResult()
             }
         }
-    }
+        .map { result ->
+            when (result) {
+                is Result.Success -> ComicDetailUiState.Success(result.data.toComicDetail())
+                is Result.Error -> ComicDetailUiState.Error(
+                    result.exception.message ?: "Unknown error"
+                )
 
-    //章节
-    fun getEpisode() {
-        //每次页数加1
-        episodePage++
-        viewModelScope.launch {
-            repository.getEpisodeFlow(bookId, episodePage.toString()).collect {
-                _episode.value = it
+                Result.Loading -> ComicDetailUiState.Loading
             }
         }
-    }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ComicDetailUiState.Loading
+        )
 
-    //推荐
-    fun getRecommend() {
-        viewModelScope.launch {
-            repository.getRecommendFlow(bookId).collect {
-                _recommend.value = it
+    val recommendationsUiState: StateFlow<RecommendationsUiState> = comicIdFlow
+        .flatMapLatest { id ->
+            if (id == null) {
+                flowOf(Result.Loading)
+            } else {
+                flow { emit(network.getRecommendations(id)) }.asResult()
             }
         }
-    }
+        .map { result ->
+            when (result) {
+                is Result.Success -> RecommendationsUiState.Success(result.data.toComicSummaryList())
+                is Result.Error -> RecommendationsUiState.Error(
+                    result.exception.message ?: "Unknown error"
+                )
 
-    //爱心 喜欢
-    fun getLike() {
-        viewModelScope.launch {
-            repository.getLikeFlow(bookId).collect {
-                _like.value = it
+                Result.Loading -> RecommendationsUiState.Loading
             }
         }
-    }
-
-    //收藏
-    fun getFavourite() {
-        viewModelScope.launch {
-            repository.getFavouriteFlow(bookId).collect {
-                _favourite.value = it
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = RecommendationsUiState.Loading
+        )
+    val episodesFlow: Flow<PagingData<Episode>> = comicIdFlow
+        .flatMapLatest { id ->
+            if (id.isNullOrEmpty()) {
+                emptyFlow()
+            } else {
+                Pager(
+                    config = PagingConfig(
+                        pageSize = 40,
+                        prefetchDistance = 5,
+                        enablePlaceholders = false
+                    ),
+                    pagingSourceFactory = { EpisodePagingSource(network, id) }
+                ).flow
             }
         }
-    }
-
-//    private val historyDao = BikaDatabase(application).historyDao()
-
-    //通过 漫画的id查询
-//    suspend fun getHistory(): List<HistoryEntity> {
-//        return historyDao.gatHistory(bookId)
-//    }
-
-//    fun updateHistory(vararg historyEntity: HistoryEntity) {
-//        viewModelScope.launch {
-//            historyDao.updateHistory(*historyEntity)
-//        }
-//    }
-
-//    fun insertHistory(vararg historyEntity: HistoryEntity) {
-//        viewModelScope.launch { historyDao.insertHistory(*historyEntity) }
-//    }
-
+        .cachedIn(viewModelScope)
 }

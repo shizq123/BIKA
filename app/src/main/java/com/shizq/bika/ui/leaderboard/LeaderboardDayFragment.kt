@@ -13,7 +13,7 @@ import com.shizq.bika.R
 import com.shizq.bika.adapter.ComicListAdapter2
 import com.shizq.bika.base.BaseFragment
 import com.shizq.bika.databinding.FragmentLeaderboardDayBinding
-import com.shizq.bika.ui.comicinfo.ComicInfoActivity2
+import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import com.shizq.bika.ui.image.ImageActivity
 import me.jingbin.library.skeleton.ByRVItemSkeletonScreen
 import me.jingbin.library.skeleton.BySkeleton
@@ -77,7 +77,7 @@ class LeaderboardDayFragment :
 //            intent.putExtra("author", data.author)
 //            intent.putExtra("totalViews", data.totalViews.toString())
 //            startActivity(intent)
-            ComicInfoActivity2.start(requireContext(), data._id)
+            ComicInfoActivity.start(requireContext(), data._id)
         }
         binding.leaderboardDayRv.setOnItemChildClickListener { view, position ->
             val data = adapter.getItemData(position)

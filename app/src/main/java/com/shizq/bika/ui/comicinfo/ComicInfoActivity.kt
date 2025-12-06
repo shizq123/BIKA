@@ -1,744 +1,369 @@
 package com.shizq.bika.ui.comicinfo
 
-import android.annotation.SuppressLint
-import android.app.ActivityOptions
+import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
-import android.view.*
-import android.widget.Toast
-import androidx.core.view.ViewCompat
-import androidx.core.view.size
-import androidx.databinding.DataBindingUtil
-import androidx.lifecycle.lifecycleScope
-import androidx.recyclerview.widget.LinearLayoutManager
-import com.bumptech.glide.Glide
-import com.google.android.material.chip.Chip
-import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.shizq.bika.BR
-import com.shizq.bika.R
-import com.shizq.bika.adapter.EpisodeAdapter
-import com.shizq.bika.adapter.RecommendAdapter
-import com.shizq.bika.base.BaseActivity
-import com.shizq.bika.databinding.ActivityComicinfoBinding
-import com.shizq.bika.databinding.ItemEpisodeFooterViewBinding
-import com.shizq.bika.network.Result
-import com.shizq.bika.ui.comiclist.ComicListActivity
-import com.shizq.bika.ui.comment.CommentsActivity
-import com.shizq.bika.ui.image.ImageActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
+import com.shizq.bika.core.network.model.Episode
+import com.shizq.bika.ui.collapsingtoolbar.CollapsingTopBar
 import com.shizq.bika.ui.reader.ReaderActivity
-import com.shizq.bika.utils.*
-import com.shizq.bika.widget.SpacesItemDecoration
-import com.shizq.bika.widget.UserViewDialog
-import kotlinx.coroutines.launch
+import dagger.hilt.android.AndroidEntryPoint
 
-/**
- * 漫画详情
- */
-
-class ComicInfoActivity : BaseActivity<ActivityComicinfoBinding, ComicInfoViewModel>() {
-    var fileserver: String = ""
-    var imageurl: String = ""
-
-    private lateinit var mAdapterEpisode: EpisodeAdapter
-    private lateinit var episodeFooterBinding: ItemEpisodeFooterViewBinding
-    private lateinit var mAdapterRecommend: RecommendAdapter
-
-    private lateinit var userViewDialog: UserViewDialog
-
-    override fun initContentView(savedInstanceState: Bundle?): Int {
-        return R.layout.activity_comicinfo
-    }
-
-    override fun initVariableId(): Int {
-        return BR.viewModel
-    }
-
-    @SuppressLint("SetTextI18n")
-    override fun initData() {
-        ViewCompat.setTransitionName(binding.comicinfoImage, "image")
-        ViewCompat.setTransitionName(binding.comicinfoTitle, "title")
-        //接收传递的信息
-        fileserver = intent.getStringExtra("fileserver").toString()
-        imageurl = intent.getStringExtra("imageurl").toString()
-        viewModel.bookId = intent.getStringExtra("id").toString()
-        viewModel.title = intent.getStringExtra("title")
-        viewModel.author = intent.getStringExtra("author")
-        viewModel.totalViews = intent.getStringExtra("totalViews")
-
-        //点击事件
-        binding.clickListener = ClickListener()
-
-        //toolbar
-        binding.toolbar.title = ""
-        setSupportActionBar(binding.toolbar)
-        supportActionBar?.setDisplayHomeAsUpEnabled(true)
-        binding.appbarlayout.addLiftOnScrollListener { elevation, backgroundColor ->
-            //判断appbar滑动状态 显示隐藏标题
-            if (elevation > 0) {
-                binding.toolbar.title = viewModel.title
-            } else {
-                binding.toolbar.title = ""
-            }
-        }
-
-        userViewDialog = UserViewDialog(this)
-
-        //漫画章节
-        mAdapterEpisode = EpisodeAdapter()
-        binding.comicInfoTotalEps.isNestedScrollingEnabled = false
-        binding.comicInfoEpsRv.layoutManager = LinearLayoutManager(this)
-        binding.comicInfoEpsRv.adapter = mAdapterEpisode
-        episodeFooterBinding = DataBindingUtil.inflate(
-            LayoutInflater.from(this), R.layout.item_episode_footer_view,
-            binding.comicInfoEpsRv.parent as ViewGroup, false
+@AndroidEntryPoint
+class ComicInfoActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT
+            ),
         )
-        binding.comicInfoEpsRv.addFooterView(episodeFooterBinding.root)
-        episodeFooterBinding.episodeFooterLayout.isEnabled = false
-        //漫画推荐
-        val lm = LinearLayoutManager(this)
-        lm.orientation = LinearLayoutManager.HORIZONTAL
-        binding.comicinfoRecommend.layoutManager = lm
-        mAdapterRecommend = RecommendAdapter(this)
-        binding.comicinfoRecommend.adapter = mAdapterRecommend
+        super.onCreate(savedInstanceState)
 
-        //加载数据
-        Glide.with(this)
-            .load(GlideUrlNewKey(fileserver, imageurl))
-            .placeholder(R.drawable.placeholder_transparent)
-            .into(binding.comicinfoImage)
-        binding.comicinfoAuthor.text = viewModel.author
-        binding.comicinfoTotalViews.text = "指数：${viewModel.totalViews}"
-
-        //网络请求
-        if (binding.comicinfoTagslist.size < 1) {
-            //防止重复加载 判断标签数是否为0
-            binding.comicinfoProgressbar.visibility = View.VISIBLE
-            viewModel.getInfo()
-            viewModel.episodePage = 0
-            mAdapterEpisode.clear()
-            viewModel.getEpisode()
-            viewModel.getRecommend()
+        setContent {
+            ComicDetailScreen()
         }
-        // TODO 加載進度條有問題
-
     }
 
-    //toolbar菜单
-    override fun onCreateOptionsMenu(menu: Menu): Boolean {
-        menuInflater.inflate(R.menu.toolbar_menu_comicinfo, menu)
-        return true
-    }
-
-    @SuppressLint("UseCompatLoadingForDrawables")
-    override fun onOptionsItemSelected(item: MenuItem): Boolean {
-        when (item.itemId) {
-            android.R.id.home -> {
-//                finishAfterTransition()
-                finish()
+    @Composable
+    fun ComicDetailScreen(viewModel: ComicInfoViewModel = hiltViewModel()) {
+        val comicDetailUiState by viewModel.comicDetailUiState.collectAsStateWithLifecycle()
+        val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
+        val relatedComicsUiState by viewModel.recommendationsUiState.collectAsStateWithLifecycle()
+        ComicDetailContent(
+            comicDetailState = comicDetailUiState,
+            relatedComicsState = relatedComicsUiState,
+            episodes = episodes,
+            onBackClick = ::finish,
+            onFavoriteClick = {},
+            onLikeClick = {},
+            onContinueReading = { id, index ->
+                ReaderActivity.start(this, id, index)
             }
-
-            R.id.action_bookmark -> {//Toolbar 收藏键
-                binding.comicinfoProgressbar.visibility = View.VISIBLE
-                viewModel.getFavourite()
-            }
-        }
-
-        return super.onOptionsItemSelected(item)
+        )
     }
 
-    inner class ClickListener {
-        fun Image() {
-            //封面图片
-            val intent = Intent(this@ComicInfoActivity, ImageActivity::class.java)
-            intent.putExtra("fileserver", fileserver)
-            intent.putExtra("imageurl", imageurl)
-            val options = ActivityOptions.makeSceneTransitionAnimation(
-                this@ComicInfoActivity,
-                binding.comicinfoImage,
-                "image"
-            )
-            startActivity(intent, options.toBundle())
-        }
-
-        fun Author() {
-            //作者
-            val intent = Intent(this@ComicInfoActivity, ComicListActivity::class.java)
-            intent.putExtra("tag", "author")
-            intent.putExtra("title", binding.comicinfoAuthor.text.toString())
-            intent.putExtra("value", binding.comicinfoAuthor.text.toString())
-            startActivity(intent)
-        }
-
-        fun Translator() {
-            //翻译人
-            val intent = Intent(this@ComicInfoActivity, ComicListActivity::class.java)
-            intent.putExtra("tag", "translate")
-            intent.putExtra("title", binding.comicinfoTranslator.text.toString())
-            intent.putExtra("value", binding.comicinfoTranslator.text.toString())
-            startActivity(intent)
-        }
-
-
-        fun Comment() {//评论
-            val intentComments = Intent(this@ComicInfoActivity, CommentsActivity::class.java)
-            intentComments.putExtra("id", viewModel.bookId)
-            intentComments.putExtra("comics_games", "comics")
-            startActivity(intentComments)
-        }
-
-        fun Creator() {
-            //搜索上传者
-            val intent = Intent(this@ComicInfoActivity, ComicListActivity::class.java)
-            intent.putExtra("tag", "knight")
-            intent.putExtra("title", binding.comicinfoCreatorName.text.toString())
-            intent.putExtra("value", viewModel.creatorId)
-            startActivity(intent)
-        }
-
-        fun Like() {
-            //喜欢
-            binding.comicinfoProgressbar.visibility = View.VISIBLE
-            viewModel.getLike()
-        }
-
-        fun CreatorLayout() {
-            //上传者信息
-            if (viewModel.creator != null) {
-                userViewDialog.showUserDialog(viewModel.creator!!)
-            }
-        }
-
-        fun Read() {
-            //开始阅读 默认从第一话开始 以后加历史记录
-            ReaderActivity.start(
-                this@ComicInfoActivity,
-                viewModel.bookId,
-                1,
-                viewModel.totalEps,
-                viewModel.title!!
-            )
-        }
-    }
-
-    @SuppressLint("SetTextI18n")
-    override fun initViewObservable() {
-        //漫画详情
-//        viewModel.liveData_info.observe(this) {
-//            binding.comicinfoProgressbar.visibility = View.GONE
-//            if (it.code == 200) {
-//                if (binding.comicinfoTagslist.size < 1) {
-//                    //漫画封面图片
-//                    if (imageurl == "") {
-//                        fileserver = it.data.comic.thumb.fileServer
-//                        imageurl = it.data.comic.thumb.path
-//                        Glide.with(this)
-//                            .load(
-//                                GlideUrlNewKey(
-//                                    it.data.comic.thumb.fileServer,
-//                                    it.data.comic.thumb.path
-//                                )
-//                            )
-//                            .placeholder(R.drawable.placeholder_transparent)
-//                            .into(binding.comicinfoImage)
-//                    }
-//
-//
-//                    //汉化组
-//                    if (!it.data.comic.chineseTeam.isNullOrEmpty()) {
-//                        binding.comicinfoTranslator.visibility = View.VISIBLE
-//                        binding.comicinfoTranslator.text = it.data.comic.chineseTeam
-//                    } else {
-//                        binding.comicinfoTranslator.visibility = View.GONE
-//                    }
-//
-//                    //浏览量
-//                    binding.comicinfoTotalViews.text = "指数：${it.data.comic.viewsCount}"
-//
-//                    //喜欢数
-//                    binding.comicinfoLikeText.text = "${it.data.comic.likesCount}人喜欢"
-//
-//                    //是否喜欢
-//                    binding.comicinfoLikeImage.setImageResource(if (it.data.comic.isLiked) R.drawable.ic_favorite_24 else R.drawable.ic_favorite_border_24)
-//
-//                    //评论数 是否关闭评论
-//                    if (it.data.comic.allowComment) {
-//                        binding.comicinfoComment.isClickable = true
-//                        binding.comicinfoCommentText.text = "${it.data.comic.commentsCount}条评论"
-//                    } else {
-//                        binding.comicinfoComment.isClickable = false
-//                        binding.comicinfoCommentText.text = "禁止评论"
-//                    }
-//
-//                    //章节页数
-//                    if (it.data.comic.finished) {
-//                        binding.comicinfoChapter.text = "${it.data.comic.epsCount}章(完结)"
-//                    } else {
-//                        binding.comicinfoChapter.text = "${it.data.comic.epsCount}章"
-//                    }
-//                    binding.comicinfoPage.text = "${it.data.comic.pagesCount}页"
-//
-//                    //是否收藏
-//                    if (binding.toolbar.menu.findItem(R.id.action_bookmark) != null) {
-//                        binding.toolbar.menu.findItem(R.id.action_bookmark)
-//                            .setIcon(if (it.data.comic.isFavourite) R.drawable.ic_bookmark_check else R.drawable.ic_bookmark_add)
-//                    }
-//
-//                    //描述
-//                    if (!it.data.comic.description.isNullOrEmpty()) {
-//                        binding.comicinfoDescription.text = it.data.comic.description.trim()
-//                    }
-//
-//                    //漫画分类
-//                    for (i in it.data.comic.categories.toSortedSet().toList()) {
-//                        val chip = Chip(this@ComicInfoActivity)
-//                        chip.text = i
-//                        chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
-//                        binding.comicinfoTagslist.addView(chip)
-//                        chip.setOnClickListener {
-//                            val intent =
-//                                Intent(this@ComicInfoActivity, ComicListActivity::class.java)
-//                            intent.putExtra("tag", "categories")
-//                            intent.putExtra("title", i)
-//                            intent.putExtra("value", i)
-//                            startActivity(intent)
-//                        }
-//                    }
-//
-//                    //漫画标签
-//                    if (it.data.comic.tags.isNotEmpty()) {
-//                        binding.comicinfoTagsLayout.visibility = View.VISIBLE
-//                        for (i in it.data.comic.tags.toSortedSet().toList()) {
-//                            val chip = Chip(this@ComicInfoActivity)
-//                            chip.text = i
-//                            chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
-//                            binding.comicinfoTagslist1.addView(chip)
-//                            chip.setOnClickListener {
-//                                val intent =
-//                                    Intent(this@ComicInfoActivity, ComicListActivity::class.java)
-//                                intent.putExtra("tag", "tags")
-//                                intent.putExtra("title", i)
-//                                intent.putExtra("value", i)
-//                                startActivity(intent)
-//                            }
-//                        }
-//                    }
-//
-//                    //上传者 头像
-//                    if (null != it.data.comic._creator.avatar) {
-//                        Glide.with(this)
-//                            .load(
-//                                GlideUrlNewKey(
-//                                    it.data.comic._creator.avatar.fileServer,
-//                                    it.data.comic._creator.avatar.path
-//                                )
-//                            )
-//                            .placeholder(R.drawable.placeholder_avatar_2)
-//                            .into(binding.comicinfoCreatorAvatar)
-//                    } else {
-//                        binding.comicinfoCreatorAvatar.setImageResource(R.drawable.placeholder_avatar)
-//                    }
-//                    //上传者 更新时间
-//                    binding.comicinfoCreatorUpdatedAt.text =
-//                        TimeUtil().time(it.data.comic.updated_at) + getString(R.string.updated_at)
-//
-//                    //记录历史
-//                    val historyList = viewModel.getHistory()
-//                    if (historyList.isNotEmpty()) {
-//                        val history = History(
-//                            System.currentTimeMillis(),
-//                            historyList[0].title,
-//                            historyList[0].fileServer,
-//                            historyList[0].path,
-//                            historyList[0].comic_or_game,
-//                            historyList[0].author,
-//                            historyList[0].comic_or_game_id,
-//                            historyList[0].sort,
-//                            historyList[0].epsCount,
-//                            historyList[0].pagesCount,
-//                            historyList[0].finished,
-//                            historyList[0].likeCount,
-//                            historyList[0].ep,
-//                            historyList[0].page
-//                        )
-//                        history.id = historyList[0].id
-//                        //这个进行更新 //更新好象要主键
-//                        viewModel.updateHistory(history)//更新搜索记录
-//
-//                    } else {
-//                        val history = History(
-//                            System.currentTimeMillis(),
-//                            viewModel.title.toString(),
-//                            fileserver,
-//                            imageurl,
-//                            "comic",
-//                            viewModel.author.toString(),
-//                            viewModel.bookId.toString(),
-//                            "",
-//                            "",
-//                            "",
-//                            false,
-//                            "",
-//                            "",
-//                            ""
-//                        )
-//                        //这个进行更新 //更新好象要主键
-//                        viewModel.insertHistory(history)//添加搜索记录
-//                    }
-//                }
-//            } else if (it.code == 400 && it.error == "1014") {
-//                MaterialAlertDialogBuilder(this)
-//                    .setTitle("本子审核中！")
-//                    .setPositiveButton("退出") { _, _ -> finish() }
-//                    .show()
-//
-//            } else {
-//                //加载失败
-//                MaterialAlertDialogBuilder(this)
-//                    .setTitle("网络错误")
-//                    .setMessage("网络错误code=${it.code} error=${it.error} message=${it.message}")
-//                    .setPositiveButton("重试") { _, _ ->
-//                        binding.comicinfoProgressbar.visibility = View.VISIBLE
-//                        viewModel.getInfo()
-//                    }
-//                    .setNegativeButton("退出") { _, _ -> finish() }
-//                    .setCancelable(false)
-//                    .show()
-//            }
-//        }
-        lifecycleScope.launch {
-            viewModel.comicInfo.collect {
-                when (it) {
-                    is Result.Success -> {
-                        binding.comicinfoProgressbar.visibility = View.GONE
-                        viewModel.creatorId = it.data.comic._creator._id
-                        viewModel.author = it.data.comic.author
-                        viewModel.creator = it.data.comic._creator
-                        if (binding.comicinfoTagslist.size < 1) {
-                            //漫画封面图片
-                            if (imageurl == "") {
-                                fileserver = it.data.comic.thumb.fileServer
-                                imageurl = it.data.comic.thumb.path
-                                Glide.with(this@ComicInfoActivity)
-                                    .load(
-                                        GlideUrlNewKey(
-                                            it.data.comic.thumb.fileServer,
-                                            it.data.comic.thumb.path
-                                        )
-                                    )
-                                    .placeholder(R.drawable.placeholder_transparent)
-                                    .into(binding.comicinfoImage)
-                            }
-
-                            //上传者
-                            binding.comicinfoCreatorName.text = it.data.comic._creator.name
-
-                            //汉化组
-                            if (!it.data.comic.chineseTeam.isNullOrEmpty()) {
-                                binding.comicinfoTranslator.visibility = View.VISIBLE
-                                binding.comicinfoTranslator.text = it.data.comic.chineseTeam
-                            } else {
-                                binding.comicinfoTranslator.visibility = View.GONE
-                            }
-
-                            //浏览量
-                            binding.comicinfoTotalViews.text = "指数：${it.data.comic.viewsCount}"
-
-                            //喜欢数
-                            binding.comicinfoLikeText.text = "${it.data.comic.likesCount}人喜欢"
-
-                            //是否喜欢
-                            binding.comicinfoLikeImage.setImageResource(if (it.data.comic.isLiked) R.drawable.ic_favorite_24 else R.drawable.ic_favorite_border_24)
-
-                            //评论数 是否关闭评论
-                            if (it.data.comic.allowComment) {
-                                binding.comicinfoComment.isClickable = true
-                                binding.comicinfoCommentText.text =
-                                    "${it.data.comic.commentsCount}条评论"
-                            } else {
-                                binding.comicinfoComment.isClickable = false
-                                binding.comicinfoCommentText.text = "禁止评论"
-                            }
-
-                            //章节页数
-                            if (it.data.comic.finished) {
-                                binding.comicInfoTotalEps.text = "${it.data.comic.epsCount}章(完结)"
-                            } else {
-                                binding.comicInfoTotalEps.text = "${it.data.comic.epsCount}章"
-                            }
-                            binding.comicinfoPage.text = "${it.data.comic.pagesCount}页"
-
-                            //是否收藏
-                            if (binding.toolbar.menu.findItem(R.id.action_bookmark) != null) {
-                                binding.toolbar.menu.findItem(R.id.action_bookmark)
-                                    .setIcon(if (it.data.comic.isFavourite) R.drawable.ic_bookmark_check else R.drawable.ic_bookmark_add)
-                            }
-
-                            //描述
-                            if (!it.data.comic.description.isNullOrEmpty()) {
-                                binding.comicinfoDescription.text = it.data.comic.description.trim()
-                            }
-
-                            //漫画分类
-                            for (i in it.data.comic.categories.toSortedSet().toList()) {
-                                val chip = Chip(this@ComicInfoActivity)
-                                chip.text = i
-                                chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
-                                binding.comicinfoTagslist.addView(chip)
-                                chip.setOnClickListener {
-                                    val intent =
-                                        Intent(
-                                            this@ComicInfoActivity,
-                                            ComicListActivity::class.java
-                                        )
-                                    intent.putExtra("tag", "categories")
-                                    intent.putExtra("title", i)
-                                    intent.putExtra("value", i)
-                                    startActivity(intent)
-                                }
-                            }
-
-                            //漫画标签
-                            if (it.data.comic.tags.isNotEmpty()) {
-                                binding.comicinfoTagsLayout.visibility = View.VISIBLE
-                                for (i in it.data.comic.tags.toSortedSet().toList()) {
-                                    val chip = Chip(this@ComicInfoActivity)
-                                    chip.text = i
-                                    chip.setEnsureMinTouchTargetSize(false)//去除视图的顶部和底部的额外空间
-                                    binding.comicinfoTagslist1.addView(chip)
-                                    chip.setOnClickListener {
-                                        val intent =
-                                            Intent(
-                                                this@ComicInfoActivity,
-                                                ComicListActivity::class.java
-                                            )
-                                        intent.putExtra("tag", "tags")
-                                        intent.putExtra("title", i)
-                                        intent.putExtra("value", i)
-                                        startActivity(intent)
-                                    }
-                                }
-                            }
-
-                            //上传者 头像
-                            if (null != it.data.comic._creator.avatar) {
-                                Glide.with(this@ComicInfoActivity)
-                                    .load(
-                                        GlideUrlNewKey(
-                                            it.data.comic._creator.avatar.fileServer,
-                                            it.data.comic._creator.avatar.path
-                                        )
-                                    )
-                                    .placeholder(R.drawable.placeholder_avatar_2)
-                                    .into(binding.comicinfoCreatorAvatar)
-                            } else {
-                                binding.comicinfoCreatorAvatar.setImageResource(R.drawable.placeholder_avatar)
-                            }
-                            //上传者 更新时间
-                            binding.comicinfoCreatorUpdatedAt.text =
-                                TimeUtil().time(it.data.comic.updated_at) + getString(R.string.updated_at)
-
-                            //记录历史
-//                            val historyList = viewModel.getHistory()
-//                            if (historyList.isNotEmpty()) {
-//                                val historyEntity = HistoryEntity(
-//                                    System.currentTimeMillis(),
-//                                    historyList[0].title,
-//                                    historyList[0].fileServer,
-//                                    historyList[0].path,
-//                                    historyList[0].comic_or_game,
-//                                    historyList[0].author,
-//                                    historyList[0].comic_or_game_id,
-//                                    historyList[0].sort,
-//                                    historyList[0].epsCount,
-//                                    historyList[0].pagesCount,
-//                                    historyList[0].finished,
-//                                    historyList[0].likeCount,
-//                                    historyList[0].ep,
-//                                    historyList[0].page
-//                                )
-//                                historyEntity.id = historyList[0].id
-//                                //这个进行更新 //更新好象要主键
-//                                viewModel.updateHistory(historyEntity)//更新搜索记录
-
-                            } else {
-//                                val historyEntity = HistoryEntity(
-//                                    System.currentTimeMillis(),
-//                                    viewModel.title.toString(),
-//                                    fileserver,
-//                                    imageurl,
-//                                    "comic",
-//                                    viewModel.author.toString(),
-//                                    viewModel.bookId.toString(),
-//                                    "",
-//                                    "",
-//                                    "",
-//                                    false,
-//                                    "",
-//                                    "",
-//                                    ""
-//                                )
-//                                //这个进行更新 //更新好象要主键
-//                                viewModel.insertHistory(historyEntity)//添加搜索记录
-//                            }
-                        }
-                    }
-
-                    is Result.Error -> {
-                        binding.comicinfoProgressbar.visibility = View.GONE
-                        if (it.code == 400 && it.error == "1014") {
-                            MaterialAlertDialogBuilder(this@ComicInfoActivity)
-                                .setTitle("本子审核中！")
-                                .setPositiveButton("退出") { _, _ -> finish() }
-                                .show()
-
-                        } else {
-                            //加载失败
-                            MaterialAlertDialogBuilder(this@ComicInfoActivity)
-                                .setTitle("网络错误")
-                                .setMessage("网络错误code=${it.code} error=${it.error} message=${it.message}")
-                                .setPositiveButton("重试") { _, _ ->
-                                    binding.comicinfoProgressbar.visibility = View.VISIBLE
-                                    viewModel.getInfo()
-                                }
-                                .setNegativeButton("退出") { _, _ -> finish() }
-                                .setCancelable(false)
-                                .show()
-                        }
-                    }
-
-                    is Result.Loading -> {}
-                    else -> {}
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    fun ComicDetailContent(
+        comicDetailState: ComicDetailUiState,
+        episodes: LazyPagingItems<Episode>,
+        onBackClick: () -> Unit = {},
+        onFavoriteClick: () -> Unit = {},
+        onLikeClick: () -> Unit = {},
+        onContinueReading: (String, Int) -> Unit = { _, _ -> },
+        relatedComicsState: RecommendationsUiState,
+    ) {
+        val scrollBehavior =
+            TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+        when (comicDetailState) {
+            is ComicDetailUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = comicDetailState.message)
                 }
             }
-        }
 
-
-        //漫画章节
-        lifecycleScope.launch {
-            viewModel.episode.collect {
-                when (it) {
-                    is Result.Success -> {
-                        viewModel.totalEps = it.data.eps.total
-                        binding.comicinfoBtnRead.show()
-                        if (it.data.eps.page == 1) {//防止重复添加
-                            mAdapterEpisode.clear()
-                            mAdapterEpisode.addData(it.data.eps.docs)
-                        } else {
-                            mAdapterEpisode.addData(it.data.eps.docs)
-                        }
-
-                        if (it.data.eps.pages == it.data.eps.page) {
-                            //总页数等于当前页数 不显示加载布局
-                            episodeFooterBinding.episodeFooterLayout.isEnabled = false
-                            episodeFooterBinding.episodeFooterText.setText(R.string.footer_end)
-                        } else {
-                            episodeFooterBinding.episodeFooterLayout.isEnabled = true
-                            episodeFooterBinding.episodeFooterText.setText(R.string.footer_more)
-                        }
-                    }
-
-                    is Result.Error -> {
-                        episodeFooterBinding.episodeFooterLayout.isEnabled = true
-                        episodeFooterBinding.episodeFooterText.setText(R.string.footer_error)
-                    }
-
-                    is Result.Loading -> {}
-                    else -> {}
+            ComicDetailUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
                 }
             }
-        }
 
-        //漫画推荐
-        lifecycleScope.launch {
-            viewModel.recommend.collect {
-                when (it) {
-                    is Result.Success -> {
-                        if (mAdapterRecommend.itemCount < 1) {
-                            binding.comicinfoRecommend.addItemDecoration(
-                                SpacesItemDecoration(
-                                    SpacesItemDecoration.px2dp(20F),
-                                    it.data.comics
+            is ComicDetailUiState.Success -> {
+                Scaffold(
+                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    topBar = {
+                        CollapsingTopBar(
+                            title = comicDetailState.detail.title,
+                            imageModel = comicDetailState.detail.cover,
+                            scrollBehavior = scrollBehavior,
+                            onBackClick = onBackClick
+                        )
+                    },
+                    floatingActionButton = {
+                        ExtendedFloatingActionButton(
+                            text = { Text("开始阅读") },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Filled.PlayArrow,
+                                    contentDescription = null
                                 )
-                            )
-                            mAdapterRecommend.addNewData(it.data.comics)
-                        }
+                            },
+                            onClick = {
+                                (comicDetailState as? ComicDetailUiState.Success)?.detail?.id?.let {
+                                    onContinueReading(it, 1)
+                                }
+                            },
+                        )
+                    },
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(innerPadding),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        val detail = comicDetailState.detail
+                        ComicInfoPanel(
+                            title = detail.title,
+                            tags = detail.tags,
+                            description = detail.description,
+                            author = detail.author,
+                        )
                     }
-
-                    else -> {}
-                }
-            }
-        }
-
-        //漫画喜欢
-        lifecycleScope.launch {
-            viewModel.like.collect {
-                binding.comicinfoProgressbar.visibility = View.GONE
-                when (it) {
-                    is Result.Success -> {
-                        if (it.data.action == "like") {
-                            binding.comicinfoLikeImage.setImageResource(R.drawable.ic_favorite_24)
-                        } else {
-                            binding.comicinfoLikeImage.setImageResource(R.drawable.ic_favorite_border_24)
-                        }
-                    }
-
-                    is Result.Error -> {
-                        Toast.makeText(
-                            this@ComicInfoActivity,
-                            "网络错误，点击爱心失败code=${it.code} error=${it.error} message=${it.message}",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
-
-                    else -> {}
-                }
-            }
-        }
-
-        //漫画收藏
-        lifecycleScope.launch {
-            viewModel.favourite.collect {
-                binding.comicinfoProgressbar.visibility = View.GONE
-                when (it) {
-                    is Result.Success -> {
-                        if (binding.toolbar.menu.findItem(R.id.action_bookmark) != null) {
-                            if (it.data.action == "favourite") {
-                                binding.toolbar.menu.findItem(R.id.action_bookmark)
-                                    .setIcon(R.drawable.ic_bookmark_check)
-                            } else {
-                                binding.toolbar.menu.findItem(R.id.action_bookmark)
-                                    .setIcon(R.drawable.ic_bookmark_add)
+                    Text(
+                        "章节列表",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(4),
+                        modifier = Modifier.heightIn(max = 400.dp),
+                    ) {
+                        items(
+                            count = episodes.itemCount,
+                            key = episodes.itemKey { it.id }
+                        ) { index ->
+                            episodes[index]?.let { episode ->
+                                EpisodeItem(
+                                    episode = episode,
+                                    onClick = {
+                                        onContinueReading(comicDetailState.detail.id, episode.order)
+                                    },
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
                             }
                         }
                     }
 
-                    is Result.Error -> {
-                        Toast.makeText(
-                            this@ComicInfoActivity,
-                            "网络错误，收藏失败code=${it.code} error=${it.error} message=${it.message}",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                    RelatedComicsSection(relatedComicsState)
 
-                    else -> {}
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
         }
+    }
 
-        binding.comicInfoEpsRv.setOnItemClickListener { v, position ->
-            ReaderActivity.start(
-                v.context,
-                viewModel.bookId,
-                mAdapterEpisode.data[position].order,
-                viewModel.totalEps,
-                viewModel.title!!
+    /**
+     * 漫画详情信息面板
+     *
+     * @param title 标题
+     * @param tags 标签列表
+     * @param description 简介
+     */
+    @Composable
+    fun ComicInfoPanel(
+        author: String,
+        title: String,
+        tags: List<String>,
+        description: String,
+        modifier: Modifier = Modifier
+    ) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
+            )
+
+            ComicSynopsis(
+                description = description,
+                author = author,
+            )
+
+            TagsRow(tags = tags)
+        }
+    }
+
+    @Composable
+    fun TagsRow(
+        tags: List<String>,
+        modifier: Modifier = Modifier,
+        onTagClick: (String) -> Unit = {}
+    ) {
+        FlowRow(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            tags.fastForEach { tag ->
+                OutlinedButton(
+                    onClick = { onTagClick(tag) },
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Text(
+                        text = tag,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun ComicSynopsis(
+        author: String,
+        description: String,
+        modifier: Modifier = Modifier
+    ) {
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(
+                text = "作者: $author",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.typography.bodyMedium.color,
+                fontWeight = FontWeight.Medium
+            )
+
+            Text(
+                text = "简介: $description",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
             )
         }
-        episodeFooterBinding.episodeFooterLayout.setOnClickListener {
-            episodeFooterBinding.episodeFooterLayout.isEnabled = false
-            episodeFooterBinding.episodeFooterText.setText(R.string.footer_loading)
-            viewModel.getEpisode()
-        }
+    }
 
+    @Composable
+    fun EpisodeItem(
+        episode: Episode,
+        onClick: (Episode) -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        OutlinedButton(
+            onClick = { onClick(episode) },
+            modifier = modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text(
+                text = episode.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+
+    @Composable
+    fun RelatedComicsSection(state: RecommendationsUiState) {
+        when (state) {
+            is RecommendationsUiState.Error -> Text("推荐加载失败", Modifier.padding(16.dp))
+            RecommendationsUiState.Loading -> CircularProgressIndicator(Modifier.padding(16.dp))
+            is RecommendationsUiState.Success -> {
+                Column {
+                    Text(
+                        "相关推荐",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp)
+                    ) {
+                        items(state.comics, key = { it.id }) { summary ->
+                            ComicCoverItem(
+                                imageUrl = summary.coverUrl,
+                                title = summary.title,
+                                modifier = Modifier.width(120.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun EpisodeItemPreview() {
+        EpisodeItem(
+            episode = Episode(
+                id = "1",
+                title = "第一话",
+                order = 1,
+                updatedAt = ""
+            ),
+            onClick = {}
+        )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun ComicSynopsisPreview() {
+        MaterialTheme {
+            ComicSynopsis(
+                author = "作者",
+                description = "这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。"
+            )
+        }
+    }
+
+    companion object {
+        fun start(context: Context, id: String) {
+            val intent = Intent(context, ComicInfoActivity::class.java)
+            intent.putExtra("id", id)
+            context.startActivity(intent)
+        }
     }
 }

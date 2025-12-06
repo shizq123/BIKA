@@ -17,7 +17,7 @@ import com.shizq.bika.adapter.MyCommentsAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.bean.CommentsBean
 import com.shizq.bika.databinding.ActivityMyCommentsBinding
-import com.shizq.bika.ui.comicinfo.ComicInfoActivity2
+import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import com.shizq.bika.ui.games.GameInfoActivity
 import com.shizq.bika.utils.SPUtil
 import com.shizq.bika.utils.dp
@@ -118,7 +118,7 @@ class MyCommentsActivity : BaseActivity<ActivityMyCommentsBinding, MyCommentsVie
 //                    intent.putExtra("author", "")
 //                    intent.putExtra("totalViews", "")
 //                    startActivity(intent)
-                    ComicInfoActivity2.start(this, data._comic._id)
+                    ComicInfoActivity.start(this, data._comic._id)
                 } else {
                     val intent = Intent(this, GameInfoActivity::class.java)
                     intent.putExtra("gameId", data._game._id)

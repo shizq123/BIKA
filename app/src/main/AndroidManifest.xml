@@ -78,9 +78,6 @@
             android:name=".ui.comicinfo.ComicInfoActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.comicinfo.ComicInfoActivity2"
-            android:exported="false" />
-        <activity
             android:name=".ui.reader.ReaderActivity"
             android:exported="false" />
         <activity
