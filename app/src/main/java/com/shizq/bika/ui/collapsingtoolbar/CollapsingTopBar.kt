@@ -15,6 +15,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
@@ -54,6 +55,7 @@ fun CollapsingTopBar(
         stop = MaterialTheme.colorScheme.onSurface,
         fraction = collapsedFraction
     )
+
     Box(modifier = modifier) {
         AsyncImage(
             model = ImageRequest.Builder(LocalContext.current)
@@ -62,11 +64,12 @@ fun CollapsingTopBar(
                 .build(),
             contentDescription = null,
             contentScale = ContentScale.Crop,
+            alignment = Alignment.TopCenter,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(imageHeight)
                 .graphicsLayer {
-                    translationY = scrollBehavior.state.heightOffset * 0.3f
+                    translationY = scrollBehavior.state.heightOffset * 0.5f
                     alpha = 1f - collapsedFraction
                 }
         )
