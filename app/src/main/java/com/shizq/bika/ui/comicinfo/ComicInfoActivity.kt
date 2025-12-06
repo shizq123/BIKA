@@ -38,6 +38,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -162,35 +163,37 @@ class ComicInfoActivity : ComponentActivity() {
                             description = detail.description,
                             author = detail.author,
                         )
-                    }
-                    Text(
-                        "章节列表",
-                        style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    LazyVerticalGrid(
-                        columns = GridCells.Fixed(4),
-                        modifier = Modifier.heightIn(max = 400.dp),
-                    ) {
-                        items(
-                            count = episodes.itemCount,
-                            key = episodes.itemKey { it.id }
-                        ) { index ->
-                            episodes[index]?.let { episode ->
-                                EpisodeItem(
-                                    episode = episode,
-                                    onClick = {
-                                        onContinueReading(comicDetailState.detail.id, episode.order)
-                                    },
-                                    modifier = Modifier.padding(horizontal = 16.dp)
-                                )
+                        Text(
+                            "章节列表",
+                            style = MaterialTheme.typography.titleLarge,
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                        LazyVerticalGrid(
+                            columns = GridCells.Adaptive(minSize = 96.dp),
+                            modifier = Modifier.heightIn(max = 400.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                        ) {
+                            items(
+                                count = episodes.itemCount,
+                                key = episodes.itemKey { it.id }
+                            ) { index ->
+                                episodes[index]?.let { episode ->
+                                    EpisodeItem(
+                                        text = episode.title,
+                                        onClick = {
+                                            onContinueReading(detail.id, episode.order)
+                                        },
+                                    )
+                                }
                             }
                         }
+
+                        RelatedComicsSection(relatedComicsState)
+
+                        Spacer(modifier = Modifier.height(100.dp))
                     }
-
-                    RelatedComicsSection(relatedComicsState)
-
-                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
         }
@@ -288,17 +291,19 @@ class ComicInfoActivity : ComponentActivity() {
 
     @Composable
     fun EpisodeItem(
-        episode: Episode,
-        onClick: (Episode) -> Unit,
+        text: String,
+        onClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
-        OutlinedButton(
-            onClick = { onClick(episode) },
+        TextButton(
+            onClick = onClick,
             modifier = modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(8.dp)
+            shape = RoundedCornerShape(8.dp),
+            contentPadding = PaddingValues(horizontal = 8.dp),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
         ) {
             Text(
-                text = episode.title,
+                text = text,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
@@ -337,15 +342,20 @@ class ComicInfoActivity : ComponentActivity() {
     @Preview(showBackground = true)
     @Composable
     fun EpisodeItemPreview() {
-        EpisodeItem(
-            episode = Episode(
-                id = "1",
-                title = "第一话",
-                order = 1,
-                updatedAt = ""
-            ),
-            onClick = {}
-        )
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 80.dp),
+            modifier = Modifier.heightIn(max = 400.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+        ) {
+            items(count = 30) { index ->
+                EpisodeItem(
+                    text = "第${index}话",
+                    onClick = {},
+                )
+            }
+        }
     }
 
     @Preview(showBackground = true)
