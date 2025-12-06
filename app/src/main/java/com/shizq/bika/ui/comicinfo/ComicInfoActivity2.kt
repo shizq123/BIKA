@@ -2,69 +2,67 @@ package com.shizq.bika.ui.comicinfo
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Comment
-import androidx.compose.material.icons.automirrored.filled.MenuBook
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MoreHoriz
-import androidx.compose.material.icons.outlined.Download
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material3.Button
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
-import coil3.request.ImageRequest
-import coil3.request.crossfade
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
+import androidx.paging.compose.itemKey
+import com.shizq.bika.core.network.model.Episode
+import com.shizq.bika.ui.collapsingtoolbar.CollapsingTopBar
+import com.shizq.bika.ui.reader.ReaderActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class ComicInfoActivity2 : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(
+                Color.TRANSPARENT,
+                Color.TRANSPARENT
+            ),
+        )
         super.onCreate(savedInstanceState)
 
         setContent {
@@ -75,264 +73,282 @@ class ComicInfoActivity2 : ComponentActivity() {
     @Composable
     fun ComicDetailScreen(viewModel: ComicInfoViewModel2 = hiltViewModel()) {
         val comicDetailUiState by viewModel.comicDetailUiState.collectAsStateWithLifecycle()
+        val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
+        val relatedComicsUiState by viewModel.recommendationsUiState.collectAsStateWithLifecycle()
         ComicDetailContent(
-            comicDetailUiState,
-            onBackClick = ::finish
+            comicDetailState = comicDetailUiState,
+            relatedComicsState = relatedComicsUiState,
+            episodes = episodes,
+            onBackClick = ::finish,
+            onFavoriteClick = {},
+            onLikeClick = {},
+            onContinueReading = { id, index ->
+                ReaderActivity.start(this, id, index)
+            }
         )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ComicDetailContent(
-        uiState: ComicDetailUiState,
-        onBackClick: () -> Unit = {}
+        comicDetailState: ComicDetailUiState,
+        episodes: LazyPagingItems<Episode>,
+        onBackClick: () -> Unit = {},
+        onFavoriteClick: () -> Unit = {},
+        onLikeClick: () -> Unit = {},
+        onContinueReading: (String, Int) -> Unit = { _, _ -> },
+        relatedComicsState: RecommendationsUiState,
     ) {
+        val scrollBehavior =
+            TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
         Scaffold(
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
-                TopAppBar(
-                    title = {},
-                    navigationIcon = {
-                        IconButton(onClick = onBackClick) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
+                CollapsingTopBar(
+                    title = (comicDetailState as? ComicDetailUiState.Success)?.detail?.title ?: "",
+                    imageModel = (comicDetailState as? ComicDetailUiState.Success)?.detail?.cover,
+                    scrollBehavior = scrollBehavior,
+                    onBackClick = onBackClick
+                )
+            },
+            floatingActionButton = {
+                ExtendedFloatingActionButton(
+                    text = { Text("开始阅读") },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Filled.PlayArrow,
+                            contentDescription = null
+                        )
                     },
-                    actions = {
-                        IconButton(onClick = { /* TODO: Menu */ }) {
-                            Icon(Icons.Default.MoreHoriz, contentDescription = "More")
+                    onClick = {
+                        (comicDetailState as? ComicDetailUiState.Success)?.detail?.id?.let {
+                            onContinueReading(it, 1)
                         }
                     },
                 )
             },
         ) { innerPadding ->
-            val scrollState = rememberScrollState()
-            Column(
-                modifier = Modifier
-                    .padding(innerPadding)
-                    .fillMaxSize()
-                    .verticalScroll(scrollState)
+            LazyColumn(
+                contentPadding = innerPadding,
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                when (uiState) {
-                    ComicDetailUiState.Loading -> {
+                item {
+                    when (comicDetailState) {
+                        is ComicDetailUiState.Error -> {
 
+                        }
+
+                        ComicDetailUiState.Loading -> {
+
+                        }
+
+                        is ComicDetailUiState.Success -> {
+                            val detail = comicDetailState.detail
+                            ComicInfoPanel(
+                                title = detail.title,
+                                tags = detail.tags,
+                                description = detail.description,
+                                author = detail.author,
+                            )
+                        }
                     }
-
-                    is ComicDetailUiState.Error -> {}
-
-                    is ComicDetailUiState.Success -> {
-                        val detail = uiState.detail
-                        ComicDetailHeader(
-                            coverImageUrl = detail.cover,
-                            title = detail.title,
-                            authorName = detail.author,
-                            likeCount = detail.totalLikes,
-                            isLiked = detail.isLiked,
-                            isFavorite = detail.isFavourite,
-                            commentCount = detail.commentsCount,
-                            onLikeClick = {},
-                            onFavoriteClick = { },
-                            onCommentClick = {},
-                            onShareClick = {}
+                }
+                item {
+                    Text(
+                        "章节列表",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                }
+                items(
+                    count = episodes.itemCount,
+                    key = episodes.itemKey { it.id }
+                ) { index ->
+                    episodes[index]?.let { episode ->
+                        EpisodeItem(
+                            episode = episode,
+                            onClick = {
+                                (comicDetailState as? ComicDetailUiState.Success)?.detail?.id?.let {
+                                    onContinueReading(it, episode.order)
+                                }
+                            },
+                            modifier = Modifier.padding(horizontal = 16.dp)
                         )
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        ActionButtonsSection(onReadClick = {})
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        // 3. 信息区域 (标签流)
-//                        InfoSection()
-
-                        HorizontalDivider(thickness = 8.dp)
                     }
+                }
+
+                item {
+                    RelatedComicsSection(relatedComicsState)
+                }
+                item {
+                    Spacer(modifier = Modifier.height(100.dp))
                 }
             }
         }
     }
 
+    /**
+     * 漫画详情信息面板
+     *
+     * @param title 标题
+     * @param tags 标签列表
+     * @param description 简介
+     */
     @Composable
-    fun ComicDetailHeader(
-        coverImageUrl: String,
+    fun ComicInfoPanel(
+        author: String,
         title: String,
-        authorName: String,
-        likeCount: Int,
-        isLiked: Boolean,
-        isFavorite: Boolean,
-        commentCount: Int,
-        modifier: Modifier = Modifier,
-        onLikeClick: () -> Unit = {},
-        onFavoriteClick: () -> Unit = {},
-        onCommentClick: () -> Unit = {},
-        onShareClick: () -> Unit = {}
+        tags: List<String>,
+        description: String,
+        modifier: Modifier = Modifier
     ) {
         Column(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                ElevatedCard(
-                    shape = MaterialTheme.shapes.small,
-                    elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp),
-                    modifier = Modifier
-                        .width(100.dp)
-                        .aspectRatio(0.7f)
-                ) {
-                    AsyncImage(
-                        model = ImageRequest.Builder(LocalPlatformContext.current)
-                            .data(coverImageUrl)
-                            .crossfade(true)
-                            .build(),
-                        contentDescription = "Cover of $title",
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
-
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(top = 4.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp)
-                ) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-
-                    Text(
-                        text = authorName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    // 可以在这里预留位置放简单的分类标签，例如：
-                    // Text(text = "同人 / 短篇", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                ComicActionButton(
-                    icon = if (isLiked) Icons.Default.Favorite else Icons.Outlined.FavoriteBorder,
-                    label = formatCount(likeCount),
-                    isActive = isLiked,
-                    activeColor = MaterialTheme.colorScheme.error,
-                    onClick = onLikeClick
-                )
-
-                ComicActionButton(
-                    icon = if (isFavorite) Icons.Default.Bookmark else Icons.Default.BookmarkBorder,
-                    label = if (isFavorite) "已收藏" else "收藏",
-                    isActive = isFavorite,
-                    activeColor = MaterialTheme.colorScheme.primary,
-                    onClick = onFavoriteClick
-                )
-
-                ComicActionButton(
-                    icon = Icons.AutoMirrored.Filled.Comment,
-                    label = formatCount(commentCount),
-                    isActive = false,
-                    onClick = onCommentClick
-                )
-            }
-        }
-    }
-
-    private fun formatCount(count: Int): String {
-        return when {
-            count >= 10000 -> "%.1fw".format(count / 10000f)
-            count >= 1000 -> "%.1fk".format(count / 1000f)
-            else -> count.toString()
-        }
-    }
-
-    @Composable
-    private fun ComicActionButton(
-        icon: ImageVector,
-        label: String,
-        isActive: Boolean = false,
-        activeColor: Color = MaterialTheme.colorScheme.primary,
-        modifier: Modifier = Modifier,
-        onClick: () -> Unit
-    ) {
-        val contentColor = if (isActive) activeColor else MaterialTheme.colorScheme.onSurfaceVariant
-        val borderColor =
-            if (isActive) activeColor.copy(alpha = 0.5f) else MaterialTheme.colorScheme.outlineVariant
-
-        OutlinedButton(
-            onClick = onClick,
-            shape = MaterialTheme.shapes.extraLarge,
-            border = BorderStroke(1.dp, borderColor),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp),
-            modifier = modifier
-                .height(36.dp)
-        ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = contentColor,
-                modifier = Modifier.size(16.dp)
-            )
-            Spacer(modifier = Modifier.width(6.dp))
             Text(
-                text = label,
-                style = MaterialTheme.typography.labelMedium,
-                color = contentColor
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Bold
             )
+
+            ComicSynopsis(
+                description = description,
+                author = author,
+            )
+
+            TagsRow(tags = tags)
         }
     }
 
     @Composable
-    fun ActionButtonsSection(
-        onDownloadClick: () -> Unit = {},
-        onReadClick: () -> Unit = {},
+    fun TagsRow(
+        tags: List<String>,
+        modifier: Modifier = Modifier,
+        onTagClick: (String) -> Unit = {}
+    ) {
+        FlowRow(
+            modifier = modifier,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            tags.fastForEach { tag ->
+                OutlinedButton(
+                    onClick = { onTagClick(tag) },
+                    shape = RoundedCornerShape(8.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
+                ) {
+                    Text(
+                        text = tag,
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+    }
+
+    @Composable
+    fun ComicSynopsis(
+        author: String,
+        description: String,
         modifier: Modifier = Modifier
     ) {
-        Row(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        Column(
+            modifier = modifier,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            FilledTonalButton(
-                onClick = onDownloadClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Outlined.Download,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "下载")
-            }
+            Text(
+                text = "作者: $author",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.typography.bodyMedium.color,
+                fontWeight = FontWeight.Medium
+            )
 
-            Button(
-                onClick = onReadClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.MenuBook,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "阅读")
+            Text(
+                text = "简介: $description",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+
+    @Composable
+    fun EpisodeItem(
+        episode: Episode,
+        onClick: (Episode) -> Unit,
+        modifier: Modifier = Modifier
+    ) {
+        OutlinedButton(
+            onClick = { onClick(episode) },
+            modifier = modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(8.dp)
+        ) {
+            Text(
+                text = episode.title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+
+    @Composable
+    fun RelatedComicsSection(state: RecommendationsUiState) {
+        when (state) {
+            is RecommendationsUiState.Error -> Text("推荐加载失败", Modifier.padding(16.dp))
+            RecommendationsUiState.Loading -> CircularProgressIndicator(Modifier.padding(16.dp))
+            is RecommendationsUiState.Success -> {
+                Column {
+                    Text(
+                        "相关推荐",
+                        style = MaterialTheme.typography.titleLarge,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                    LazyRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        contentPadding = PaddingValues(horizontal = 16.dp)
+                    ) {
+                        items(state.comics, key = { it.id }) { summary ->
+                            ComicCoverItem(
+                                imageUrl = summary.coverUrl,
+                                title = summary.title,
+                                modifier = Modifier.width(120.dp)
+                            )
+                        }
+                    }
+                }
             }
+        }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun EpisodeItemPreview() {
+        EpisodeItem(
+            episode = Episode(
+                id = "1",
+                title = "第一话",
+                order = 1,
+                updatedAt = ""
+            ),
+            onClick = {}
+        )
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun ComicSynopsisPreview() {
+        MaterialTheme {
+            ComicSynopsis(
+                author = "作者",
+                description = "这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。"
+            )
         }
     }
 
