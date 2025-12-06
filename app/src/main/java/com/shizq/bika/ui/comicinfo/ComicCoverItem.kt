@@ -52,7 +52,7 @@ fun ComicCoverItem(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.Bold,
-            maxLines = 1,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis
         )
     }
