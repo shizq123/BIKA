@@ -306,8 +306,8 @@ class ComicInfoActivity : ComponentActivity() {
     }
 
     @Composable
-    fun RelatedComicsSection(state: RecommendationsUiState) {
-        when (state) {
+    fun RelatedComicsSection(recommendationsState: RecommendationsUiState) {
+        when (recommendationsState) {
             is RecommendationsUiState.Error -> Text("推荐加载失败", Modifier.padding(16.dp))
             RecommendationsUiState.Loading -> CircularProgressIndicator(Modifier.padding(16.dp))
             is RecommendationsUiState.Success -> {
@@ -321,7 +321,7 @@ class ComicInfoActivity : ComponentActivity() {
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         contentPadding = PaddingValues(horizontal = 16.dp)
                     ) {
-                        items(state.comics, key = { it.id }) { summary ->
+                        items(recommendationsState.comics, key = { it.id }) { summary ->
                             ComicCoverItem(
                                 imageUrl = summary.coverUrl,
                                 title = summary.title,
