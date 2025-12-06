@@ -10,6 +10,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
@@ -17,12 +18,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
@@ -37,6 +42,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
@@ -101,88 +107,89 @@ class ComicInfoActivity2 : ComponentActivity() {
     ) {
         val scrollBehavior =
             TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+        when (comicDetailState) {
+            is ComicDetailUiState.Error -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text(text = comicDetailState.message)
+                }
+            }
 
-        Scaffold(
-            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-            topBar = {
-                CollapsingTopBar(
-                    title = (comicDetailState as? ComicDetailUiState.Success)?.detail?.title ?: "",
-                    imageModel = (comicDetailState as? ComicDetailUiState.Success)?.detail?.cover,
-                    scrollBehavior = scrollBehavior,
-                    onBackClick = onBackClick
-                )
-            },
-            floatingActionButton = {
-                ExtendedFloatingActionButton(
-                    text = { Text("开始阅读") },
-                    icon = {
-                        Icon(
-                            imageVector = Icons.Filled.PlayArrow,
-                            contentDescription = null
+            ComicDetailUiState.Loading -> {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            is ComicDetailUiState.Success -> {
+                Scaffold(
+                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                    topBar = {
+                        CollapsingTopBar(
+                            title = comicDetailState.detail.title,
+                            imageModel = comicDetailState.detail.cover,
+                            scrollBehavior = scrollBehavior,
+                            onBackClick = onBackClick
                         )
                     },
-                    onClick = {
-                        (comicDetailState as? ComicDetailUiState.Success)?.detail?.id?.let {
-                            onContinueReading(it, 1)
-                        }
+                    floatingActionButton = {
+                        ExtendedFloatingActionButton(
+                            text = { Text("开始阅读") },
+                            icon = {
+                                Icon(
+                                    imageVector = Icons.Filled.PlayArrow,
+                                    contentDescription = null
+                                )
+                            },
+                            onClick = {
+                                (comicDetailState as? ComicDetailUiState.Success)?.detail?.id?.let {
+                                    onContinueReading(it, 1)
+                                }
+                            },
+                        )
                     },
-                )
-            },
-        ) { innerPadding ->
-            LazyColumn(
-                contentPadding = innerPadding,
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                item {
-                    when (comicDetailState) {
-                        is ComicDetailUiState.Error -> {
-
-                        }
-
-                        ComicDetailUiState.Loading -> {
-
-                        }
-
-                        is ComicDetailUiState.Success -> {
-                            val detail = comicDetailState.detail
-                            ComicInfoPanel(
-                                title = detail.title,
-                                tags = detail.tags,
-                                description = detail.description,
-                                author = detail.author,
-                            )
-                        }
+                ) { innerPadding ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .padding(innerPadding),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        val detail = comicDetailState.detail
+                        ComicInfoPanel(
+                            title = detail.title,
+                            tags = detail.tags,
+                            description = detail.description,
+                            author = detail.author,
+                        )
                     }
-                }
-                item {
                     Text(
                         "章节列表",
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )
-                }
-                items(
-                    count = episodes.itemCount,
-                    key = episodes.itemKey { it.id }
-                ) { index ->
-                    episodes[index]?.let { episode ->
-                        EpisodeItem(
-                            episode = episode,
-                            onClick = {
-                                (comicDetailState as? ComicDetailUiState.Success)?.detail?.id?.let {
-                                    onContinueReading(it, episode.order)
-                                }
-                            },
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
+                    LazyVerticalGrid(
+                        columns = GridCells.Fixed(4),
+                        modifier = Modifier.heightIn(max = 400.dp),
+                    ) {
+                        items(
+                            count = episodes.itemCount,
+                            key = episodes.itemKey { it.id }
+                        ) { index ->
+                            episodes[index]?.let { episode ->
+                                EpisodeItem(
+                                    episode = episode,
+                                    onClick = {
+                                        onContinueReading(comicDetailState.detail.id, episode.order)
+                                    },
+                                    modifier = Modifier.padding(horizontal = 16.dp)
+                                )
+                            }
+                        }
                     }
-                }
 
-                item {
                     RelatedComicsSection(relatedComicsState)
-                }
-                item {
+
                     Spacer(modifier = Modifier.height(100.dp))
                 }
             }
