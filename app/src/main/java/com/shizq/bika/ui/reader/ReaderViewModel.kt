@@ -7,6 +7,7 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ComicPagingSource
@@ -26,6 +27,7 @@ import kotlinx.coroutines.flow.stateIn
 class ReaderViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val network: BikaDataSource
 ) : ViewModel() {
     val readerPreferencesFlow = userPreferencesDataSource.userData.map {
         ReaderConfig(
@@ -44,7 +46,7 @@ class ReaderViewModel @Inject constructor(
     val chapterIndex = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
     val chapterPagingFlow = idFlow.flatMapLatest { id ->
         Pager(config = PagingConfig(pageSize = 40)) {
-            ChapterListPagingSource(id)
+            ChapterListPagingSource(id, network)
         }
             .flow
             .cachedIn(viewModelScope)

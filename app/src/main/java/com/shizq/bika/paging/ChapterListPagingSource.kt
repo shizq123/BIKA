@@ -2,32 +2,26 @@ package com.shizq.bika.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.shizq.bika.network.RetrofitUtil
-import com.shizq.bika.network.base.BaseHeaders
+import com.shizq.bika.core.network.BikaDataSource
 
 class ChapterListPagingSource(
     private val id: String,
+    private val network: BikaDataSource
 ) : PagingSource<Int, Chapter>() {
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Chapter> {
         return try {
             val currentPage = params.key ?: 1
-            val response = RetrofitUtil.service.comicsEpisodeGet2(
-                id,
-                currentPage,
-                BaseHeaders("comics/$id/eps?page=$currentPage", "GET").getHeaderMapAndToken()
-            )
-            val data = response.data ?: return LoadResult.Error(Exception("Data is null"))
-            if (response.code != 200) {
-                return LoadResult.Error(Exception(response.message))
-            }
+
+            val response = network.getComicEpisodes(id, currentPage)
+            val data = response.eps
 
             LoadResult.Page(
-                data = data.eps.docs.map { doc ->
+                data = data.docs.map { doc ->
                     Chapter(doc.id, doc.order, doc.title, doc.updatedAt)
                 },
                 prevKey = null,
-                nextKey = if (currentPage < data.eps.pages) currentPage + 1 else null
+                nextKey = if (currentPage < data.pages) currentPage + 1 else null
             )
         } catch (e: Exception) {
             LoadResult.Error(e)
