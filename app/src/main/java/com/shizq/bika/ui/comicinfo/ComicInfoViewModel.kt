@@ -7,6 +7,8 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
+import com.shizq.bika.core.coroutine.FlowRestarter
+import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.result.Result
@@ -15,39 +17,62 @@ import com.shizq.bika.paging.EpisodePagingSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class ComicInfoViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val network: BikaDataSource,
 ) : ViewModel() {
+    private val restarter = FlowRestarter()
     private val comicIdFlow: StateFlow<String?> = savedStateHandle.getStateFlow("id", null)
-    val comicDetailUiState: StateFlow<ComicDetailUiState> = comicIdFlow
-        .flatMapLatest { id ->
-            if (id == null) {
-                flowOf(Result.Loading)
-            } else {
-                flow { emit(network.getComicDetails(id)) }.asResult()
-            }
-        }
-        .map { result ->
-            when (result) {
-                is Result.Success -> ComicDetailUiState.Success(result.data.toComicDetail())
-                is Result.Error -> ComicDetailUiState.Error(
-                    result.exception.message ?: "Unknown error"
-                )
+    private val favoriteStateOverride = MutableStateFlow<Boolean?>(null)
+    private val likeStateOverride = MutableStateFlow<Boolean?>(null)
+    val comicDetailUiState: StateFlow<ComicDetailUiState> = combine(
+        comicIdFlow
+            .flatMapLatest { id ->
+                favoriteStateOverride.value = null
+                likeStateOverride.value = null
 
-                Result.Loading -> ComicDetailUiState.Loading
+                if (id == null) {
+                    flowOf(Result.Loading)
+                } else {
+                    flow { emit(network.getComicDetails(id)) }.asResult()
+                }
+            },
+        favoriteStateOverride,
+        likeStateOverride
+    ) { result, isFavoriteOverride, isLikeOverride ->
+        when (result) {
+            is Result.Success -> {
+                val originalDetail = result.data.toComicDetail()
+
+                val finalDetail = originalDetail.copy(
+                    isFavourite = isFavoriteOverride ?: originalDetail.isFavourite,
+                    isLiked = isLikeOverride ?: originalDetail.isLiked
+                )
+                ComicDetailUiState.Success(finalDetail)
             }
+
+            is Result.Error -> ComicDetailUiState.Error(
+                result.exception.message ?: "Unknown error"
+            )
+
+            Result.Loading -> ComicDetailUiState.Loading
         }
+    }
+        .restartable(restarter)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
@@ -93,4 +118,44 @@ class ComicInfoViewModel @Inject constructor(
             }
         }
         .cachedIn(viewModelScope)
+
+    fun retry() {
+        restarter.restart()
+    }
+
+    fun toggleLike(id: String) {
+        val currentState = comicDetailUiState.value
+        if (currentState is ComicDetailUiState.Success) {
+            val originalState = currentState.detail.isLiked
+            val newState = !originalState
+
+            likeStateOverride.update { newState }
+
+            viewModelScope.launch {
+                try {
+                    network.toggleLike(id)
+                } catch (e: Exception) {
+                    likeStateOverride.update { originalState }
+                }
+            }
+        }
+    }
+
+    fun toggleFavorite(id: String) {
+        val currentState = comicDetailUiState.value
+        if (currentState is ComicDetailUiState.Success) {
+            val originalFavoriteState = currentState.detail.isFavourite
+            val newFavoriteState = !originalFavoriteState
+
+            favoriteStateOverride.update { newFavoriteState }
+
+            viewModelScope.launch {
+                try {
+                    network.toggleFavourite(id)
+                } catch (e: Exception) {
+                    favoriteStateOverride.update { originalFavoriteState }
+                }
+            }
+        }
+    }
 }
