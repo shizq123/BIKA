@@ -65,6 +65,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.ui.collapsingtoolbar.CollapsingTopBar
+import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.reader.ReaderActivity
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -89,7 +90,7 @@ class ComicInfoActivity : ComponentActivity() {
         val comicDetailUiState by viewModel.comicDetailUiState.collectAsStateWithLifecycle()
         val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
         val relatedComicsUiState by viewModel.recommendationsUiState.collectAsStateWithLifecycle()
-        
+
         ComicDetailContent(
             comicDetailState = comicDetailUiState,
             relatedComicsState = relatedComicsUiState,
@@ -99,6 +100,9 @@ class ComicInfoActivity : ComponentActivity() {
             onLikeClick = viewModel::toggleLike,
             onContinueReading = { id, index ->
                 ReaderActivity.start(this, id, index)
+            },
+            onTagClick = { tag ->
+                ComicListActivity.start(this, "tags", tag, tag)
             }
         )
     }
@@ -107,12 +111,13 @@ class ComicInfoActivity : ComponentActivity() {
     @Composable
     fun ComicDetailContent(
         comicDetailState: ComicDetailUiState,
+        relatedComicsState: RecommendationsUiState,
         episodes: LazyPagingItems<Episode>,
         onBackClick: () -> Unit = {},
         onFavoriteClick: () -> Unit = {},
         onLikeClick: () -> Unit = {},
         onContinueReading: (String, Int) -> Unit = { _, _ -> },
-        relatedComicsState: RecommendationsUiState,
+        onTagClick: (String) -> Unit = {},
     ) {
         val scrollBehavior =
             TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
@@ -166,7 +171,8 @@ class ComicInfoActivity : ComponentActivity() {
                         ComicInfoPanel(
                             detail,
                             onFavoriteClick = onFavoriteClick,
-                            onLikeClick = onLikeClick
+                            onLikeClick = onLikeClick,
+                            onTagClick = onTagClick,
                         )
                         Text(
                             "章节列表",
@@ -210,6 +216,7 @@ class ComicInfoActivity : ComponentActivity() {
         modifier: Modifier = Modifier,
         onFavoriteClick: () -> Unit = {},
         onLikeClick: () -> Unit = {},
+        onTagClick: (String) -> Unit = {},
     ) {
         Column(
             modifier = modifier
@@ -232,7 +239,7 @@ class ComicInfoActivity : ComponentActivity() {
                 onLikeClick = onLikeClick,
             )
 
-            TagsRow(tags = detail.tags)
+            TagsRow(tags = detail.tags, onTagClick = onTagClick)
         }
     }
 
