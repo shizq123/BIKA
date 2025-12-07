@@ -53,8 +53,10 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -74,6 +76,8 @@ import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.reader.ReaderActivity
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.first
 
 @AndroidEntryPoint
 class ComicInfoActivity : ComponentActivity() {
@@ -106,6 +110,14 @@ class ComicInfoActivity : ComponentActivity() {
         val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
         val relatedComicsUiState by viewModel.recommendationsUiState.collectAsStateWithLifecycle()
 
+        LaunchedEffect(Unit) {
+            snapshotFlow { comicDetailUiState }
+                .filterIsInstance<ComicDetailUiState.Success>()
+                .first()
+                .let {
+                    viewModel.recordVisit()
+                }
+        }
         ComicDetailContent(
             comicDetailState = comicDetailUiState,
             relatedComicsState = relatedComicsUiState,
@@ -152,7 +164,7 @@ class ComicInfoActivity : ComponentActivity() {
             },
             navigationToComicInfo = {
                 ComicInfoActivity.start(this, it)
-            }
+            },
         )
     }
 

@@ -9,6 +9,9 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
+import com.shizq.bika.core.database.dao.HistoryDao
+import com.shizq.bika.core.database.model.HistoryRecordEntity
+import com.shizq.bika.core.database.model.ReadingProgressRecord
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.result.Result
@@ -29,11 +32,13 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 @HiltViewModel
 class ComicInfoViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val network: BikaDataSource,
+    private val historyDao: HistoryDao,
 ) : ViewModel() {
     private val restarter = FlowRestarter()
     private val comicIdFlow: StateFlow<String?> = savedStateHandle.getStateFlow("id", null)
@@ -155,6 +160,28 @@ class ComicInfoViewModel @Inject constructor(
                 } catch (e: Exception) {
                     favoriteStateOverride.update { originalFavoriteState }
                 }
+            }
+        }
+    }
+    fun recordVisit() {
+        val currentState = comicDetailUiState.value
+        if (currentState is ComicDetailUiState.Success) {
+            viewModelScope.launch {
+                val detail = currentState.detail
+                val existingHistory = historyDao.getHistoryById(detail.id)
+
+                val historyRecord = HistoryRecordEntity(
+                    id = detail.id,
+                    title = detail.title,
+                    author = detail.author,
+                    cover = detail.cover,
+                    lastReadAt = Clock.System.now(),
+                    maxPage = existingHistory?.maxPage,
+                    lastReadProgress = existingHistory?.lastReadProgress ?: ReadingProgressRecord(
+                        chapterIndex = 0, pageIndex = 0
+                    )
+                )
+                historyDao.upsertHistoryRecord(historyRecord)
             }
         }
     }
