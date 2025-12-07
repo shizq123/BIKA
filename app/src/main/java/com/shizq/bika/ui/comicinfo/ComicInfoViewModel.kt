@@ -123,7 +123,7 @@ class ComicInfoViewModel @Inject constructor(
         restarter.restart()
     }
 
-    fun toggleLike(id: String) {
+    fun toggleLike() {
         val currentState = comicDetailUiState.value
         if (currentState is ComicDetailUiState.Success) {
             val originalState = currentState.detail.isLiked
@@ -133,7 +133,7 @@ class ComicInfoViewModel @Inject constructor(
 
             viewModelScope.launch {
                 try {
-                    network.toggleLike(id)
+                    network.toggleLike(currentState.detail.id)
                 } catch (e: Exception) {
                     likeStateOverride.update { originalState }
                 }
@@ -141,7 +141,7 @@ class ComicInfoViewModel @Inject constructor(
         }
     }
 
-    fun toggleFavorite(id: String) {
+    fun toggleFavorite() {
         val currentState = comicDetailUiState.value
         if (currentState is ComicDetailUiState.Success) {
             val originalFavoriteState = currentState.detail.isFavourite
@@ -151,7 +151,7 @@ class ComicInfoViewModel @Inject constructor(
 
             viewModelScope.launch {
                 try {
-                    network.toggleFavourite(id)
+                    network.toggleFavourite(currentState.detail.id)
                 } catch (e: Exception) {
                     favoriteStateOverride.update { originalFavoriteState }
                 }
