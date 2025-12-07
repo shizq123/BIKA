@@ -9,6 +9,8 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,6 +32,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Comment
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.ThumbUp
@@ -39,6 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +54,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -66,6 +71,7 @@ import androidx.paging.compose.itemKey
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.ui.collapsingtoolbar.CollapsingTopBar
 import com.shizq.bika.ui.comiclist.ComicListActivity
+import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.reader.ReaderActivity
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -85,6 +91,15 @@ class ComicInfoActivity : ComponentActivity() {
         }
     }
 
+    //
+//        fun Creator() {
+//            //搜索上传者
+//            val intent = Intent(this@ComicInfoActivity, ComicListActivity::class.java)
+//            intent.putExtra("tag", "knight")
+//            intent.putExtra("title", binding.comicinfoCreatorName.text.toString())
+//            intent.putExtra("value", viewModel.creatorId)
+//            startActivity(intent)
+//        }
     @Composable
     fun ComicDetailScreen(viewModel: ComicInfoViewModel = hiltViewModel()) {
         val comicDetailUiState by viewModel.comicDetailUiState.collectAsStateWithLifecycle()
@@ -103,6 +118,40 @@ class ComicInfoActivity : ComponentActivity() {
             },
             onTagClick = { tag ->
                 ComicListActivity.start(this, "tags", tag, tag)
+            },
+            onAuthorClick = { authorName ->
+                val intent = Intent(this, ComicListActivity::class.java).apply {
+                    putExtra("tag", "author")
+                    putExtra("title", authorName)
+                    putExtra("value", authorName)
+                }
+                startActivity(intent)
+            },
+            onTranslatorClick = { translatorName ->
+                val intent = Intent(this, ComicListActivity::class.java).apply {
+                    putExtra("tag", "translate")
+                    putExtra("title", translatorName)
+                    putExtra("value", translatorName)
+                }
+                startActivity(intent)
+            },
+//            onCreatorClick = {  creatorName ->
+//                val intent = Intent(this, ComicListActivity::class.java).apply {
+//                    putExtra("tag", "knight")
+//                    putExtra("title", creatorName)
+//                    putExtra("value", creatorId)
+//                }
+//                startActivity(intent)
+//            },
+            onCommentClick = { comicId ->
+                val intent = Intent(this, CommentsActivity::class.java).apply {
+                    putExtra("id", comicId)
+                    putExtra("comics_games", "comics")
+                }
+                startActivity(intent)
+            },
+            navigationToComicInfo = {
+                ComicInfoActivity.start(this, it)
             }
         )
     }
@@ -118,6 +167,10 @@ class ComicInfoActivity : ComponentActivity() {
         onLikeClick: () -> Unit = {},
         onContinueReading: (String, Int) -> Unit = { _, _ -> },
         onTagClick: (String) -> Unit = {},
+        onAuthorClick: (String) -> Unit = {},
+        onTranslatorClick: (String) -> Unit = {},
+        onCommentClick: (String) -> Unit = {},
+        navigationToComicInfo: (String) -> Unit = {},
     ) {
         val scrollBehavior =
             TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
@@ -173,6 +226,9 @@ class ComicInfoActivity : ComponentActivity() {
                             onFavoriteClick = onFavoriteClick,
                             onLikeClick = onLikeClick,
                             onTagClick = onTagClick,
+                            onAuthorClick = onAuthorClick,
+                            onCommentClick = onCommentClick,
+                            onTranslatorClick = onTranslatorClick,
                         )
                         Text(
                             "章节列表",
@@ -201,7 +257,10 @@ class ComicInfoActivity : ComponentActivity() {
                             }
                         }
 
-                        RelatedComicsSection(relatedComicsState)
+                        RelatedComicsSection(
+                            relatedComicsState,
+                            navigationToComicInfo = navigationToComicInfo
+                        )
 
                         Spacer(modifier = Modifier.height(100.dp))
                     }
@@ -217,6 +276,9 @@ class ComicInfoActivity : ComponentActivity() {
         onFavoriteClick: () -> Unit = {},
         onLikeClick: () -> Unit = {},
         onTagClick: (String) -> Unit = {},
+        onAuthorClick: (String) -> Unit = {},
+        onCommentClick: (String) -> Unit = {},
+        onTranslatorClick: (String) -> Unit = {},
     ) {
         Column(
             modifier = modifier
@@ -233,10 +295,14 @@ class ComicInfoActivity : ComponentActivity() {
             ComicSynopsis(
                 description = detail.description,
                 author = detail.author,
+                chineseTeam = detail.chineseTeam,
                 isFavorited = detail.isFavourite,
                 isLiked = detail.isLiked,
                 onFavoriteClick = onFavoriteClick,
                 onLikeClick = onLikeClick,
+                onAuthorClick = { onAuthorClick(detail.author) },
+                onCommentClick = { onCommentClick(detail.id) },
+                onTranslatorClick = { onTranslatorClick(detail.chineseTeam ?: "") },
             )
 
             TagsRow(tags = detail.tags, onTagClick = onTagClick)
@@ -273,11 +339,15 @@ class ComicInfoActivity : ComponentActivity() {
     @Composable
     fun ComicSynopsis(
         author: String,
+        chineseTeam: String?,
         description: String,
         isFavorited: Boolean,
         isLiked: Boolean,
         onFavoriteClick: () -> Unit,
         onLikeClick: () -> Unit,
+        onAuthorClick: () -> Unit,
+        onCommentClick: () -> Unit,
+        onTranslatorClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
         Row(
@@ -289,17 +359,31 @@ class ComicInfoActivity : ComponentActivity() {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = "作者: $author",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                Text(
                     text = "简介: $description",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 3,
                     overflow = TextOverflow.Ellipsis
                 )
+                Text(
+                    text = "作者: $author",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    modifier = Modifier.clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) { onAuthorClick() }
+                )
+                if (!chineseTeam.isNullOrEmpty()) {
+                    Text(
+                        text = "汉化组: $chineseTeam",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) { onTranslatorClick() }
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.width(16.dp))
@@ -323,6 +407,12 @@ class ComicInfoActivity : ComponentActivity() {
                         imageVector = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
                         contentDescription = "喜欢",
                         tint = if (isLiked) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                    )
+                }
+                IconButton(onCommentClick) {
+                    Icon(
+                        Icons.AutoMirrored.Rounded.Comment,
+                        contentDescription = "评论"
                     )
                 }
             }
@@ -351,7 +441,10 @@ class ComicInfoActivity : ComponentActivity() {
     }
 
     @Composable
-    fun RelatedComicsSection(recommendationsState: RecommendationsUiState) {
+    fun RelatedComicsSection(
+        recommendationsState: RecommendationsUiState,
+        navigationToComicInfo: (String) -> Unit = {}
+    ) {
         when (recommendationsState) {
             is RecommendationsUiState.Error -> Text("推荐加载失败", Modifier.padding(16.dp))
             RecommendationsUiState.Loading -> CircularProgressIndicator(Modifier.padding(16.dp))
@@ -370,7 +463,12 @@ class ComicInfoActivity : ComponentActivity() {
                             ComicCoverItem(
                                 imageUrl = summary.coverUrl,
                                 title = summary.title,
-                                modifier = Modifier.width(120.dp)
+                                modifier = Modifier
+                                    .width(120.dp)
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null
+                                    ) { navigationToComicInfo(summary.id) }
                             )
                         }
                     }
@@ -415,7 +513,12 @@ class ComicInfoActivity : ComponentActivity() {
             isFavorited = false,
             isLiked = true,
             onFavoriteClick = {},
-            onLikeClick = {}
+            onLikeClick = {},
+            onAuthorClick = {},
+            modifier = Modifier,
+            onCommentClick = {},
+            chineseTeam = "哔咔汉化组",
+            onTranslatorClick = {}
         )
     }
 }
