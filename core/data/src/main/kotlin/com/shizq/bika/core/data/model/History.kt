@@ -1,6 +1,5 @@
 package com.shizq.bika.core.data.model
 
-import com.shizq.bika.core.database.model.HistoryWithReadChapters
 import kotlin.time.Instant
 
 data class ReadingProgress(
@@ -25,22 +24,22 @@ data class History(
     val maxPage: Int?
 )
 
-fun HistoryWithReadChapters.asExternalModel(): History = History(
-    id = history.id,
-    title = history.title,
-    author = history.author,
-    cover = history.cover,
-    lastReadAt = history.lastReadAt,
-    maxPage = history.maxPage,
-    lastReadProgress = ReadingProgress(
-        chapterIndex = history.lastReadProgress.chapterIndex,
-        pageIndex = history.lastReadProgress.pageIndex,
-        groupIndex = history.lastReadProgress.groupIndex
-    ),
-    readChapters = readChapters.map {
-        ReadChapterIdentifier(
-            chapterIndex = it.chapterIndex,
-            groupIndex = it.groupIndex
-        )
-    }.toSet()
-)
+//fun HistoryWithReadChapters.asExternalModel(): History = History(
+//    id = history.id,
+//    title = history.title,
+//    author = history.author,
+//    cover = history.cover,
+//    lastReadAt = history.lastReadAt,
+//    maxPage = history.maxPage,
+//    lastReadProgress = ReadingProgress(
+//        chapterIndex = history.lastReadProgress.chapterIndex,
+//        pageIndex = history.lastReadProgress.pageIndex,
+//        groupIndex = history.lastReadProgress.groupIndex
+//    ),
+//    readChapters = readChapters.map {
+//        ReadChapterIdentifier(
+//            chapterIndex = it.chapterIndex,
+//            groupIndex = it.groupIndex
+//        )
+//    }.toSet()
+//)

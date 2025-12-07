@@ -12,14 +12,20 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface HistoryDao {
+    /**
+     * 更新或插入历史记录及其已读章节。
+     */
     @Transaction
-    suspend fun upsertHistory(history: HistoryRecordEntity, readChapters: List<ReadChapterEntity>) {
-        upsertHistory(history)
+    suspend fun upsertHistoryWithChapters(
+        history: HistoryRecordEntity,
+        readChapters: List<ReadChapterEntity>
+    ) {
+        upsertHistoryRecord(history)
         insertReadChapters(readChapters)
     }
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun upsertHistory(history: HistoryRecordEntity)
+    suspend fun upsertHistoryRecord(history: HistoryRecordEntity)
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertReadChapters(readChapters: List<ReadChapterEntity>)
@@ -30,4 +36,7 @@ interface HistoryDao {
     @Transaction
     @Query("SELECT * FROM historyRecord ORDER BY lastReadAt DESC")
     fun getHistoriesWithReadChapters(): Flow<List<HistoryWithReadChapters>>
+
+    @Query("SELECT * FROM historyRecord WHERE id = :comicId LIMIT 1")
+    suspend fun getHistoryById(comicId: String): HistoryRecordEntity?
 }

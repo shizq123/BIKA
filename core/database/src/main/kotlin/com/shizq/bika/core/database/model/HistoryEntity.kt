@@ -26,7 +26,7 @@ data class HistoryRecordEntity(
 
     // 上次阅读的进度
     @Embedded
-    val lastReadProgress: ReadingProgressRecord,
+    val lastReadProgress: ReadingProgressRecord? = null,
 )
 
 data class ReadingProgressRecord(
