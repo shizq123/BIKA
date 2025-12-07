@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -29,11 +30,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconToggleButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -82,13 +89,14 @@ class ComicInfoActivity : ComponentActivity() {
         val comicDetailUiState by viewModel.comicDetailUiState.collectAsStateWithLifecycle()
         val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
         val relatedComicsUiState by viewModel.recommendationsUiState.collectAsStateWithLifecycle()
+        
         ComicDetailContent(
             comicDetailState = comicDetailUiState,
             relatedComicsState = relatedComicsUiState,
             episodes = episodes,
             onBackClick = ::finish,
-            onFavoriteClick = {},
-            onLikeClick = {},
+            onFavoriteClick = viewModel::toggleFavorite,
+            onLikeClick = viewModel::toggleLike,
             onContinueReading = { id, index ->
                 ReaderActivity.start(this, id, index)
             }
@@ -156,10 +164,9 @@ class ComicInfoActivity : ComponentActivity() {
                     ) {
                         val detail = comicDetailState.detail
                         ComicInfoPanel(
-                            title = detail.title,
-                            tags = detail.tags,
-                            description = detail.description,
-                            author = detail.author,
+                            detail,
+                            onFavoriteClick = onFavoriteClick,
+                            onLikeClick = onLikeClick
                         )
                         Text(
                             "章节列表",
@@ -197,20 +204,12 @@ class ComicInfoActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * 漫画详情信息面板
-     *
-     * @param title 标题
-     * @param tags 标签列表
-     * @param description 简介
-     */
     @Composable
     fun ComicInfoPanel(
-        author: String,
-        title: String,
-        tags: List<String>,
-        description: String,
-        modifier: Modifier = Modifier
+        detail: ComicDetail,
+        modifier: Modifier = Modifier,
+        onFavoriteClick: () -> Unit = {},
+        onLikeClick: () -> Unit = {},
     ) {
         Column(
             modifier = modifier
@@ -219,17 +218,21 @@ class ComicInfoActivity : ComponentActivity() {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = title,
+                text = detail.title,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold
             )
 
             ComicSynopsis(
-                description = description,
-                author = author,
+                description = detail.description,
+                author = detail.author,
+                isFavorited = detail.isFavourite,
+                isLiked = detail.isLiked,
+                onFavoriteClick = onFavoriteClick,
+                onLikeClick = onLikeClick,
             )
 
-            TagsRow(tags = tags)
+            TagsRow(tags = detail.tags)
         }
     }
 
@@ -264,26 +267,58 @@ class ComicInfoActivity : ComponentActivity() {
     fun ComicSynopsis(
         author: String,
         description: String,
+        isFavorited: Boolean,
+        isLiked: Boolean,
+        onFavoriteClick: () -> Unit,
+        onLikeClick: () -> Unit,
         modifier: Modifier = Modifier
     ) {
-        Column(
+        Row(
             modifier = modifier,
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = "作者: $author",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.typography.bodyMedium.color,
-                fontWeight = FontWeight.Medium
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    text = "作者: $author",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium
+                )
+                Text(
+                    text = "简介: $description",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
 
-            Text(
-                text = "简介: $description",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Row {
+                IconToggleButton(
+                    checked = isFavorited,
+                    onCheckedChange = { onFavoriteClick() }
+                ) {
+                    Icon(
+                        imageVector = if (isFavorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                        contentDescription = "收藏",
+                        tint = if (isFavorited) MaterialTheme.colorScheme.error else LocalContentColor.current
+                    )
+                }
+                IconToggleButton(
+                    checked = isLiked,
+                    onCheckedChange = { onLikeClick() }
+                ) {
+                    Icon(
+                        imageVector = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                        contentDescription = "喜欢",
+                        tint = if (isLiked) MaterialTheme.colorScheme.primary else LocalContentColor.current
+                    )
+                }
+            }
         }
     }
 
@@ -350,20 +385,9 @@ class ComicInfoActivity : ComponentActivity() {
             items(count = 30) { index ->
                 EpisodeItem(
                     text = "第${index}话",
-                    onClick = {},
+                    onClick = { },
                 )
             }
-        }
-    }
-
-    @Preview(showBackground = true)
-    @Composable
-    fun ComicSynopsisPreview() {
-        MaterialTheme {
-            ComicSynopsis(
-                author = "作者",
-                description = "这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。这是一段很长很长的简介，长到可以换行。"
-            )
         }
     }
 
@@ -373,5 +397,18 @@ class ComicInfoActivity : ComponentActivity() {
             intent.putExtra("id", id)
             context.startActivity(intent)
         }
+    }
+
+    @Preview(showBackground = true)
+    @Composable
+    fun ComicSynopsisPreview() {
+        ComicSynopsis(
+            author = "作者",
+            description = "这是一段很长很长的简介，这是一段很长很长的简介，这是一段很长很长的简介，这是一段很长很长的简介。",
+            isFavorited = false,
+            isLiked = true,
+            onFavoriteClick = {},
+            onLikeClick = {}
+        )
     }
 }
