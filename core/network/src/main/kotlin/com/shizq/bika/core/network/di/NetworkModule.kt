@@ -7,6 +7,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BuildConfig
+import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
 import com.shizq.bika.core.network.plugin.ResponseTransformer
 import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
@@ -84,7 +85,10 @@ internal object NetworkModule {
         @ApplicationContext application: Context,
     ): ImageLoader = trace("ImageLoader") {
         ImageLoader.Builder(application)
-            .components { add(OkHttpNetworkFetcherFactory(okHttpClient)) }
+            .components {
+                add(OkHttpNetworkFetcherFactory(okHttpClient))
+                add(DomainFallbackInterceptor())
+            }
             .apply {
                 if (BuildConfig.DEBUG) {
                     logger(DebugLogger())
