@@ -16,7 +16,7 @@ import com.shizq.bika.core.database.util.InstantConverter
         HistoryRecordEntity::class,
         ReadChapterEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(InstantConverter::class)
