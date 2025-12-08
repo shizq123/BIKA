@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.reader
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -29,6 +30,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
+
+private const val TAG = "ReaderViewModel"
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
@@ -72,20 +75,35 @@ class ReaderViewModel @Inject constructor(
     fun updateChapterOrder(chapter: Chapter) {
         savedStateHandle[EXTRA_ORDER] = chapter.order
     }
+
     fun saveHistory() {
         viewModelScope.launch(NonCancellable) {
+            Log.d(TAG, "saveHistory: Attempting to save reading history...")
+
             val comicId = idFlow.value
+            Log.d(TAG, "saveHistory: Current comicId is '$comicId'.")
 
-            if (comicId.isEmpty()) return@launch
+            if (comicId.isEmpty()) {
+                Log.w(TAG, "saveHistory: Aborting, comicId is empty.")
+                return@launch
+            }
 
+            Log.d(TAG, "saveHistory: Fetching existing history from database...")
             val existingHistory = historyDao.getHistoryById(comicId)
 
-            existingHistory?.let { history ->
+            if (existingHistory != null) {
+                Log.d(TAG, "saveHistory: Found existing history. Preparing to update.")
+
                 val totalPages = PagingMetadata.totalElements.value
                 val currentChapterOrder = chapterIndex.value
                 val currentPageIndex = currentPage.value
 
-                val updatedHistory = history.copy(
+                Log.d(
+                    TAG,
+                    "saveHistory: Progress to save -> Chapter: $currentChapterOrder, Page: $currentPageIndex, Total Pages: $totalPages"
+                )
+
+                val updatedHistory = existingHistory.copy(
                     lastReadAt = Clock.System.now(),
                     maxPage = totalPages,
                     lastReadProgress = ReadingProgressRecord(
@@ -99,7 +117,17 @@ class ReaderViewModel @Inject constructor(
                     chapterIndex = currentChapterOrder
                 )
 
-                historyDao.upsertHistoryWithChapters(updatedHistory, listOf(readChapter))
+                Log.d(TAG, "saveHistory: Executing database update with data: $updatedHistory")
+
+                historyDao.updateHistoryWithChapters(updatedHistory, listOf(readChapter))
+
+                Log.i(TAG, "saveHistory: Successfully updated history for comicId '$comicId'.")
+
+            } else {
+                Log.w(
+                    TAG,
+                    "saveHistory: No existing history found for comicId '$comicId'. Nothing to update."
+                )
             }
         }
     }
