@@ -8,5 +8,7 @@ android {
 }
 
 dependencies {
+    api(libs.kotlinx.datetime)
+
     implementation(libs.kotlinx.serialization.core)
 }
