@@ -1,19 +1,17 @@
 package com.shizq.bika.ui
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -22,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -47,20 +44,16 @@ import kotlin.time.Instant
 fun ComicCard(
     history: History,
     modifier: Modifier = Modifier,
-    onItemClick: () -> Unit = {},
+    onClick: () -> Unit = {},
 ) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onItemClick() },
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+    ElevatedCard(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // 漫画封面 (尺寸已增大)
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(history.cover)
@@ -69,74 +62,83 @@ fun ComicCard(
                 contentDescription = "${history.title} Cover",
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(width = 80.dp, height = 110.dp)
-                    .shadow(elevation = 4.dp, shape = RoundedCornerShape(8.dp))
+                    .width(100.dp)
+                    .aspectRatio(3f / 4f)  // <--- 这里是主要修改
                     .clip(RoundedCornerShape(8.dp))
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 右侧信息区域
+            // 右侧信息区域 (为了容纳更大的图片，高度也需要足够)
             Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.Center
+                modifier = Modifier
+                    .weight(1f)
+                    .height(130.dp), // 让Column高度与图片匹配，确保内容垂直居中
+                verticalArrangement = Arrangement.SpaceBetween // 使用SpaceBetween让元素上下分布
             ) {
-                Text(
-                    text = history.title,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                // 标题和作者
+                Column {
+                    Text(
+                        text = history.title,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
 
-                Spacer(modifier = Modifier.height(4.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                Text(
-                    text = history.author,
-                    style = MaterialTheme.typography.bodyMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                val progressText = "读至: 第${history.lastReadProgress.chapterIndex + 1}话"
-                Text(
-                    text = progressText,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-
-                Spacer(modifier = Modifier.height(6.dp))
-
-                // 进度条
-                val progress = remember(history) {
-                    history.maxPage?.let {
-                        if (it > 0) {
-                            (history.lastReadProgress.chapterIndex + 1).toFloat() / it
-                        } else 0f
-                    } ?: 0f
-                }
-
-                if (progress > 0) {
-                    LinearProgressIndicator(
-                        progress = { progress },
-                        modifier = Modifier
-                            .height(6.dp)
-                            .clip(RoundedCornerShape(50)),
-                        strokeCap = StrokeCap.Round,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant
+                    Text(
+                        text = history.author,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
 
-                Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = formatLastReadTime(history.lastReadAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline
-                )
+                // 进度和时间
+                Column {
+                    // 阅读进度文本和进度条
+                    val progressText = "读至: 第${history.lastReadProgress.chapterIndex + 1}章"
+                    Text(
+                        text = progressText,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    Spacer(modifier = Modifier.height(6.dp))
+
+                    val progress = remember(history) {
+                        val maxPage = history.maxPage
+                        if (maxPage != null && maxPage > 0) {
+                            (history.lastReadProgress.chapterIndex + 1).toFloat() / maxPage
+                        } else {
+                            0f
+                        }
+                    }
+
+                    if (progress > 0) {
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .height(6.dp)
+                                .clip(RoundedCornerShape(50)),
+                            strokeCap = StrokeCap.Round,
+                            trackColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // 最后阅读时间
+                    Text(
+                        text = formatLastReadTime(history.lastReadAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+                }
             }
         }
     }
@@ -178,7 +180,7 @@ fun ComicCardPreview() {
         id = "1",
         title = "鬼灭之刃",
         author = "吾峠呼世晴",
-        cover = "https://example.com/cover.jpg",
+        cover = "https://img.picacomic.com/Rc9IZBGmXzl4__r36cUghtHByOPzZKecUKMKPtW21Ys/rs:fill:300:400:0/g:sm/aHR0cHM6Ly9zdG9yYWdlLWIucGljYWNvbWljLmNvbS9zdGF0aWMvZDQ4YmM5MDAtYTIxYi00ZDJhLTk1MDctN2JmMzRhNWZjNDM5LmpwZw.jpg",
         lastReadAt = Clock.System.now() - 5.hours,
         lastReadProgress = ReadingProgress(chapterIndex = 10, pageIndex = 5),
         readChapters = emptySet(),
@@ -186,6 +188,6 @@ fun ComicCardPreview() {
     )
 
     Box(modifier = Modifier.padding(16.dp)) {
-        ComicCard(history = sampleHistory, onItemClick = {})
+        ComicCard(history = sampleHistory, onClick = {})
     }
 }
