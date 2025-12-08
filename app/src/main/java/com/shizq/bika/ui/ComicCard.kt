@@ -116,7 +116,7 @@ fun ComicCard(
                     val progress = remember(history) {
                         val maxPage = history.maxPage
                         if (maxPage != null && maxPage > 0) {
-                            (history.lastReadProgress.chapterIndex + 1).toFloat() / maxPage
+                            (history.lastReadProgress.pageIndex + 1).toFloat() / maxPage
                         } else {
                             0f
                         }
