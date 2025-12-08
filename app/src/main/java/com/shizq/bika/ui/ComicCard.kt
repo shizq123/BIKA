@@ -1,12 +1,12 @@
 package com.shizq.bika.ui
 
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -45,15 +45,18 @@ fun ComicCard(
     history: History,
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
+    onLongClick: () -> Unit = {},
 ) {
     ElevatedCard(
-        onClick = onClick,
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // 漫画封面 (尺寸已增大)
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(history.cover)
@@ -63,18 +66,18 @@ fun ComicCard(
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .width(100.dp)
-                    .aspectRatio(3f / 4f)  // <--- 这里是主要修改
+                    .aspectRatio(3f / 4f)
                     .clip(RoundedCornerShape(8.dp))
             )
 
             Spacer(modifier = Modifier.width(16.dp))
 
-            // 右侧信息区域 (为了容纳更大的图片，高度也需要足够)
+
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .height(130.dp), // 让Column高度与图片匹配，确保内容垂直居中
-                verticalArrangement = Arrangement.SpaceBetween // 使用SpaceBetween让元素上下分布
+                    .height(130.dp),
+                verticalArrangement = Arrangement.SpaceBetween
             ) {
                 // 标题和作者
                 Column {
