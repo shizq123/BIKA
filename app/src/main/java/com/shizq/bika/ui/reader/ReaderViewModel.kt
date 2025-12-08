@@ -6,28 +6,36 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.shizq.bika.core.database.dao.HistoryDao
+import com.shizq.bika.core.database.model.ReadChapterEntity
+import com.shizq.bika.core.database.model.ReadingProgressRecord
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ComicPagingSource
+import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import kotlin.time.Clock
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
-    private val network: BikaDataSource
+    private val network: BikaDataSource,
+    private val historyDao: HistoryDao,
 ) : ViewModel() {
     val readerPreferencesFlow = userPreferencesDataSource.userData.map {
         ReaderConfig(
@@ -63,6 +71,41 @@ class ReaderViewModel @Inject constructor(
 
     fun updateChapterOrder(chapter: Chapter) {
         savedStateHandle[EXTRA_ORDER] = chapter.order
+    }
+    fun saveHistory() {
+        viewModelScope.launch(NonCancellable) {
+            val comicId = idFlow.value
+
+            if (comicId.isEmpty()) return@launch
+
+            val existingHistory = historyDao.getHistoryById(comicId)
+
+            existingHistory?.let { history ->
+                val totalPages = PagingMetadata.totalElements.value
+                val currentChapterOrder = chapterIndex.value
+                val currentPageIndex = currentPage.value
+
+                val updatedHistory = history.copy(
+                    lastReadAt = Clock.System.now(),
+                    maxPage = totalPages,
+                    lastReadProgress = ReadingProgressRecord(
+                        chapterIndex = currentChapterOrder,
+                        pageIndex = currentPageIndex
+                    )
+                )
+
+                val readChapter = ReadChapterEntity(
+                    historyId = comicId,
+                    chapterIndex = currentChapterOrder
+                )
+
+                historyDao.upsertHistoryWithChapters(updatedHistory, listOf(readChapter))
+            }
+        }
+    }
+
+    override fun onCleared() {
+        saveHistory()
     }
 }
 

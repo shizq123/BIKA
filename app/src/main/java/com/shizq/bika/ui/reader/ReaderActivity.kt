@@ -55,6 +55,8 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -105,6 +107,11 @@ class ReaderActivity : ComponentActivity() {
 
         val readerPreferences by viewModel.readerPreferencesFlow.collectAsStateWithLifecycle()
         OrientationEffect(readerPreferences.screenOrientation)
+
+        LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+            viewModel.saveHistory()
+        }
+
         ReaderContent(
             comicPages = comicPages,
             chapters = chapterPages,
@@ -376,11 +383,6 @@ class ReaderActivity : ComponentActivity() {
                 controller.hide(WindowInsetsCompat.Type.systemBars())
             }
         }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        // TODO: 添加历史记录保存
     }
 
     companion object {
