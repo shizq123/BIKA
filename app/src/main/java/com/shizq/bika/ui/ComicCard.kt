@@ -104,7 +104,7 @@ fun ComicCard(
                 // 进度和时间
                 Column {
                     // 阅读进度文本和进度条
-                    val progressText = "读至: 第${history.lastReadProgress.chapterIndex + 1}章"
+                    val progressText = "读至: 第${history.lastReadProgress.chapterIndex}话"
                     Text(
                         text = progressText,
                         style = MaterialTheme.typography.bodySmall,
