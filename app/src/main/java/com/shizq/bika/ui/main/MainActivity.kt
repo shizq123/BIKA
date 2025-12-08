@@ -72,6 +72,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
@@ -93,6 +95,7 @@ import com.shizq.bika.ui.settings.SettingsActivity
 import com.shizq.bika.ui.user.UserActivity
 import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -142,6 +145,14 @@ class MainActivity : ComponentActivity() {
         BackHandler(enabled = drawerState.isOpen) {
             scope.launch {
                 drawerState.close()
+            }
+        }
+        LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+            scope.launch {
+                if (drawerState.isOpen) {
+                    delay(500)
+                    drawerState.close()
+                }
             }
         }
         ModalNavigationDrawer(
