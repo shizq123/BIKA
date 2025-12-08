@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.Update
 import com.shizq.bika.core.database.model.HistoryRecordEntity
 import com.shizq.bika.core.database.model.HistoryWithReadChapters
 import com.shizq.bika.core.database.model.ReadChapterEntity
@@ -24,6 +25,17 @@ interface HistoryDao {
         insertReadChapters(readChapters)
     }
 
+    @Transaction
+    suspend fun updateHistoryWithChapters(
+        history: HistoryRecordEntity,
+        readChapters: List<ReadChapterEntity>
+    ) {
+        updateHistoryRecord(history)
+        insertReadChapters(readChapters)
+    }
+
+    @Update
+    suspend fun updateHistoryRecord(history: HistoryRecordEntity)
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsertHistoryRecord(history: HistoryRecordEntity)
 
