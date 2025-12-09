@@ -2,6 +2,7 @@ package com.shizq.bika.core.database.di
 
 import com.shizq.bika.core.database.BikaDatabase
 import com.shizq.bika.core.database.dao.HistoryDao
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.dao.RecentSearchQueryDao
 import dagger.Module
 import dagger.Provides
@@ -20,4 +21,9 @@ internal object DaosModule {
     fun providesHistoryDao(
         database: BikaDatabase,
     ): HistoryDao = database.historyDao()
+
+    @Provides
+    fun providesReadingHistoryDao(
+        database: BikaDatabase,
+    ): ReadingHistoryDao = database.readingHistoryDao()
 }
