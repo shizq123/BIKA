@@ -3,8 +3,8 @@ package com.shizq.bika.ui.history
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.data.model.asExternalModel
-import com.shizq.bika.core.database.dao.HistoryDao
-import com.shizq.bika.core.database.model.HistoryWithReadChapters
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.DetailedHistory
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,10 +17,10 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class HistoryViewModel @Inject constructor(
-    private val historyDao: HistoryDao,
+    private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
-    val historiesWithReadChapters = historyDao.getHistoriesWithReadChapters()
-        .map { it.map(HistoryWithReadChapters::asExternalModel) }
+    val historiesWithReadChapters = historyDao.getDetailedHistories()
+        .map { it.map(DetailedHistory::asExternalModel) }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
@@ -47,13 +47,13 @@ class HistoryViewModel @Inject constructor(
         when (val state = _dialogState.value) {
             is DialogState.ConfirmDeleteOne -> {
                 viewModelScope.launch {
-                    historyDao.clearHistory(state.comicId)
+                    historyDao.deleteHistoryById(state.comicId)
                 }
             }
 
             is DialogState.ConfirmDeleteAll -> {
                 viewModelScope.launch {
-                    historyDao.clearAllHistory()
+                    historyDao.clearAllHistories()
                 }
             }
 

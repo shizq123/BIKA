@@ -25,7 +25,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.shizq.bika.core.data.model.History
+import com.shizq.bika.core.data.model.DetailedReadingHistory
 import com.shizq.bika.ui.ComicCard
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -42,7 +42,7 @@ class HistoryActivity : ComponentActivity() {
 
     @Composable
     fun HistoryScreen(viewModel: HistoryViewModel = hiltViewModel()) {
-        val historiesWithReadChaptersState by viewModel.historiesWithReadChapters.collectAsStateWithLifecycle()
+        val historiesState by viewModel.historiesWithReadChapters.collectAsStateWithLifecycle()
         val dialogState by viewModel.dialogState.collectAsStateWithLifecycle()
         HandleDialogState(
             dialogState = dialogState,
@@ -50,7 +50,7 @@ class HistoryActivity : ComponentActivity() {
             onDismiss = viewModel::dismissDialog
         )
         HistoryContent(
-            histories = historiesWithReadChaptersState,
+            histories = historiesState,
             onDeleteOneClick = viewModel::requestClearHistory,
             onDeleteAllClick = viewModel::requestClearAllHistory
         )
@@ -59,7 +59,7 @@ class HistoryActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun HistoryContent(
-        histories: List<History>,
+        histories: List<DetailedReadingHistory>,
         onDeleteOneClick: (comicId: String, title: String) -> Unit = { _, _ -> },
         onDeleteAllClick: () -> Unit = {}
     ) {
@@ -82,9 +82,14 @@ class HistoryActivity : ComponentActivity() {
                     ComicCard(
                         item, modifier = Modifier
                             .padding(8.dp),
-                        onClick = { ComicInfoActivity.start(this@HistoryActivity, item.id) },
+                        onClick = {
+                            ComicInfoActivity.start(
+                                this@HistoryActivity,
+                                item.history.id
+                            )
+                        },
                         onLongClick = {
-                            onDeleteOneClick(item.id, item.title)
+                            onDeleteOneClick(item.history.id, item.history.title)
                         }
                     )
                 }
