@@ -1,46 +1,64 @@
 package com.shizq.bika.core.data.model
 
-import com.shizq.bika.core.database.model.HistoryWithReadChapters
+import com.shizq.bika.core.database.model.ChapterProgressEntity
+import com.shizq.bika.core.database.model.DetailedHistory
+import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import kotlin.time.Instant
 
-data class ReadingProgress(
-    val chapterIndex: Int,
-    val pageIndex: Int,
-    val groupIndex: Int? = null
-)
+data class DetailedReadingHistory(
+    val history: ReadingHistory,
+    val progressList: List<ChapterProgress>
+) {
+    val lastReadChapterProgress: ChapterProgress?
+        get() = progressList.maxByOrNull { it.lastReadAt }
+    val lastReadChapterProgressPercentage: Float
+        get() {
+            val progress = lastReadChapterProgress
+            return if (progress != null && progress.pageCount > 0) {
+                progress.currentPage.toFloat() / progress.pageCount
+            } else {
+                0f
+            }
+        }
+}
 
-data class ReadChapterIdentifier(
-    val chapterIndex: Int,
-    val groupIndex: Int? = null
-)
-
-data class History(
+data class ReadingHistory(
     val id: String,
     val title: String,
     val author: String,
-    val cover: String,
-    val lastReadAt: Instant,
-    val lastReadProgress: ReadingProgress,
-    val readChapters: Set<ReadChapterIdentifier>,
-    val maxPage: Int?
+    val coverUrl: String,
+    val lastInteractionAt: Instant
 )
 
-fun HistoryWithReadChapters.asExternalModel(): History = History(
-    id = history.id,
-    title = history.title,
-    author = history.author,
-    cover = history.cover,
-    lastReadAt = history.lastReadAt,
-    maxPage = history.maxPage,
-    lastReadProgress = ReadingProgress(
-        chapterIndex = history.lastReadProgress?.chapterIndex ?: 0,
-        pageIndex = history.lastReadProgress?.pageIndex ?: 0,
-        groupIndex = history.lastReadProgress?.groupIndex
-    ),
-    readChapters = readChapters.map {
-        ReadChapterIdentifier(
-            chapterIndex = it.chapterIndex,
-            groupIndex = it.groupIndex
-        )
-    }.toSet()
+data class ChapterProgress(
+    val chapterIndex: Int,
+    val currentPage: Int,
+    val pageCount: Int,
+    val lastReadAt: Instant
 )
+
+fun ReadingHistoryEntity.asExternalModel(): ReadingHistory {
+    return ReadingHistory(
+        id = this.id,
+        title = this.title,
+        author = this.author,
+        coverUrl = this.coverUrl,
+        lastInteractionAt = this.lastInteractionAt
+    )
+}
+
+fun ChapterProgressEntity.asExternalModel(): ChapterProgress {
+    return ChapterProgress(
+        chapterIndex = this.chapterIndex,
+        currentPage = this.currentPage,
+        pageCount = this.pageCount,
+        lastReadAt = this.lastReadAt
+    )
+}
+
+fun DetailedHistory.asExternalModel(): DetailedReadingHistory {
+    return DetailedReadingHistory(
+        history = this.history.asExternalModel(),
+        progressList = this.progressList.map { it.asExternalModel() }
+    )
+}
