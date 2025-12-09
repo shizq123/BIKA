@@ -41,14 +41,14 @@ interface ReadingHistoryDao {
      * 根据 ID 删除一条阅读历史记录。
      * @param id 历史记录的 ID
      */
-    @Query("DELETE FROM reading_history WHERE id = :id")
+    @Query("DELETE FROM readingHistory WHERE id = :id")
     suspend fun deleteHistoryById(id: String)
 
     /**
      * 清空所有阅读历史记录。
      * 同样，所有关联的章节进度也会被级联删除。
      */
-    @Query("DELETE FROM reading_history")
+    @Query("DELETE FROM readingHistory")
     suspend fun clearAllHistories()
 
     /**
@@ -74,7 +74,7 @@ interface ReadingHistoryDao {
      * @return 返回一个包含 DetailedHistory 列表的 Flow
      */
     @Transaction
-    @Query("SELECT * FROM reading_history ORDER BY lastInteractionAt DESC")
+    @Query("SELECT * FROM readingHistory ORDER BY lastInteractionAt DESC")
     fun getDetailedHistories(): Flow<List<DetailedHistory>>
 
     /**
@@ -84,7 +84,7 @@ interface ReadingHistoryDao {
      * @return 返回单个 DetailedHistory 对象，可能为 null
      */
     @Transaction
-    @Query("SELECT * FROM reading_history WHERE id = :id")
+    @Query("SELECT * FROM readingHistory WHERE id = :id")
     suspend fun getDetailedHistoryById(id: String): DetailedHistory?
 
     /**
@@ -92,6 +92,6 @@ interface ReadingHistoryDao {
      * @param historyId 关联的 ReadingHistoryEntity 的 ID
      * @return 返回 ChapterProgressEntity 列表
      */
-    @Query("SELECT * FROM chapter_progress WHERE historyId = :historyId ORDER BY chapterIndex ASC")
+    @Query("SELECT * FROM chapterProgress WHERE historyId = :historyId ORDER BY chapterIndex ASC")
     suspend fun getProgressListByHistoryId(historyId: String): List<ChapterProgressEntity>
 }

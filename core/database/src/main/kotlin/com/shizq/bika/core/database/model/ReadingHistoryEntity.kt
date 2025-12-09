@@ -4,7 +4,7 @@ import androidx.room.Entity
 import androidx.room.PrimaryKey
 import kotlin.time.Instant
 
-@Entity(tableName = "reading_history")
+@Entity(tableName = "readingHistory")
 data class ReadingHistoryEntity(
     @PrimaryKey
     val id: String,

@@ -5,7 +5,7 @@ import androidx.room.ForeignKey
 import kotlin.time.Instant
 
 @Entity(
-    tableName = "chapter_progress",
+    tableName = "chapterProgress",
     primaryKeys = ["historyId", "chapterIndex"],
     foreignKeys = [
         ForeignKey(
