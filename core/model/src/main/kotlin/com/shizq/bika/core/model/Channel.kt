@@ -8,7 +8,7 @@ object ChannelDataSource {
         Channel("推荐", "ic_bika"),
         Channel("排行榜", "ic_cat_ranking"),
         Channel("游戏推荐", "ic_cat_game_rec"),
-        Channel("哔咔小程序", "ic_cat_mini_app"),
+//        Channel("哔咔小程序", "ic_cat_mini_app"),
 //        Channel("哔咔聊天室", "ic_cat_chatroom"),
         Channel("留言板", "ic_cat_message_board"),
         Channel("最近更新", "ic_cat_recent"),

@@ -81,7 +81,6 @@ import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
-import com.shizq.bika.ui.apps.AppsActivity
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.collections.CollectionsActivity
 import com.shizq.bika.ui.comiclist.ComicListActivity
@@ -276,7 +275,7 @@ class MainActivity : ComponentActivity() {
                 "推荐" -> start(CollectionsActivity::class.java)
                 "排行榜" -> start(LeaderboardActivity::class.java)
                 "游戏推荐" -> start(GamesActivity::class.java)
-                "哔咔小程序" -> start(AppsActivity::class.java)
+//                "哔咔小程序" -> start(AppsActivity::class.java)
                 "留言板" -> start(ChatRoomListActivity::class.java)
                 "最近更新" -> {
                     val targetClass = ComicListActivity::class.java
