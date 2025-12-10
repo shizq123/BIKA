@@ -21,7 +21,7 @@ data class ChapterProgressEntity(
     val historyId: String,
 
     // 章节的索引或唯一标识
-    val chapterIndex: Int,
+    val chapterIndex: String,
 
     // 当前已读页码
     val currentPage: Int,

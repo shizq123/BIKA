@@ -31,7 +31,7 @@ data class ReadingHistory(
 )
 
 data class ChapterProgress(
-    val chapterIndex: Int,
+    val chapterIndex: String,
     val currentPage: Int,
     val pageCount: Int,
     val lastReadAt: Instant

@@ -9,6 +9,7 @@ import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import kotlinx.coroutines.flow.Flow
+import kotlin.time.Instant
 
 @Dao
 interface ReadingHistoryDao {
@@ -94,4 +95,7 @@ interface ReadingHistoryDao {
      */
     @Query("SELECT * FROM chapterProgress WHERE historyId = :historyId ORDER BY chapterIndex ASC")
     suspend fun getProgressListByHistoryId(historyId: String): List<ChapterProgressEntity>
+
+    @Query("UPDATE readingHistory SET lastInteractionAt = :newTimestamp WHERE id = :id")
+    suspend fun updateLastReadAt(id: String, newTimestamp: Instant): Int
 }
