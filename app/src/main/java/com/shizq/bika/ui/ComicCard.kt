@@ -110,7 +110,7 @@ fun ComicCard(
                 if (lastProgress != null) {
                     Column {
                         val progressText =
-                            "读至: 第${lastProgress.chapterIndex}话 ${lastProgress.currentPage}/${lastProgress.pageCount}页"
+                            "读至: 第${lastProgress.chapterNumber}话 ${lastProgress.currentPage}/${lastProgress.pageCount}页"
                         Text(
                             text = progressText,
                             style = MaterialTheme.typography.bodySmall,

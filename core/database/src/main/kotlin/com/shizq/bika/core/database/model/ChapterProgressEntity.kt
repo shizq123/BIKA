@@ -6,7 +6,7 @@ import kotlin.time.Instant
 
 @Entity(
     tableName = "chapterProgress",
-    primaryKeys = ["historyId", "chapterIndex"],
+    primaryKeys = ["historyId", "chapterId"],
     foreignKeys = [
         ForeignKey(
             entity = ReadingHistoryEntity::class,
@@ -20,9 +20,10 @@ data class ChapterProgressEntity(
     // 关联到 ReadingHistoryEntity 的外键
     val historyId: String,
 
-    // 章节的索引或唯一标识
-    val chapterIndex: String,
+    val chapterId: String,
 
+    // 用于界面显示（"第5话"）和数据库排序
+    val chapterNumber: Int,
     // 当前已读页码
     val currentPage: Int,
 

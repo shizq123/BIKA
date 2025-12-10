@@ -31,7 +31,7 @@ data class ReadingHistory(
 )
 
 data class ChapterProgress(
-    val chapterIndex: String,
+    val chapterNumber: Int,
     val currentPage: Int,
     val pageCount: Int,
     val lastReadAt: Instant
@@ -49,7 +49,7 @@ fun ReadingHistoryEntity.asExternalModel(): ReadingHistory {
 
 fun ChapterProgressEntity.asExternalModel(): ChapterProgress {
     return ChapterProgress(
-        chapterIndex = this.chapterIndex,
+        chapterNumber = this.chapterNumber,
         currentPage = this.currentPage,
         pageCount = this.pageCount,
         lastReadAt = this.lastReadAt

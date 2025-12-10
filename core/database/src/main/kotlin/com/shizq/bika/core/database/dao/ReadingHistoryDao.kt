@@ -93,7 +93,7 @@ interface ReadingHistoryDao {
      * @param historyId 关联的 ReadingHistoryEntity 的 ID
      * @return 返回 ChapterProgressEntity 列表
      */
-    @Query("SELECT * FROM chapterProgress WHERE historyId = :historyId ORDER BY chapterIndex ASC")
+    @Query("SELECT * FROM chapterProgress WHERE historyId = :historyId ORDER BY chapterNumber ASC")
     suspend fun getProgressListByHistoryId(historyId: String): List<ChapterProgressEntity>
 
     @Query("UPDATE readingHistory SET lastInteractionAt = :newTimestamp WHERE id = :id")
