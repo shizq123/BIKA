@@ -107,9 +107,9 @@ class ReaderActivity : ComponentActivity() {
         val readerPreferences by viewModel.readerPreferences.collectAsStateWithLifecycle()
         OrientationEffect(readerPreferences.screenOrientation)
 
-        DisposableEffect(Unit) {
-            val currentChapter = chapterPaging.peek(chapterOrder - 1)
+        DisposableEffect(chapterPaging) {
             onDispose {
+                val currentChapter = chapterPaging.peek(chapterOrder - 1)
                 if (currentChapter != null) {
                     viewModel.saveProgress(
                         currentChapter = currentChapter,
