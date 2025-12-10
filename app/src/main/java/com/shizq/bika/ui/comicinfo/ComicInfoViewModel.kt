@@ -10,9 +10,8 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
-import com.shizq.bika.core.database.dao.HistoryDao
-import com.shizq.bika.core.database.model.HistoryRecordEntity
-import com.shizq.bika.core.database.model.ReadingProgressRecord
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.result.Result
@@ -20,6 +19,7 @@ import com.shizq.bika.core.result.asResult
 import com.shizq.bika.paging.EpisodePagingSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -41,7 +41,7 @@ private const val TAG = "ComicInfoViewModel"
 class ComicInfoViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val network: BikaDataSource,
-    private val historyDao: HistoryDao,
+    private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
     private val restarter = FlowRestarter()
     private val comicIdFlow: StateFlow<String?> = savedStateHandle.getStateFlow("id", null)
@@ -168,57 +168,33 @@ class ComicInfoViewModel @Inject constructor(
     }
 
     fun recordVisit() {
-        Log.d(TAG, "recordVisit: Function called.")
-
+        // 1. 使用卫语句（Guard Clause）提取状态，减少嵌套
         val currentState = comicDetailUiState.value
-        if (currentState is ComicDetailUiState.Success) {
-            Log.d(TAG, "recordVisit: UI state is 'Success'. Launching coroutine to record visit.")
+        if (currentState !is ComicDetailUiState.Success) return
 
-            viewModelScope.launch {
-                val detail = currentState.detail
-                val comicId = detail.id
+        val detail = currentState.detail
 
-                Log.d(TAG, "recordVisit: Processing comicId: '$comicId'")
+        viewModelScope.launch(Dispatchers.IO) {
+            val now = Clock.System.now()
 
-                Log.d(TAG, "recordVisit: Checking for existing history record...")
-                val existingHistory = historyDao.getHistoryById(comicId)
+            val rowsUpdated = historyDao.updateLastReadAt(detail.id, now)
 
-                val lastReadProgress = if (existingHistory != null) {
-                    Log.d(
-                        TAG,
-                        "recordVisit: Found existing history. Progress will be preserved: ${existingHistory.lastReadProgress}"
-                    )
-                    existingHistory.lastReadProgress
-                } else {
-                    Log.w(
-                        TAG,
-                        "recordVisit: No existing history found. Creating new record with default progress (Chapter 0, Page 0)."
-                    )
-                    ReadingProgressRecord(chapterIndex = 0, pageIndex = 0)
-                }
-
-                // 构建将要写入数据库的完整对象
-                val historyRecord = HistoryRecordEntity(
+            if (rowsUpdated > 0) {
+                Log.d(TAG, "recordVisit: History exists. Updated timestamp for '${detail.title}'.")
+            } else {
+                Log.d(
+                    TAG,
+                    "recordVisit: No history found. Creating new record for '${detail.title}'."
+                )
+                val newRecord = ReadingHistoryEntity(
                     id = detail.id,
                     title = detail.title,
                     author = detail.author,
-                    cover = detail.cover,
-                    lastReadAt = Clock.System.now(),
-                    maxPage = existingHistory?.maxPage, // 保留已有的 maxPage
-                    lastReadProgress = lastReadProgress
+                    coverUrl = detail.cover,
+                    lastInteractionAt = now
                 )
-
-                Log.d(TAG, "recordVisit: Preparing to upsert the following data: $historyRecord")
-
-                historyDao.upsertHistoryRecord(historyRecord)
-
-                Log.i(TAG, "recordVisit: Successfully upserted history for comicId '$comicId'.")
+                historyDao.upsertHistory(newRecord)
             }
-        } else {
-            Log.w(
-                TAG,
-                "recordVisit: Skipped. UI state is not 'Success', current state is ${currentState::class.simpleName}."
-            )
         }
     }
 }

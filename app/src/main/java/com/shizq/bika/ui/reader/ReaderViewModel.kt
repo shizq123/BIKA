@@ -7,9 +7,9 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
-import com.shizq.bika.core.database.dao.HistoryDao
-import com.shizq.bika.core.database.model.ReadChapterEntity
-import com.shizq.bika.core.database.model.ReadingProgressRecord
+import androidx.paging.compose.LazyPagingItems
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.paging.Chapter
@@ -21,6 +21,7 @@ import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -38,7 +39,7 @@ class ReaderViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val network: BikaDataSource,
-    private val historyDao: HistoryDao,
+    private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
     val readerPreferencesFlow = userPreferencesDataSource.userData.map {
         ReaderConfig(
@@ -71,69 +72,48 @@ class ReaderViewModel @Inject constructor(
                 .flow
                 .cachedIn(viewModelScope)
         }
-
+    private var id = ""
     fun updateChapterOrder(chapter: Chapter) {
         savedStateHandle[EXTRA_ORDER] = chapter.order
+        id = chapter.id
     }
 
-    fun saveHistory() {
-        viewModelScope.launch(NonCancellable) {
-            Log.d(TAG, "saveHistory: Attempting to save reading history...")
+    fun saveHistory2(chapterPages: LazyPagingItems<Chapter>) {
+        val comicId = idFlow.value
+        val currentChapterIndex = chapterPages.peek(chapterIndex.value - 1)
+        val currentPageIndex = currentPage.value
+        val totalPages = PagingMetadata.totalElements.value
 
-            val comicId = idFlow.value
-            Log.d(TAG, "saveHistory: Current comicId is '$comicId'.")
+        if (comicId.isEmpty()) {
+            Log.w(TAG, "saveHistory: Aborting, comicId is empty.")
+            return
+        }
 
-            if (comicId.isEmpty()) {
-                Log.w(TAG, "saveHistory: Aborting, comicId is empty.")
+        viewModelScope.launch(Dispatchers.IO + NonCancellable) {
+            val now = Clock.System.now()
+
+            Log.d(
+                TAG,
+                "saveHistory: Saving progress for comicId '$comicId' -> Ch:$currentChapterIndex Pg:$currentPageIndex"
+            )
+
+            val rowsUpdated = historyDao.updateLastReadAt(comicId, now)
+            if (rowsUpdated <= 0) {
+                Log.w(TAG, "saveHistory: Parent history record not found. Skipping progress save.")
                 return@launch
             }
+            val chapterProgress = ChapterProgressEntity(
+                historyId = comicId,
+                chapterIndex = currentChapterIndex!!.id,
+                currentPage = currentPageIndex,
+                pageCount = totalPages,
+                lastReadAt = now
+            )
 
-            Log.d(TAG, "saveHistory: Fetching existing history from database...")
-            val existingHistory = historyDao.getHistoryById(comicId)
+            historyDao.upsertChapterProgress(chapterProgress)
 
-            if (existingHistory != null) {
-                Log.d(TAG, "saveHistory: Found existing history. Preparing to update.")
-
-                val totalPages = PagingMetadata.totalElements.value
-                val currentChapterOrder = chapterIndex.value
-                val currentPageIndex = currentPage.value
-
-                Log.d(
-                    TAG,
-                    "saveHistory: Progress to save -> Chapter: $currentChapterOrder, Page: $currentPageIndex, Total Pages: $totalPages"
-                )
-
-                val updatedHistory = existingHistory.copy(
-                    lastReadAt = Clock.System.now(),
-                    maxPage = totalPages,
-                    lastReadProgress = ReadingProgressRecord(
-                        chapterIndex = currentChapterOrder,
-                        pageIndex = currentPageIndex
-                    )
-                )
-
-                val readChapter = ReadChapterEntity(
-                    historyId = comicId,
-                    chapterIndex = currentChapterOrder
-                )
-
-                Log.d(TAG, "saveHistory: Executing database update with data: $updatedHistory")
-
-                historyDao.updateHistoryWithChapters(updatedHistory, listOf(readChapter))
-
-                Log.i(TAG, "saveHistory: Successfully updated history for comicId '$comicId'.")
-
-            } else {
-                Log.w(
-                    TAG,
-                    "saveHistory: No existing history found for comicId '$comicId'. Nothing to update."
-                )
-            }
+            Log.i(TAG, "saveHistory: Success. Updated timestamp and chapter progress.")
         }
-    }
-
-    override fun onCleared() {
-        saveHistory()
     }
 }
 

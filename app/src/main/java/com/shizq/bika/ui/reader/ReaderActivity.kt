@@ -109,7 +109,7 @@ class ReaderActivity : ComponentActivity() {
         OrientationEffect(readerPreferences.screenOrientation)
 
         LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-            viewModel.saveHistory()
+            viewModel.saveHistory2(chapterPages)
         }
 
         ReaderContent(
