@@ -38,6 +38,7 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -55,8 +56,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -99,28 +98,37 @@ class ReaderActivity : ComponentActivity() {
         val title by PagingMetadata.title.collectAsStateWithLifecycle()
         val pageCount by PagingMetadata.totalElements.collectAsStateWithLifecycle()
 
-        val currentPageIndex by viewModel.currentPage.collectAsStateWithLifecycle()
-        val currentChapterIndex by viewModel.chapterIndex.collectAsStateWithLifecycle()
+        val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
+        val chapterOrder by viewModel.chapterOrder.collectAsStateWithLifecycle()
 
-        val comicPages = viewModel.comicPagingFlow.collectAsLazyPagingItems()
-        val chapterPages = viewModel.chapterPagingFlow.collectAsLazyPagingItems()
+        val comicPaging = viewModel.comicPaging.collectAsLazyPagingItems()
+        val chapterPaging = viewModel.chapterPaging.collectAsLazyPagingItems()
 
-        val readerPreferences by viewModel.readerPreferencesFlow.collectAsStateWithLifecycle()
+        val readerPreferences by viewModel.readerPreferences.collectAsStateWithLifecycle()
         OrientationEffect(readerPreferences.screenOrientation)
 
-        LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-            viewModel.saveHistory2(chapterPages)
+        DisposableEffect(Unit) {
+            val currentChapter = chapterPaging.peek(chapterOrder - 1)
+            onDispose {
+                if (currentChapter != null) {
+                    viewModel.saveProgress(
+                        currentChapter = currentChapter,
+                        pageIndex = currentPage,
+                        totalPages = chapterPaging.itemCount
+                    )
+                }
+            }
         }
 
         ReaderContent(
-            comicPages = comicPages,
-            chapters = chapterPages,
+            comicPages = comicPaging,
+            chapters = chapterPaging,
             title = title,
             pageCount = pageCount,
-            currentPageIndex = currentPageIndex,
+            currentPageIndex = currentPage,
             onPageChange = { viewModel.currentPage.value = it },
             onBackClick = onBackClick,
-            highlightedChapter = currentChapterIndex,
+            highlightedChapter = chapterOrder,
             onChapterChange = viewModel::updateChapterOrder,
             readerPreferences = readerPreferences,
         )

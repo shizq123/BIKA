@@ -41,7 +41,7 @@ class ReaderViewModel @Inject constructor(
     private val network: BikaDataSource,
     private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
-    val readerPreferencesFlow = userPreferencesDataSource.userData.map {
+    val readerPreferences = userPreferencesDataSource.userData.map {
         ReaderConfig(
             volumeKeyNavigation = it.volumeKeyNavigation,
             readingMode = it.readingMode,
@@ -53,10 +53,9 @@ class ReaderViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         ReaderConfig.Default
     )
-
-    private val idFlow = savedStateHandle.getStateFlow(EXTRA_ID, "")
-    val chapterIndex = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
-    val chapterPagingFlow = idFlow.flatMapLatest { id ->
+    private val id = savedStateHandle.getStateFlow(EXTRA_ID, "")
+    val chapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
+    val chapterPaging = id.flatMapLatest { id ->
         Pager(config = PagingConfig(pageSize = 40)) {
             ChapterListPagingSource(id, network)
         }
@@ -64,7 +63,7 @@ class ReaderViewModel @Inject constructor(
             .cachedIn(viewModelScope)
     }
     val currentPage = MutableStateFlow(0)
-    val comicPagingFlow = combine(idFlow, chapterIndex, ::Pair)
+    val comicPaging = combine(id, chapterOrder, ::Pair)
         .flatMapLatest { (id, order) ->
             Pager(config = PagingConfig(pageSize = 40)) {
                 ComicPagingSource(id, order)
@@ -72,15 +71,13 @@ class ReaderViewModel @Inject constructor(
                 .flow
                 .cachedIn(viewModelScope)
         }
-    private var id = ""
     fun updateChapterOrder(chapter: Chapter) {
         savedStateHandle[EXTRA_ORDER] = chapter.order
-        id = chapter.id
     }
 
     fun saveHistory2(chapterPages: LazyPagingItems<Chapter>) {
-        val comicId = idFlow.value
-        val currentChapterIndex = chapterPages.peek(chapterIndex.value - 1)
+        val comicId = id.value
+        val currentChapterIndex = chapterPages.peek(chapterOrder.value - 1)
         val currentPageIndex = currentPage.value
         val totalPages = PagingMetadata.totalElements.value
 
@@ -104,7 +101,8 @@ class ReaderViewModel @Inject constructor(
             }
             val chapterProgress = ChapterProgressEntity(
                 historyId = comicId,
-                chapterIndex = currentChapterIndex!!.id,
+                chapterId = currentChapterIndex!!.id,
+                chapterNumber = chapterOrder.value,
                 currentPage = currentPageIndex,
                 pageCount = totalPages,
                 lastReadAt = now
@@ -113,6 +111,48 @@ class ReaderViewModel @Inject constructor(
             historyDao.upsertChapterProgress(chapterProgress)
 
             Log.i(TAG, "saveHistory: Success. Updated timestamp and chapter progress.")
+        }
+    }
+
+    /**
+     * 保存阅读进度
+     *
+     * @param currentChapter 当前章节对象
+     * @param pageIndex 当前阅读到的页码
+     * @param totalPages 当前章节总页数
+     */
+    fun saveProgress(currentChapter: Chapter, pageIndex: Int, totalPages: Int) {
+        val comicId = id.value
+        if (comicId.isEmpty()) {
+            Log.w(TAG, "saveProgress: Aborting, comicId is empty.")
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO + NonCancellable) {
+            val now = Clock.System.now()
+
+            Log.d(
+                TAG,
+                "saveProgress: Saving $comicId -> Ch:${currentChapter.order} Pg:$pageIndex/$totalPages"
+            )
+
+            val rowsUpdated = historyDao.updateLastReadAt(comicId, now)
+
+            if (rowsUpdated <= 0) {
+                Log.w(TAG, "saveProgress: Parent history not found. Skipping.")
+                return@launch
+            }
+
+            val chapterProgress = ChapterProgressEntity(
+                historyId = comicId,
+                chapterId = currentChapter.id,
+                chapterNumber = currentChapter.order,
+                currentPage = pageIndex,
+                pageCount = totalPages,
+                lastReadAt = now
+            )
+
+            historyDao.upsertChapterProgress(chapterProgress)
         }
     }
 }
