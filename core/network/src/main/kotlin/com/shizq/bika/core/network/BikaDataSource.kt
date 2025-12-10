@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network
 
+import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
 import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.KeywordsData
@@ -67,5 +68,9 @@ class BikaDataSource @Inject constructor(
 
     suspend fun toggleFavourite(id: String) {
         client.post("comics/$id/favourite")
+    }
+
+    suspend fun getCollections(): CollectionsData {
+        return client.get("collections").body()
     }
 }
