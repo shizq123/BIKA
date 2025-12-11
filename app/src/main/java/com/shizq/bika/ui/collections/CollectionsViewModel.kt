@@ -1,26 +1,49 @@
 package com.shizq.bika.ui.collections
 
-import android.app.Application
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shizq.bika.base.BaseViewModel
-import com.shizq.bika.bean.CollectionsBean
-import com.shizq.bika.network.Result
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
+import com.shizq.bika.core.data.model.Comic
+import com.shizq.bika.core.data.model.asExternalModel
+import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.result.Result
+import com.shizq.bika.core.result.asResult
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 
-class CollectionsViewModel(application: Application) : BaseViewModel(application) {
+@HiltViewModel
+class CollectionsViewModel @Inject constructor(
+    private val api: BikaDataSource,
+) : ViewModel() {
+    val uiState = flow { emit(api.getCollections()) }
+        .asResult()
+        .map { result ->
+            when (result) {
+                Result.Loading -> CollectionUiState.Loading
+                is Result.Error -> CollectionUiState.Error(
+                    result.exception.message ?: "加载失败，请重试"
+                )
 
-    private val repository =CollectionsRepository()
-    private val _collections = MutableStateFlow<Result<CollectionsBean>?>(null)
-    val collections: StateFlow<Result<CollectionsBean>?> = _collections
-
-    fun getData() {
-        viewModelScope.launch {
-            repository.getDataFlow().collect {
-                _collections.value = it
+                is Result.Success -> {
+                    val comics = result.data.collections
+                        .flatMap { it.comics }
+                        .map { it.asExternalModel() }
+                    CollectionUiState.Success(comics)
+                }
             }
         }
-    }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = CollectionUiState.Loading
+        )
+}
 
+sealed interface CollectionUiState {
+    data object Loading : CollectionUiState
+    data class Error(val message: String) : CollectionUiState
+    data class Success(val comics: List<Comic>) : CollectionUiState
 }
