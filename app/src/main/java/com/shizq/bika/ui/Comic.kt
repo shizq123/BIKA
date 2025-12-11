@@ -50,6 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.util.fastForEach
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -59,7 +60,7 @@ import com.shizq.bika.core.data.model.Comic
 @Composable
 fun ComicCard(
     comic: Comic,
-    onClick: () -> Unit
+    onClick: () -> Unit = {},
 ) {
     ElevatedCard(
         onClick = onClick,
@@ -122,7 +123,7 @@ fun ComicCard(
                 Column {
                     // 标签 (只显示前2个)
                     Row(modifier = Modifier.padding(bottom = 8.dp)) {
-                        comic.tags.take(2).forEach { tag ->
+                        comic.tags.take(2).fastForEach { tag ->
                             SuggestionChip(
                                 onClick = { },
                                 label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
@@ -278,7 +279,7 @@ fun ComicDetailScreen(comic: Comic, onBack: () -> Unit) {
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    comic.categories.forEach { cat ->
+                    comic.categories.fastForEach { cat ->
                         AssistChip(
                             onClick = {},
                             label = { Text(cat) },
