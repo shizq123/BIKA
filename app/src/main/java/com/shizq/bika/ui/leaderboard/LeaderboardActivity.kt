@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shizq.bika.core.data.model.Comic
 import com.shizq.bika.ui.ComicCard
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import dagger.hilt.android.AndroidEntryPoint
@@ -72,7 +73,7 @@ class LeaderboardActivity : ComponentActivity() {
     fun LeaderboardContent(uiState: LeaderboardUiState) {
         val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
         val pagerState = rememberPagerState(pageCount = { LEADERBOARD_TABS.size })
-        val coroutineScope = rememberCoroutineScope()
+
         Scaffold(
             modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             topBar = {
@@ -130,32 +131,43 @@ class LeaderboardActivity : ComponentActivity() {
         successState: LeaderboardUiState.Success
     ) {
         HorizontalPager(state = pagerState) { page ->
-            val list = when (page) {
-                0 -> successState.dailyList
-                1 -> successState.weeklyList
-                2 -> successState.monthlyList
-                else -> emptyList()
-            }
-
-            if (list.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("暂无数据")
-                }
-            } else {
-                LazyColumn(
+            when (page) {
+                0 -> ComicLeaderboardPage(list = successState.dailyList)
+                1 -> ComicLeaderboardPage(list = successState.weeklyList)
+                2 -> ComicLeaderboardPage(list = successState.monthlyList)
+                3 -> KnightLeaderboardPage(knightList = successState.knightList)
+                else -> Box(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(vertical = 8.dp)
+                    contentAlignment = Alignment.Center
                 ) {
-                    items(list, key = { it.id }) { item ->
-                        ComicCard(item) {
-                            ComicInfoActivity.start(this@LeaderboardActivity, item.id)
-                        }
-                    }
+                    Text("页面不存在")
                 }
             }
         }
     }
 
+    @Composable
+    fun ComicLeaderboardPage(
+        list: List<Comic>,
+        modifier: Modifier = Modifier
+    ) {
+        if (list.isEmpty()) {
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("暂无数据")
+            }
+        } else {
+            LazyColumn(
+                modifier = modifier.fillMaxSize(),
+                contentPadding = PaddingValues(vertical = 8.dp)
+            ) {
+                items(list, key = { it.id }) { item ->
+                    ComicCard(item) {
+                        ComicInfoActivity.start(this@LeaderboardActivity, item.id)
+                    }
+                }
+            }
+        }
+    }
     @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
     @Composable
     private fun LeaderboardTopAppBar(
@@ -197,4 +209,4 @@ class LeaderboardActivity : ComponentActivity() {
     }
 }
 
-private val LEADERBOARD_TABS = listOf("日榜 (24H)", "周榜 (7D)", "月榜 (30D)")
+private val LEADERBOARD_TABS = listOf("日榜 (24H)", "周榜 (7D)", "月榜 (30D)", "骑士榜")
