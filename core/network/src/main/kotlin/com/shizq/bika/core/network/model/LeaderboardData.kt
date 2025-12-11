@@ -11,5 +11,5 @@ data class LeaderboardData(
 @Serializable
 data class KnightLeaderboardData(
     @SerialName("users")
-    val users: List<User>
+    val users: List<UserData>
 )
