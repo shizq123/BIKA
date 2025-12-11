@@ -4,6 +4,7 @@ import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
 import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.KeywordsData
+import com.shizq.bika.core.network.model.LeaderboardData
 import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
 import com.shizq.bika.core.network.model.ProfileData
@@ -72,5 +73,16 @@ class BikaDataSource @Inject constructor(
 
     suspend fun getCollections(): CollectionsData {
         return client.get("collections").body()
+    }
+
+    suspend fun getLeaderboard(timeType: String): LeaderboardData {
+        return client.get("comics/leaderboard") {
+            parameter("tt", timeType)
+            parameter("ct", "VC")
+        }.body()
+    }
+
+    suspend fun getKnightLeaderboard(): String {
+        return client.get("comics/knight-leaderboard").bodyAsText()
     }
 }
