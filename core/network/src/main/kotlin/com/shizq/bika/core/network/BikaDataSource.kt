@@ -4,6 +4,7 @@ import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
 import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.KeywordsData
+import com.shizq.bika.core.network.model.KnightLeaderboardData
 import com.shizq.bika.core.network.model.LeaderboardData
 import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
@@ -82,7 +83,7 @@ class BikaDataSource @Inject constructor(
         }.body()
     }
 
-    suspend fun getKnightLeaderboard(): String {
-        return client.get("comics/knight-leaderboard").bodyAsText()
+    suspend fun getKnightLeaderboard(): KnightLeaderboardData {
+        return client.get("comics/knight-leaderboard").body()
     }
 }
