@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
-import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -15,7 +14,6 @@ import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ComicPagingSource
-import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
 import com.shizq.bika.ui.reader.layout.ReaderConfig
@@ -73,45 +71,6 @@ class ReaderViewModel @Inject constructor(
         }
     fun updateChapterOrder(chapter: Chapter) {
         savedStateHandle[EXTRA_ORDER] = chapter.order
-    }
-
-    fun saveHistory2(chapterPages: LazyPagingItems<Chapter>) {
-        val comicId = id.value
-        val currentChapterIndex = chapterPages.peek(chapterOrder.value - 1)
-        val currentPageIndex = currentPage.value
-        val totalPages = PagingMetadata.totalElements.value
-
-        if (comicId.isEmpty()) {
-            Log.w(TAG, "saveHistory: Aborting, comicId is empty.")
-            return
-        }
-
-        viewModelScope.launch(Dispatchers.IO + NonCancellable) {
-            val now = Clock.System.now()
-
-            Log.d(
-                TAG,
-                "saveHistory: Saving progress for comicId '$comicId' -> Ch:$currentChapterIndex Pg:$currentPageIndex"
-            )
-
-            val rowsUpdated = historyDao.updateLastReadAt(comicId, now)
-            if (rowsUpdated <= 0) {
-                Log.w(TAG, "saveHistory: Parent history record not found. Skipping progress save.")
-                return@launch
-            }
-            val chapterProgress = ChapterProgressEntity(
-                historyId = comicId,
-                chapterId = currentChapterIndex!!.id,
-                chapterNumber = chapterOrder.value,
-                currentPage = currentPageIndex,
-                pageCount = totalPages,
-                lastReadAt = now
-            )
-
-            historyDao.upsertChapterProgress(chapterProgress)
-
-            Log.i(TAG, "saveHistory: Success. Updated timestamp and chapter progress.")
-        }
     }
 
     /**
