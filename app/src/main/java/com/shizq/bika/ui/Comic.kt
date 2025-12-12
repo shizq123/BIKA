@@ -60,11 +60,13 @@ import com.shizq.bika.core.data.model.Comic
 @Composable
 fun ComicCard(
     comic: Comic,
-    onClick: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    onTagClick: (String) -> Unit = {},
+    onClick: () -> Unit = {}
 ) {
     ElevatedCard(
         onClick = onClick,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(160.dp)
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -125,7 +127,7 @@ fun ComicCard(
                     Row(modifier = Modifier.padding(bottom = 8.dp)) {
                         comic.tags.take(2).fastForEach { tag ->
                             SuggestionChip(
-                                onClick = { },
+                                onClick = { onTagClick(tag) },
                                 label = { Text(tag, style = MaterialTheme.typography.labelSmall) },
                                 modifier = Modifier
                                     .height(24.dp)
