@@ -119,14 +119,16 @@ dependencies {
 
     implementation(libs.commons.codec)
 
-    implementation("androidx.paging:paging-runtime:3.4.0-alpha04")
-    implementation("androidx.paging:paging-compose:3.4.0-alpha04")
+    implementation(libs.androidx.paging.runtime)
+    implementation(libs.androidx.paging.compose)
 
-    implementation("com.squareup.retrofit2:converter-kotlinx-serialization:3.0.0")
+    implementation(libs.retrofit.converter.kotlinx.serialization)
 
     implementation(libs.coil.compose)
 
     implementation(libs.reorderable)
+
+    implementation(libs.flowredux)
 
     implementation(kotlin("test"))
     implementation(kotlin("test-junit"))
