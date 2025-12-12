@@ -38,6 +38,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -45,6 +46,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.data.model.Comic
 import com.shizq.bika.ui.ComicCard
 import com.shizq.bika.ui.comicinfo.ComicInfoActivity
+import com.shizq.bika.ui.comiclist.ComicListActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -156,18 +158,23 @@ class LeaderboardActivity : ComponentActivity() {
                 Text("暂无数据")
             }
         } else {
+            val context = LocalContext.current
             LazyColumn(
                 modifier = modifier.fillMaxSize(),
                 contentPadding = PaddingValues(vertical = 8.dp)
             ) {
                 items(list, key = { it.id }) { item ->
-                    ComicCard(item) {
+                    ComicCard(
+                        item,
+                        onTagClick = { ComicListActivity.start(context, "tags", it, it) }
+                    ) {
                         ComicInfoActivity.start(this@LeaderboardActivity, item.id)
                     }
                 }
             }
         }
     }
+
     @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
     @Composable
     private fun LeaderboardTopAppBar(
