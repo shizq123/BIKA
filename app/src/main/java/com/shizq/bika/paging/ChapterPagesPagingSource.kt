@@ -6,7 +6,7 @@ import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import kotlinx.coroutines.flow.update
 
-class ComicPagingSource(
+class ChapterPagesPagingSource(
     val id: String,
     val order: Int,
 ) : PagingSource<Int, ComicPage>() {

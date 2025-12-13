@@ -13,7 +13,7 @@ import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
-import com.shizq.bika.paging.ComicPagingSource
+import com.shizq.bika.paging.ChapterPagesPagingSource
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
 import com.shizq.bika.ui.reader.layout.ReaderConfig
@@ -64,7 +64,7 @@ class ReaderViewModel @Inject constructor(
     val chapterImagesFlow = combine(id, currentChapterOrder, ::Pair)
         .flatMapLatest { (id, order) ->
             Pager(config = PagingConfig(pageSize = 40)) {
-                ComicPagingSource(id, order)
+                ChapterPagesPagingSource(id, order)
             }
                 .flow
                 .cachedIn(viewModelScope)
