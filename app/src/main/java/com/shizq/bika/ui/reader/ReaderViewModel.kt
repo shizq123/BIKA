@@ -1,12 +1,12 @@
 package com.shizq.bika.ui.reader
 
-import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -47,6 +47,16 @@ class ReaderViewModel @Inject constructor(
     private val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
 
     private val _chapterMeta = MutableStateFlow<ChapterMeta?>(null)
+
+    init {
+        viewModelScope.launch {
+            historyDao.getDetailedHistoryById(id.value)?.let { history ->
+                history.asExternalModel().let {
+                    it.lastReadChapterProgress?.currentPage
+                }
+            }
+        }
+    }
 
     val uiState: StateFlow<ReaderUiState> = combine(
         userPreferencesDataSource.userData,
@@ -95,46 +105,20 @@ class ReaderViewModel @Inject constructor(
     }
 
     /**
-     * 保存阅读进度
-     *
-     * @param currentChapter 当前章节对象
-     * @param pageIndex 当前阅读到的页码
-     * @param totalPages 当前章节总页数
+     * 查询指定章节的历史进度
+     * 返回页码，如果没有历史则返回 0
      */
-    fun saveProgress(currentChapter: Chapter, pageIndex: Int, totalPages: Int) {
+    suspend fun getChapterHistoryPage(chapterOrder: Int): Int {
         val comicId = id.value
-        if (comicId.isEmpty()) {
-            Log.w(TAG, "saveProgress: Aborting, comicId is empty.")
-            return
+        if (comicId.isEmpty()) return 0
+
+        val history = historyDao.getDetailedHistoryById(comicId) ?: return 0
+        val detailedHistory = history.asExternalModel()
+        val targetProgress = detailedHistory.progressList.find {
+            it.chapterNumber == chapterOrder
         }
-
-        viewModelScope.launch(Dispatchers.IO + NonCancellable) {
-            val now = Clock.System.now()
-
-            Log.d(
-                TAG,
-                "saveProgress: Saving $comicId -> Ch:${currentChapter.order} Pg:$pageIndex/$totalPages"
-            )
-
-            val rowsUpdated = historyDao.updateLastReadAt(comicId, now)
-
-            if (rowsUpdated <= 0) {
-                Log.w(TAG, "saveProgress: Parent history not found. Skipping.")
-                return@launch
-            }
-
-            val chapterProgress = ChapterProgressEntity(
-                historyId = comicId,
-                chapterId = currentChapterOrder.value,
-                currentPage = pageIndex,
-                pageCount = totalPages,
-                lastReadAt = now
-            )
-
-            historyDao.upsertChapterProgress(chapterProgress)
-        }
+        return targetProgress?.currentPage ?: 0
     }
-
     /**
      * 保存阅读进度
      * 只需要传入 pageIndex，其余信息从 ViewModel 内部状态获取
@@ -156,16 +140,15 @@ class ReaderViewModel @Inject constructor(
 
             // 构造进度实体
             // 假设 ChapterMeta 中包含 chapterId。如果没有，你可能需要调整 Meta 类或 Paging 逻辑
-//            val chapterProgress = ChapterProgressEntity(
-//                historyId = comicId,
-//                chapterId = "0", // 确保 ChapterMeta 里有 chapterId 字段
-//                chapterNumber = meta.order,
-//                currentPage = pageIndex,
-//                pageCount = meta.totalImages,
-//                lastReadAt = now
-//            )
+            val chapterProgress = ChapterProgressEntity(
+                historyId = comicId,
+                chapterId = currentChapterOrder.value,
+                currentPage = pageIndex,
+                pageCount = meta.totalImages,
+                lastReadAt = now
+            )
 
-//            historyDao.upsertChapterProgress(chapterProgress)
+            historyDao.upsertChapterProgress(chapterProgress)
         }
     }
 }

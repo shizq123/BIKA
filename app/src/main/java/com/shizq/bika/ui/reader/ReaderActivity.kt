@@ -116,9 +116,11 @@ class ReaderActivity : ComponentActivity() {
             onChapterChange = viewModel::onChapterChange,
             readerPreferences = readerPreferences,
             initialPageIndex = 0,
-            onProgressUpdate = {},
+            onProgressUpdate = viewModel::saveProgress,
+            getHistoryPage = viewModel::getChapterHistoryPage
         )
     }
+
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ReaderContent(
@@ -127,13 +129,13 @@ class ReaderActivity : ComponentActivity() {
         title: String,
         pageCount: Int,
         initialPageIndex: Int,
-        onProgressUpdate: (Int) -> Unit,
+        onProgressUpdate: (Int) -> Unit = {},
         onBackClick: () -> Unit,
         highlightedChapter: Int,
-        onChapterChange: (Chapter) -> Unit,
+        getHistoryPage: suspend (Int) -> Int = { 0 },
+        onChapterChange: (Chapter) -> Unit = {},
         readerPreferences: ReaderConfig
     ) {
-
         val readerContext = rememberReaderContext(
             readerPreferences.readingMode,
             imageList,
@@ -153,7 +155,16 @@ class ReaderActivity : ComponentActivity() {
 
         SystemUiController(showSystemUI = showMenu)
 
-        // 核心优化: 监听 Controller 的页码流
+        LaunchedEffect(highlightedChapter) {
+            val targetPage = getHistoryPage(highlightedChapter)
+
+            if (targetPage > 0) {
+                controller.scrollToPage(targetPage)
+            } else {
+                controller.scrollToPage(0)
+            }
+        }
+
         LaunchedEffect(controller) {
             controller.visibleItemIndex
                 .distinctUntilChanged()
