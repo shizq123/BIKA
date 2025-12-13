@@ -2,7 +2,6 @@ package com.shizq.bika.ui.reader.layout
 
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -12,17 +11,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.input.key.Key
-import androidx.compose.ui.input.key.KeyEventType
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalDensity
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.model.ReaderAction
 import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.gesture.GestureState
+import com.shizq.bika.ui.reader.gesture.volumeKeyHandler
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.seconds
@@ -32,7 +26,6 @@ interface ReaderLayout {
     fun Content(
         chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
-        onCurrentPageChanged: (Int) -> Unit = {},
     )
 }
 
@@ -41,69 +34,46 @@ fun ReaderLayout(
     readerContext: ReaderContext,
     gestureState: GestureState,
     chapterPages: LazyPagingItems<ChapterPage>,
-    toggleMenuVisibility: () -> Unit,
-    onCurrentPageChanged: (Int) -> Unit
+    toggleMenuVisibility: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
+
     LaunchedEffect(Unit) {
         delay(3.seconds)
         focusRequester.requestFocus()
     }
+
     key(readerContext.layout) {
-        BoxWithConstraints(
-            modifier = Modifier.fillMaxSize()
-        ) {
-            val density = LocalDensity.current
-            val viewportHeightPx = with(density) { maxHeight.toPx() }
-            val scrollDistance = viewportHeightPx * 0.8f
-
-            readerContext.layout.Content(
-                chapterPages = chapterPages,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .focusRequester(focusRequester)
-                    .onPreviewKeyEvent { event ->
-                        if (!readerContext.config.volumeKeyNavigation) return@onPreviewKeyEvent false
-
-                        if (event.type == KeyEventType.KeyDown) {
-                            when (event.key) {
-                                Key.VolumeDown -> {
-                                    scope.launch { readerContext.controller.nextPage(scrollDistance) }
-                                    true
-                                }
-
-                                Key.VolumeUp -> {
-                                    scope.launch { readerContext.controller.prevPage(scrollDistance) }
-                                    true
-                                }
-
-                                else -> false
+        readerContext.layout.Content(
+            chapterPages = chapterPages,
+            modifier = Modifier
+                .fillMaxSize()
+                .focusRequester(focusRequester)
+                .focusable()
+                .volumeKeyHandler(
+                    enabled = readerContext.config.volumeKeyNavigation,
+                    scope = scope,
+                    onVolumeUp = { readerContext.controller.scrollPrevPage() },
+                    onVolumeDown = { readerContext.controller.scrollNextPage() }
+                )
+                .pointerInput(gestureState, readerContext.layout) {
+                    detectTapGestures { offset ->
+                        val action = gestureState.calculateAction(offset, size)
+                        when (action) {
+                            ReaderAction.NextPage -> scope.launch {
+                                readerContext.controller.scrollNextPage()
                             }
-                        } else {
-                            false
+
+                            ReaderAction.PrevPage -> scope.launch {
+                                readerContext.controller.scrollPrevPage()
+                            }
+
+                            ReaderAction.ToggleMenu -> toggleMenuVisibility()
+                            ReaderAction.None -> {}
                         }
                     }
-                    .focusable()
-                    .pointerInput(gestureState, readerContext.layout) {
-                        detectTapGestures { offset ->
-                            val action = gestureState.calculateAction(offset, size)
-                            when (action) {
-                                ReaderAction.NextPage -> scope.launch {
-                                    readerContext.controller.nextPage(scrollDistance)
-                                }
-
-                                ReaderAction.PrevPage -> scope.launch {
-                                    readerContext.controller.prevPage(scrollDistance)
-                                }
-
-                                ReaderAction.ToggleMenu -> toggleMenuVisibility()
-                                ReaderAction.None -> {}
-                            }
-                        }
-                    },
-                onCurrentPageChanged = onCurrentPageChanged,
-            )
-        }
+                },
+        )
     }
 }

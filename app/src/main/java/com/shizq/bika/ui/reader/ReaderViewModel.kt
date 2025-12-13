@@ -25,8 +25,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -42,28 +42,19 @@ class ReaderViewModel @Inject constructor(
     private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory
 ) : ViewModel() {
-    private val readerPreferences = userPreferencesDataSource.userData.map {
-        ReaderConfig(
-            volumeKeyNavigation = it.volumeKeyNavigation,
-            readingMode = it.readingMode,
-            screenOrientation = it.screenOrientation,
-            tapZoneLayout = it.tapZoneLayout
-        )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        ReaderConfig.Default
-    )
+
     private val id = savedStateHandle.getStateFlow(EXTRA_ID, "")
     private val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
-    private val chapterMeta = MutableStateFlow<ChapterMeta?>(null)
+
+    private val _chapterMeta = MutableStateFlow<ChapterMeta?>(null)
+
     val uiState: StateFlow<ReaderUiState> = combine(
         userPreferencesDataSource.userData,
         currentChapterOrder,
-        chapterMeta
+        _chapterMeta
     ) { userData, order, meta ->
         ReaderUiState(
-            config = ReaderConfig(
+            readerConfig = ReaderConfig(
                 volumeKeyNavigation = userData.volumeKeyNavigation,
                 readingMode = userData.readingMode,
                 screenOrientation = userData.screenOrientation,
@@ -74,30 +65,32 @@ class ReaderViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderUiState())
 
-    // 图片列表
-    val imageListFlow = combine(id, currentChapterOrder, ::Pair).flatMapLatest { (id, order) ->
-        Pager(config = PagingConfig(pageSize = 40)) {
-            chapterPagesPagingSourceFactory.create(id, order) { meta ->
-                chapterMeta.update { meta }
-            }
+    //  图片列表流
+    val imageListFlow = combine(id, currentChapterOrder, ::Pair)
+        .filter { (id, _) -> id.isNotEmpty() }
+        .flatMapLatest { (id, order) ->
+            Pager(
+                config = PagingConfig(pageSize = 10, prefetchDistance = 5)
+            ) {
+                chapterPagesPagingSourceFactory.create(id, order) { meta ->
+                    _chapterMeta.update { meta }
+                }
+            }.flow
         }
-            .flow
-            .cachedIn(viewModelScope)
-    }
+        .cachedIn(viewModelScope)
 
-    // 当前可见项
-    val currentPageIndex = MutableStateFlow(0)
-
-    // 章节列表
-    val chapterListFlow = id.flatMapLatest { id ->
-        Pager(config = PagingConfig(pageSize = 40)) {
-            chapterListPagingSourceFactory.create(id)
+    // 章节列表流 (用于侧边栏)
+    val chapterListFlow = id
+        .filter { it.isNotEmpty() }
+        .flatMapLatest { id ->
+            Pager(config = PagingConfig(pageSize = 20)) {
+                chapterListPagingSourceFactory.create(id)
+            }.flow
         }
-            .flow
-            .cachedIn(viewModelScope)
-    }
+        .cachedIn(viewModelScope)
 
     fun onChapterChange(chapter: Chapter) {
+        _chapterMeta.value = null
         savedStateHandle[EXTRA_ORDER] = chapter.order
     }
 
@@ -140,6 +133,40 @@ class ReaderViewModel @Inject constructor(
             )
 
             historyDao.upsertChapterProgress(chapterProgress)
+        }
+    }
+
+    /**
+     * 保存阅读进度
+     * 只需要传入 pageIndex，其余信息从 ViewModel 内部状态获取
+     */
+    fun saveProgress(pageIndex: Int) {
+        val comicId = id.value
+        val meta = _chapterMeta.value // 获取当前的元数据
+
+        if (comicId.isEmpty() || meta == null) {
+            return
+        }
+
+        viewModelScope.launch(Dispatchers.IO + NonCancellable) {
+            val now = Clock.System.now()
+
+            // 更新最后阅读时间
+            val rowsUpdated = historyDao.updateLastReadAt(comicId, now)
+            if (rowsUpdated <= 0) return@launch
+
+            // 构造进度实体
+            // 假设 ChapterMeta 中包含 chapterId。如果没有，你可能需要调整 Meta 类或 Paging 逻辑
+//            val chapterProgress = ChapterProgressEntity(
+//                historyId = comicId,
+//                chapterId = "0", // 确保 ChapterMeta 里有 chapterId 字段
+//                chapterNumber = meta.order,
+//                currentPage = pageIndex,
+//                pageCount = meta.totalImages,
+//                lastReadAt = now
+//            )
+
+//            historyDao.upsertChapterProgress(chapterProgress)
         }
     }
 }

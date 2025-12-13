@@ -1,12 +1,10 @@
 package com.shizq.bika.ui.reader.layout
 
-import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
@@ -15,6 +13,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.Direction
 import com.shizq.bika.paging.ChapterPage
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class PagerLayout(
     private val pagerState: PagerState,
@@ -26,15 +25,7 @@ class PagerLayout(
     override fun Content(
         chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
-        onCurrentPageChanged: (Int) -> Unit,
     ) {
-        LaunchedEffect(pagerState) {
-            snapshotFlow { pagerState.currentPage }
-                .collect { index ->
-                    onCurrentPageChanged(index)
-                }
-        }
-
         if (direction == Direction.Vertical) {
             VerticalPager(
                 state = pagerState,
@@ -61,16 +52,21 @@ class PagerLayout(
 
 class PagerController(
     private val pagerState: PagerState,
-    override val totalPages: Int
 ) : ReaderController {
-    override val visibleItemIndex: Int get() = pagerState.currentPage
-    override suspend fun nextPage(value: Float) {
-        pagerState.animateScrollBy(value)
+    override val totalPages: Int
+        get() = pagerState.pageCount
+    override val visibleItemIndex = snapshotFlow {
+        pagerState.currentPage
+    }.distinctUntilChanged()
+
+    override suspend fun scrollNextPage() {
+        pagerState.animateScrollToPage(pagerState.currentPage + 1)
     }
 
-    override suspend fun prevPage(value: Float) {
-        pagerState.animateScrollBy(-value)
+    override suspend fun scrollPrevPage() {
+        pagerState.animateScrollToPage(pagerState.currentPage - 1)
     }
+
     override suspend fun scrollToPage(index: Int) {
         pagerState.scrollToPage(index)
     }

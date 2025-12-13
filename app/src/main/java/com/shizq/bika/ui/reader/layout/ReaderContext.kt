@@ -1,7 +1,7 @@
 package com.shizq.bika.ui.reader.layout
 
-import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
@@ -40,30 +40,39 @@ fun rememberReaderContext(
     readingMode: ReadingMode,
     chapterPages: LazyPagingItems<ChapterPage>,
     config: ReaderConfig = ReaderConfig.Default,
-    currentPageIndex: Int
+    initialPageIndex: Int
 ): ReaderContext {
-    return remember(readingMode, config, chapterPages) {
-        when (readingMode.viewerType) {
-            ViewerType.Scrolling -> {
-                val listState = LazyListState(currentPageIndex)
-                val controller =
-                    WebtoonController(listState, chapterPages.itemCount)
-                val strategy = WebtoonLayout(
+    return when (readingMode.viewerType) {
+        ViewerType.Scrolling -> {
+            val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPageIndex)
+
+            remember(readingMode, config, listState) {
+                val controller = WebtoonController(listState)
+
+                val layout = WebtoonLayout(
                     listState = listState,
                     hasPageGap = readingMode.hasPageGap
                 )
-                ReaderContext(strategy, controller, config)
+
+                ReaderContext(layout, controller, config)
+            }
+        }
+
+        ViewerType.Pager -> {
+            val pagerState = rememberPagerState(initialPage = initialPageIndex) {
+                chapterPages.itemCount
             }
 
-            ViewerType.Pager -> {
-                val pagerState = PagerState(currentPageIndex) { chapterPages.itemCount }
-                val controller = PagerController(pagerState, chapterPages.itemCount)
-                val strategy = PagerLayout(
+            remember(readingMode, config, pagerState) {
+                val controller = PagerController(pagerState)
+
+                val layout = PagerLayout(
                     pagerState = pagerState,
                     direction = readingMode.direction,
                     isRtl = readingMode.isRtl
                 )
-                ReaderContext(strategy, controller, config)
+
+                ReaderContext(layout, controller, config)
             }
         }
     }

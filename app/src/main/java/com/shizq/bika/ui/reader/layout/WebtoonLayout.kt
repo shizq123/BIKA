@@ -5,17 +5,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.derivedStateOf
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.paging.ChapterPage
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 class WebtoonLayout(
     private val listState: LazyListState,
@@ -25,48 +22,7 @@ class WebtoonLayout(
     override fun Content(
         chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
-        onCurrentPageChanged: (Int) -> Unit,
     ) {
-        val currentPageIndex by remember {
-            derivedStateOf {
-                val layoutInfo = listState.layoutInfo
-                val visibleItemsInfo = layoutInfo.visibleItemsInfo
-                val totalItemsCount = layoutInfo.totalItemsCount
-
-                // 如果列表为空或还没有布局信息，返回 0
-                if (visibleItemsInfo.isEmpty() || totalItemsCount == 0) {
-                    0
-                } else {
-                    // 判断是否滚动到了最底部
-                    val lastVisibleItem = visibleItemsInfo.last()
-
-                    // 如果最后一个可见项的索引等于总项数的最后一个索引...
-                    if (lastVisibleItem.index == totalItemsCount - 1) {
-                        // ...并且该项的底部已经完全进入视口，那么我们就认为到达了底部。
-                        // 这是一个更精确的检查，防止在最后一项刚露头时就跳转。
-                        val isBottomVisible =
-                            lastVisibleItem.offset + lastVisibleItem.size <= layoutInfo.viewportEndOffset
-                        if (isBottomVisible) {
-                            // 强制返回最后一项的索引
-                            totalItemsCount - 1
-                        } else {
-                            // 如果最后一项还没完全进入，仍然以上面的为准
-                            listState.firstVisibleItemIndex
-                        }
-                    } else {
-                        // 3. 在其他所有情况下，使用第一个可见项的索引
-                        listState.firstVisibleItemIndex
-                    }
-                }
-            }
-        }
-        val currentOnCurrentPageChanged by rememberUpdatedState(onCurrentPageChanged)
-        LaunchedEffect(listState) {
-            snapshotFlow { currentPageIndex }
-                .collect { index ->
-                    currentOnCurrentPageChanged(index)
-                }
-        }
         LazyColumn(
             state = listState,
             modifier = modifier,
@@ -84,19 +40,58 @@ class WebtoonLayout(
 
 class WebtoonController(
     private val listState: LazyListState,
-    override val totalPages: Int
 ) : ReaderController {
-    override val visibleItemIndex: Int get() = listState.firstVisibleItemIndex
+    override val totalPages: Int
+        get() = listState.layoutInfo.totalItemsCount
+    override val currentPageFlow: Flow<Int> = snapshotFlow {
+        calculateCurrentPageIndex()
+    }.distinctUntilChanged()
 
-    override suspend fun nextPage(value: Float) {
-        listState.animateScrollBy(value)
+    override suspend fun scrollNextPage() {
+        val viewportHeight = listState.layoutInfo.viewportSize.height
+        // 如果布局还未完成，直接返回
+        if (viewportHeight == 0) return
+
+        val scrollDistance = viewportHeight * 0.8f
+        listState.animateScrollBy(scrollDistance)
     }
 
-    override suspend fun prevPage(value: Float) {
-        listState.animateScrollBy(-value)
+    override suspend fun scrollPrevPage() {
+        val viewportHeight = listState.layoutInfo.viewportSize.height
+        if (viewportHeight == 0) return
+
+        val scrollDistance = viewportHeight * 0.8f
+        listState.animateScrollBy(-scrollDistance)
     }
 
     override suspend fun scrollToPage(index: Int) {
         listState.scrollToItem(index)
+    }
+
+    /**
+     * 计算当前阅读到的页码
+     * 规则：
+     * 1. 优先取第一个可见项。
+     * 2. 如果滚动到底部，且最后一项完全可见，强制视为最后一页（解决最后一页较短时无法触发已读的问题）。
+     */
+    private fun calculateCurrentPageIndex(): Int {
+        val layoutInfo = listState.layoutInfo
+        val visibleItems = layoutInfo.visibleItemsInfo
+
+        if (visibleItems.isEmpty() || layoutInfo.totalItemsCount == 0) return 0
+
+        val lastVisibleItem = visibleItems.last()
+        val firstVisibleItem = visibleItems.first()
+
+        // 判定是否到底：最后一项可见且底部在视口内
+        val isLastItemVisible = lastVisibleItem.index == layoutInfo.totalItemsCount - 1
+        if (isLastItemVisible) {
+            val isBottomEdgeVisible =
+                (lastVisibleItem.offset + lastVisibleItem.size) <= layoutInfo.viewportEndOffset
+            if (isBottomEdgeVisible) {
+                return lastVisibleItem.index
+            }
+        }
+        return firstVisibleItem.index
     }
 }

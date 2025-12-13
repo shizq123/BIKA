@@ -40,6 +40,7 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -71,6 +72,7 @@ import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -94,11 +96,11 @@ class ReaderActivity : ComponentActivity() {
     @Composable
     fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
         val chapterMetadata = uiState.chapterMeta
         val chapterOrder = uiState.currentChapterOrder
-        val readerPreferences = uiState.config
+        val readerPreferences = uiState.readerConfig
 
-        val currentPage by viewModel.currentPageIndex.collectAsStateWithLifecycle()
         val imageList = viewModel.imageListFlow.collectAsLazyPagingItems()
         val chapterList = viewModel.chapterListFlow.collectAsLazyPagingItems()
 
@@ -109,31 +111,14 @@ class ReaderActivity : ComponentActivity() {
             chapterList = chapterList,
             title = chapterMetadata?.title ?: "",
             pageCount = chapterMetadata?.totalImages ?: 0,
-            currentPageIndex = currentPage,
-            onPageChange = { viewModel.currentPageIndex.value = it },
             onBackClick = onBackClick,
             highlightedChapter = chapterOrder,
             onChapterChange = viewModel::onChapterChange,
             readerPreferences = readerPreferences,
+            initialPageIndex = 0,
+            onProgressUpdate = {},
         )
     }
-
-    @Composable
-    fun OrientationEffect(currentOrientation: ScreenOrientation) {
-        val context = LocalContext.current
-        LaunchedEffect(currentOrientation) {
-            val activity = context.findActivity()
-            activity?.requestedOrientation = when (currentOrientation) {
-                ScreenOrientation.System -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-                ScreenOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-                ScreenOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                ScreenOrientation.LockPortrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-                ScreenOrientation.LockLandscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-                ScreenOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
-            }
-        }
-    }
-
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ReaderContent(
@@ -141,8 +126,8 @@ class ReaderActivity : ComponentActivity() {
         chapterList: LazyPagingItems<Chapter>,
         title: String,
         pageCount: Int,
-        currentPageIndex: Int,
-        onPageChange: (Int) -> Unit,
+        initialPageIndex: Int,
+        onProgressUpdate: (Int) -> Unit,
         onBackClick: () -> Unit,
         highlightedChapter: Int,
         onChapterChange: (Chapter) -> Unit,
@@ -153,20 +138,32 @@ class ReaderActivity : ComponentActivity() {
             readerPreferences.readingMode,
             imageList,
             readerPreferences,
-            currentPageIndex
+            initialPageIndex
         )
-
+        val controller = readerContext.controller
         val scope = rememberCoroutineScope()
+
+        var currentUiPage by remember { mutableIntStateOf(initialPageIndex) }
+        var isDraggingSlider by remember { mutableStateOf(false) }
 
         var showMenu by rememberSaveable { mutableStateOf(false) }
         var showChapterList by remember { mutableStateOf(false) }
-
         var showSettings by rememberSaveable { mutableStateOf(false) }
         val settingsSheetState = rememberModalBottomSheetState(true)
 
         SystemUiController(showSystemUI = showMenu)
 
-        val controller = readerContext.controller
+        // 核心优化: 监听 Controller 的页码流
+        LaunchedEffect(controller) {
+            controller.visibleItemIndex
+                .distinctUntilChanged()
+                .collect { page ->
+                    if (!isDraggingSlider) {
+                        currentUiPage = page
+                    }
+                    onProgressUpdate(page)
+                }
+        }
 
         ReaderScaffold(
             showMenu = showMenu,
@@ -177,21 +174,23 @@ class ReaderActivity : ComponentActivity() {
                 BottomBar(
                     progressIndicator = {
                         if (pageCount > 0) {
-                            Text(text = "${currentPageIndex + 1} / $pageCount")
+                            Text(text = "${currentUiPage + 1} / $pageCount")
                         }
                     },
                     progressSlider = {
                         Slider(
-                            value = currentPageIndex.toFloat(),
-                            onValueChange = {
-                                onPageChange(it.toInt())
+                            value = currentUiPage.toFloat(),
+                            onValueChange = { newValue ->
+                                isDraggingSlider = true
+                                currentUiPage = newValue.toInt()
                             },
                             onValueChangeFinished = {
                                 scope.launch {
-                                    controller.scrollToPage(currentPageIndex)
+                                    controller.scrollToPage(currentUiPage)
+                                    isDraggingSlider = false
                                 }
                             },
-                            valueRange = 0f..(pageCount.coerceAtLeast(1) - 1).toFloat()
+                            valueRange = 0f..(pageCount.coerceAtLeast(1) - 1).toFloat(),
                         )
                     },
                     startActions = {
@@ -211,7 +210,7 @@ class ReaderActivity : ComponentActivity() {
             },
             floatingMessage = {
                 Text(
-                    text = "${currentPageIndex + 1} / $pageCount",
+                    text = "${currentUiPage + 1} / $pageCount",
                     style = MaterialTheme.typography.labelMedium,
                     color = Color.White,
                     modifier = Modifier
@@ -254,9 +253,7 @@ class ReaderActivity : ComponentActivity() {
                     gestureState = gestureState,
                     chapterPages = imageList,
                     toggleMenuVisibility = { showMenu = !showMenu }
-                ) {
-                    onPageChange(it)
-                }
+                )
             }
         )
 
@@ -271,6 +268,22 @@ class ReaderActivity : ComponentActivity() {
 
             // 底部留白，防止在全面屏手机上贴底太近
             Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+
+    @Composable
+    fun OrientationEffect(currentOrientation: ScreenOrientation) {
+        val context = LocalContext.current
+        LaunchedEffect(currentOrientation) {
+            val activity = context.findActivity()
+            activity?.requestedOrientation = when (currentOrientation) {
+                ScreenOrientation.System -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                ScreenOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+                ScreenOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                ScreenOrientation.LockPortrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+                ScreenOrientation.LockLandscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                ScreenOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
+            }
         }
     }
 
