@@ -23,6 +23,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
@@ -41,7 +42,7 @@ class ReaderViewModel @Inject constructor(
     private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory
 ) : ViewModel() {
-    val readerPreferences = userPreferencesDataSource.userData.map {
+    private val readerPreferences = userPreferencesDataSource.userData.map {
         ReaderConfig(
             volumeKeyNavigation = it.volumeKeyNavigation,
             readingMode = it.readingMode,
@@ -54,8 +55,24 @@ class ReaderViewModel @Inject constructor(
         ReaderConfig.Default
     )
     private val id = savedStateHandle.getStateFlow(EXTRA_ID, "")
-    val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
-    val chapterMeta = MutableStateFlow<ChapterMeta?>(null)
+    private val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
+    private val chapterMeta = MutableStateFlow<ChapterMeta?>(null)
+    val uiState: StateFlow<ReaderUiState> = combine(
+        userPreferencesDataSource.userData,
+        currentChapterOrder,
+        chapterMeta
+    ) { userData, order, meta ->
+        ReaderUiState(
+            config = ReaderConfig(
+                volumeKeyNavigation = userData.volumeKeyNavigation,
+                readingMode = userData.readingMode,
+                screenOrientation = userData.screenOrientation,
+                tapZoneLayout = userData.tapZoneLayout
+            ),
+            currentChapterOrder = order,
+            chapterMeta = meta
+        )
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderUiState())
 
     // 图片列表
     val imageListFlow = combine(id, currentChapterOrder, ::Pair).flatMapLatest { (id, order) ->

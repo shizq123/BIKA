@@ -93,15 +93,15 @@ class ReaderActivity : ComponentActivity() {
 
     @Composable
     fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
-        val chapterMetadata by viewModel.chapterMeta.collectAsStateWithLifecycle()
+        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+        val chapterMetadata = uiState.chapterMeta
+        val chapterOrder = uiState.currentChapterOrder
+        val readerPreferences = uiState.config
 
         val currentPage by viewModel.currentPageIndex.collectAsStateWithLifecycle()
-        val chapterOrder by viewModel.currentChapterOrder.collectAsStateWithLifecycle()
-
         val imageList = viewModel.imageListFlow.collectAsLazyPagingItems()
         val chapterList = viewModel.chapterListFlow.collectAsLazyPagingItems()
 
-        val readerPreferences by viewModel.readerPreferences.collectAsStateWithLifecycle()
         OrientationEffect(readerPreferences.screenOrientation)
 
         ReaderContent(
