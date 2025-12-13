@@ -72,6 +72,7 @@ fun KnightCard(
     onClick: () -> Unit = {},
 ) {
     Card(
+        onClick = onClick,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
