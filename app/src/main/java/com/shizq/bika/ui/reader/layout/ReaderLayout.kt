@@ -21,7 +21,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.model.ReaderAction
-import com.shizq.bika.paging.ComicPage
+import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.gesture.GestureState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -30,7 +30,7 @@ import kotlin.time.Duration.Companion.seconds
 interface ReaderLayout {
     @Composable
     fun Content(
-        comicPages: LazyPagingItems<ComicPage>,
+        chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onCurrentPageChanged: (Int) -> Unit = {},
     )
@@ -40,7 +40,7 @@ interface ReaderLayout {
 fun ReaderLayout(
     readerContext: ReaderContext,
     gestureState: GestureState,
-    comicPages: LazyPagingItems<ComicPage>,
+    chapterPages: LazyPagingItems<ChapterPage>,
     toggleMenuVisibility: () -> Unit,
     onCurrentPageChanged: (Int) -> Unit
 ) {
@@ -59,7 +59,7 @@ fun ReaderLayout(
             val scrollDistance = viewportHeightPx * 0.8f
 
             readerContext.layout.Content(
-                comicPages = comicPages,
+                chapterPages = chapterPages,
                 modifier = Modifier
                     .fillMaxSize()
                     .focusRequester(focusRequester)

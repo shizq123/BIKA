@@ -10,7 +10,7 @@ import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.ViewerType
-import com.shizq.bika.paging.ComicPage
+import com.shizq.bika.paging.ChapterPage
 
 @Stable
 data class ReaderContext(
@@ -38,16 +38,16 @@ data class ReaderConfig(
 @Composable
 fun rememberReaderContext(
     readingMode: ReadingMode,
-    comicPages: LazyPagingItems<ComicPage>,
+    chapterPages: LazyPagingItems<ChapterPage>,
     config: ReaderConfig = ReaderConfig.Default,
     currentPageIndex: Int
 ): ReaderContext {
-    return remember(readingMode, config, comicPages) {
+    return remember(readingMode, config, chapterPages) {
         when (readingMode.viewerType) {
             ViewerType.Scrolling -> {
                 val listState = LazyListState(currentPageIndex)
                 val controller =
-                    WebtoonController(listState, comicPages.itemCount)
+                    WebtoonController(listState, chapterPages.itemCount)
                 val strategy = WebtoonLayout(
                     listState = listState,
                     hasPageGap = readingMode.hasPageGap
@@ -56,8 +56,8 @@ fun rememberReaderContext(
             }
 
             ViewerType.Pager -> {
-                val pagerState = PagerState(currentPageIndex) { comicPages.itemCount }
-                val controller = PagerController(pagerState, comicPages.itemCount)
+                val pagerState = PagerState(currentPageIndex) { chapterPages.itemCount }
+                val controller = PagerController(pagerState, chapterPages.itemCount)
                 val strategy = PagerLayout(
                     pagerState = pagerState,
                     direction = readingMode.direction,

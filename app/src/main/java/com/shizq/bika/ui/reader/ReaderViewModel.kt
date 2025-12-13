@@ -13,6 +13,7 @@ import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
+import com.shizq.bika.paging.ChapterMeta
 import com.shizq.bika.paging.ChapterPagesPagingSource
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
@@ -27,6 +28,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.Clock
 
@@ -38,6 +40,8 @@ class ReaderViewModel @Inject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val network: BikaDataSource,
     private val historyDao: ReadingHistoryDao,
+    private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
+    private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory
 ) : ViewModel() {
     val readerPreferences = userPreferencesDataSource.userData.map {
         ReaderConfig(
@@ -53,9 +57,13 @@ class ReaderViewModel @Inject constructor(
     )
     private val id = savedStateHandle.getStateFlow(EXTRA_ID, "")
     val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
+    val chapterMeta = MutableStateFlow<ChapterMeta?>(null)
+
     val chapterListFlow = id.flatMapLatest { id ->
         Pager(config = PagingConfig(pageSize = 40)) {
-            ChapterListPagingSource(id, network)
+            chapterPagesPagingSourceFactory.create(id, currentChapterOrder.value) { meta ->
+                chapterMeta.update { meta }
+            }
         }
             .flow
             .cachedIn(viewModelScope)
@@ -64,7 +72,7 @@ class ReaderViewModel @Inject constructor(
     val chapterImagesFlow = combine(id, currentChapterOrder, ::Pair)
         .flatMapLatest { (id, order) ->
             Pager(config = PagingConfig(pageSize = 40)) {
-                ChapterPagesPagingSource(id, order)
+                chapterListPagingSourceFactory.create(id)
             }
                 .flow
                 .cachedIn(viewModelScope)

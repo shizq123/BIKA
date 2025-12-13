@@ -2,61 +2,69 @@ package com.shizq.bika.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.shizq.bika.network.RetrofitUtil
-import com.shizq.bika.network.base.BaseHeaders
-import kotlinx.coroutines.flow.update
+import com.shizq.bika.core.network.BikaDataSource
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 
-class ChapterPagesPagingSource(
-    val id: String,
-    val order: Int,
-) : PagingSource<Int, ComicPage>() {
+class ChapterPagesPagingSource @AssistedInject constructor(
+    @Assisted private val id: String,
+    @Assisted private val order: Int,
+    @Assisted private val onMetadataUpdated: (ChapterMeta) -> Unit,
+    private val dataSource: BikaDataSource
+) : PagingSource<Int, ChapterPage>() {
     override suspend fun load(
         params: LoadParams<Int>
-    ): LoadResult<Int, ComicPage> {
+    ): LoadResult<Int, ChapterPage> {
         return try {
             val currentPage = params.key ?: 1
-            val response = RetrofitUtil.service.comicsPictureGet2(
-                id, order, currentPage,
-                BaseHeaders(
-                    "comics/$id/order/$order/pages?page=$currentPage",
-                    "GET"
-                ).getHeaderMapAndToken()
-            )
-            val data = response.data ?: return LoadResult.Error(Exception("Data is null"))
-            if (response.code != 200) {
-                return LoadResult.Error(Exception(response.message))
-            }
 
-            val pageInfo = data.pages.also { pages ->
-                PagingMetadata.totalElements.update { pages.total }
-            }
-            PagingMetadata.title.update { data.ep.title }
+            val response = dataSource.getChapterPages(id, order, currentPage)
+
+            val paginationData = response.paginationData
+
+            onMetadataUpdated(
+                ChapterMeta(
+                    title = response.chapterInfo.title,
+                    totalImages = response.paginationData.total
+                )
+            )
 
             LoadResult.Page(
-                data = pageInfo.docs.map { doc ->
-                    val fileServer = doc.media.fileServer
-                    val path = doc.media.path
-                    val fullUrl = "$fileServer/static/$path"
-
-                    ComicPage(id = doc.id, url = fullUrl)
+                data = paginationData.images.map { image ->
+                    ChapterPage(id = image.imageId, url = image.media.originalImageUrl)
                 },
-                prevKey = if (currentPage == 1) null else currentPage - 1,
-                nextKey = if (currentPage < pageInfo.pages) currentPage + 1 else null
+                prevKey = null,
+                nextKey = if (currentPage < paginationData.totalPages) currentPage + 1 else null
             )
         } catch (e: Exception) {
             LoadResult.Error(e)
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, ComicPage>): Int? {
+    override fun getRefreshKey(state: PagingState<Int, ChapterPage>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
             val anchorPage = state.closestPageToPosition(anchorPosition)
             anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
         }
     }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(
+            id: String,
+            order: Int,
+            onMetadataUpdated: (ChapterMeta) -> Unit,
+        ): ChapterPagesPagingSource
+    }
 }
 
-data class ComicPage(
+data class ChapterMeta(
+    val title: String,
+    val totalImages: Int
+)
+
+data class ChapterPage(
     val id: String,
     val url: String,
 )

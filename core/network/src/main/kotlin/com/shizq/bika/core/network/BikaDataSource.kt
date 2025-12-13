@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network
 
+import com.shizq.bika.core.network.model.ChapterPagesData
 import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
 import com.shizq.bika.core.network.model.EpisodeData
@@ -85,5 +86,11 @@ class BikaDataSource @Inject constructor(
 
     suspend fun getKnightLeaderboard(): KnightLeaderboardData {
         return client.get("comics/knight-leaderboard").body()
+    }
+
+    suspend fun getChapterPages(id: String, order: Int, page: Int): ChapterPagesData {
+        return client.get("comics/$id/order/$order/pages") {
+            parameter("page", page)
+        }.body<ChapterPagesData>()
     }
 }

@@ -14,7 +14,7 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.Direction
-import com.shizq.bika.paging.ComicPage
+import com.shizq.bika.paging.ChapterPage
 
 class PagerLayout(
     private val pagerState: PagerState,
@@ -24,7 +24,7 @@ class PagerLayout(
 
     @Composable
     override fun Content(
-        comicPages: LazyPagingItems<ComicPage>,
+        chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onCurrentPageChanged: (Int) -> Unit,
     ) {
@@ -39,22 +39,22 @@ class PagerLayout(
             VerticalPager(
                 state = pagerState,
                 modifier = modifier,
-                key = comicPages.itemKey { it.id }
-            ) { idx -> PageItem(comicPages, idx) }
+                key = chapterPages.itemKey { it.id }
+            ) { idx -> PageItem(chapterPages, idx) }
         } else {
             val layoutDirection = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
             CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
                 HorizontalPager(
                     state = pagerState,
                     modifier = modifier,
-                    key = comicPages.itemKey { it.id }
-                ) { idx -> PageItem(comicPages, idx) }
+                    key = chapterPages.itemKey { it.id }
+                ) { idx -> PageItem(chapterPages, idx) }
             }
         }
     }
 
     @Composable
-    private fun PageItem(pages: LazyPagingItems<ComicPage>, index: Int) {
+    private fun PageItem(pages: LazyPagingItems<ChapterPage>, index: Int) {
         pages[index]?.let { ComicPageItem(it, index) }
     }
 }

@@ -15,7 +15,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
-import com.shizq.bika.paging.ComicPage
+import com.shizq.bika.paging.ChapterPage
 
 class WebtoonLayout(
     private val listState: LazyListState,
@@ -23,7 +23,7 @@ class WebtoonLayout(
 ) : ReaderLayout {
     @Composable
     override fun Content(
-        comicPages: LazyPagingItems<ComicPage>,
+        chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onCurrentPageChanged: (Int) -> Unit,
     ) {
@@ -73,10 +73,10 @@ class WebtoonLayout(
             verticalArrangement = if (hasPageGap) Arrangement.spacedBy(8.dp) else Arrangement.Top
         ) {
             items(
-                count = comicPages.itemCount,
-                key = comicPages.itemKey { it.id },
+                count = chapterPages.itemCount,
+                key = chapterPages.itemKey { it.id },
             ) { index ->
-                comicPages[index]?.let { ComicPageItem(it, index) }
+                chapterPages[index]?.let { ComicPageItem(it, index) }
             }
         }
     }

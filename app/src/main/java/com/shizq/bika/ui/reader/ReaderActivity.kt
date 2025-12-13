@@ -63,7 +63,7 @@ import androidx.paging.compose.itemKey
 import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
-import com.shizq.bika.paging.ComicPage
+import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
@@ -121,7 +121,7 @@ class ReaderActivity : ComponentActivity() {
         }
 
         ReaderContent(
-            comicPages = comicPaging,
+            chapterPages = comicPaging,
             chapters = chapterPaging,
             title = title,
             pageCount = pageCount,
@@ -153,7 +153,7 @@ class ReaderActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ReaderContent(
-        comicPages: LazyPagingItems<ComicPage>,
+        chapterPages: LazyPagingItems<ChapterPage>,
         chapters: LazyPagingItems<Chapter>,
         title: String,
         pageCount: Int,
@@ -167,7 +167,7 @@ class ReaderActivity : ComponentActivity() {
 
         val readerContext = rememberReaderContext(
             readerPreferences.readingMode,
-            comicPages,
+            chapterPages,
             readerPreferences,
             currentPageIndex
         )
@@ -268,7 +268,7 @@ class ReaderActivity : ComponentActivity() {
                 ReaderLayout(
                     readerContext = readerContext,
                     gestureState = gestureState,
-                    comicPages = comicPages,
+                    chapterPages = chapterPages,
                     toggleMenuVisibility = { showMenu = !showMenu }
                 ) {
                     onPageChange(it)

@@ -29,11 +29,11 @@ import coil3.compose.SubcomposeAsyncImage
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.shizq.bika.paging.ComicPage
+import com.shizq.bika.paging.ChapterPage
 
 @Composable
 fun ComicPageItem(
-    page: ComicPage,
+    page: ChapterPage,
     index: Int,
     modifier: Modifier = Modifier
 ) {
@@ -95,7 +95,7 @@ private fun PreviewComicPageItem() {
             Text("模拟加载中/失败状态：", modifier = Modifier.padding(bottom = 8.dp))
 
             ComicPageItem(
-                page = ComicPage(id = "1", url = "http://fake.url"),
+                page = ChapterPage(id = "1", url = "http://fake.url"),
                 index = 4
             )
         }
@@ -121,7 +121,7 @@ private fun PreviewComicList() {
 
                 items(3) { index ->
                     ComicPageItem(
-                        page = ComicPage(id = "$index", url = "http://fake.url"),
+                        page = ChapterPage(id = "$index", url = "http://fake.url"),
                         index = index
                     )
                 }

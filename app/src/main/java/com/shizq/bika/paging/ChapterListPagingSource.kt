@@ -3,9 +3,12 @@ package com.shizq.bika.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 
-class ChapterListPagingSource(
-    private val id: String,
+class ChapterListPagingSource @AssistedInject constructor(
+    @Assisted private val id: String,
     private val network: BikaDataSource
 ) : PagingSource<Int, Chapter>() {
 
@@ -34,6 +37,11 @@ class ChapterListPagingSource(
             val anchorPage = state.closestPageToPosition(anchorPosition)
             anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
         }
+    }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(id: String): ChapterListPagingSource
     }
 }
 
