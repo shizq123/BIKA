@@ -125,8 +125,7 @@ class ReaderViewModel @Inject constructor(
 
             val chapterProgress = ChapterProgressEntity(
                 historyId = comicId,
-                chapterId = currentChapter.id,
-                chapterNumber = currentChapter.order,
+                chapterId = currentChapterOrder.value,
                 currentPage = pageIndex,
                 pageCount = totalPages,
                 lastReadAt = now

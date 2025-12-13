@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 1,
-    "identityHash": "d5173fe30394e95f43e55374061d364c",
+    "identityHash": "87ea33357339ada91fd466c481573cef",
     "entities": [
       {
         "tableName": "readingHistory",
@@ -48,7 +48,7 @@
       },
       {
         "tableName": "chapterProgress",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`historyId` TEXT NOT NULL, `chapterIndex` TEXT NOT NULL, `currentPage` INTEGER NOT NULL, `pageCount` INTEGER NOT NULL, `lastReadAt` INTEGER NOT NULL, PRIMARY KEY(`historyId`, `chapterIndex`), FOREIGN KEY(`historyId`) REFERENCES `readingHistory`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`historyId` TEXT NOT NULL, `chapterId` INTEGER NOT NULL, `currentPage` INTEGER NOT NULL, `pageCount` INTEGER NOT NULL, `lastReadAt` INTEGER NOT NULL, PRIMARY KEY(`historyId`, `chapterId`), FOREIGN KEY(`historyId`) REFERENCES `readingHistory`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "historyId",
@@ -57,9 +57,9 @@
             "notNull": true
           },
           {
-            "fieldPath": "chapterIndex",
-            "columnName": "chapterIndex",
-            "affinity": "TEXT",
+            "fieldPath": "chapterId",
+            "columnName": "chapterId",
+            "affinity": "INTEGER",
             "notNull": true
           },
           {
@@ -85,7 +85,7 @@
           "autoGenerate": false,
           "columnNames": [
             "historyId",
-            "chapterIndex"
+            "chapterId"
           ]
         },
         "foreignKeys": [
@@ -129,7 +129,7 @@
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'd5173fe30394e95f43e55374061d364c')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '87ea33357339ada91fd466c481573cef')"
     ]
   }
 }

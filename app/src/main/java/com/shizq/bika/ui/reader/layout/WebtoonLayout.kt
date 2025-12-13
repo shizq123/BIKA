@@ -43,7 +43,7 @@ class WebtoonController(
 ) : ReaderController {
     override val totalPages: Int
         get() = listState.layoutInfo.totalItemsCount
-    override val currentPageFlow: Flow<Int> = snapshotFlow {
+    override val visibleItemIndex: Flow<Int> = snapshotFlow {
         calculateCurrentPageIndex()
     }.distinctUntilChanged()
 

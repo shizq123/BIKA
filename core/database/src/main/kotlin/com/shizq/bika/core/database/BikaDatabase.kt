@@ -16,7 +16,7 @@ import com.shizq.bika.core.database.util.InstantConverter
         ChapterProgressEntity::class,
         RecentSearchQueryEntity::class
     ],
-    version = 2,
+    version = 1,
     exportSchema = true,
 )
 @TypeConverters(InstantConverter::class)

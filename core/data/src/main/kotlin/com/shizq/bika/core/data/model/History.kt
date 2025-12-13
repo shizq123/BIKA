@@ -49,7 +49,7 @@ fun ReadingHistoryEntity.asExternalModel(): ReadingHistory {
 
 fun ChapterProgressEntity.asExternalModel(): ChapterProgress {
     return ChapterProgress(
-        chapterNumber = this.chapterNumber,
+        chapterNumber = this.chapterId,
         currentPage = this.currentPage,
         pageCount = this.pageCount,
         lastReadAt = this.lastReadAt

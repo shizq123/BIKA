@@ -20,10 +20,8 @@ data class ChapterProgressEntity(
     // 关联到 ReadingHistoryEntity 的外键
     val historyId: String,
 
-    val chapterId: String,
+    val chapterId: Int,
 
-    // 用于界面显示（"第5话"）和数据库排序
-    val chapterNumber: Int,
     // 当前已读页码
     val currentPage: Int,
 
