@@ -52,16 +52,16 @@ class ReaderViewModel @Inject constructor(
         ReaderConfig.Default
     )
     private val id = savedStateHandle.getStateFlow(EXTRA_ID, "")
-    val chapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
-    val chapterPaging = id.flatMapLatest { id ->
+    val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
+    val chapterListFlow = id.flatMapLatest { id ->
         Pager(config = PagingConfig(pageSize = 40)) {
             ChapterListPagingSource(id, network)
         }
             .flow
             .cachedIn(viewModelScope)
     }
-    val currentPage = MutableStateFlow(0)
-    val comicPaging = combine(id, chapterOrder, ::Pair)
+    val currentPageIndex = MutableStateFlow(0)
+    val chapterImagesFlow = combine(id, currentChapterOrder, ::Pair)
         .flatMapLatest { (id, order) ->
             Pager(config = PagingConfig(pageSize = 40)) {
                 ComicPagingSource(id, order)
@@ -69,7 +69,8 @@ class ReaderViewModel @Inject constructor(
                 .flow
                 .cachedIn(viewModelScope)
         }
-    fun updateChapterOrder(chapter: Chapter) {
+
+    fun onChapterChange(chapter: Chapter) {
         savedStateHandle[EXTRA_ORDER] = chapter.order
     }
 

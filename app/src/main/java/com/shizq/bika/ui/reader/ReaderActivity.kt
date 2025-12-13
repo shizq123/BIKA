@@ -98,11 +98,11 @@ class ReaderActivity : ComponentActivity() {
         val title by PagingMetadata.title.collectAsStateWithLifecycle()
         val pageCount by PagingMetadata.totalElements.collectAsStateWithLifecycle()
 
-        val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
-        val chapterOrder by viewModel.chapterOrder.collectAsStateWithLifecycle()
+        val currentPage by viewModel.currentPageIndex.collectAsStateWithLifecycle()
+        val chapterOrder by viewModel.currentChapterOrder.collectAsStateWithLifecycle()
 
-        val comicPaging = viewModel.comicPaging.collectAsLazyPagingItems()
-        val chapterPaging = viewModel.chapterPaging.collectAsLazyPagingItems()
+        val comicPaging = viewModel.chapterImagesFlow.collectAsLazyPagingItems()
+        val chapterPaging = viewModel.chapterListFlow.collectAsLazyPagingItems()
 
         val readerPreferences by viewModel.readerPreferences.collectAsStateWithLifecycle()
         OrientationEffect(readerPreferences.screenOrientation)
@@ -126,10 +126,10 @@ class ReaderActivity : ComponentActivity() {
             title = title,
             pageCount = pageCount,
             currentPageIndex = currentPage,
-            onPageChange = { viewModel.currentPage.value = it },
+            onPageChange = { viewModel.currentPageIndex.value = it },
             onBackClick = onBackClick,
             highlightedChapter = chapterOrder,
-            onChapterChange = viewModel::updateChapterOrder,
+            onChapterChange = viewModel::onChapterChange,
             readerPreferences = readerPreferences,
         )
     }
