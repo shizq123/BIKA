@@ -38,7 +38,6 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +63,6 @@ import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
-import com.shizq.bika.paging.PagingMetadata
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
@@ -95,36 +93,22 @@ class ReaderActivity : ComponentActivity() {
 
     @Composable
     fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
-        val title by PagingMetadata.title.collectAsStateWithLifecycle()
-        val pageCount by PagingMetadata.totalElements.collectAsStateWithLifecycle()
+        val chapterMetadata by viewModel.chapterMeta.collectAsStateWithLifecycle()
 
         val currentPage by viewModel.currentPageIndex.collectAsStateWithLifecycle()
         val chapterOrder by viewModel.currentChapterOrder.collectAsStateWithLifecycle()
 
-        val comicPaging = viewModel.chapterImagesFlow.collectAsLazyPagingItems()
-        val chapterPaging = viewModel.chapterListFlow.collectAsLazyPagingItems()
+        val imageList = viewModel.imageListFlow.collectAsLazyPagingItems()
+        val chapterList = viewModel.chapterListFlow.collectAsLazyPagingItems()
 
         val readerPreferences by viewModel.readerPreferences.collectAsStateWithLifecycle()
         OrientationEffect(readerPreferences.screenOrientation)
 
-        DisposableEffect(chapterPaging) {
-            onDispose {
-                val currentChapter = chapterPaging.peek(chapterOrder - 1)
-                if (currentChapter != null) {
-                    viewModel.saveProgress(
-                        currentChapter = currentChapter,
-                        pageIndex = currentPage,
-                        totalPages = chapterPaging.itemCount
-                    )
-                }
-            }
-        }
-
         ReaderContent(
-            chapterPages = comicPaging,
-            chapters = chapterPaging,
-            title = title,
-            pageCount = pageCount,
+            imageList = imageList,
+            chapterList = chapterList,
+            title = chapterMetadata?.title ?: "",
+            pageCount = chapterMetadata?.totalImages ?: 0,
             currentPageIndex = currentPage,
             onPageChange = { viewModel.currentPageIndex.value = it },
             onBackClick = onBackClick,
@@ -153,8 +137,8 @@ class ReaderActivity : ComponentActivity() {
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
     fun ReaderContent(
-        chapterPages: LazyPagingItems<ChapterPage>,
-        chapters: LazyPagingItems<Chapter>,
+        imageList: LazyPagingItems<ChapterPage>,
+        chapterList: LazyPagingItems<Chapter>,
         title: String,
         pageCount: Int,
         currentPageIndex: Int,
@@ -167,7 +151,7 @@ class ReaderActivity : ComponentActivity() {
 
         val readerContext = rememberReaderContext(
             readerPreferences.readingMode,
-            chapterPages,
+            imageList,
             readerPreferences,
             currentPageIndex
         )
@@ -251,7 +235,7 @@ class ReaderActivity : ComponentActivity() {
                         }
                     ) {
                         ChapterList(
-                            chapters = chapters,
+                            chapters = chapterList,
                             onChapterClick = { newChapterId ->
                                 onChapterChange(newChapterId)
                                 showChapterList = false // 点击章节后关闭面板
@@ -268,7 +252,7 @@ class ReaderActivity : ComponentActivity() {
                 ReaderLayout(
                     readerContext = readerContext,
                     gestureState = gestureState,
-                    chapterPages = chapterPages,
+                    chapterPages = imageList,
                     toggleMenuVisibility = { showMenu = !showMenu }
                 ) {
                     onPageChange(it)

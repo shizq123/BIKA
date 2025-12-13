@@ -57,24 +57,28 @@ class ReaderViewModel @Inject constructor(
     val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
     val chapterMeta = MutableStateFlow<ChapterMeta?>(null)
 
-    val chapterListFlow = id.flatMapLatest { id ->
+    // 图片列表
+    val imageListFlow = combine(id, currentChapterOrder, ::Pair).flatMapLatest { (id, order) ->
         Pager(config = PagingConfig(pageSize = 40)) {
-            chapterPagesPagingSourceFactory.create(id, currentChapterOrder.value) { meta ->
+            chapterPagesPagingSourceFactory.create(id, order) { meta ->
                 chapterMeta.update { meta }
             }
         }
             .flow
             .cachedIn(viewModelScope)
     }
+
+    // 当前可见项
     val currentPageIndex = MutableStateFlow(0)
-    val chapterImagesFlow = combine(id, currentChapterOrder, ::Pair)
-        .flatMapLatest { (id, order) ->
-            Pager(config = PagingConfig(pageSize = 40)) {
-                chapterListPagingSourceFactory.create(id)
-            }
-                .flow
-                .cachedIn(viewModelScope)
+
+    // 章节列表
+    val chapterListFlow = id.flatMapLatest { id ->
+        Pager(config = PagingConfig(pageSize = 40)) {
+            chapterListPagingSourceFactory.create(id)
         }
+            .flow
+            .cachedIn(viewModelScope)
+    }
 
     fun onChapterChange(chapter: Chapter) {
         savedStateHandle[EXTRA_ORDER] = chapter.order
