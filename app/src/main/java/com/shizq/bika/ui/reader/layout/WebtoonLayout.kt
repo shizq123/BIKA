@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.reader.layout
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
@@ -11,6 +12,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.paging.ChapterPage
+import com.shizq.bika.ui.reader.util.rememberCheckerboardBrush
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -23,6 +25,7 @@ class WebtoonLayout(
         chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
+        val sharedCheckerboardBrush = rememberCheckerboardBrush()
         LazyColumn(
             state = listState,
             modifier = modifier,
@@ -32,7 +35,13 @@ class WebtoonLayout(
                 count = chapterPages.itemCount,
                 key = chapterPages.itemKey { it.id },
             ) { index ->
-                chapterPages[index]?.let { ComicPageItem(it, index) }
+                chapterPages[index]?.let {
+                    ComicPageItem(
+                        it,
+                        index,
+                        modifier = Modifier.background(sharedCheckerboardBrush)
+                    )
+                }
             }
         }
     }
