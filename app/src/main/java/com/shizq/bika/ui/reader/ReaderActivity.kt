@@ -60,8 +60,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
-import coil3.imageLoader
-import coil3.request.ImageRequest
 import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
@@ -73,12 +71,10 @@ import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
+import com.shizq.bika.ui.reader.util.ImagePreloader
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @AndroidEntryPoint
 class ReaderActivity : ComponentActivity() {
@@ -183,7 +179,7 @@ class ReaderActivity : ComponentActivity() {
 
         ImagePreloader(
             imageList = imageList,
-            visibleIndex = currentUiPage,
+            firstVisibleIndex = currentUiPage,
             preloadCount = readerPreferences.preloadCount
         )
 
@@ -290,40 +286,6 @@ class ReaderActivity : ComponentActivity() {
 
             // 底部留白，防止在全面屏手机上贴底太近
             Spacer(modifier = Modifier.height(16.dp))
-        }
-    }
-
-    @Composable
-    fun ImagePreloader(
-        imageList: LazyPagingItems<ChapterPage>,
-        visibleIndex: Int,
-        preloadCount: Int,
-    ) {
-        val context = LocalContext.current
-
-        LaunchedEffect(visibleIndex) {
-            delay(200)
-
-            val urlsToPreload = ArrayList<String>(preloadCount)
-            for (i in 1..preloadCount) {
-                val targetIndex = visibleIndex + i
-                if (targetIndex < imageList.itemCount) {
-                    imageList.peek(targetIndex)?.let {
-                        urlsToPreload.add(it.url)
-                    }
-                }
-            }
-
-            withContext(Dispatchers.IO) {
-                urlsToPreload.forEach { url ->
-
-                    val request = ImageRequest.Builder(context)
-                        .data(url)
-                        .build()
-
-                    context.imageLoader.enqueue(request)
-                }
-            }
         }
     }
 
