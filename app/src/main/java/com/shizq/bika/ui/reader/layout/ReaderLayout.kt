@@ -1,21 +1,26 @@
 package com.shizq.bika.ui.reader.layout
 
 import android.view.KeyEvent
-import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.unit.IntSize
 import androidx.core.view.ViewCompat
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.model.ReaderAction
 import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.gesture.GestureState
 import kotlinx.coroutines.launch
+import me.saket.telephoto.zoomable.EnabledZoomGestures
+import me.saket.telephoto.zoomable.rememberZoomableState
+import me.saket.telephoto.zoomable.zoomable
 
 interface ReaderLayout {
     @Composable
@@ -33,40 +38,51 @@ fun ReaderLayout(
     toggleMenuVisibility: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
+    val zoomableState = rememberZoomableState()
+    val currentReaderContext by rememberUpdatedState(readerContext)
+    val currentGestureState by rememberUpdatedState(gestureState)
+    val currentToggleMenuVisibility by rememberUpdatedState(toggleMenuVisibility)
 
     VolumeButtonsHandler(
         enable = readerContext.config.volumeKeyNavigation,
         onVolumeUp = {
-            scope.launch { readerContext.controller.scrollPrevPage() }
+            scope.launch { currentReaderContext.controller.scrollPrevPage() }
         },
         onVolumeDown = {
-            scope.launch { readerContext.controller.scrollNextPage() }
+            scope.launch { currentReaderContext.controller.scrollNextPage() }
         }
     )
 
-    key(readerContext.layout) {
-        readerContext.layout.Content(
-            chapterPages = chapterPages,
-            modifier = Modifier
-                .fillMaxSize()
-                .pointerInput(gestureState, readerContext.layout) {
-                    detectTapGestures { offset ->
-                        val action = gestureState.calculateAction(offset, size)
-                        when (action) {
-                            ReaderAction.NextPage -> scope.launch {
-                                readerContext.controller.scrollNextPage()
-                            }
+    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
+        val viewSize = IntSize(constraints.maxWidth, constraints.maxHeight)
 
-                            ReaderAction.PrevPage -> scope.launch {
-                                readerContext.controller.scrollPrevPage()
-                            }
+        key(readerContext.layout) {
+            readerContext.layout.Content(
+                chapterPages = chapterPages,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .zoomable(
+                        state = zoomableState,
+                        gestures = EnabledZoomGestures.ZoomAndPan,
+                        onClick = { offset ->
+                            val action = currentGestureState.calculateAction(offset, viewSize)
+                            when (action) {
+                                ReaderAction.NextPage -> scope.launch {
+                                    currentReaderContext.controller.scrollNextPage()
+                                }
 
-                            ReaderAction.ToggleMenu -> toggleMenuVisibility()
-                            ReaderAction.None -> {}
+                                ReaderAction.PrevPage -> scope.launch {
+                                    currentReaderContext.controller.scrollPrevPage()
+                                }
+
+                                ReaderAction.ToggleMenu -> currentToggleMenuVisibility()
+                                ReaderAction.None -> { /* Do nothing */
+                                }
+                            }
                         }
-                    }
-                },
-        )
+                    )
+            )
+        }
     }
 }
 
