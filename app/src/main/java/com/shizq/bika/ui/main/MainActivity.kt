@@ -114,7 +114,6 @@ class MainActivity : ComponentActivity() {
         val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
         val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
         LaunchedEffect(Unit) {
-            viewModel.onLogin()
             viewModel.onCheckIn()
         }
         DashboardContent(
