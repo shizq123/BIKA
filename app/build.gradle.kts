@@ -132,4 +132,6 @@ dependencies {
 
     implementation(kotlin("test"))
     implementation(kotlin("test-junit"))
+
+    implementation("me.saket.telephoto:zoomable:0.18.0")
 }
