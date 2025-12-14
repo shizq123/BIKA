@@ -130,7 +130,7 @@ class ReaderActivity : ComponentActivity() {
         pageCount: Int,
         initialPageIndex: Int,
         onProgressUpdate: (Int) -> Unit = {},
-        onBackClick: () -> Unit,
+        onBackClick: () -> Unit = {},
         highlightedChapter: Int,
         getHistoryPage: suspend (Int) -> Int = { 0 },
         onChapterChange: (Chapter) -> Unit = {},
