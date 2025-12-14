@@ -42,21 +42,10 @@ class ReaderViewModel @Inject constructor(
     private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory
 ) : ViewModel() {
-
     private val id = savedStateHandle.getStateFlow(EXTRA_ID, "")
     private val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
 
     private val _chapterMeta = MutableStateFlow<ChapterMeta?>(null)
-
-    init {
-        viewModelScope.launch {
-            historyDao.getDetailedHistoryById(id.value)?.let { history ->
-                history.asExternalModel().let {
-                    it.lastReadChapterProgress?.currentPage
-                }
-            }
-        }
-    }
 
     val uiState: StateFlow<ReaderUiState> = combine(
         userPreferencesDataSource.userData,
@@ -68,7 +57,8 @@ class ReaderViewModel @Inject constructor(
                 volumeKeyNavigation = userData.volumeKeyNavigation,
                 readingMode = userData.readingMode,
                 screenOrientation = userData.screenOrientation,
-                tapZoneLayout = userData.tapZoneLayout
+                tapZoneLayout = userData.tapZoneLayout,
+                preloadCount = userData.preloadCount
             ),
             currentChapterOrder = order,
             chapterMeta = meta

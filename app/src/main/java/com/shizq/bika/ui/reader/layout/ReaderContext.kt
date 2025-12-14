@@ -24,6 +24,7 @@ data class ReaderConfig(
     val readingMode: ReadingMode,
     val screenOrientation: ScreenOrientation,
     val tapZoneLayout: TapZoneLayout,
+    val preloadCount: Int,
 ) {
     companion object {
         val Default = ReaderConfig(
@@ -31,6 +32,7 @@ data class ReaderConfig(
             readingMode = ReadingMode.WEBTOON,
             screenOrientation = ScreenOrientation.Portrait,
             tapZoneLayout = TapZoneLayout.LShape,
+            preloadCount = 0,
         )
     }
 }

@@ -7,4 +7,5 @@ data class ReaderUiState(
     val readerConfig: ReaderConfig = ReaderConfig.Default,
     val currentChapterOrder: Int = 1,
     val chapterMeta: ChapterMeta? = null,
+    val preloadCount: Int = 0,
 )
