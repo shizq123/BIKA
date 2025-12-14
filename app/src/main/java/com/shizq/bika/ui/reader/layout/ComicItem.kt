@@ -1,10 +1,12 @@
 package com.shizq.bika.ui.reader.layout
 
+import android.content.res.Configuration
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -17,13 +19,19 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.compose.SubcomposeAsyncImage
 import coil3.request.CachePolicy
@@ -32,11 +40,55 @@ import coil3.request.crossfade
 import com.shizq.bika.paging.ChapterPage
 
 @Composable
+fun Image(
+    url: String,
+    index: Int,
+    modifier: Modifier = Modifier
+) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    var imageAspectRatio by remember { mutableFloatStateOf(0.75f) }
+
+    val scaleMode = if (isLandscape) ContentScale.Fit else ContentScale.FillWidth
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(imageAspectRatio)
+    ) {
+        AsyncImage(
+            model = ImageRequest.Builder(LocalPlatformContext.current)
+                .data(url)
+                .crossfade(true)
+                .diskCachePolicy(CachePolicy.ENABLED)
+                .listener(
+                    onSuccess = { _, result ->
+                        val w = result.image.width
+                        val h = result.image.height
+                        if (w > 0 && h > 0) {
+                            imageAspectRatio = w.toFloat() / h.toFloat()
+                        }
+                    }
+                )
+                .build(),
+            contentDescription = (index + 1).toString(),
+            contentScale = scaleMode,
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+@Composable
 fun ComicPageItem(
     page: ChapterPage,
     index: Int,
     modifier: Modifier = Modifier
 ) {
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val scaleMode = if (isLandscape) ContentScale.Fit else ContentScale.FillWidth
+
     SubcomposeAsyncImage(
         model = ImageRequest.Builder(LocalPlatformContext.current)
             .data(page.url)
@@ -44,7 +96,7 @@ fun ComicPageItem(
             .diskCachePolicy(CachePolicy.ENABLED)
             .build(),
         contentDescription = "Page ${index + 1}",
-        contentScale = ContentScale.FillWidth,
+        contentScale = scaleMode,
         modifier = modifier.fillMaxWidth(),
         loading = {
             Box(
