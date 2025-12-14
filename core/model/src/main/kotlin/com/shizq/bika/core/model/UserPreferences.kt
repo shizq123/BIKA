@@ -9,4 +9,5 @@ data class UserPreferences(
     val tapZoneLayout: TapZoneLayout = TapZoneLayout.Sides,
     val volumeKeyNavigation: Boolean = true,
     val channels: List<Channel> = ChannelDataSource.allChannels,
+    val preloadCount: Int = 2,
 )

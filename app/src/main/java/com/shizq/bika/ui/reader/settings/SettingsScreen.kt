@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -22,6 +23,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -38,6 +40,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,6 +60,8 @@ fun SettingsScreen(
             onScreenOrientationChanged = viewModel::updateScreenOrientation,
             onTapZoneLayoutChanged = viewModel::setTapZoneLayout,
             onVolumeKeyNavigationChanged = viewModel::setVolumeKeyNavigation,
+            onPreloadCountChanged = viewModel::updatePreloadCount
+
         )
     }
 }
@@ -64,10 +69,11 @@ fun SettingsScreen(
 @Composable
 fun SettingsContent(
     uiState: SettingsUiState,
-    onReadingModeChanged: (ReadingMode) -> Unit,
-    onScreenOrientationChanged: (ScreenOrientation) -> Unit,
-    onTapZoneLayoutChanged: (TapZoneLayout) -> Unit,
-    onVolumeKeyNavigationChanged: (Boolean) -> Unit,
+    onReadingModeChanged: (ReadingMode) -> Unit = {},
+    onScreenOrientationChanged: (ScreenOrientation) -> Unit = {},
+    onTapZoneLayoutChanged: (TapZoneLayout) -> Unit = {},
+    onVolumeKeyNavigationChanged: (Boolean) -> Unit = {},
+    onPreloadCountChanged: (Int) -> Unit = {},
 ) {
     when (uiState) {
         SettingsUiState.Loading -> {}
@@ -106,7 +112,38 @@ fun SettingsContent(
                             onOptionSelected = onScreenOrientationChanged,
                             labelProvider = { it.label }
                         )
+                        Spacer(modifier = Modifier.height(24.dp))
 
+                        SectionTitle("预加载图片数量", isSubTitle = true)
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Slider(
+                                value = uiState.userData.preloadCount.toFloat(),
+                                onValueChange = { newValue ->
+                                    onPreloadCountChanged(newValue.roundToInt())
+                                },
+                                valueRange = 1f..16f,
+                                // steps 计算公式：(max - min) - 1。这里 (16 - 1) - 1 = 14
+                                steps = 14,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            // 右侧显示当前数值
+                            Text(
+                                text = "${uiState.userData.preloadCount}张",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier
+                                    .padding(start = 16.dp)
+                                    .width(40.dp)
+                            )
+                        }
                         Spacer(modifier = Modifier.height(24.dp))
 
                         SectionTitle("点按区域", isSubTitle = true)

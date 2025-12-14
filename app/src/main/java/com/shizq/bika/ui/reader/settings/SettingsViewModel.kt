@@ -49,6 +49,11 @@ class SettingsViewModel @Inject constructor(
             userPreferencesDataSource.setIsVolumeKeyNavigation(enabled)
         }
     }
+    fun updatePreloadCount(count: Int) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setPreloadCount(count)
+        }
+    }
 }
 
 sealed interface SettingsUiState {

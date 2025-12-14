@@ -43,4 +43,10 @@ class UserPreferencesDataSource @Inject constructor(
             currentPreferences.copy(channels = channels)
         }
     }
+
+    suspend fun setPreloadCount(count: Int) {
+        userPreferences.updateData { currentPreferences ->
+            currentPreferences.copy(preloadCount = count)
+        }
+    }
 }
