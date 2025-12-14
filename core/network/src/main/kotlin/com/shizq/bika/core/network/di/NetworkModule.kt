@@ -9,6 +9,7 @@ import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BuildConfig
 import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
 import com.shizq.bika.core.network.plugin.ResponseTransformer
+import com.shizq.bika.core.network.plugin.TokenAuthenticator
 import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
 import dagger.Provides
@@ -69,8 +70,11 @@ internal object NetworkModule {
 
     @Provides
     @Singleton
-    fun okHttpCallFactory(): OkHttpClient = trace("OkHttpClient") {
+    fun okHttpCallFactory(
+        tokenAuthenticator: TokenAuthenticator,
+    ): OkHttpClient = trace("OkHttpClient") {
         OkHttpClient.Builder()
+            .authenticator(tokenAuthenticator)
             .dns {
                 listOf("172.67.194.19", "104.21.20.188", "104.19.53.76")
                     .flatMap { Dns.SYSTEM.lookup(it) }
