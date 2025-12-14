@@ -36,11 +36,7 @@ class WebtoonLayout(
                 key = chapterPages.itemKey { it.id },
             ) { index ->
                 chapterPages[index]?.let {
-                    ComicPageItem(
-                        it,
-                        index,
-                        modifier = Modifier.background(sharedCheckerboardBrush)
-                    )
+                    Image(it.url, index, modifier = Modifier.background(sharedCheckerboardBrush))
                 }
             }
         }

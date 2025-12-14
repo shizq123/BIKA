@@ -52,7 +52,7 @@ class PagerLayout(
 
     @Composable
     private fun PageItem(pages: LazyPagingItems<ChapterPage>, index: Int, modifier: Modifier) {
-        pages[index]?.let { ComicPageItem(it, index, modifier = modifier) }
+        pages[index]?.let { Image(it.url, index, modifier = modifier) }
     }
 }
 
