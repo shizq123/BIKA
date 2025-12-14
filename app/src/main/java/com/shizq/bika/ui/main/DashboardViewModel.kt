@@ -95,7 +95,7 @@ class DashboardViewModel @Inject constructor(
     // performInitialLogin
     fun onCheckIn() {
         viewModelScope.launch {
-//            network.getUserProfile2()
+            network.punchIn()
         }
     }
 
