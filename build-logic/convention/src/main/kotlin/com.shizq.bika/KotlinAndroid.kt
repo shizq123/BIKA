@@ -70,7 +70,6 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
             "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
         )
         freeCompilerArgs.add(
-            // Enable experimental coroutines APIs, including Flow
             "-opt-in=kotlin.time.ExperimentalTime",
         )
         freeCompilerArgs.add(
@@ -87,5 +86,7 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
              */
             "-Xconsistent-data-class-copy-visibility"
         )
+        freeCompilerArgs.add("-Xexplicit-backing-fields")
+        freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
     }
 }
