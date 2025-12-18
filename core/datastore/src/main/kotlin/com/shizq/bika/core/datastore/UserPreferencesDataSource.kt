@@ -2,6 +2,8 @@ package com.shizq.bika.core.datastore
 
 import androidx.datastore.core.DataStore
 import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.model.DarkThemeConfig
+import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
@@ -47,6 +49,24 @@ class UserPreferencesDataSource @Inject constructor(
     suspend fun setPreloadCount(count: Int) {
         userPreferences.updateData { currentPreferences ->
             currentPreferences.copy(preloadCount = count)
+        }
+    }
+
+    suspend fun setDarkThemeConfig(config: DarkThemeConfig) {
+        userPreferences.updateData {
+            it.copy(darkThemeConfig = config)
+        }
+    }
+
+    suspend fun setNetworkLine(line: NetworkLine) {
+        userPreferences.updateData {
+            it.copy(selectedNetworkLine = line)
+        }
+    }
+
+    suspend fun setAutoCheckIn(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(autoCheckIn = enabled)
         }
     }
 }
