@@ -59,7 +59,7 @@ fun Image(
         AsyncImage(
             model = ImageRequest.Builder(LocalPlatformContext.current)
                 .data(url)
-                .crossfade(true)
+                .diskCacheKey(url)
                 .diskCachePolicy(CachePolicy.ENABLED)
                 .listener(
                     onSuccess = { _, result ->
