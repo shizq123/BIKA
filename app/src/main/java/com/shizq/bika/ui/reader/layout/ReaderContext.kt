@@ -11,11 +11,15 @@ import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.ViewerType
 import com.shizq.bika.paging.ChapterPage
+import com.shizq.bika.ui.reader.util.preload.LazyListScrollStateProvider
+import com.shizq.bika.ui.reader.util.preload.PagerScrollStateProvider
+import com.shizq.bika.ui.reader.util.preload.ScrollStateProvider
 
 @Stable
 data class ReaderContext(
     val layout: ReaderLayout,
     val controller: ReaderController,
+    val scrollStateProvider: ScrollStateProvider,
     val config: ReaderConfig = ReaderConfig.Default
 )
 
@@ -56,7 +60,12 @@ fun rememberReaderContext(
                     hasPageGap = readingMode.hasPageGap
                 )
 
-                ReaderContext(layout, controller, config)
+                ReaderContext(
+                    layout = layout,
+                    controller = controller,
+                    scrollStateProvider = LazyListScrollStateProvider(listState),
+                    config = config
+                )
             }
         }
 
@@ -74,7 +83,12 @@ fun rememberReaderContext(
                     isRtl = readingMode.isRtl
                 )
 
-                ReaderContext(layout, controller, config)
+                ReaderContext(
+                    layout = layout,
+                    controller = controller,
+                    scrollStateProvider = PagerScrollStateProvider(pagerState),
+                    config = config
+                )
             }
         }
     }

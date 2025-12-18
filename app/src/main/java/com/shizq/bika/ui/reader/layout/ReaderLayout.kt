@@ -19,6 +19,7 @@ import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.gesture.GestureState
 import kotlinx.coroutines.launch
 import me.saket.telephoto.zoomable.EnabledZoomGestures
+import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 
@@ -38,7 +39,7 @@ fun ReaderLayout(
     toggleMenuVisibility: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val zoomableState = rememberZoomableState()
+    val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f, minZoomFactor = .5f))
     val currentReaderContext by rememberUpdatedState(readerContext)
     val currentGestureState by rememberUpdatedState(gestureState)
     val currentToggleMenuVisibility by rememberUpdatedState(toggleMenuVisibility)
@@ -56,7 +57,7 @@ fun ReaderLayout(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val viewSize = IntSize(constraints.maxWidth, constraints.maxHeight)
 
-        key(readerContext.layout) {
+        key(readerContext.config.readingMode) {
             readerContext.layout.Content(
                 chapterPages = chapterPages,
                 modifier = Modifier
