@@ -29,6 +29,9 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -122,11 +125,13 @@ fun SettingsContent(
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            var localPreloadCount by remember { mutableFloatStateOf(uiState.userData.preloadCount.toFloat()) }
                             Slider(
-                                value = uiState.userData.preloadCount.toFloat(),
+                                value = localPreloadCount,
                                 onValueChange = { newValue ->
-                                    onPreloadCountChanged(newValue.roundToInt())
+                                    localPreloadCount = newValue
                                 },
+                                onValueChangeFinished = { onPreloadCountChanged(localPreloadCount.roundToInt()) },
                                 valueRange = 1f..16f,
                                 // steps 计算公式：(max - min) - 1。这里 (16 - 1) - 1 = 14
                                 steps = 14,
