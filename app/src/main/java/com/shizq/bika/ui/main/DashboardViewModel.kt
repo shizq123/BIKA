@@ -95,6 +95,9 @@ class DashboardViewModel @Inject constructor(
     // performInitialLogin
     fun onCheckIn() {
         viewModelScope.launch {
+//            if (!userPreferencesDataSource.userData.first().autoCheckIn) {
+//                return@launch
+//            }
             network.punchIn()
         }
     }
