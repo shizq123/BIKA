@@ -71,7 +71,8 @@ import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
-import com.shizq.bika.ui.reader.util.ImagePreloader
+import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
+import com.shizq.bika.ui.reader.util.preload.PagingPreload
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.launch
@@ -137,6 +138,8 @@ class ReaderActivity : ComponentActivity() {
         onChapterChange: (Chapter) -> Unit = {},
         readerPreferences: ReaderConfig
     ) {
+        val context = LocalContext.current
+
         val readerContext = rememberReaderContext(
             readerPreferences.readingMode,
             imageList,
@@ -145,7 +148,6 @@ class ReaderActivity : ComponentActivity() {
         )
         val controller = readerContext.controller
         val scope = rememberCoroutineScope()
-
         var currentUiPage by remember { mutableIntStateOf(initialPageIndex) }
         var isDraggingSlider by remember { mutableStateOf(false) }
 
@@ -177,9 +179,11 @@ class ReaderActivity : ComponentActivity() {
                 }
         }
 
-        ImagePreloader(
-            imageList = imageList,
-            firstVisibleIndex = currentUiPage,
+        val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
+        PagingPreload(
+            pagingItems = imageList,
+            scrollStateProvider = readerContext.scrollStateProvider,
+            modelProvider = preloadModelProvider,
             preloadCount = readerPreferences.preloadCount
         )
 
