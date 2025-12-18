@@ -38,6 +38,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.model.DarkThemeConfig
 import com.shizq.bika.core.model.NetworkLine
+import com.shizq.bika.ui.account.AccountActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -62,6 +63,7 @@ class SettingsActivity : ComponentActivity() {
             onUpdateDarkThemeConfig = viewModel::updateDarkThemeConfig,
             onToggleAutoCheckIn = viewModel::updateAutoCheckIn,
             onUpdateNetworkLine = viewModel::updateSelectedNetworkLine,
+            onLogoutClicked = viewModel::logout
         )
     }
 
@@ -70,10 +72,11 @@ class SettingsActivity : ComponentActivity() {
     fun SettingsContent(
         settingsUiState: SettingsUiState,
         cacheSize: String,
-        onClearCache: () -> Unit,
-        onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit,
-        onToggleAutoCheckIn: (enabled: Boolean) -> Unit,
-        onUpdateNetworkLine: (line: NetworkLine) -> Unit
+        onClearCache: () -> Unit = {},
+        onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit = {},
+        onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
+        onUpdateNetworkLine: (line: NetworkLine) -> Unit = {},
+        onLogoutClicked: () -> Unit = {},
     ) {
         val uriHandler = LocalUriHandler.current
         val context = LocalContext.current
@@ -161,7 +164,19 @@ class SettingsActivity : ComponentActivity() {
                                     title = "退出登录",
                                     summary = "退出当前账号",
                                     iconVector = Icons.AutoMirrored.Filled.ExitToApp,
-                                    onClick = { /* TODO: 退出逻辑 */ }
+                                    onClick = {
+                                        onLogoutClicked()
+                                        val intent = Intent(
+                                            this@SettingsActivity,
+                                            AccountActivity::class.java
+                                        ).apply {
+                                            flags =
+                                                Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                                        }
+                                        startActivity(intent)
+
+                                        finish()
+                                    }
                                 )
                             }
                         }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil3.imageLoader
+import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.DarkThemeConfig
 import com.shizq.bika.core.model.NetworkLine
@@ -11,6 +12,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,6 +25,7 @@ import java.text.DecimalFormat
 class SettingsViewModel @Inject constructor(
     @ApplicationContext application: Context,
     private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val userCredentialsDataSource: UserCredentialsDataSource
 ) : ViewModel() {
     val settingsUiState = userPreferencesDataSource.userData.map {
         SettingsUiState.Success(it.darkThemeConfig, it.selectedNetworkLine, it.autoCheckIn)
@@ -40,6 +43,11 @@ class SettingsViewModel @Inject constructor(
         updateCacheSize()
     }
 
+    fun logout() {
+        viewModelScope.launch(NonCancellable) {
+            userCredentialsDataSource.setToken(null)
+        }
+    }
     fun updateDarkThemeConfig(config: DarkThemeConfig) {
         viewModelScope.launch {
             userPreferencesDataSource.setDarkThemeConfig(config)
