@@ -6,6 +6,8 @@ import coil3.ImageLoader
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.network.BuildConfig
 import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
 import com.shizq.bika.core.network.plugin.ResponseTransformer
@@ -30,7 +32,9 @@ import io.ktor.http.withCharset
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.charsets.Charsets
 import jakarta.inject.Singleton
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import okhttp3.Dns
 import okhttp3.OkHttpClient
@@ -43,6 +47,7 @@ internal object NetworkModule {
     fun providesHttpClient(
         okHttpClient: OkHttpClient,
         userCredentialsDataSource: UserCredentialsDataSource,
+        userPreferencesDataSource: UserPreferencesDataSource,
     ): HttpClient = HttpClient(OkHttp) {
         engine {
             preconfigured = okHttpClient
@@ -62,6 +67,13 @@ internal object NetworkModule {
             level = LogLevel.ALL
         }
         bikaAuth {
+            appChannel = runBlocking {
+                when (userPreferencesDataSource.userData.first().selectedNetworkLine) {
+                    NetworkLine.LINE_1 -> "1"
+                    NetworkLine.LINE_2 -> "2"
+                    NetworkLine.LINE_3 -> "3"
+                }
+            }
             token {
                 userCredentialsDataSource.userData.firstOrNull()?.token
             }
