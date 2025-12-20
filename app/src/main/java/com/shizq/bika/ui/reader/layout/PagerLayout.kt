@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
@@ -30,7 +31,7 @@ class PagerLayout(
     ) {
         val sharedCheckerboardBrush = rememberCheckerboardBrush()
 
-        val pageModifier = Modifier.background(sharedCheckerboardBrush)
+        val pageModifier = Modifier.background(Color.Black)
 
         if (direction == Direction.Vertical) {
             VerticalPager(
