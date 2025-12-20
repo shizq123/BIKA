@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.reader
+package com.shizq.bika.ui.reader.layout
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
