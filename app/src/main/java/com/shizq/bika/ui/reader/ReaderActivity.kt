@@ -61,6 +61,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.context.findActivity
+import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
@@ -69,6 +70,7 @@ import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderLayout
+import com.shizq.bika.ui.reader.layout.SideSheetLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
 import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
@@ -98,7 +100,7 @@ class ReaderActivity : ComponentActivity() {
     @Composable
     fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
         val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-
+//        val dialog by viewModel.dialog.collectAsStateWithLifecycle()
         val chapterMetadata = uiState.chapterMeta
         val chapterOrder = uiState.currentChapterOrder
         val readerPreferences = uiState.readerConfig
@@ -119,7 +121,8 @@ class ReaderActivity : ComponentActivity() {
             readerPreferences = readerPreferences,
             initialPageIndex = 0,
             onProgressUpdate = viewModel::saveProgress,
-            getHistoryPage = viewModel::getChapterHistoryPage
+            getHistoryPage = viewModel::getChapterHistoryPage,
+            onReadingModeChange = viewModel::onReadingModeChange
         )
     }
 
@@ -136,7 +139,8 @@ class ReaderActivity : ComponentActivity() {
         highlightedChapter: Int,
         getHistoryPage: suspend (Int) -> Int = { 0 },
         onChapterChange: (Chapter) -> Unit = {},
-        readerPreferences: ReaderConfig
+        readerPreferences: ReaderConfig,
+        onReadingModeChange: (ReadingMode) -> Unit = {}
     ) {
         val context = LocalContext.current
 
@@ -221,7 +225,9 @@ class ReaderActivity : ComponentActivity() {
                         }
                     },
                     middleActions = {
-
+                        /*IconButton({}) {
+                            Icon(Icons.Rounded.ReadMore, "阅读模式")
+                        }*/
                     },
                     endActions = {
                         IconButton(onClick = { showSettings = true }) {

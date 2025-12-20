@@ -10,6 +10,7 @@ import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ChapterMeta
@@ -46,6 +47,8 @@ class ReaderViewModel @Inject constructor(
     private val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
 
     private val _chapterMeta = MutableStateFlow<ChapterMeta?>(null)
+    val dialog: StateFlow<Dialog?>
+        field = MutableStateFlow<Dialog?>(null)
 
     val uiState: StateFlow<ReaderUiState> = combine(
         userPreferencesDataSource.userData,
@@ -94,6 +97,12 @@ class ReaderViewModel @Inject constructor(
         savedStateHandle[EXTRA_ORDER] = chapter.order
     }
 
+    fun onReadingModeChange(mode: ReadingMode) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setReadingMode(mode)
+        }
+    }
+
     /**
      * 查询指定章节的历史进度
      * 返回页码，如果没有历史则返回 0
@@ -109,13 +118,14 @@ class ReaderViewModel @Inject constructor(
         }
         return targetProgress?.currentPage ?: 0
     }
+
     /**
      * 保存阅读进度
      * 只需要传入 pageIndex，其余信息从 ViewModel 内部状态获取
      */
     fun saveProgress(pageIndex: Int) {
         val comicId = id.value
-        val meta = _chapterMeta.value // 获取当前的元数据
+        val meta = _chapterMeta.value
 
         if (comicId.isEmpty() || meta == null) {
             return
@@ -128,8 +138,6 @@ class ReaderViewModel @Inject constructor(
             val rowsUpdated = historyDao.updateLastReadAt(comicId, now)
             if (rowsUpdated <= 0) return@launch
 
-            // 构造进度实体
-            // 假设 ChapterMeta 中包含 chapterId。如果没有，你可能需要调整 Meta 类或 Paging 逻辑
             val chapterProgress = ChapterProgressEntity(
                 historyId = comicId,
                 chapterId = currentChapterOrder.value,
@@ -141,4 +149,8 @@ class ReaderViewModel @Inject constructor(
             historyDao.upsertChapterProgress(chapterProgress)
         }
     }
+}
+
+sealed interface Dialog {
+    data object ReadingMode : Dialog
 }
