@@ -15,27 +15,14 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material.icons.rounded.ScreenRotation
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.Smartphone
-import androidx.compose.material.icons.rounded.ViewCarousel
-import androidx.compose.material.icons.rounded.ViewColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -55,30 +42,29 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.context.findActivity
-import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
-import com.shizq.bika.ui.reader.bar.BottomBar
+import com.shizq.bika.ui.reader.bar.ReaderBottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.components.ChapterList
 import com.shizq.bika.ui.reader.components.ReadingModeSelectBottomSheet
+import com.shizq.bika.ui.reader.components.ReadingSettingsBottomSheet
 import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.SideSheetLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
-import com.shizq.bika.ui.reader.settings.SettingsScreen
-import com.shizq.bika.ui.reader.state.ActiveSheet
 import com.shizq.bika.ui.reader.state.ReaderAction
-import com.shizq.bika.ui.reader.state.ReaderAction.ChangeChapter
-import com.shizq.bika.ui.reader.state.ReaderAction.ChangeReadingMode
-import com.shizq.bika.ui.reader.state.ReaderAction.OpenSheet
-import com.shizq.bika.ui.reader.state.ReaderAction.SaveProgress
-import com.shizq.bika.ui.reader.state.ReaderAction.ToggleChapterList
-import com.shizq.bika.ui.reader.state.ReaderAction.ToggleMenu
-import com.shizq.bika.ui.reader.state.ReaderAction.ToggleSettings
+import com.shizq.bika.ui.reader.state.ReaderAction.HideSheet
+import com.shizq.bika.ui.reader.state.ReaderAction.JumpToChapter
+import com.shizq.bika.ui.reader.state.ReaderAction.SetOrientation
+import com.shizq.bika.ui.reader.state.ReaderAction.SetReadingMode
+import com.shizq.bika.ui.reader.state.ReaderAction.ShowSheet
+import com.shizq.bika.ui.reader.state.ReaderAction.SyncReadingProgress
+import com.shizq.bika.ui.reader.state.ReaderAction.ToggleBarsVisibility
+import com.shizq.bika.ui.reader.state.ReaderSheet
 import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
@@ -138,7 +124,7 @@ class ReaderActivity : ComponentActivity() {
 
                 val config = state.config
                 val chapterState = state.chapter
-                val overlayState = state.overlay
+                val overlayState = state.uiControl
 
                 var currentUiPage by remember { mutableIntStateOf(0) }
 
@@ -150,17 +136,13 @@ class ReaderActivity : ComponentActivity() {
                 )
                 val controller = readerContext.controller
 
-                SystemUiController(showSystemUI = overlayState.isMenuVisible)
+                SystemUiController(showSystemUI = overlayState.showSystemBars)
                 OrientationEffect(config.screenOrientation)
-                ReaderBottomSheet(state.activeSheet, config, dispatch)
+                ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
 
                 LaunchedEffect(overlayState.seekState) {
-                    when (val seek = overlayState.seekState) {
-                        is SeekState.Seeking -> {
-                            controller.scrollToPage(seek.progress.toInt())
-                        }
-
-                        SeekState.Idle -> {}
+                    if (overlayState.seekState is SeekState.Seeking) {
+                        controller.scrollToPage(overlayState.seekState.targetPage.toInt())
                     }
                 }
 
@@ -169,7 +151,7 @@ class ReaderActivity : ComponentActivity() {
                         .debounce(100)
                         .collect { page ->
                             currentUiPage = page
-                            dispatch(SaveProgress(page))
+                            dispatch(SyncReadingProgress(page))
                         }
                 }
 
@@ -182,93 +164,39 @@ class ReaderActivity : ComponentActivity() {
                 )
 
                 ReaderScaffold(
-                    showMenu = overlayState.isMenuVisible,
+                    showMenu = overlayState.showSystemBars,
                     topBar = {
                         val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
                         TopBar(title = { Text(title) }, onBackClick = onBackClick)
                     },
                     bottomBar = {
-                        BottomBar(
-                            progressIndicator = {
-                                if (chapterState.totalPages > 0) {
-                                    Text(text = "${currentUiPage + 1} / ${chapterState.totalPages}")
-                                }
+                        ReaderBottomBar(
+                            currentPage = currentUiPage,
+                            totalPages = chapterState.totalPages,
+                            readingMode = config.readingMode,
+                            onSliderValueChange = { currentUiPage = it.toInt() },
+                            onSliderValueChangeFinished = {
+                                scope.launch { controller.scrollToPage(currentUiPage) }
                             },
-                            progressSlider = {
-                                Slider(
-                                    value = currentUiPage.toFloat(),
-                                    onValueChange = { newValue ->
-                                        currentUiPage = newValue.toInt()
-                                    },
-                                    onValueChangeFinished = {
-                                        scope.launch {
-                                            controller.scrollToPage(currentUiPage)
-                                        }
-                                    },
-                                    valueRange = 0f..(chapterState.totalPages.coerceAtLeast(1) - 1).toFloat(),
-                                )
-                            },
-                            startActions = {
-                                IconButton(onClick = { dispatch(ToggleChapterList) }) {
-                                    Icon(Icons.Rounded.Menu, "目录")
-                                }
-                            },
-                            middleActions = {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceEvenly
-                                ) {
-                                    IconButton(
-                                        onClick = {
-                                            dispatch(OpenSheet(ActiveSheet.ReadingMode))
-                                        }
-                                    ) {
-                                        val icon = when (config.readingMode) {
-                                            ReadingMode.LEFT_TO_RIGHT -> Icons.Rounded.ViewCarousel
-                                            ReadingMode.RIGHT_TO_LEFT -> Icons.Rounded.ViewCarousel
-                                            ReadingMode.VERTICAL_PAGER -> Icons.Rounded.ViewColumn
-                                            ReadingMode.WEBTOON -> Icons.Rounded.Smartphone
-                                            ReadingMode.CONTINUOUS_VERTICAL -> Icons.Rounded.ViewColumn
-                                        }
-                                        Icon(icon, contentDescription = null)
-                                    }
-                                    IconButton(
-                                        onClick = {
-                                            dispatch(OpenSheet(ActiveSheet.Orientation))
-                                        }
-                                    ) {
-                                        Icon(
-                                            Icons.Rounded.ScreenRotation,
-                                            contentDescription = null
-                                        )
-                                    }
-                                }
-                            },
-                            endActions = {
-                                IconButton(onClick = { dispatch(ToggleSettings) }) {
-                                    Icon(Icons.Rounded.Settings, "设置")
-                                }
-                            }
+                            onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
+                            onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
+                            onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
+                            onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) }
                         )
                     },
                     floatingMessage = {
                         if (chapterState.totalPages > 0) {
-                            Text(
-                                text = "${currentUiPage + 1} / ${chapterState.totalPages}",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color.White,
-                                modifier = Modifier
-                                    .background(
-                                        Color.Black.copy(alpha = 0.6f),
-                                        MaterialTheme.shapes.small
-                                    )
-                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            PageIndicatorBadge(
+                                current = currentUiPage + 1,
+                                total = chapterState.totalPages
                             )
                         }
                     },
                     sideSheet = {
+                        val isChapterListVisible =
+                            overlayState.readerSheet is ReaderSheet.ChapterList
                         AnimatedVisibility(
-                            visible = overlayState.isChapterListVisible,
+                            visible = isChapterListVisible,
                             enter = slideInHorizontally(
                                 animationSpec = tween(),
                                 initialOffsetX = { -it }
@@ -280,9 +208,9 @@ class ReaderActivity : ComponentActivity() {
                         ) {
                             SideSheetLayout(
                                 title = { Text("目录") },
-                                onDismissRequest = { dispatch(ToggleChapterList) },
+                                onDismissRequest = { dispatch(HideSheet) },
                                 closeButton = {
-                                    IconButton(onClick = { dispatch(ToggleChapterList) }) {
+                                    IconButton(onClick = { dispatch(HideSheet) }) {
                                         Icon(Icons.Rounded.Close, contentDescription = "关闭目录")
                                     }
                                 }
@@ -291,7 +219,7 @@ class ReaderActivity : ComponentActivity() {
                                     chapters = chapterList,
                                     currentChapterId = chapterState.order,
                                     onChapterClick = { newChapter ->
-                                        dispatch(ChangeChapter(newChapter))
+                                        dispatch(JumpToChapter(newChapter))
                                     },
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
@@ -304,56 +232,62 @@ class ReaderActivity : ComponentActivity() {
                             readerContext = readerContext,
                             gestureState = gestureState,
                             chapterPages = imageList,
-                            toggleMenuVisibility = { dispatch(ToggleMenu) }
+                            toggleMenuVisibility = { dispatch(ToggleBarsVisibility) }
                         )
                     }
                 )
-
-                if (overlayState.isSettingsVisible) {
-                    val settingsSheetState =
-                        rememberModalBottomSheetState(skipPartiallyExpanded = true)
-
-                    SettingsScreen(
-                        settingsSheetState = settingsSheetState,
-                    ) {
-                        scope.launch { settingsSheetState.hide() }.invokeOnCompletion {
-                            if (!settingsSheetState.isVisible) {
-                                dispatch(ToggleSettings)
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
             }
         }
     }
 
     @Composable
+    fun PageIndicatorBadge(current: Int, total: Int) {
+        Text(
+            text = "$current / $total",
+            style = MaterialTheme.typography.labelMedium,
+            color = Color.White,
+            modifier = Modifier
+                .background(Color.Black.copy(alpha = 0.6f), MaterialTheme.shapes.small)
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        )
+    }
+
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
     fun ReaderBottomSheet(
-        sheet: ActiveSheet,
+        sheet: ReaderSheet,
         config: ReaderConfig,
         dispatch: (ReaderAction) -> Unit
     ) {
+        val onClose = { dispatch(HideSheet) }
         when (sheet) {
-            ActiveSheet.ReadingMode -> {
+            ReaderSheet.ReadingMode -> {
                 ReadingModeSelectBottomSheet(
                     activeMode = config.readingMode,
                     onReadingModeChanged = {
-                        dispatch(ChangeReadingMode(it))
+                        dispatch(SetReadingMode(it))
                     },
-                    onDismissRequest = { dispatch(OpenSheet(ActiveSheet.None)) }
+                    onDismissRequest = onClose
                 )
             }
 
-            ActiveSheet.Orientation -> {
+            ReaderSheet.Orientation -> {
                 ScreenOrientationSelectBottomSheet(
                     orientation = config.screenOrientation,
-                    onDismissRequest = { dispatch(OpenSheet(ActiveSheet.None)) },
-                    onOrientationChange = { dispatch(ReaderAction.ChangeOrientation(it)) }
+                    onOrientationChange = { dispatch(SetOrientation(it)) },
+                    onDismissRequest = onClose
                 )
             }
 
-            ActiveSheet.None -> {}
+            ReaderSheet.Settings -> {
+                ReadingSettingsBottomSheet(
+                    config = config,
+                    dispatch = dispatch,
+                    onDismissRequest = onClose,
+                )
+            }
+
+            else -> {}
         }
     }
 

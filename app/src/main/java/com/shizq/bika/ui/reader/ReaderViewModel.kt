@@ -7,8 +7,6 @@ import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.ReadingMode
-import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ChapterMeta
 import com.shizq.bika.paging.ChapterPagesPagingSource
@@ -48,10 +46,10 @@ class ReaderViewModel @Inject constructor(
         .filter { (id, _) -> id.isNotEmpty() }
         .flatMapLatest { (id, order) ->
             Pager(
-                config = PagingConfig(pageSize = 10, prefetchDistance = 5)
+                config = PagingConfig(pageSize = 40, prefetchDistance = 5, initialLoadSize = 40)
             ) {
                 chapterPagesPagingSourceFactory.create(id, order) { meta ->
-                    dispatch(ReaderAction.OnMetaLoaded(meta))
+                    dispatch(ReaderAction.ChapterMetaLoaded(meta))
                 }
             }.flow
         }
@@ -66,26 +64,6 @@ class ReaderViewModel @Inject constructor(
             }.flow
         }
         .cachedIn(viewModelScope)
-    //    viewModelScope.launch {
-    //            state
-    //                .filterIsInstance<ReaderUiState.Ready>()
-    //                .map { it.id to it.chapter.order } // 注意这里路径变了：it.chapter.order
-    //                .distinctUntilChanged()
-    //                .collect { (id, order) ->
-    //                    dispatch(ReaderAction.LoadHistory(id, order))
-    //                }
-    //        }
-
-    fun onChapterChange(chapter: Chapter) {
-        _chapterMeta.value = null
-        savedStateHandle[EXTRA_ORDER] = chapter.order
-    }
-
-    fun onReadingModeChange(mode: ReadingMode) {
-        viewModelScope.launch {
-            userPreferencesDataSource.setReadingMode(mode)
-        }
-    }
 
     fun dispatch(action: ReaderAction) {
         viewModelScope.launch {
