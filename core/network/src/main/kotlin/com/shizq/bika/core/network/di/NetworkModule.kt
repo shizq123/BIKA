@@ -39,7 +39,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.Dns
 import okhttp3.OkHttpClient
 
-// TODO: 一个暂时的操作，迁移后删除 
+// TODO: 一个暂时的操作，迁移后删除
 var ProjectOkhttp: OkHttpClient? = null
 @Module
 @InstallIn(SingletonComponent::class)
