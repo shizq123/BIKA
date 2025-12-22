@@ -14,7 +14,7 @@ sealed interface ReaderUiState {
         val config: ReaderConfig = ReaderConfig.Default,
 
         val overlay: ReaderOverlayState = ReaderOverlayState(),
-
+        val activeSheet: ActiveSheet = ActiveSheet.None,
         val error: Throwable? = null
     ) : ReaderUiState
 }
@@ -54,4 +54,6 @@ sealed interface ReaderAction {
 
     data class OnMetaLoaded(val meta: ChapterMeta) : ReaderAction
     data class LoadHistory(val id: String, val chapterOrder: Int) : ReaderAction
+
+    data class OpenSheet(val sheet: ActiveSheet) : ReaderAction
 }
