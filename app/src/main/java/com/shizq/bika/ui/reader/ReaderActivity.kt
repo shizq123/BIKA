@@ -15,27 +15,21 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Menu
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.ScreenRotation
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.ViewCarousel
 import androidx.compose.material.icons.rounded.ViewColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,11 +43,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -62,7 +54,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
 import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
@@ -70,6 +61,7 @@ import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
+import com.shizq.bika.ui.reader.components.ChapterList
 import com.shizq.bika.ui.reader.components.ReadingModeSelectBottomSheet
 import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
@@ -279,11 +271,11 @@ class ReaderActivity : ComponentActivity() {
                             visible = overlayState.isChapterListVisible,
                             enter = slideInHorizontally(
                                 animationSpec = tween(),
-                                initialOffsetX = { fullWidth -> -fullWidth }
+                                initialOffsetX = { -it }
                             ),
                             exit = slideOutHorizontally(
                                 animationSpec = tween(),
-                                targetOffsetX = { fullWidth -> -fullWidth }
+                                targetOffsetX = { -it }
                             ),
                         ) {
                             SideSheetLayout(
@@ -377,91 +369,6 @@ class ReaderActivity : ComponentActivity() {
                 ScreenOrientation.LockPortrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
                 ScreenOrientation.LockLandscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
                 ScreenOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
-            }
-        }
-    }
-
-    @Composable
-    fun ChapterList(
-        chapters: LazyPagingItems<Chapter>,
-        currentChapterId: Int,
-        onChapterClick: (Chapter) -> Unit,
-        modifier: Modifier = Modifier
-    ) {
-        LazyColumn(
-            modifier = modifier
-                .fillMaxSize()
-                .padding(vertical = 8.dp)
-        ) {
-            item {
-                Text(
-                    text = "章节列表",
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-                HorizontalDivider()
-            }
-
-            items(
-                count = chapters.itemCount,
-                key = chapters.itemKey { it.id }
-            ) { index ->
-                chapters[index]?.let { chapter ->
-                    val isCurrent = chapter.order == currentChapterId
-                    ChapterListItem(
-                        chapter = chapter,
-                        isCurrent = isCurrent,
-                        onClick = { onChapterClick(chapter) },
-                    )
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun ChapterListItem(
-        chapter: Chapter,
-        isCurrent: Boolean,
-        onClick: () -> Unit
-    ) {
-        val backgroundColor = if (isCurrent) {
-            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-        } else {
-            Color.Transparent
-        }
-
-        val titleColor = if (isCurrent) {
-            MaterialTheme.colorScheme.primary
-        } else {
-            MaterialTheme.colorScheme.onSurface
-        }
-
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(onClick = onClick)
-                .background(backgroundColor)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = chapter.title,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = titleColor,
-                    fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-
-                Text(
-                    text = chapter.title,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-
-            if (isCurrent) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = "Playing", tint = titleColor)
             }
         }
     }
