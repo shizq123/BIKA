@@ -141,6 +141,11 @@ class ReaderStateMachine @AssistedInject constructor(
                         copy(overlay = overlay.copy(isSettingsVisible = !overlay.isSettingsVisible))
                     }
                 }
+                on<ReaderAction.OpenSheet> {
+                    mutate {
+                        copy(activeSheet = it.sheet)
+                    }
+                }
             }
         }
     }
