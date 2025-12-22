@@ -1,6 +1,7 @@
 package com.shizq.bika.ui.reader.state
 
 import com.shizq.bika.core.model.ReadingMode
+import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterMeta
 import com.shizq.bika.ui.reader.layout.ReaderConfig
@@ -46,6 +47,7 @@ sealed interface SeekState {
 sealed interface ReaderAction {
     data class ChangeChapter(val chapter: Chapter) : ReaderAction
     data class ChangeReadingMode(val mode: ReadingMode) : ReaderAction
+    data class ChangeOrientation(val orientation: ScreenOrientation) : ReaderAction
     data class SaveProgress(val pageIndex: Int) : ReaderAction
 
     data object ToggleSettings : ReaderAction
