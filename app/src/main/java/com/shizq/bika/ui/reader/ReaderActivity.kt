@@ -16,6 +16,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -25,10 +26,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Menu
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.ScreenRotation
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.ViewCarousel
+import androidx.compose.material.icons.rounded.ViewColumn
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -59,17 +64,28 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.context.findActivity
+import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
+import com.shizq.bika.ui.reader.components.ReadingModeSelectBottomSheet
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
+import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.SideSheetLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
+import com.shizq.bika.ui.reader.state.ActiveSheet
 import com.shizq.bika.ui.reader.state.ReaderAction
+import com.shizq.bika.ui.reader.state.ReaderAction.ChangeChapter
+import com.shizq.bika.ui.reader.state.ReaderAction.ChangeReadingMode
+import com.shizq.bika.ui.reader.state.ReaderAction.OpenSheet
+import com.shizq.bika.ui.reader.state.ReaderAction.SaveProgress
+import com.shizq.bika.ui.reader.state.ReaderAction.ToggleChapterList
+import com.shizq.bika.ui.reader.state.ReaderAction.ToggleMenu
+import com.shizq.bika.ui.reader.state.ReaderAction.ToggleSettings
 import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
@@ -143,6 +159,7 @@ class ReaderActivity : ComponentActivity() {
 
                 SystemUiController(showSystemUI = overlayState.isMenuVisible)
                 OrientationEffect(config.screenOrientation)
+                ReaderBottomSheet(state.activeSheet, config, dispatch)
 
                 LaunchedEffect(overlayState.seekState) {
                     when (val seek = overlayState.seekState) {
@@ -159,7 +176,7 @@ class ReaderActivity : ComponentActivity() {
                         .debounce(100)
                         .collect { page ->
                             currentUiPage = page
-                            dispatch(ReaderAction.SaveProgress(page))
+                            dispatch(SaveProgress(page))
                         }
                 }
 
@@ -199,15 +216,44 @@ class ReaderActivity : ComponentActivity() {
                                 )
                             },
                             startActions = {
-                                IconButton(onClick = { dispatch(ReaderAction.ToggleChapterList) }) {
-                                    Icon(Icons.Default.Menu, "目录")
+                                IconButton(onClick = { dispatch(ToggleChapterList) }) {
+                                    Icon(Icons.Rounded.Menu, "目录")
                                 }
                             },
                             middleActions = {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceEvenly
+                                ) {
+                                    IconButton(
+                                        onClick = {
+                                            dispatch(OpenSheet(ActiveSheet.ReadingMode))
+                                        }
+                                    ) {
+                                        val icon = when (config.readingMode) {
+                                            ReadingMode.LEFT_TO_RIGHT -> Icons.Rounded.ViewCarousel
+                                            ReadingMode.RIGHT_TO_LEFT -> Icons.Rounded.ViewCarousel
+                                            ReadingMode.VERTICAL_PAGER -> Icons.Rounded.ViewColumn
+                                            ReadingMode.WEBTOON -> Icons.Rounded.Smartphone
+                                            ReadingMode.CONTINUOUS_VERTICAL -> Icons.Rounded.ViewColumn
+                                        }
+                                        Icon(icon, contentDescription = null)
+                                    }
+                                    IconButton(
+                                        onClick = {
+                                            dispatch(OpenSheet(ActiveSheet.Orientation))
+                                        }
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.ScreenRotation,
+                                            contentDescription = null
+                                        )
+                                    }
+                                }
                             },
                             endActions = {
-                                IconButton(onClick = { dispatch(ReaderAction.ToggleSettings) }) {
-                                    Icon(Icons.Default.Settings, "设置")
+                                IconButton(onClick = { dispatch(ToggleSettings) }) {
+                                    Icon(Icons.Rounded.Settings, "设置")
                                 }
                             }
                         )
@@ -241,10 +287,10 @@ class ReaderActivity : ComponentActivity() {
                         ) {
                             SideSheetLayout(
                                 title = { Text("目录") },
-                                onDismissRequest = { dispatch(ReaderAction.ToggleChapterList) },
+                                onDismissRequest = { dispatch(ToggleChapterList) },
                                 closeButton = {
-                                    IconButton(onClick = { dispatch(ReaderAction.ToggleChapterList) }) {
-                                        Icon(Icons.Default.Close, contentDescription = "关闭目录")
+                                    IconButton(onClick = { dispatch(ToggleChapterList) }) {
+                                        Icon(Icons.Rounded.Close, contentDescription = "关闭目录")
                                     }
                                 }
                             ) {
@@ -252,7 +298,7 @@ class ReaderActivity : ComponentActivity() {
                                     chapters = chapterList,
                                     currentChapterId = chapterState.order,
                                     onChapterClick = { newChapter ->
-                                        dispatch(ReaderAction.ChangeChapter(newChapter))
+                                        dispatch(ChangeChapter(newChapter))
                                     },
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
@@ -265,7 +311,7 @@ class ReaderActivity : ComponentActivity() {
                             readerContext = readerContext,
                             gestureState = gestureState,
                             chapterPages = imageList,
-                            toggleMenuVisibility = { dispatch(ReaderAction.ToggleMenu) }
+                            toggleMenuVisibility = { dispatch(ToggleMenu) }
                         )
                     }
                 )
@@ -279,13 +325,38 @@ class ReaderActivity : ComponentActivity() {
                     ) {
                         scope.launch { settingsSheetState.hide() }.invokeOnCompletion {
                             if (!settingsSheetState.isVisible) {
-                                dispatch(ReaderAction.ToggleSettings)
+                                dispatch(ToggleSettings)
                             }
                         }
                     }
                     Spacer(modifier = Modifier.height(16.dp))
                 }
             }
+        }
+    }
+
+    @Composable
+    fun ReaderBottomSheet(
+        sheet: ActiveSheet,
+        config: ReaderConfig,
+        dispatch: (ReaderAction) -> Unit
+    ) {
+        when (sheet) {
+            ActiveSheet.ReadingMode -> {
+                ReadingModeSelectBottomSheet(
+                    activeMode = config.readingMode,
+                    onReadingModeChanged = {
+                        dispatch(ChangeReadingMode(it))
+                    },
+                    onDismissRequest = { dispatch(OpenSheet(ActiveSheet.None)) }
+                )
+            }
+
+            ActiveSheet.Orientation -> {
+
+            }
+
+            ActiveSheet.None -> {}
         }
     }
 
@@ -385,7 +456,7 @@ class ReaderActivity : ComponentActivity() {
             }
 
             if (isCurrent) {
-                Icon(Icons.Default.PlayArrow, contentDescription = "Playing", tint = titleColor)
+                Icon(Icons.Rounded.PlayArrow, contentDescription = "Playing", tint = titleColor)
             }
         }
     }
