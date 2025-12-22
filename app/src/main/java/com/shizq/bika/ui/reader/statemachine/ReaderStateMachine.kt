@@ -115,6 +115,9 @@ class ReaderStateMachine @AssistedInject constructor(
                 onActionEffect<ReaderAction.ChangeReadingMode> {
                     userPreferencesDataSource.setReadingMode(it.mode)
                 }
+                onActionEffect<ReaderAction.ChangeOrientation> {
+                    userPreferencesDataSource.setScreenOrientation(it.orientation)
+                }
                 collectWhileInState(userPreferencesDataSource.userData) {
                     val newConfig = ReaderConfig(
                         volumeKeyNavigation = it.volumeKeyNavigation,
