@@ -96,16 +96,6 @@ fun SettingsContent(
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        Spacer(modifier = Modifier.height(16.dp))
-
-                        SectionTitle("阅读模式", isSubTitle = true)
-                        OptionFlowRow(
-                            options = ReadingMode.entries,
-                            selectedOption = uiState.userData.readingMode,
-                            onOptionSelected = onReadingModeChanged,
-                            labelProvider = { it.label }
-                        )
-
                         Spacer(modifier = Modifier.height(24.dp))
 
                         SectionTitle("屏幕方向", isSubTitle = true)
