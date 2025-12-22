@@ -11,12 +11,13 @@ import com.shizq.bika.ui.reader.settings.OptionFlowRow
 @Composable
 fun ReadingModeSelectBottomSheet(
     activeMode: ReadingMode,
+    onDismissRequest: () -> Unit,
     onReadingModeChanged: (ReadingMode) -> Unit,
     modifier: Modifier = Modifier
 ) {
     ModeSelectionBottomSheet(
-        onDismissRequest = {},
-        onApply = { onReadingModeChanged(activeMode) },
+        onDismissRequest = onDismissRequest,
+        onApply = { onDismissRequest(); onReadingModeChanged(activeMode) },
         title = { Text("阅读模式") },
         modifier = modifier,
     ) {
