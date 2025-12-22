@@ -39,20 +39,20 @@ enum class ReadingMode(
         viewerType = ViewerType.Pager
     ),
 
-    /** 竖向连续滚动 (无缝长条图) */
-    WEBTOON(
-        label = "条漫",
-        direction = Direction.Vertical,
-        viewerType = ViewerType.Scrolling,
-        hasPageGap = false
-    ),
-
     /** 竖向连续滚动 (页间有空隙) */
     CONTINUOUS_VERTICAL(
         label = "条漫（页间有空隙）",
         direction = Direction.Vertical,
         viewerType = ViewerType.Scrolling,
         hasPageGap = true
+    ),
+
+    /** 竖向连续滚动 (无缝长条图) */
+    WEBTOON(
+        label = "条漫",
+        direction = Direction.Vertical,
+        viewerType = ViewerType.Scrolling,
+        hasPageGap = false
     );
 
     val isHorizontal: Boolean get() = direction == Direction.Horizontal
