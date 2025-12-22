@@ -39,7 +39,7 @@ fun ReaderLayout(
     toggleMenuVisibility: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
-    val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f, minZoomFactor = .5f))
+    val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
     val currentReaderContext by rememberUpdatedState(readerContext)
     val currentGestureState by rememberUpdatedState(gestureState)
     val currentToggleMenuVisibility by rememberUpdatedState(toggleMenuVisibility)
