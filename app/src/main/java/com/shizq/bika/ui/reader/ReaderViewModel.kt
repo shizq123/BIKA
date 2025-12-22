@@ -6,9 +6,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
-import com.shizq.bika.core.data.model.asExternalModel
-import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.paging.Chapter
@@ -17,21 +14,15 @@ import com.shizq.bika.paging.ChapterMeta
 import com.shizq.bika.paging.ChapterPagesPagingSource
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
-import com.shizq.bika.ui.reader.layout.ReaderConfig
+import com.shizq.bika.ui.reader.state.ReaderAction
+import com.shizq.bika.ui.reader.statemachine.ReaderStateMachine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.time.Clock
 
 private const val TAG = "ReaderViewModel"
 
@@ -39,34 +30,18 @@ private const val TAG = "ReaderViewModel"
 class ReaderViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
-    private val historyDao: ReadingHistoryDao,
     private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
-    private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory
+    private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory,
+    private val readerStateMachineFactory: ReaderStateMachine.Factory
 ) : ViewModel() {
     private val id = savedStateHandle.getStateFlow(EXTRA_ID, "")
     private val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
 
     private val _chapterMeta = MutableStateFlow<ChapterMeta?>(null)
-    val dialog: StateFlow<Dialog?>
-        field = MutableStateFlow<Dialog?>(null)
 
-    val uiState: StateFlow<ReaderUiState> = combine(
-        userPreferencesDataSource.userData,
-        currentChapterOrder,
-        _chapterMeta
-    ) { userData, order, meta ->
-        ReaderUiState(
-            readerConfig = ReaderConfig(
-                volumeKeyNavigation = userData.volumeKeyNavigation,
-                readingMode = userData.readingMode,
-                screenOrientation = userData.screenOrientation,
-                tapZoneLayout = userData.tapZoneLayout,
-                preloadCount = userData.preloadCount
-            ),
-            currentChapterOrder = order,
-            chapterMeta = meta
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ReaderUiState())
+    private val stateMachineFactory = readerStateMachineFactory(id.value, currentChapterOrder.value)
+    private val stateMachine = stateMachineFactory.launchIn(viewModelScope)
+    val stateFlow = stateMachine.state
 
     //  图片列表流
     val imageListFlow = combine(id, currentChapterOrder, ::Pair)
@@ -76,7 +51,7 @@ class ReaderViewModel @Inject constructor(
                 config = PagingConfig(pageSize = 10, prefetchDistance = 5)
             ) {
                 chapterPagesPagingSourceFactory.create(id, order) { meta ->
-                    _chapterMeta.update { meta }
+                    dispatch(ReaderAction.OnMetaLoaded(meta))
                 }
             }.flow
         }
@@ -91,6 +66,15 @@ class ReaderViewModel @Inject constructor(
             }.flow
         }
         .cachedIn(viewModelScope)
+    //    viewModelScope.launch {
+    //            state
+    //                .filterIsInstance<ReaderUiState.Ready>()
+    //                .map { it.id to it.chapter.order } // 注意这里路径变了：it.chapter.order
+    //                .distinctUntilChanged()
+    //                .collect { (id, order) ->
+    //                    dispatch(ReaderAction.LoadHistory(id, order))
+    //                }
+    //        }
 
     fun onChapterChange(chapter: Chapter) {
         _chapterMeta.value = null
@@ -103,54 +87,9 @@ class ReaderViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 查询指定章节的历史进度
-     * 返回页码，如果没有历史则返回 0
-     */
-    suspend fun getChapterHistoryPage(chapterOrder: Int): Int {
-        val comicId = id.value
-        if (comicId.isEmpty()) return 0
-
-        val history = historyDao.getDetailedHistoryById(comicId) ?: return 0
-        val detailedHistory = history.asExternalModel()
-        val targetProgress = detailedHistory.progressList.find {
-            it.chapterNumber == chapterOrder
-        }
-        return targetProgress?.currentPage ?: 0
-    }
-
-    /**
-     * 保存阅读进度
-     * 只需要传入 pageIndex，其余信息从 ViewModel 内部状态获取
-     */
-    fun saveProgress(pageIndex: Int) {
-        val comicId = id.value
-        val meta = _chapterMeta.value
-
-        if (comicId.isEmpty() || meta == null) {
-            return
-        }
-
-        viewModelScope.launch(Dispatchers.IO + NonCancellable) {
-            val now = Clock.System.now()
-
-            // 更新最后阅读时间
-            val rowsUpdated = historyDao.updateLastReadAt(comicId, now)
-            if (rowsUpdated <= 0) return@launch
-
-            val chapterProgress = ChapterProgressEntity(
-                historyId = comicId,
-                chapterId = currentChapterOrder.value,
-                currentPage = pageIndex,
-                pageCount = meta.totalImages,
-                lastReadAt = now
-            )
-
-            historyDao.upsertChapterProgress(chapterProgress)
+    fun dispatch(action: ReaderAction) {
+        viewModelScope.launch {
+            stateMachine.dispatch(action)
         }
     }
-}
-
-sealed interface Dialog {
-    data object ReadingMode : Dialog
 }

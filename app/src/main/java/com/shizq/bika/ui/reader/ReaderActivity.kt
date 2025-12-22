@@ -41,10 +41,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -61,22 +59,23 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.context.findActivity
-import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
-import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.SideSheetLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.settings.SettingsScreen
+import com.shizq.bika.ui.reader.state.ReaderAction
+import com.shizq.bika.ui.reader.state.ReaderUiState
+import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.ui.reader.util.preload.PagingPreload
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -99,212 +98,203 @@ class ReaderActivity : ComponentActivity() {
 
     @Composable
     fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
-        val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-//        val dialog by viewModel.dialog.collectAsStateWithLifecycle()
-        val chapterMetadata = uiState.chapterMeta
-        val chapterOrder = uiState.currentChapterOrder
-        val readerPreferences = uiState.readerConfig
+        val uiState by viewModel.stateFlow.collectAsStateWithLifecycle()
 
         val imageList = viewModel.imageListFlow.collectAsLazyPagingItems()
         val chapterList = viewModel.chapterListFlow.collectAsLazyPagingItems()
 
-        OrientationEffect(readerPreferences.screenOrientation)
-
         ReaderContent(
+            state = uiState,
             imageList = imageList,
             chapterList = chapterList,
-            title = chapterMetadata?.title ?: "",
-            pageCount = chapterMetadata?.totalImages ?: 0,
             onBackClick = onBackClick,
-            highlightedChapter = chapterOrder,
-            onChapterChange = viewModel::onChapterChange,
-            readerPreferences = readerPreferences,
-            initialPageIndex = 0,
-            onProgressUpdate = viewModel::saveProgress,
-            getHistoryPage = viewModel::getChapterHistoryPage,
-            onReadingModeChange = viewModel::onReadingModeChange
+            dispatch = viewModel::dispatch,
         )
     }
 
     @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    fun ReaderContent(
+    private fun ReaderContent(
         imageList: LazyPagingItems<ChapterPage>,
         chapterList: LazyPagingItems<Chapter>,
-        title: String,
-        pageCount: Int,
-        initialPageIndex: Int,
-        onProgressUpdate: (Int) -> Unit = {},
+        state: ReaderUiState,
         onBackClick: () -> Unit = {},
-        highlightedChapter: Int,
-        getHistoryPage: suspend (Int) -> Int = { 0 },
-        onChapterChange: (Chapter) -> Unit = {},
-        readerPreferences: ReaderConfig,
-        onReadingModeChange: (ReadingMode) -> Unit = {}
+        dispatch: (ReaderAction) -> Unit = {},
     ) {
-        val context = LocalContext.current
+        when (state) {
+            ReaderUiState.Initializing -> {}
+            is ReaderUiState.Ready -> {
+                val context = LocalContext.current
+                val scope = rememberCoroutineScope()
 
-        val readerContext = rememberReaderContext(
-            readerPreferences.readingMode,
-            imageList,
-            readerPreferences,
-            initialPageIndex
-        )
-        val controller = readerContext.controller
-        val scope = rememberCoroutineScope()
-        var currentUiPage by remember { mutableIntStateOf(initialPageIndex) }
-        var isDraggingSlider by remember { mutableStateOf(false) }
+                val config = state.config
+                val chapterState = state.chapter
+                val overlayState = state.overlay
 
-        var showMenu by rememberSaveable { mutableStateOf(false) }
-        var showChapterList by remember { mutableStateOf(false) }
-        var showSettings by rememberSaveable { mutableStateOf(false) }
-        val settingsSheetState = rememberModalBottomSheetState(true)
+                var currentUiPage by remember { mutableIntStateOf(0) }
 
-        SystemUiController(showSystemUI = showMenu)
+                val readerContext = rememberReaderContext(
+                    readingMode = config.readingMode,
+                    chapterPages = imageList,
+                    config = config,
+                    initialPageIndex = 0
+                )
+                val controller = readerContext.controller
 
-        LaunchedEffect(highlightedChapter) {
-            val targetPage = getHistoryPage(highlightedChapter)
+                SystemUiController(showSystemUI = overlayState.isMenuVisible)
+                OrientationEffect(config.screenOrientation)
 
-            if (targetPage > 0) {
-                controller.scrollToPage(targetPage)
-            } else {
-                controller.scrollToPage(0)
-            }
-        }
-
-        LaunchedEffect(controller) {
-            controller.visibleItemIndex
-                .distinctUntilChanged()
-                .collect { page ->
-                    if (!isDraggingSlider) {
-                        currentUiPage = page
-                    }
-                    onProgressUpdate(page)
-                }
-        }
-
-        val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
-        PagingPreload(
-            pagingItems = imageList,
-            scrollStateProvider = readerContext.scrollStateProvider,
-            modelProvider = preloadModelProvider,
-            preloadCount = readerPreferences.preloadCount
-        )
-
-        ReaderScaffold(
-            showMenu = showMenu,
-            topBar = {
-                TopBar(title = { Text(title) }, onBackClick = onBackClick)
-            },
-            bottomBar = {
-                BottomBar(
-                    progressIndicator = {
-                        if (pageCount > 0) {
-                            Text(text = "${currentUiPage + 1} / $pageCount")
+                LaunchedEffect(overlayState.seekState) {
+                    when (val seek = overlayState.seekState) {
+                        is SeekState.Seeking -> {
+                            controller.scrollToPage(seek.progress.toInt())
                         }
+
+                        SeekState.Idle -> {}
+                    }
+                }
+
+                LaunchedEffect(controller) {
+                    controller.visibleItemIndex
+                        .debounce(100)
+                        .collect { page ->
+                            currentUiPage = page
+                            dispatch(ReaderAction.SaveProgress(page))
+                        }
+                }
+
+                val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
+                PagingPreload(
+                    pagingItems = imageList,
+                    scrollStateProvider = readerContext.scrollStateProvider,
+                    modelProvider = preloadModelProvider,
+                    preloadCount = config.preloadCount
+                )
+
+                ReaderScaffold(
+                    showMenu = overlayState.isMenuVisible,
+                    topBar = {
+                        val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
+                        TopBar(title = { Text(title) }, onBackClick = onBackClick)
                     },
-                    progressSlider = {
-                        Slider(
-                            value = currentUiPage.toFloat(),
-                            onValueChange = { newValue ->
-                                isDraggingSlider = true
-                                currentUiPage = newValue.toInt()
-                            },
-                            onValueChangeFinished = {
-                                scope.launch {
-                                    controller.scrollToPage(currentUiPage)
-                                    isDraggingSlider = false
+                    bottomBar = {
+                        BottomBar(
+                            progressIndicator = {
+                                if (chapterState.totalPages > 0) {
+                                    Text(text = "${currentUiPage + 1} / ${chapterState.totalPages}")
                                 }
                             },
-                            valueRange = 0f..(pageCount.coerceAtLeast(1) - 1).toFloat(),
+                            progressSlider = {
+                                Slider(
+                                    value = currentUiPage.toFloat(),
+                                    onValueChange = { newValue ->
+                                        currentUiPage = newValue.toInt()
+                                    },
+                                    onValueChangeFinished = {
+                                        scope.launch {
+                                            controller.scrollToPage(currentUiPage)
+                                        }
+                                    },
+                                    valueRange = 0f..(chapterState.totalPages.coerceAtLeast(1) - 1).toFloat(),
+                                )
+                            },
+                            startActions = {
+                                IconButton(onClick = { dispatch(ReaderAction.ToggleChapterList) }) {
+                                    Icon(Icons.Default.Menu, "目录")
+                                }
+                            },
+                            middleActions = {
+                            },
+                            endActions = {
+                                IconButton(onClick = { dispatch(ReaderAction.ToggleSettings) }) {
+                                    Icon(Icons.Default.Settings, "设置")
+                                }
+                            }
                         )
                     },
-                    startActions = {
-                        IconButton(onClick = { showChapterList = true }) {
-                            Icon(Icons.Default.Menu, "目录")
+                    floatingMessage = {
+                        if (chapterState.totalPages > 0) {
+                            Text(
+                                text = "${currentUiPage + 1} / ${chapterState.totalPages}",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = Color.White,
+                                modifier = Modifier
+                                    .background(
+                                        Color.Black.copy(alpha = 0.6f),
+                                        MaterialTheme.shapes.small
+                                    )
+                                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
                         }
                     },
-                    middleActions = {
-                        /*IconButton({}) {
-                            Icon(Icons.Rounded.ReadMore, "阅读模式")
-                        }*/
-                    },
-                    endActions = {
-                        IconButton(onClick = { showSettings = true }) {
-                            Icon(Icons.Default.Settings, "设置")
-                        }
-                    }
-                )
-            },
-            floatingMessage = {
-                Text(
-                    text = "${currentUiPage + 1} / $pageCount",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color.White,
-                    modifier = Modifier
-                        .background(Color.Black.copy(alpha = 0.6f), MaterialTheme.shapes.small)
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            },
-            sideSheet = {
-                AnimatedVisibility(
-                    showChapterList,
-                    enter = slideInHorizontally(tween()),
-                    exit = slideOutHorizontally(tween()),
-                ) {
-                    SideSheetLayout(
-                        title = { Text("目录") },
-                        onDismissRequest = { showChapterList = false },
-                        closeButton = {
-                            IconButton(onClick = { showChapterList = false }) {
-                                Icon(Icons.Default.Close, contentDescription = "关闭目录")
+                    sideSheet = {
+                        AnimatedVisibility(
+                            visible = overlayState.isChapterListVisible,
+                            enter = slideInHorizontally(
+                                animationSpec = tween(),
+                                initialOffsetX = { fullWidth -> -fullWidth }
+                            ),
+                            exit = slideOutHorizontally(
+                                animationSpec = tween(),
+                                targetOffsetX = { fullWidth -> -fullWidth }
+                            ),
+                        ) {
+                            SideSheetLayout(
+                                title = { Text("目录") },
+                                onDismissRequest = { dispatch(ReaderAction.ToggleChapterList) },
+                                closeButton = {
+                                    IconButton(onClick = { dispatch(ReaderAction.ToggleChapterList) }) {
+                                        Icon(Icons.Default.Close, contentDescription = "关闭目录")
+                                    }
+                                }
+                            ) {
+                                ChapterList(
+                                    chapters = chapterList,
+                                    currentChapterId = chapterState.order,
+                                    onChapterClick = { newChapter ->
+                                        dispatch(ReaderAction.ChangeChapter(newChapter))
+                                    },
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
                             }
                         }
-                    ) {
-                        ChapterList(
-                            chapters = chapterList,
-                            onChapterClick = { newChapterId ->
-                                onChapterChange(newChapterId)
-                                showChapterList = false // 点击章节后关闭面板
-                                showMenu = false
-                            },
-                            modifier = Modifier.padding(top = 8.dp),
-                            currentChapterId = highlightedChapter
+                    },
+                    content = {
+                        val gestureState = rememberGestureState(config.tapZoneLayout)
+                        ReaderLayout(
+                            readerContext = readerContext,
+                            gestureState = gestureState,
+                            chapterPages = imageList,
+                            toggleMenuVisibility = { dispatch(ReaderAction.ToggleMenu) }
                         )
                     }
-                }
-            },
-            content = {
-                val gestureState = rememberGestureState(readerPreferences.tapZoneLayout)
-                ReaderLayout(
-                    readerContext = readerContext,
-                    gestureState = gestureState,
-                    chapterPages = imageList,
-                    toggleMenuVisibility = { showMenu = !showMenu }
                 )
-            }
-        )
 
-        if (showSettings) {
-            SettingsScreen(settingsSheetState = settingsSheetState) {
-                scope.launch { settingsSheetState.hide() }.invokeOnCompletion {
-                    if (!settingsSheetState.isVisible) {
-                        showSettings = false
+                if (overlayState.isSettingsVisible) {
+                    val settingsSheetState =
+                        rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+                    SettingsScreen(
+                        settingsSheetState = settingsSheetState,
+                    ) {
+                        scope.launch { settingsSheetState.hide() }.invokeOnCompletion {
+                            if (!settingsSheetState.isVisible) {
+                                dispatch(ReaderAction.ToggleSettings)
+                            }
+                        }
                     }
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
             }
-
-            // 底部留白，防止在全面屏手机上贴底太近
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 
     @Composable
-    fun OrientationEffect(currentOrientation: ScreenOrientation) {
+    fun OrientationEffect(orientation: ScreenOrientation) {
         val context = LocalContext.current
-        LaunchedEffect(currentOrientation) {
+        LaunchedEffect(orientation) {
             val activity = context.findActivity()
-            activity?.requestedOrientation = when (currentOrientation) {
+            activity?.requestedOrientation = when (orientation) {
                 ScreenOrientation.System -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
                 ScreenOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
                 ScreenOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
