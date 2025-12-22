@@ -3,8 +3,6 @@ package com.shizq.bika.ui.reader.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.ReadingMode
-import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.UserPreferences
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -26,18 +24,6 @@ class SettingsViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = SettingsUiState.Loading
         )
-
-    fun updateReadingMode(mode: ReadingMode) {
-        viewModelScope.launch {
-            userPreferencesDataSource.setReadingMode(mode)
-        }
-    }
-
-    fun updateScreenOrientation(orientation: ScreenOrientation) {
-        viewModelScope.launch {
-            userPreferencesDataSource.setScreenOrientation(orientation)
-        }
-    }
 
     fun setTapZoneLayout(layout: TapZoneLayout) {
         viewModelScope.launch {

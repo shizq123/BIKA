@@ -2,7 +2,6 @@ package com.shizq.bika.ui.reader.settings
 
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +16,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -36,12 +36,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.shizq.bika.core.model.ReadingMode
-import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import kotlin.math.roundToInt
 
@@ -59,8 +58,6 @@ fun SettingsScreen(
     ) {
         SettingsContent(
             uiState = uiState,
-            onReadingModeChanged = viewModel::updateReadingMode,
-            onScreenOrientationChanged = viewModel::updateScreenOrientation,
             onTapZoneLayoutChanged = viewModel::setTapZoneLayout,
             onVolumeKeyNavigationChanged = viewModel::setVolumeKeyNavigation,
             onPreloadCountChanged = viewModel::updatePreloadCount
@@ -72,8 +69,6 @@ fun SettingsScreen(
 @Composable
 fun SettingsContent(
     uiState: SettingsUiState,
-    onReadingModeChanged: (ReadingMode) -> Unit = {},
-    onScreenOrientationChanged: (ScreenOrientation) -> Unit = {},
     onTapZoneLayoutChanged: (TapZoneLayout) -> Unit = {},
     onVolumeKeyNavigationChanged: (Boolean) -> Unit = {},
     onPreloadCountChanged: (Int) -> Unit = {},
@@ -96,17 +91,6 @@ fun SettingsContent(
                             .verticalScroll(rememberScrollState())
                             .padding(horizontal = 16.dp, vertical = 8.dp)
                     ) {
-                        Spacer(modifier = Modifier.height(24.dp))
-
-                        SectionTitle("屏幕方向", isSubTitle = true)
-                        OptionFlowRow(
-                            options = ScreenOrientation.entries,
-                            selectedOption = uiState.userData.screenOrientation,
-                            onOptionSelected = onScreenOrientationChanged,
-                            labelProvider = { it.label }
-                        )
-                        Spacer(modifier = Modifier.height(24.dp))
-
                         SectionTitle("预加载图片数量", isSubTitle = true)
 
                         Row(
@@ -156,8 +140,11 @@ fun SettingsContent(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(MaterialTheme.shapes.small)
-                                .clickable {
-                                    onVolumeKeyNavigationChanged(!uiState.userData.volumeKeyNavigation)
+                                .toggleable(
+                                    uiState.userData.volumeKeyNavigation,
+                                    role = Role.Switch
+                                ) {
+                                    onVolumeKeyNavigationChanged(it)
                                 }
                                 .padding(vertical = 8.dp, horizontal = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -176,7 +163,7 @@ fun SettingsContent(
                             }
                             Switch(
                                 checked = uiState.userData.volumeKeyNavigation,
-                                onCheckedChange = onVolumeKeyNavigationChanged
+                                onCheckedChange = null
                             )
                         }
 
