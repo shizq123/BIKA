@@ -1,5 +1,6 @@
 package com.shizq.bika.network
 
+import com.shizq.bika.core.network.di.ProjectOkhttp
 import kotlinx.serialization.json.Json
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
@@ -50,7 +51,13 @@ object RetrofitUtil {
             URL = url//记录baseurl
             retrofit = Retrofit.Builder()
                 .baseUrl(url)
-                .client(client)
+                .client(
+                    if (ProjectOkhttp == null) {
+                        client
+                    } else {
+                        ProjectOkhttp!!
+                    }
+                )
                 .addConverterFactory(GsonConverterFactory.create())
                 .addConverterFactory(kotlinJson.asConverterFactory("application/json; charset=UTF8".toMediaType()))
                 .addCallAdapterFactory(RxJava3CallAdapterFactory.create())
