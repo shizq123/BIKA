@@ -10,15 +10,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Check
-import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -30,64 +32,79 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModeSelectionBottomSheet(
+    title: String,
     onDismissRequest: () -> Unit,
     onApply: () -> Unit,
     modifier: Modifier = Modifier,
-    title: @Composable () -> Unit,
+    isApplyEnabled: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         sheetState = sheetState,
         modifier = modifier,
-        dragHandle = { }
+        dragHandle = { BottomSheetDefaults.DragHandle() }
     ) {
         Column(
-            modifier = Modifier.navigationBarsPadding()
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp),
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
                 contentAlignment = Alignment.Center
             ) {
-                title()
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium
+                )
             }
 
             HorizontalDivider()
 
             Column(
                 modifier = Modifier
-                    .padding(horizontal = 24.dp)
-                    .padding(top = 16.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 24.dp, vertical = 24.dp),
                 content = content
             )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
+                OutlinedButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text("取消")
+                }
+
                 FilledTonalButton(
                     onClick = onApply,
+                    enabled = isApplyEnabled,
                     modifier = Modifier.weight(1f)
                 ) {
                     Icon(
                         imageVector = Icons.Outlined.Check,
                         contentDescription = null,
-                        modifier = Modifier.size(ButtonDefaults.IconSize)
+                        modifier = Modifier.size(18.dp)
                     )
-                    Spacer(Modifier.size(ButtonDefaults.IconSpacing))
-                    Text(text = "应用")
+                    Spacer(Modifier.width(8.dp))
+                    Text("应用")
                 }
             }
         }
     }
 }
-
 @Preview(showBackground = true)
 @Composable
 private fun ModeSelectionBottomSheetPreview() {
@@ -95,18 +112,13 @@ private fun ModeSelectionBottomSheetPreview() {
         ModeSelectionBottomSheet(
             onDismissRequest = {},
             onApply = {},
-            title = {
-                Text(
-                    text = "模式选择",
-                    style = MaterialTheme.typography.titleMedium
-                )
-            },
+            title = "标题",
             content = {
                 Text(
                     text = "此处显示模式选择的具体内容",
                     modifier = Modifier.padding(vertical = 16.dp)
                 )
-            }
+            },
         )
     }
 }
