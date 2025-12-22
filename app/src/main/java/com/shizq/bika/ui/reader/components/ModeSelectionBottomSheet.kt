@@ -24,10 +24,12 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,6 +42,17 @@ fun ModeSelectionBottomSheet(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+
+    val closeWithAnimation = {
+        scope.launch {
+            sheetState.hide()
+        }.invokeOnCompletion {
+            if (!sheetState.isVisible) {
+                onDismissRequest()
+            }
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -82,14 +95,17 @@ fun ModeSelectionBottomSheet(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 OutlinedButton(
-                    onClick = onDismissRequest,
+                    onClick = { closeWithAnimation() },
                     modifier = Modifier.weight(1f)
                 ) {
                     Text("取消")
                 }
 
                 FilledTonalButton(
-                    onClick = onApply,
+                    onClick = {
+                        onApply()
+                        closeWithAnimation()
+                    },
                     enabled = isApplyEnabled,
                     modifier = Modifier.weight(1f)
                 ) {
@@ -105,6 +121,7 @@ fun ModeSelectionBottomSheet(
         }
     }
 }
+
 @Preview(showBackground = true)
 @Composable
 private fun ModeSelectionBottomSheetPreview() {
