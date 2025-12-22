@@ -6,9 +6,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
-import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.paging.ChapterListPagingSource
-import com.shizq.bika.paging.ChapterMeta
 import com.shizq.bika.paging.ChapterPagesPagingSource
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ID
 import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
@@ -16,7 +14,6 @@ import com.shizq.bika.ui.reader.state.ReaderAction
 import com.shizq.bika.ui.reader.statemachine.ReaderStateMachine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.flatMapLatest
@@ -26,16 +23,13 @@ private const val TAG = "ReaderViewModel"
 
 @HiltViewModel
 class ReaderViewModel @Inject constructor(
-    private val savedStateHandle: SavedStateHandle,
-    private val userPreferencesDataSource: UserPreferencesDataSource,
+    savedStateHandle: SavedStateHandle,
     private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory,
-    private val readerStateMachineFactory: ReaderStateMachine.Factory
+    readerStateMachineFactory: ReaderStateMachine.Factory
 ) : ViewModel() {
     private val id = savedStateHandle.getStateFlow(EXTRA_ID, "")
     private val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, 1)
-
-    private val _chapterMeta = MutableStateFlow<ChapterMeta?>(null)
 
     private val stateMachineFactory = readerStateMachineFactory(id.value, currentChapterOrder.value)
     private val stateMachine = stateMachineFactory.launchIn(viewModelScope)
