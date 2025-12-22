@@ -23,45 +23,39 @@ class TokenAuthenticator @Inject constructor(
         Log.d(TAG, "authenticate: 401 Unauthorized detected for request: ${response.request.url}")
 
         val userData = runBlocking { userCredentialsDataSource.userData.first() }
-        val oldToken = userData.token
+        val username = userData.username
+        val password = userData.password
 
-        if (oldToken == null || response.request.header("Authorization")
-                ?.endsWith(oldToken) == false
-        ) {
-            Log.w(TAG, "authenticate: No token found or token mismatch. Aborting refresh.")
+        if (username.isNullOrEmpty() || password.isNullOrEmpty()) {
+            Log.e(TAG, "authenticate: Cannot refresh token, no username/password saved.")
             return null
         }
 
         return synchronized(this) {
             Log.d(TAG, "authenticate: Entered synchronized block.")
+
             val latestUserData = runBlocking { userCredentialsDataSource.userData.first() }
             val latestToken = latestUserData.token
 
-            if (oldToken != latestToken) {
+            val requestToken = response.request.header("Authorization")
+            if (latestToken != null && requestToken != latestToken) {
                 Log.i(
                     TAG,
                     "authenticate: Token was already refreshed by another thread. Retrying with the new token."
                 )
                 return@synchronized response.request.newBuilder()
-                    .header("Authorization", latestToken!!)
+                    .header("Authorization", latestToken)
                     .build()
             }
 
-            val username = latestUserData.username
-            val password = latestUserData.password
-            if (username == null || password == null) {
-                Log.e(TAG, "authenticate: Cannot refresh token, no username/password saved.")
-                return@synchronized null
-            }
-
-            Log.i(TAG, "authenticate: Token expired. Attempting to re-login for user: '$username'")
-
+            Log.i(TAG, "authenticate: Attempting to re-login for user: '$username'")
             try {
                 val loginData: LoginData = runBlocking {
                     apiProvider.get().login(username, password)
                 }
 
                 val newToken = loginData.token
+
 
                 runBlocking { userCredentialsDataSource.setToken(newToken) }
                 Log.i(TAG, "authenticate: Token refresh successful. New token saved.")
@@ -70,7 +64,6 @@ class TokenAuthenticator @Inject constructor(
                 return@synchronized response.request.newBuilder()
                     .header("Authorization", newToken)
                     .build()
-
             } catch (e: Exception) {
                 Log.e(TAG, "authenticate: Token refresh failed due to an exception.", e)
 
