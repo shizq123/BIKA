@@ -11,9 +11,10 @@ import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.state.ChapterState
 import com.shizq.bika.ui.reader.state.ReaderAction
-import com.shizq.bika.ui.reader.state.ReaderOverlayState
+import com.shizq.bika.ui.reader.state.ReaderSheet
 import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
+import com.shizq.bika.ui.reader.state.UiControlState
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -26,7 +27,7 @@ class ReaderStateMachine @AssistedInject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
     @Assisted private val id: String,
-    @Assisted private val order: Int,
+    @Assisted private val startOrder: Int,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
     init {
         initializeWith { ReaderUiState.Initializing }
@@ -36,13 +37,13 @@ class ReaderStateMachine @AssistedInject constructor(
                     override {
                         ReaderUiState.Ready(
                             id = id,
-                            chapter = ChapterState(order, isLoading = true)
+                            chapter = ChapterState(startOrder, isLoading = true)
                         )
                     }
                 }
             }
             inState<ReaderUiState.Ready> {
-                on<ReaderAction.ChangeChapter> {
+                on<ReaderAction.JumpToChapter> {
                     savedStateHandle[EXTRA_ORDER] = it.chapter.order
 
                     mutate {
@@ -54,13 +55,13 @@ class ReaderStateMachine @AssistedInject constructor(
                         )
                         copy(
                             chapter = newChapterState,
-                            overlay = ReaderOverlayState(
+                            uiControl = UiControlState(
                                 seekState = SeekState.Idle
                             )
                         )
                     }
                 }
-                on<ReaderAction.OnMetaLoaded> {
+                on<ReaderAction.ChapterMetaLoaded> {
                     mutate {
                         copy(
                             chapter = chapter.copy(
@@ -71,7 +72,7 @@ class ReaderStateMachine @AssistedInject constructor(
                         )
                     }
                 }
-                on<ReaderAction.LoadHistory> {
+                on<ReaderAction.Initialize> {
                     val page = withContext(Dispatchers.IO) {
                         val history = historyDao.getDetailedHistoryById(snapshot.id)
                         val targetProgress = history?.asExternalModel()?.progressList?.find {
@@ -82,7 +83,7 @@ class ReaderStateMachine @AssistedInject constructor(
                     if (page > 0) {
                         mutate {
                             copy(
-                                overlay = overlay.copy(
+                                uiControl = uiControl.copy(
                                     seekState = SeekState.Seeking(page.toFloat())
                                 )
                             )
@@ -91,7 +92,7 @@ class ReaderStateMachine @AssistedInject constructor(
                         noChange()
                     }
                 }
-                onActionEffect<ReaderAction.SaveProgress> {
+                onActionEffect<ReaderAction.SyncReadingProgress> {
                     val chapter = snapshot.chapter
                     val meta = chapter.meta
 
@@ -112,11 +113,20 @@ class ReaderStateMachine @AssistedInject constructor(
                         }
                     }
                 }
-                onActionEffect<ReaderAction.ChangeReadingMode> {
+                onActionEffect<ReaderAction.SetReadingMode> {
                     userPreferencesDataSource.setReadingMode(it.mode)
                 }
-                onActionEffect<ReaderAction.ChangeOrientation> {
+                onActionEffect<ReaderAction.SetOrientation> {
                     userPreferencesDataSource.setScreenOrientation(it.orientation)
+                }
+                onActionEffect<ReaderAction.SetPreloadCount> {
+                    userPreferencesDataSource.setPreloadCount(it.count)
+                }
+                onActionEffect<ReaderAction.SetTapZoneLayout> {
+                    userPreferencesDataSource.setTapZoneLayout(it.layout)
+                }
+                onActionEffect<ReaderAction.SetVolumeKeyNavigation> {
+                    userPreferencesDataSource.setIsVolumeKeyNavigation(it.enable)
                 }
                 collectWhileInState(userPreferencesDataSource.userData) {
                     val newConfig = ReaderConfig(
@@ -129,24 +139,19 @@ class ReaderStateMachine @AssistedInject constructor(
                     mutate { copy(config = newConfig) }
                 }
 
-                on<ReaderAction.ToggleMenu> {
+                on<ReaderAction.ToggleBarsVisibility> {
                     mutate {
-                        copy(overlay = overlay.copy(isMenuVisible = !overlay.isMenuVisible))
+                        copy(uiControl = uiControl.copy(showSystemBars = !uiControl.showSystemBars))
                     }
                 }
-                on<ReaderAction.ToggleChapterList> {
+                on<ReaderAction.ShowSheet> {
                     mutate {
-                        copy(overlay = overlay.copy(isChapterListVisible = !overlay.isChapterListVisible))
+                        copy(uiControl = uiControl.copy(readerSheet = it.sheet))
                     }
                 }
-                on<ReaderAction.ToggleSettings> {
+                on<ReaderAction.HideSheet> {
                     mutate {
-                        copy(overlay = overlay.copy(isSettingsVisible = !overlay.isSettingsVisible))
-                    }
-                }
-                on<ReaderAction.OpenSheet> {
-                    mutate {
-                        copy(activeSheet = it.sheet)
+                        copy(uiControl = uiControl.copy(readerSheet = ReaderSheet.None))
                     }
                 }
             }
