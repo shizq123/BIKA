@@ -71,6 +71,7 @@ import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.bar.BottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
 import com.shizq.bika.ui.reader.components.ReadingModeSelectBottomSheet
+import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderLayout
@@ -353,7 +354,11 @@ class ReaderActivity : ComponentActivity() {
             }
 
             ActiveSheet.Orientation -> {
-
+                ScreenOrientationSelectBottomSheet(
+                    orientation = config.screenOrientation,
+                    onDismissRequest = { dispatch(OpenSheet(ActiveSheet.None)) },
+                    onOrientationChange = { dispatch(ReaderAction.ChangeOrientation(it)) }
+                )
             }
 
             ActiveSheet.None -> {}
