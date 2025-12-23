@@ -232,7 +232,12 @@ class ReaderActivity : ComponentActivity() {
                             readerContext = readerContext,
                             gestureState = gestureState,
                             chapterPages = imageList,
-                            toggleMenuVisibility = { dispatch(ToggleBarsVisibility) }
+                            toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
+                            onHideMenu = {
+                                if (overlayState.showSystemBars) {
+                                    dispatch(ToggleBarsVisibility)
+                                }
+                            }
                         )
                     }
                 )

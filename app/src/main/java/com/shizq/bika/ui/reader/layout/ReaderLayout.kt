@@ -11,10 +11,15 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
 import androidx.core.view.ViewCompat
@@ -27,6 +32,7 @@ import me.saket.telephoto.zoomable.EnabledZoomGestures
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
+import kotlin.math.absoluteValue
 
 interface ReaderLayout {
     @Composable
@@ -41,14 +47,24 @@ fun ReaderLayout(
     readerContext: ReaderContext,
     gestureState: GestureState,
     chapterPages: LazyPagingItems<ChapterPage>,
-    toggleMenuVisibility: () -> Unit
+    toggleMenuVisibility: () -> Unit,
+    onHideMenu: () -> Unit
 ) {
     val scope = rememberCoroutineScope()
     val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
     val currentReaderContext by rememberUpdatedState(readerContext)
     val currentGestureState by rememberUpdatedState(gestureState)
-    val currentToggleMenuVisibility by rememberUpdatedState(toggleMenuVisibility)
-
+    val currentOnHideMenu by rememberUpdatedState(onHideMenu)
+    val nestedScrollConnection = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
+                if (available.y.absoluteValue > 10f) {
+                    currentOnHideMenu()
+                }
+                return Offset.Zero
+            }
+        }
+    }
     VolumeButtonsHandler(
         enable = readerContext.config.volumeKeyNavigation,
         onVolumeUp = {
@@ -75,6 +91,7 @@ fun ReaderLayout(
                 chapterPages = chapterPages,
                 modifier = Modifier
                     .fillMaxSize()
+                    .nestedScroll(nestedScrollConnection)
                     .zoomable(
                         state = zoomableState,
                         gestures = EnabledZoomGestures.ZoomAndPan,
@@ -89,7 +106,7 @@ fun ReaderLayout(
                                     currentReaderContext.controller.scrollPrevPage()
                                 }
 
-                                ReaderAction.ToggleMenu -> currentToggleMenuVisibility()
+                                ReaderAction.ToggleMenu -> toggleMenuVisibility()
                                 ReaderAction.None -> { /* Do nothing */
                                 }
                             }
