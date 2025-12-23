@@ -31,7 +31,6 @@ import me.saket.telephoto.zoomable.EnabledZoomGestures
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
-import kotlin.math.absoluteValue
 
 interface ReaderLayout {
     @Composable
@@ -57,8 +56,15 @@ fun ReaderLayout(
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y.absoluteValue > 10f) {
-                    currentOnHideMenu()
+                if (source == NestedScrollSource.UserInput) {
+
+                    // 计算滑动的总距离 (包含 x 轴和 y 轴)
+                    // getDistance() 等于 sqrt(x*x + y*y)
+                    val distance = available.getDistance()
+
+                    if (distance > 10f) {
+                        currentOnHideMenu()
+                    }
                 }
                 return Offset.Zero
             }
@@ -67,10 +73,10 @@ fun ReaderLayout(
     VolumeButtonsHandler(
         enable = readerContext.config.volumeKeyNavigation,
         onVolumeUp = {
-            scope.launch { currentReaderContext.controller.scrollPrevPage() }
+            scope.launch { currentOnHideMenu(); currentReaderContext.controller.scrollPrevPage() }
         },
         onVolumeDown = {
-            scope.launch { currentReaderContext.controller.scrollNextPage() }
+            scope.launch { currentOnHideMenu(); currentReaderContext.controller.scrollNextPage() }
         }
     )
 
@@ -96,10 +102,12 @@ fun ReaderLayout(
                             val action = currentGestureState.calculateAction(offset, viewSize)
                             when (action) {
                                 ReaderAction.NextPage -> scope.launch {
+                                    currentOnHideMenu()
                                     currentReaderContext.controller.scrollNextPage()
                                 }
 
                                 ReaderAction.PrevPage -> scope.launch {
+                                    currentOnHideMenu()
                                     currentReaderContext.controller.scrollPrevPage()
                                 }
 
