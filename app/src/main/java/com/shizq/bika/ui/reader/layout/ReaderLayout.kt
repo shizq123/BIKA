@@ -65,9 +65,10 @@ fun ReaderLayout(
             targetState = readerContext,
             label = "ReaderModeTransition",
             transitionSpec = {
-                fadeIn(animationSpec = tween(300)) togetherWith
-                        fadeOut(animationSpec = tween(300))
+                fadeIn(animationSpec = tween(220)) togetherWith
+                        fadeOut(animationSpec = tween(90))
             },
+            contentKey = { it.config.readingMode },
             contentAlignment = Alignment.Center
         ) { context ->
             context.layout.Content(
