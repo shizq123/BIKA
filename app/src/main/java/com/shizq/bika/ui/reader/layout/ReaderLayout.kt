@@ -14,7 +14,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
@@ -78,16 +77,14 @@ fun ReaderLayout(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val viewSize = IntSize(constraints.maxWidth, constraints.maxHeight)
         AnimatedContent(
-            targetState = readerContext,
-            label = "ReaderModeTransition",
+            targetState = readerContext.layout,
             transitionSpec = {
-                fadeIn(animationSpec = tween(220)) togetherWith
-                        fadeOut(animationSpec = tween(90))
+                fadeIn(animationSpec = tween(300)) togetherWith
+                        fadeOut(animationSpec = tween(300))
             },
-            contentKey = { it.config.readingMode },
-            contentAlignment = Alignment.Center
-        ) { context ->
-            context.layout.Content(
+            label = "LayoutTransition"
+        ) { targetLayout ->
+            targetLayout.Content(
                 chapterPages = chapterPages,
                 modifier = Modifier
                     .fillMaxSize()

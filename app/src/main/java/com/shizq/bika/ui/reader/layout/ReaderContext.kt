@@ -70,9 +70,8 @@ fun rememberReaderContext(
         }
 
         ViewerType.Pager -> {
-            val pagerState = rememberPagerState(initialPage = initialPageIndex) {
-                chapterPages.itemCount
-            }
+            val pagerState =
+                rememberPagerState(initialPage = initialPageIndex) { chapterPages.itemCount }
 
             val layout = remember(pagerState, readingMode.direction, readingMode.isRtl) {
                 PagerLayout(
