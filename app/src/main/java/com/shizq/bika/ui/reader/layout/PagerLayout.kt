@@ -1,11 +1,14 @@
 package com.shizq.bika.ui.reader.layout
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
@@ -46,7 +49,12 @@ class PagerLayout(
 
     @Composable
     private fun PageItem(pages: LazyPagingItems<ChapterPage>, index: Int) {
-        pages[index]?.let { Image(it.url, index) }
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            pages[index]?.let { Image(it.url, index) }
+        }
     }
 }
 
