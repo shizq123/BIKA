@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.reader.layout
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
@@ -8,14 +7,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.Direction
 import com.shizq.bika.paging.ChapterPage
-import com.shizq.bika.ui.reader.util.rememberCheckerboardBrush
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 class PagerLayout(
@@ -29,16 +26,12 @@ class PagerLayout(
         chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
-        val sharedCheckerboardBrush = rememberCheckerboardBrush()
-
-        val pageModifier = Modifier.background(Color.Black)
-
         if (direction == Direction.Vertical) {
             VerticalPager(
                 state = pagerState,
                 modifier = modifier,
                 key = chapterPages.itemKey { it.id }
-            ) { idx -> PageItem(chapterPages, idx, pageModifier) }
+            ) { idx -> PageItem(chapterPages, idx) }
         } else {
             val layoutDirection = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
             CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
@@ -46,14 +39,14 @@ class PagerLayout(
                     state = pagerState,
                     modifier = modifier,
                     key = chapterPages.itemKey { it.id }
-                ) { idx -> PageItem(chapterPages, idx, pageModifier) }
+                ) { idx -> PageItem(chapterPages, idx) }
             }
         }
     }
 
     @Composable
-    private fun PageItem(pages: LazyPagingItems<ChapterPage>, index: Int, modifier: Modifier) {
-        pages[index]?.let { Image(it.url, index, modifier = modifier) }
+    private fun PageItem(pages: LazyPagingItems<ChapterPage>, index: Int) {
+        pages[index]?.let { Image(it.url, index) }
     }
 }
 

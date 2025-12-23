@@ -13,7 +13,6 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.paging.ChapterPage
-import com.shizq.bika.ui.reader.util.rememberCheckerboardBrush
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -26,7 +25,6 @@ class WebtoonLayout(
         chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
-        val sharedCheckerboardBrush = rememberCheckerboardBrush()
         LazyColumn(
             state = listState,
             modifier = modifier,
