@@ -52,21 +52,21 @@ fun rememberReaderContext(
         ViewerType.Scrolling -> {
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPageIndex)
 
-            remember(readingMode, config, listState) {
-                val controller = WebtoonController(listState)
-
-                val layout = WebtoonLayout(
+            val layout = remember(listState, readingMode.hasPageGap) {
+                WebtoonLayout(
                     listState = listState,
                     hasPageGap = readingMode.hasPageGap
                 )
-
-                ReaderContext(
-                    layout = layout,
-                    controller = controller,
-                    scrollStateProvider = LazyListScrollStateProvider(listState),
-                    config = config
-                )
             }
+            val controller = remember(listState) { WebtoonController(listState) }
+            val scrollProvider = remember(listState) { LazyListScrollStateProvider(listState) }
+
+            ReaderContext(
+                layout = layout,
+                controller = controller,
+                scrollStateProvider = scrollProvider,
+                config = config
+            )
         }
 
         ViewerType.Pager -> {
@@ -74,22 +74,23 @@ fun rememberReaderContext(
                 chapterPages.itemCount
             }
 
-            remember(readingMode, config, pagerState) {
-                val controller = PagerController(pagerState)
-
-                val layout = PagerLayout(
+            val layout = remember(pagerState, readingMode.direction, readingMode.isRtl) {
+                PagerLayout(
                     pagerState = pagerState,
                     direction = readingMode.direction,
                     isRtl = readingMode.isRtl
                 )
-
-                ReaderContext(
-                    layout = layout,
-                    controller = controller,
-                    scrollStateProvider = PagerScrollStateProvider(pagerState),
-                    config = config
-                )
             }
+
+            val controller = remember(pagerState) { PagerController(pagerState) }
+            val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
+
+            ReaderContext(
+                layout = layout,
+                controller = controller,
+                scrollStateProvider = scrollProvider,
+                config = config
+            )
         }
     }
 }
