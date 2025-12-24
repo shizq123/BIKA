@@ -24,12 +24,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -70,7 +70,6 @@ import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.ui.reader.util.preload.PagingPreload
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -126,13 +125,11 @@ class ReaderActivity : ComponentActivity() {
                 val chapterState = state.chapter
                 val overlayState = state.uiControl
 
-                var currentUiPage by remember { mutableIntStateOf(0) }
-
                 val readerContext = rememberReaderContext(
                     readingMode = config.readingMode,
                     chapterPages = imageList,
                     config = config,
-                    initialPageIndex = 0
+                    initialPageIndex = chapterState.initialPage
                 )
                 val controller = readerContext.controller
 
@@ -143,16 +140,16 @@ class ReaderActivity : ComponentActivity() {
                 LaunchedEffect(overlayState.seekState) {
                     if (overlayState.seekState is SeekState.Seeking) {
                         controller.scrollToPage(overlayState.seekState.targetPage.toInt())
+                        dispatch(ReaderAction.SeekConsumed)
                     }
                 }
 
-                LaunchedEffect(controller) {
-                    controller.visibleItemIndex
-                        .debounce(100)
-                        .collect { page ->
-                            currentUiPage = page
-                            dispatch(SyncReadingProgress(page))
-                        }
+                val visibleItemIndex by controller.visibleItemIndex.collectAsState(0)
+
+                DisposableEffect(Unit) {
+                    onDispose {
+                        dispatch(SyncReadingProgress(visibleItemIndex))
+                    }
                 }
 
                 val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
@@ -171,12 +168,11 @@ class ReaderActivity : ComponentActivity() {
                     },
                     bottomBar = {
                         ReaderBottomBar(
-                            currentPage = currentUiPage,
+                            currentPage = visibleItemIndex,
                             totalPages = chapterState.totalPages,
                             readingMode = config.readingMode,
-                            onSliderValueChange = { currentUiPage = it.toInt() },
-                            onSliderValueChangeFinished = {
-                                scope.launch { controller.scrollToPage(currentUiPage) }
+                            onSeekToPage = {
+                                scope.launch { controller.scrollToPage(it) }
                             },
                             onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
                             onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
@@ -187,7 +183,7 @@ class ReaderActivity : ComponentActivity() {
                     floatingMessage = {
                         if (chapterState.totalPages > 0) {
                             PageIndicatorBadge(
-                                current = currentUiPage + 1,
+                                current = visibleItemIndex + 1,
                                 total = chapterState.totalPages
                             )
                         }
