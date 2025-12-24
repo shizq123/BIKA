@@ -19,7 +19,7 @@ class User(
 fun UserData.asExternalModel() = User(
     id = id,
     name = name,
-    gender = gender,
+    gender = gender.value,
     title = title,
     slogan = slogan,
     level = level,
