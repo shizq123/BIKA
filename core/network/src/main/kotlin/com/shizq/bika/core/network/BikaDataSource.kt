@@ -3,6 +3,7 @@ package com.shizq.bika.core.network
 import com.shizq.bika.core.network.model.ChapterPagesData
 import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
+import com.shizq.bika.core.network.model.CommentsData
 import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.KeywordsData
 import com.shizq.bika.core.network.model.KnightLeaderboardData
@@ -92,5 +93,26 @@ class BikaDataSource @Inject constructor(
         return client.get("comics/$id/order/$order/pages") {
             parameter("page", page)
         }.body<ChapterPagesData>()
+    }
+
+    suspend fun getComicComments(id: String, page: Int): CommentsData {
+        return client.get("comics/$id/comments/") {
+            parameter("page", page)
+        }.body()
+    }
+
+    /**
+     * 获取指定评论的回复列表
+     */
+    suspend fun getCommentReplies(id: String, page: Int) {
+        client.get("comments/$id/childrens/") {
+            parameter("page", page)
+        }.bodyAsText()
+    }
+
+    suspend fun getGameComments(id: String, page: Int): CommentsData {
+        return client.get("games/$id/comments/") {
+            parameter("page", page)
+        }.body()
     }
 }
