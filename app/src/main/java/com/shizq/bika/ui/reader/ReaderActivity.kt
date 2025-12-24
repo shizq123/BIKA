@@ -146,7 +146,8 @@ class ReaderActivity : ComponentActivity() {
 
                 val visibleItemIndex by controller.visibleItemIndex.collectAsState(0)
 
-                DisposableEffect(Unit) {
+                DisposableEffect(visibleItemIndex) {
+                    dispatch(SyncReadingProgress(visibleItemIndex))
                     onDispose {
                         dispatch(SyncReadingProgress(visibleItemIndex))
                     }
