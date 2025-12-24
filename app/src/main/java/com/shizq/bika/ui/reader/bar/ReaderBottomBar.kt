@@ -15,6 +15,11 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.shizq.bika.core.model.ReadingMode
 
@@ -23,8 +28,7 @@ fun ReaderBottomBar(
     currentPage: Int,
     totalPages: Int,
     readingMode: ReadingMode,
-    onSliderValueChange: (Float) -> Unit,
-    onSliderValueChangeFinished: () -> Unit,
+    onSeekToPage: (Int) -> Unit,
     onToggleChapterList: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenReadingMode: () -> Unit,
@@ -37,10 +41,19 @@ fun ReaderBottomBar(
             }
         },
         progressSlider = {
+            var sliderPosition by remember { mutableFloatStateOf(currentPage.toFloat()) }
+
+            LaunchedEffect(currentPage) {
+                sliderPosition = currentPage.toFloat()
+            }
             Slider(
                 value = currentPage.toFloat(),
-                onValueChange = onSliderValueChange,
-                onValueChangeFinished = onSliderValueChangeFinished,
+                onValueChange = {
+                    sliderPosition = it
+                },
+                onValueChangeFinished = {
+                    onSeekToPage(sliderPosition.toInt())
+                },
                 valueRange = 0f..(totalPages.coerceAtLeast(1) - 1).toFloat(),
             )
         },
