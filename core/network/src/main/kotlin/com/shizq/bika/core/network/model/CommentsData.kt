@@ -3,7 +3,6 @@ package com.shizq.bika.core.network.model
 import com.shizq.bika.core.network.utils.IntAsStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import org.w3c.dom.Comment
 
 @Serializable
 data class CommentsData(
@@ -11,13 +10,13 @@ data class CommentsData(
     val comments: CommentsPage,
 
     @SerialName("topComments")
-    val topComments: List<Comment> = emptyList()
+    val topComments: List<CommentData> = emptyList()
 )
 
 @Serializable
 data class CommentsPage(
     @SerialName("docs")
-    val docs: List<Comment>,
+    val docs: List<CommentData>,
 
     @SerialName("total")
     val total: Int,
@@ -34,7 +33,7 @@ data class CommentsPage(
 )
 
 @Serializable
-data class Comment(
+data class CommentData(
     @SerialName("_id")
     val id: String,
 
