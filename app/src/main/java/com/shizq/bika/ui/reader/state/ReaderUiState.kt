@@ -18,10 +18,7 @@ sealed interface ReaderUiState {
         val config: ReaderConfig = ReaderConfig.Default,
         val uiControl: UiControlState = UiControlState(),
         val error: Throwable? = null
-    ) : ReaderUiState {
-        val isOverlayActive: Boolean
-            get() = uiControl.readerSheet != ReaderSheet.None || uiControl.showSystemBars
-    }
+    ) : ReaderUiState
 }
 
 @Immutable
@@ -29,7 +26,8 @@ data class ChapterState(
     val order: Int,
     val meta: ChapterMeta? = null,
     val totalPages: Int = 0,
-    val isLoading: Boolean = false
+    val isLoading: Boolean = false,
+    val initialPage: Int
 )
 
 /**
@@ -65,5 +63,5 @@ sealed interface ReaderAction {
 
     data class ChapterMetaLoaded(val meta: ChapterMeta) : ReaderAction
 
-    data class Initialize(val id: String, val chapterOrder: Int) : ReaderAction
+    data object SeekConsumed : ReaderAction
 }
