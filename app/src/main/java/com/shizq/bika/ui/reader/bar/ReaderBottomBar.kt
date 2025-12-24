@@ -47,7 +47,7 @@ fun ReaderBottomBar(
                 sliderPosition = currentPage.toFloat()
             }
             Slider(
-                value = currentPage.toFloat(),
+                value = sliderPosition,
                 onValueChange = {
                     sliderPosition = it
                 },
