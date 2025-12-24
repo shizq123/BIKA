@@ -1,5 +1,7 @@
 package com.shizq.bika.core.network.model
 
+import com.shizq.bika.core.network.utils.Gender
+import com.shizq.bika.core.network.utils.GenderSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -12,7 +14,8 @@ data class UserData(
     val name: String,
 
     @SerialName("gender")
-    val gender: String,
+    @Serializable(with = GenderSerializer::class)
+    val gender: Gender,
 
     @SerialName("title")
     val title: String,
