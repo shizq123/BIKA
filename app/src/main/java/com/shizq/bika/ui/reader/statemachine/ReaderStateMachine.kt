@@ -34,24 +34,41 @@ class ReaderStateMachine @AssistedInject constructor(
         spec {
             inState<ReaderUiState.Initializing> {
                 onEnter {
+                    val startPage = withContext(Dispatchers.IO) {
+                        val history = historyDao.getDetailedHistoryById(id) ?: return@withContext 0
+                        history.asExternalModel().progressList
+                            .find { it.chapterNumber == startOrder }
+                            ?.currentPage ?: 0
+                    }
                     override {
                         ReaderUiState.Ready(
                             id = id,
-                            chapter = ChapterState(startOrder, isLoading = true)
+                            chapter = ChapterState(
+                                order = startOrder,
+                                initialPage = startPage,
+                                isLoading = true
+                            )
                         )
                     }
                 }
             }
             inState<ReaderUiState.Ready> {
-                on<ReaderAction.JumpToChapter> {
-                    savedStateHandle[EXTRA_ORDER] = it.chapter.order
+                on<ReaderAction.JumpToChapter> { chapter ->
+                    savedStateHandle[EXTRA_ORDER] = chapter.chapter.order
+
+                    val startPage = withContext(Dispatchers.IO) {
+                        val history =
+                            historyDao.getDetailedHistoryById(snapshot.id) ?: return@withContext 0
+                        history.asExternalModel().progressList
+                            .find { it.chapterNumber == chapter.chapter.order }
+                            ?.currentPage ?: 0
+                    }
 
                     mutate {
                         val newChapterState = ChapterState(
-                            order = it.chapter.order,
-                            meta = null,
-                            totalPages = 0,
-                            isLoading = true
+                            order = chapter.chapter.order,
+                            isLoading = true,
+                            initialPage = startPage,
                         )
                         copy(
                             chapter = newChapterState,
@@ -70,26 +87,6 @@ class ReaderStateMachine @AssistedInject constructor(
                                 isLoading = false
                             )
                         )
-                    }
-                }
-                on<ReaderAction.Initialize> {
-                    val page = withContext(Dispatchers.IO) {
-                        val history = historyDao.getDetailedHistoryById(snapshot.id)
-                        val targetProgress = history?.asExternalModel()?.progressList?.find {
-                            it.chapterNumber == snapshot.chapter.order
-                        }
-                        targetProgress?.currentPage ?: 0
-                    }
-                    if (page > 0) {
-                        mutate {
-                            copy(
-                                uiControl = uiControl.copy(
-                                    seekState = SeekState.Seeking(page.toFloat())
-                                )
-                            )
-                        }
-                    } else {
-                        noChange()
                     }
                 }
                 onActionEffect<ReaderAction.SyncReadingProgress> {
@@ -152,6 +149,11 @@ class ReaderStateMachine @AssistedInject constructor(
                 on<ReaderAction.HideSheet> {
                     mutate {
                         copy(uiControl = uiControl.copy(readerSheet = ReaderSheet.None))
+                    }
+                }
+                on<ReaderAction.SeekConsumed> {
+                    mutate {
+                        copy(uiControl = uiControl.copy(seekState = SeekState.Idle))
                     }
                 }
             }
