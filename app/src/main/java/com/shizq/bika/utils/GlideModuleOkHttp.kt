@@ -7,8 +7,7 @@ import com.bumptech.glide.annotation.GlideModule
 import com.bumptech.glide.integration.okhttp3.OkHttpUrlLoader
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.module.AppGlideModule
-import com.shizq.bika.network.HttpDns
-import okhttp3.OkHttpClient
+import com.shizq.bika.core.network.di.ProjectOkhttp
 import java.io.InputStream
 
 /**
@@ -18,14 +17,9 @@ import java.io.InputStream
 @GlideModule
 class GlideModuleOkHttp : AppGlideModule() {
     override fun registerComponents(context: Context, glide: Glide, registry: Registry) {
-        // 自定义OkHttpClient
-        val okHttpClient = OkHttpClient.Builder()
-            .dns(HttpDns())
-            .build()
-        // 采用自定义的CustomOkHttpUrlLoader
         registry.replace(
             GlideUrl::class.java,
-            InputStream::class.java, OkHttpUrlLoader.Factory(okHttpClient)
+            InputStream::class.java, OkHttpUrlLoader.Factory(ProjectOkhttp!!)
         )
     }
 }
