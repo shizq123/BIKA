@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network
 
+import com.shizq.bika.core.network.model.ActionData
 import com.shizq.bika.core.network.model.ChapterPagesData
 import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
@@ -114,5 +115,19 @@ class BikaDataSource @Inject constructor(
         return client.get("games/$id/comments/") {
             parameter("page", page)
         }.body()
+    }
+
+    /**
+     * 切换主评论的点赞状态 (点赞/取消点赞)
+     */
+    suspend fun toggleCommentLike(id: String): ActionData {
+        return client.post("comments/$id/like").body()
+    }
+
+    /**
+     * 切换子评论（回复）的点赞状态 (点赞/取消点赞)
+     */
+    suspend fun toggleReplyLike(id: String): ActionData {
+        return client.post("comments/$id/like").body()
     }
 }
