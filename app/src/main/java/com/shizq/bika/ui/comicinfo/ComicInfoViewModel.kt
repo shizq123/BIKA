@@ -10,6 +10,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
+import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.network.BikaDataSource
@@ -17,6 +18,7 @@ import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import com.shizq.bika.paging.EpisodePagingSource
+import com.shizq.bika.ui.comicinfo.paging.CommentPagingSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -42,9 +44,10 @@ class ComicInfoViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val network: BikaDataSource,
     private val historyDao: ReadingHistoryDao,
+    private val commentPagingSourceFactory: CommentPagingSource.Factory
 ) : ViewModel() {
     private val restarter = FlowRestarter()
-    private val comicIdFlow: StateFlow<String?> = savedStateHandle.getStateFlow("id", null)
+    private val comicIdFlow = savedStateHandle.getStateFlow("id", "")
     private val favoriteStateOverride = MutableStateFlow<Boolean?>(null)
     private val likeStateOverride = MutableStateFlow<Boolean?>(null)
     val comicDetailUiState: StateFlow<ComicDetailUiState> = combine(
@@ -53,11 +56,7 @@ class ComicInfoViewModel @Inject constructor(
                 favoriteStateOverride.value = null
                 likeStateOverride.value = null
 
-                if (id == null) {
-                    flowOf(Result.Loading)
-                } else {
-                    flow { emit(network.getComicDetails(id)) }.asResult()
-                }
+                flow { emit(network.getComicDetails(id)) }.asResult()
             },
         favoriteStateOverride,
         likeStateOverride
@@ -126,11 +125,37 @@ class ComicInfoViewModel @Inject constructor(
             }
         }
         .cachedIn(viewModelScope)
+    val pinnedComments: StateFlow<List<Comment>>
+        field = MutableStateFlow(emptyList())
+    val regularComments: Flow<PagingData<Comment>> = comicIdFlow
+        .flatMapLatest { id ->
+            if (id.isEmpty()) {
+                emptyFlow()
+            } else {
+                Pager(
+                    config = PagingConfig(
+                        pageSize = 40,
+                    ),
+                ) {
+                    commentPagingSourceFactory(id) {
+                        pinnedComments.value = it
+                    }
+                }.flow
+            }
+        }
 
     fun retry() {
         restarter.restart()
     }
 
+    fun toggleCommentLike(id: String) {
+        val currentState = comicDetailUiState.value
+        if (currentState is ComicDetailUiState.Success) {
+            viewModelScope.launch {
+                network.toggleCommentLike(id)
+            }
+        }
+    }
     fun toggleLike() {
         val currentState = comicDetailUiState.value
         if (currentState is ComicDetailUiState.Success) {

@@ -20,17 +20,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Comment
 import androidx.compose.material.icons.filled.Favorite
@@ -47,7 +47,9 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
@@ -55,7 +57,10 @@ import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -70,14 +75,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
+import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.ui.collapsingtoolbar.CollapsingTopBar
+import com.shizq.bika.ui.comicinfo.comment.CommentsScreen
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.reader.ReaderActivity
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class ComicInfoActivity : ComponentActivity() {
@@ -109,6 +117,9 @@ class ComicInfoActivity : ComponentActivity() {
         val comicDetailUiState by viewModel.comicDetailUiState.collectAsStateWithLifecycle()
         val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
         val relatedComicsUiState by viewModel.recommendationsUiState.collectAsStateWithLifecycle()
+
+        val pinnedComments by viewModel.pinnedComments.collectAsStateWithLifecycle()
+        val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
 
         LaunchedEffect(Unit) {
             snapshotFlow { comicDetailUiState }
@@ -165,6 +176,9 @@ class ComicInfoActivity : ComponentActivity() {
             navigationToComicInfo = {
                 ComicInfoActivity.start(this, it)
             },
+            pinnedComments = pinnedComments,
+            regularComments = regularComments,
+            onToggleCommentLike = viewModel::toggleCommentLike
         )
     }
 
@@ -174,6 +188,8 @@ class ComicInfoActivity : ComponentActivity() {
         comicDetailState: ComicDetailUiState,
         relatedComicsState: RecommendationsUiState,
         episodes: LazyPagingItems<Episode>,
+        pinnedComments: List<Comment>,
+        regularComments: LazyPagingItems<Comment>,
         onBackClick: () -> Unit = {},
         onFavoriteClick: () -> Unit = {},
         onLikeClick: () -> Unit = {},
@@ -183,6 +199,7 @@ class ComicInfoActivity : ComponentActivity() {
         onTranslatorClick: (String) -> Unit = {},
         onCommentClick: (String) -> Unit = {},
         navigationToComicInfo: (String) -> Unit = {},
+        onToggleCommentLike: (String) -> Unit,
     ) {
         val scrollBehavior =
             TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
@@ -227,56 +244,153 @@ class ComicInfoActivity : ComponentActivity() {
                 ) { innerPadding ->
                     Column(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(innerPadding),
+                            .padding(innerPadding)
+                            .fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        val detail = comicDetailState.detail
-                        ComicInfoPanel(
-                            detail,
-                            onFavoriteClick = onFavoriteClick,
-                            onLikeClick = onLikeClick,
-                            onTagClick = onTagClick,
-                            onAuthorClick = onAuthorClick,
-                            onCommentClick = onCommentClick,
-                            onTranslatorClick = onTranslatorClick,
-                        )
-                        Text(
-                            "章节列表",
-                            style = MaterialTheme.typography.titleLarge,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                        LazyVerticalGrid(
-                            columns = GridCells.Adaptive(minSize = 96.dp),
-                            modifier = Modifier.heightIn(max = 400.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                        ) {
-                            items(
-                                count = episodes.itemCount,
-                                key = episodes.itemKey { it.id }
-                            ) { index ->
-                                episodes[index]?.let { episode ->
-                                    EpisodeItem(
-                                        text = episode.title,
-                                        onClick = {
-                                            onContinueReading(detail.id, episode.order)
-                                        },
-                                    )
-                                }
+                        var selectedTabIndex by remember { mutableIntStateOf(0) }
+                        val tabs = listOf("详情", "章节", "评论")
+                        val pagerState = rememberPagerState { tabs.size }
+                        val coroutineScope = rememberCoroutineScope()
+
+                        LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
+                            if (!pagerState.isScrollInProgress) {
+                                selectedTabIndex = pagerState.currentPage
                             }
                         }
 
-                        RelatedComicsSection(
-                            relatedComicsState,
-                            navigationToComicInfo = navigationToComicInfo
-                        )
+                        PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+                            tabs.forEachIndexed { index, title ->
+                                Tab(
+                                    selected = index == selectedTabIndex,
+                                    onClick = {
+                                        selectedTabIndex = index
+                                        coroutineScope.launch {
+                                            pagerState.animateScrollToPage(index)
+                                        }
+                                    },
+                                    text = { Text(text = title) }
+                                )
+                            }
+                        }
 
-                        Spacer(modifier = Modifier.height(100.dp))
+                        HorizontalPager(
+                            state = pagerState,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .weight(1f)
+                        ) { page ->
+                            when (page) {
+                                0 -> DetailPage(
+                                    detail = comicDetailState.detail,
+                                    episodes = episodes,
+                                    relatedComicsState = relatedComicsState,
+                                    onFavoriteClick = onFavoriteClick,
+                                    onLikeClick = onLikeClick,
+                                    onTagClick = onTagClick,
+                                    onAuthorClick = onAuthorClick,
+                                    onCommentClick = onCommentClick,
+                                    onTranslatorClick = onTranslatorClick,
+                                    onContinueReading = onContinueReading,
+                                    navigationToComicInfo = navigationToComicInfo
+                                )
+
+                                1 -> Text("章节页")
+
+                                2 -> CommentsScreen(
+                                    pinnedComments = pinnedComments,
+                                    regularComments = regularComments,
+                                    onToggleCommentLike = onToggleCommentLike,
+                                )
+                            }
+                        }
                     }
                 }
+            }
+        }
+    }
+
+    /**
+     * 详情和章节页面
+     */
+    @Composable
+    private fun DetailPage(
+        detail: ComicDetail, // 使用具体类型
+        episodes: LazyPagingItems<Episode>,
+        relatedComicsState: RecommendationsUiState,
+        modifier: Modifier = Modifier,
+        onFavoriteClick: () -> Unit,
+        onLikeClick: () -> Unit,
+        onTagClick: (String) -> Unit,
+        onAuthorClick: (String) -> Unit,
+        onCommentClick: (String) -> Unit,
+        onTranslatorClick: (String) -> Unit,
+        onContinueReading: (String, Int) -> Unit,
+        navigationToComicInfo: (String) -> Unit
+    ) {
+        // 使用 LazyColumn 替代 Column + verticalScroll，性能更优
+        LazyColumn(
+            modifier = modifier.fillMaxSize(),
+            contentPadding = PaddingValues(bottom = 100.dp), // 避免内容被FAB遮挡
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // 漫画信息面板
+            item {
+                ComicInfoPanel(
+                    detail,
+                    onFavoriteClick = onFavoriteClick,
+                    onLikeClick = onLikeClick,
+                    onTagClick = onTagClick,
+                    onAuthorClick = onAuthorClick,
+                    onCommentClick = onCommentClick,
+                    onTranslatorClick = onTranslatorClick,
+                )
+            }
+
+            // 章节列表标题
+            item {
+                Text(
+                    "章节列表",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(horizontal = 16.dp)
+                )
+            }
+
+            // 章节列表Grid
+            item {
+                // 注意：因为 LazyVerticalGrid 的高度是固定的，所以可以嵌套在 LazyColumn 的 item 中
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(minSize = 96.dp),
+                    modifier = Modifier
+                        .heightIn(max = 400.dp) // 保持高度限制
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    // 关键：由于父级是 LazyColumn，这里不需要独立的 verticalScroll
+                    // 我们通过 heightIn 限制其大小，让 LazyColumn 负责整体滚动
+                ) {
+                    items(
+                        count = episodes.itemCount,
+                        key = episodes.itemKey { it.id }
+                    ) { index ->
+                        episodes[index]?.let { episode ->
+                            EpisodeItem(
+                                text = episode.title,
+                                onClick = {
+                                    onContinueReading(detail.id, episode.order)
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+
+            // 相关推荐
+            item {
+                RelatedComicsSection(
+                    relatedComicsState,
+                    navigationToComicInfo = navigationToComicInfo
+                )
             }
         }
     }
