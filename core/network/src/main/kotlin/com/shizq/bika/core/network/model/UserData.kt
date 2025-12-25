@@ -30,10 +30,10 @@ data class UserData(
     val exp: Long,
 
     @SerialName("avatar")
-    val avatar: Media,
+    val avatar: Media? = null,
 
     @SerialName("comicsUploaded")
-    val comicsUploaded: Int,
+    val comicsUploaded: Int? = null,
 
     @SerialName("role")
     val role: String,
