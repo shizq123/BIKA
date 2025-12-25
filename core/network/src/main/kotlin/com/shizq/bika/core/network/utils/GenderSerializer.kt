@@ -11,8 +11,8 @@ import kotlinx.serialization.encoding.Encoder
  * 用户性别
  */
 enum class Gender(val value: String) {
-    MALE("男"),
-    FEMALE("女"),
+    MALE("绅士"),
+    FEMALE("淑女"),
     BOT("机器人"),
     UNKNOWN("未知")
 }
