@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo.comment
+package com.shizq.bika.ui.comicinfo.page
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -48,7 +48,7 @@ data class Badge(
 )
 
 @Composable
-fun CommentsScreen(
+fun CommentsPage(
     pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
     modifier: Modifier = Modifier,
