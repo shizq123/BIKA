@@ -67,12 +67,12 @@ class BikaDataSource @Inject constructor(
         }.body()
     }
 
-    suspend fun toggleLike(id: String) {
-        client.post("comics/$id/like")
+    suspend fun toggleComicLike(id: String): ActionData {
+        return client.post("comics/$id/like").body()
     }
 
-    suspend fun toggleFavourite(id: String) {
-        client.post("comics/$id/favourite")
+    suspend fun toggleComicFavourite(id: String): ActionData {
+        return client.post("comics/$id/favourite").body()
     }
 
     suspend fun getCollections(): CollectionsData {
