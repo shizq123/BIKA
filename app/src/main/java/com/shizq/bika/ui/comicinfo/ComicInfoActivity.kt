@@ -2,103 +2,84 @@ package com.shizq.bika.ui.comicinfo
 
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
-import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.ThumbUp
-import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconToggleButton
-import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.LargeTopAppBar
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryTabRow
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastForEach
-import androidx.compose.ui.util.lerp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
-import com.flaringapp.compose.topbar.scaffold.CollapsingTopBarScaffold
-import com.flaringapp.compose.topbar.scaffold.CollapsingTopBarScaffoldScrollMode
-import com.flaringapp.compose.topbar.scaffold.rememberCollapsingTopBarScaffoldState
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.ui.comicinfo.page.ComicDetailPage
 import com.shizq.bika.ui.comicinfo.page.CommentsPage
 import com.shizq.bika.ui.comicinfo.page.EpisodeItem
 import com.shizq.bika.ui.comicinfo.page.EpisodesPage
+import com.shizq.bika.ui.comicinfo.page.PageTab
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.reader.ReaderActivity
+import com.shizq.bika.ui.theme.BikaTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
 class ComicInfoActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(
-                Color.TRANSPARENT,
-                Color.TRANSPARENT
-            ),
-        )
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
         setContent {
-            ComicDetailScreen()
+            BikaTheme {
+                ComicDetailScreen()
+            }
         }
     }
 
@@ -191,8 +172,6 @@ class ComicInfoActivity : ComponentActivity() {
         onToggleCommentLike: (String) -> Unit = {},
         dispatch: (UnitedDetailsAction) -> Unit = {},
     ) {
-        val scrollBehavior =
-            TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
         when (unitedState) {
             is UnitedDetailsUiState.Error -> {}
             UnitedDetailsUiState.I -> {}
@@ -200,90 +179,59 @@ class ComicInfoActivity : ComponentActivity() {
             is UnitedDetailsUiState.Content -> {
                 if (unitedState.detail == null) return
 
-                CollapsingTopBarScaffold(
-                    scrollMode = CollapsingTopBarScaffoldScrollMode.collapse(false),
-                    state = rememberCollapsingTopBarScaffoldState(),
-                    topBar = {
-                        var topBarColorProgress by remember { mutableFloatStateOf(1f) }
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(unitedState.detail.cover)
-                                .build(),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            alignment = Alignment.TopCenter,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(400.dp)
-                                .progress { _, itemProgress ->
-                                    topBarColorProgress =
-                                        itemProgress.coerceAtMost(0.25f) / 0.25f
-                                },
-                        )
+                val detail = unitedState.detail
 
-                        TopAppBar(
-                            title = {
-                                Text(text = unitedState.detail.title)
-                            },
-                            navigationIcon = {
-                                IconButton(onClick = onBackClick) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                        contentDescription = "Back",
-                                    )
-                                }
-                            },
-                            colors = TopAppBarDefaults.topAppBarColors(
-                                scrolledContainerColor = MaterialTheme.colorScheme.surface,
-                                titleContentColor = MaterialTheme.colorScheme.onSurface,
-                                containerColor = MaterialTheme.colorScheme.surface.copy(
-                                    alpha = lerp(1f, 0f, topBarColorProgress),
-                                ),
-                            ),
-                        )
+                val topAppBarState = rememberTopAppBarState()
+
+                val scrollBehavior =
+                    TopAppBarDefaults.exitUntilCollapsedScrollBehavior(state = topAppBarState)
+
+                Scaffold(
+                    topBar = {
                     },
-                ) {
+                    modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection)
+                ) { innerPadding ->
                     Column(
                         modifier = Modifier
-//                            .padding(innerPadding)
-                            .fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                            .padding(innerPadding)
                     ) {
-                        val tabs = listOf("详情", "章节", "评论")
-                        var selectedTabIndex by remember { mutableIntStateOf(0) }
-                        val pagerState = rememberPagerState { tabs.size }
-                        LaunchedEffect(pagerState.currentPage, pagerState.isScrollInProgress) {
-                            if (!pagerState.isScrollInProgress) {
-                                selectedTabIndex = pagerState.currentPage
-                            }
-                        }
+                        val pagerState = rememberPagerState { PageTab.entries.size }
+                        val scope = rememberCoroutineScope()
 
-                        PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
-                            tabs.forEachIndexed { index, title ->
+                        PrimaryTabRow(
+                            selectedTabIndex = pagerState.currentPage,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .background(MaterialTheme.colorScheme.surface),
+                        ) {
+                            PageTab.entries.forEachIndexed { index, tab ->
                                 Tab(
-                                    selected = index == selectedTabIndex,
-                                    onClick = {
-                                        selectedTabIndex = index
-                                    },
-                                    text = { Text(text = title) }
+                                    selected = index == pagerState.currentPage,
+                                    onClick = { scope.launch { pagerState.animateScrollToPage(index) } },
+                                    text = { Text(text = tab.title) }
                                 )
                             }
                         }
+
                         HorizontalPager(
                             state = pagerState,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                                .weight(1f)
-                                .nestedScroll(scrollBehavior.nestedScrollConnection),
+                            modifier = Modifier.fillMaxSize(),
                             verticalAlignment = Alignment.Top,
+                            key = { it }
                         ) { page ->
                             when (page) {
                                 0 -> ComicDetailPage(
-                                    detail = unitedState.detail,
+                                    detail = detail,
+                                    recommendations = unitedState.recommendations
                                 )
 
-                                1 -> EpisodesPage(episodes = episodes)
+                                1 -> EpisodesPage(
+                                    episodes = episodes,
+                                    navigateToReader = {
+                                        detail.id to it
+                                    }
+                                )
 
                                 2 -> CommentsPage(
                                     pinnedComments = pinnedComments,
@@ -298,182 +246,73 @@ class ComicInfoActivity : ComponentActivity() {
         }
     }
 
-    /**
-     * 详情和章节页面
-     */
+    @OptIn(ExperimentalMaterial3Api::class)
     @Composable
-    private fun DetailPage(
-        detail: ComicDetail, // 使用具体类型
-        //        relatedComicsState: RecommendationsUiState,
+    fun TopBarOverlay(
+        scrollBehavior: TopAppBarScrollBehavior,
+        title: String,
+        imageUrl: String,
+        expandedHeight: Dp,
         modifier: Modifier = Modifier,
-        onTagClick: (String) -> Unit,
-        onAuthorClick: (String) -> Unit,
-        onTranslatorClick: (String) -> Unit,
-        navigationToComicInfo: (String) -> Unit,
-        dispatch: (UnitedDetailsAction) -> Unit,
-    ) {
-        LazyColumn(
-            modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(bottom = 100.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                ComicInfoPanel(
-                    detail,
-                    onTagClick = onTagClick,
-                    onAuthorClick = onAuthorClick,
-                    onTranslatorClick = onTranslatorClick,
-                    dispatch = dispatch,
+        onBackClick: () -> Unit = {},
+        navigationIcon: @Composable () -> Unit = {
+            IconButton(onClick = onBackClick) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back"
                 )
             }
-
-            item {
-//                RelatedComicsSection(
-//                    relatedComicsState,
-//                    navigationToComicInfo = navigationToComicInfo
-//                )
-            }
-        }
-    }
-
-    @Composable
-    fun ComicInfoPanel(
-        detail: ComicDetail,
-        modifier: Modifier = Modifier,
-        onTagClick: (String) -> Unit = {},
-        onAuthorClick: (String) -> Unit = {},
-        onTranslatorClick: (String) -> Unit = {},
-        dispatch: (UnitedDetailsAction) -> Unit = {},
+        },
+        actions: @Composable RowScope.() -> Unit = {},
     ) {
-        Column(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = detail.title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold
+        val collapsedFraction = scrollBehavior.state.collapsedFraction
+
+        val contentColor = lerp(
+            start = Color.White,
+            stop = MaterialTheme.colorScheme.onSurface,
+            fraction = collapsedFraction
+        )
+
+        Box(modifier = modifier) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(imageUrl)
+                    .build(),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                alignment = Alignment.TopCenter,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(expandedHeight)
+                    .graphicsLayer {
+                        translationY = scrollBehavior.state.heightOffset / 2
+                        alpha = 1f - collapsedFraction
+                    }
             )
-
-            ComicSynopsis(
-                description = detail.description,
-                author = detail.author,
-                chineseTeam = detail.chineseTeam,
-                isFavorited = detail.isFavourited,
-                isLiked = detail.isLiked,
-                onAuthorClick = { onAuthorClick(detail.author) },
-                onTranslatorClick = { onTranslatorClick(detail.chineseTeam ?: "") },
-                dispatch = dispatch,
+            LargeTopAppBar(
+                title = {
+                    Text(
+                        text = title,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.graphicsLayer {
+                            alpha = collapsedFraction
+                        }
+                    )
+                },
+                navigationIcon = navigationIcon,
+                actions = actions,
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = Color.Transparent,
+                    scrolledContainerColor = MaterialTheme.colorScheme.surface,
+                    navigationIconContentColor = contentColor,
+                    actionIconContentColor = contentColor,
+                    titleContentColor = contentColor
+                ),
+                scrollBehavior = scrollBehavior
             )
-
-            TagsRow(tags = detail.tags, onTagClick = onTagClick)
         }
     }
-
-    @Composable
-    fun TagsRow(
-        tags: List<String>,
-        modifier: Modifier = Modifier,
-        onTagClick: (String) -> Unit = {}
-    ) {
-        FlowRow(
-            modifier = modifier,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            tags.fastForEach { tag ->
-                OutlinedButton(
-                    onClick = { onTagClick(tag) },
-                    shape = RoundedCornerShape(8.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
-                    border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline)
-                ) {
-                    Text(
-                        text = tag,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-        }
-    }
-
-    @Composable
-    fun ComicSynopsis(
-        author: String,
-        chineseTeam: String?,
-        description: String,
-        isFavorited: Boolean,
-        isLiked: Boolean,
-        onAuthorClick: () -> Unit,
-        onTranslatorClick: () -> Unit,
-        modifier: Modifier = Modifier,
-        dispatch: (UnitedDetailsAction) -> Unit = {},
-    ) {
-        Row(
-            modifier = modifier,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                Text(
-                    text = "简介: $description",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "作者: $author",
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    modifier = Modifier.clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) { onAuthorClick() }
-                )
-                if (!chineseTeam.isNullOrEmpty()) {
-                    Text(
-                        text = "汉化组: $chineseTeam",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) { onTranslatorClick() }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Row {
-                IconToggleButton(
-                    checked = isFavorited,
-                    onCheckedChange = { dispatch(UnitedDetailsAction.ToggleFavorite) }
-                ) {
-                    Icon(
-                        imageVector = if (isFavorited) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "收藏",
-                        tint = if (isFavorited) MaterialTheme.colorScheme.error else LocalContentColor.current
-                    )
-                }
-                IconToggleButton(
-                    checked = isLiked,
-                    onCheckedChange = { dispatch(UnitedDetailsAction.ToggleLike) }
-                ) {
-                    Icon(
-                        imageVector = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                        contentDescription = "喜欢",
-                        tint = if (isLiked) MaterialTheme.colorScheme.primary else LocalContentColor.current
-                    )
-                }
-            }
-        }
-    }
-
 
     @Composable
     fun RelatedComicsSection(
@@ -537,20 +376,5 @@ class ComicInfoActivity : ComponentActivity() {
             intent.putExtra("id", id)
             context.startActivity(intent)
         }
-    }
-
-    @Preview(showBackground = true)
-    @Composable
-    fun ComicSynopsisPreview() {
-        ComicSynopsis(
-            author = "作者",
-            description = "这是一段很长很长的简介，这是一段很长很长的简介，这是一段很长很长的简介，这是一段很长很长的简介。",
-            isFavorited = false,
-            isLiked = true,
-            onAuthorClick = {},
-            modifier = Modifier,
-            chineseTeam = "哔咔汉化组",
-            onTranslatorClick = {}
-        )
     }
 }
