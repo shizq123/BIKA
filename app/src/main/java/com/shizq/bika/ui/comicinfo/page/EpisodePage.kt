@@ -2,7 +2,9 @@ package com.shizq.bika.ui.comicinfo.page
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -27,25 +29,28 @@ import kotlinx.coroutines.flow.flowOf
 @Composable
 fun EpisodesPage(
     episodes: LazyPagingItems<Episode>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    navigateToReader: (index: Int) -> Unit = { _ -> }
 ) {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 96.dp),
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        items(
-            count = episodes.itemCount,
-            key = episodes.itemKey { it.id }
-        ) { index ->
-            episodes[index]?.let { episode ->
-                EpisodeItem(
-                    text = episode.title,
-                    onClick = {
-//                        onContinueReading(detail.id, episode.order)
-                    },
-                )
+    Box(modifier = modifier.fillMaxSize()) {
+        LazyVerticalGrid(
+            columns = GridCells.Adaptive(minSize = 96.dp),
+            contentPadding = PaddingValues(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(
+                count = episodes.itemCount,
+                key = episodes.itemKey { it.id }
+            ) { index ->
+                episodes[index]?.let { episode ->
+                    EpisodeItem(
+                        text = episode.title,
+                        onClick = {
+                            navigateToReader(episode.order)
+                        },
+                    )
+                }
             }
         }
     }
