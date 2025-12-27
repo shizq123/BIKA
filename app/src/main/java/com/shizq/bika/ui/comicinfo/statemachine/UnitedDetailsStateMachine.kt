@@ -1,24 +1,27 @@
 package com.shizq.bika.ui.comicinfo.statemachine
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.ui.comicinfo.UnitedDetailsAction
 import com.shizq.bika.ui.comicinfo.UnitedDetailsUiState
-import com.shizq.bika.ui.comicinfo.paging.CommentPagingSource
 import com.shizq.bika.ui.comicinfo.toComicDetail
 import com.shizq.bika.ui.comicinfo.toComicSummaryList
 import jakarta.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import kotlin.time.Clock
 
 class UnitedDetailsStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val network: BikaDataSource,
     private val historyDao: ReadingHistoryDao,
-    private val commentPagingSourceFactory: CommentPagingSource.Factory
 ) : FlowReduxStateMachineFactory<UnitedDetailsUiState, UnitedDetailsAction>() {
 
     init {
@@ -42,6 +45,31 @@ class UnitedDetailsStateMachine @Inject constructor(
                             }
                             detailDeferred.await() to recommendationsDeferred.await()
                         }
+
+                        withContext(Dispatchers.IO) {
+                            val now = Clock.System.now()
+                            val rowsUpdated = historyDao.updateLastReadAt(detail.id, now)
+                            if (rowsUpdated > 0) {
+                                Log.d(
+                                    TAG,
+                                    "History exists. Updated timestamp for '${detail.title}'."
+                                )
+                            } else {
+                                val newRecord = ReadingHistoryEntity(
+                                    id = detail.id,
+                                    title = detail.title,
+                                    author = detail.author,
+                                    coverUrl = detail.cover,
+                                    lastInteractionAt = now
+                                )
+                                historyDao.upsertHistory(newRecord)
+                                Log.d(
+                                    TAG,
+                                    "No history found. Creating new record for '${detail.title}'."
+                                )
+                            }
+                        }
+
                         mutate {
                             copy(detail = detail, recommendations = recommendations)
                         }
@@ -63,6 +91,7 @@ class UnitedDetailsStateMachine @Inject constructor(
                             copy(detail = currentDetail.copy(isLiked = isLiked))
                         }
                     } catch (e: Exception) {
+                        Log.e(TAG, "ToggleLike: ", e)
                         noChange()
                     }
                 }
@@ -80,6 +109,7 @@ class UnitedDetailsStateMachine @Inject constructor(
                             copy(detail = currentDetail.copy(isFavourited = isFavourited))
                         }
                     } catch (e: Exception) {
+                        Log.e(TAG, "ToggleFavorite: ", e)
                         noChange()
                     }
                 }
@@ -90,7 +120,8 @@ class UnitedDetailsStateMachine @Inject constructor(
     private companion object {
         const val ACTION_LIKE = "like"
         const val ACTION_UNLIKE = "unlike"
-        const val ACTION_FAVORITE = "favorite"
+        const val ACTION_FAVORITE = "favourite"
         const val ACTION_UN_FAVORITE = "un_favourite"
+        private const val TAG = "UnitedDetailsStateMachine"
     }
 }
