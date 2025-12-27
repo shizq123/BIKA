@@ -78,7 +78,7 @@
 
     <string name="chat_min_level">等级限制：</string>
     <string name="chat_min_register_days">注册天数限制：</string>
-    <string name="comic_author_label">作者: %s</string>
-    <string name="comic_uploader_label">上传者: %s</string>
+    <string name="comic_author_label">作者</string>
+    <string name="comic_uploader_label">上传者</string>
     <string name="comic_creator_avatar">头像</string>
 </resources>
