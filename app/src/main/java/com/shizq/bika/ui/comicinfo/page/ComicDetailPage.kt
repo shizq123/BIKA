@@ -1,11 +1,14 @@
 package com.shizq.bika.ui.comicinfo.page
 
 import android.icu.text.DecimalFormat
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -21,31 +24,49 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material3.Badge
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShapeDefaults
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import coil3.compose.AsyncImage
+import com.shizq.bika.R
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
 
@@ -54,7 +75,12 @@ import com.shizq.bika.ui.comicinfo.ComicSummary
 fun ComicDetailPage(
     detail: ComicDetail,
     modifier: Modifier = Modifier,
-    recommendations: List<ComicSummary>
+    recommendations: List<ComicSummary>,
+    onFavoriteClick: () -> Unit = {},
+    onLikedClick: () -> Unit = {},
+    navigationToReader: () -> Unit = {},
+    navigationToSearch: (String, String) -> Unit = { _, _ -> },
+    navigationToComicInfo: (String) -> Unit = {},
 ) {
     Box(
         modifier = modifier
@@ -71,15 +97,43 @@ fun ComicDetailPage(
                 title = detail.title,
                 isFinished = detail.finished,
                 view = detail.totalViews,
-                tags = detail.tags
+                chineseTeam = detail.chineseTeam,
+                onTranslateClick = {
+                    navigationToSearch("translate", it)
+                }
             )
 
             ContentSummary(
                 avatarUrl = detail.creator.avatar.originalImageUrl,
-                detail.creator.name,
-                detail.author,
-                detail.description
+                creator = detail.creator.name,
+                author = detail.author,
+                description = detail.description,
+                isLiked = detail.isLiked,
+                likeCount = detail.totalLikes,
+                onLikedClick = onLikedClick,
+                onUploaderClick = { navigationToSearch("knight", it) },
+                onAuthorClick = { navigationToSearch("author", it) }
             )
+            val all = detail.tags + detail.categories
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalArrangement = Arrangement.spacedBy((-8).dp),
+            ) {
+                all.fastForEach {
+                    SuggestionChip(
+                        { navigationToSearch("tags", it) },
+                        label = {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(4.dp)
+                            )
+                        }
+                    )
+                }
+            }
+
             HorizontalMultiBrowseCarousel(
                 state = rememberCarouselState { recommendations.count() },
                 modifier = Modifier
@@ -95,14 +149,25 @@ fun ComicDetailPage(
                     item.coverUrl,
                     modifier = Modifier
                         .height(205.dp)
-                        .maskClip(MaterialTheme.shapes.extraLarge),
+                        .maskClip(MaterialTheme.shapes.extraLarge)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null
+                        ) {
+                            navigationToComicInfo(item.id)
+                        },
                     contentDescription = item.title,
                     contentScale = ContentScale.Crop
                 )
             }
             Spacer(modifier = Modifier.height(20.dp))
         }
-        MangaBottomBar(modifier = Modifier.align(Alignment.BottomCenter))
+        MangaBottomBar(
+            isFavorited = detail.isFavourited,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            onFavoriteClick = onFavoriteClick,
+            onReadClick = navigationToReader,
+        )
     }
 }
 
@@ -112,10 +177,12 @@ fun MediaSummary(
     title: String,
     isFinished: Boolean,
     view: Int,
-    tags: List<String>,
+    chineseTeam: String?,
+    onTranslateClick: (String) -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .height(160.dp)
             .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -130,37 +197,102 @@ fun MediaSummary(
                 .clip(ShapeDefaults.Medium)
         )
         Column(
-            modifier = Modifier.fillMaxHeight(),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Text(
                 title,
-                maxLines = 2,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-
-            Badge(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    if (isFinished) "已完结" else "连载中",
-                    modifier = Modifier.padding(4.dp)
-                )
-            }
-            Text(
-                "人气 ${formatViews(view)}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                tags.fastForEach {
-                    Tag(it)
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                    ),
+                ) {
+                    Text(
+                        if (isFinished) "已完结" else "连载中",
+                        modifier = Modifier.padding(4.dp)
+                    )
+                }
+                Card {
+                    Text(
+                        "人气 ${formatViews(view)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(4.dp)
+                    )
                 }
             }
+            chineseTeam?.let {
+                InfoLine(
+                    "汉化组",
+                    it,
+                    { onTranslateClick(it) },
+                    MaterialTheme.typography.labelLarge
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LikeButton(
+    isLiked: Boolean,
+    likeCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    FilledTonalButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+        modifier = modifier,
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = if (isLiked) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.surfaceVariant
+            },
+            contentColor = if (isLiked) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            }
+        )
+    ) {
+        Icon(
+            modifier = Modifier,
+            imageVector = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+            contentDescription = "点赞"
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(
+            text = likeCount.toString(),
+            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+
+@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
+@Composable
+fun MediaSummaryPreview() {
+    MaterialTheme {
+        Box(modifier = Modifier.padding(16.dp)) {
+            MediaSummary(
+                coverUrl = "",
+                title = "闪婚娇妻",
+                isFinished = true,
+                view = 329000,
+                chineseTeam = "哔咔汉化组",
+            )
         }
     }
 }
@@ -176,52 +308,138 @@ private fun formatViews(count: Int): String {
 }
 
 @Composable
-fun Tag(text: String) {
-    Surface(
-        shape = CircleShape,
-        color = Color.Transparent,
-        border = BorderStroke(
-            1.dp,
-            MaterialTheme.colorScheme.outlineVariant
-        )
-    ) {
+fun ContentSummary(
+    avatarUrl: String,
+    creator: String,
+    author: String,
+    description: String,
+    isLiked: Boolean,
+    likeCount: Int,
+    modifier: Modifier = Modifier,
+    onLikedClick: () -> Unit = {},
+    onUploaderClick: (String) -> Unit = {},
+    onAuthorClick: (String) -> Unit = {}
+) {
+    var isDescriptionExpanded by remember { mutableStateOf(false) }
+
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.height(IntrinsicSize.Min)
+        ) {
+            AsyncImage(
+                model = avatarUrl,
+                contentDescription = null,
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(CircleShape)
+            )
+
+            Column {
+                InfoLine(
+                    label = stringResource(R.string.comic_author_label),
+                    name = author,
+                    onClick = { onAuthorClick(author) },
+                    style = MaterialTheme.typography.titleMedium,
+                )
+                Spacer(Modifier.weight(1f))
+                InfoLine(
+                    label = stringResource(R.string.comic_uploader_label),
+                    name = creator,
+                    onClick = { onUploaderClick(creator) },
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+            }
+
+            Spacer(Modifier.weight(1f))
+            LikeButton(
+                isLiked,
+                likeCount,
+                onClick = onLikedClick,
+                modifier = Modifier
+            )
+        }
+
         Text(
-            text = text,
-            style = MaterialTheme.typography.labelMedium,
+            text = description,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(4.dp)
+            maxLines = if (isDescriptionExpanded) Int.MAX_VALUE else 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null
+                ) { isDescriptionExpanded = !isDescriptionExpanded }
+                .animateContentSize()
         )
     }
 }
 
 @Composable
-fun ContentSummary(avatarUrl: String, creator: String, author: String, description: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(
-                avatarUrl, null,
-                modifier = Modifier
-                    .size(64.dp)
-                    .clip(CircleShape)
+private fun InfoLine(
+    label: String,
+    name: String,
+    onClick: () -> Unit,
+    style: TextStyle,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .clip(MaterialTheme.shapes.small)
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null,
+                onClick = onClick
             )
-            Text(
-                creator,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSurface
+    ) {
+        Text(
+            buildAnnotatedString {
+                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                    append("$label: ")
+                }
+                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                    append(name)
+                }
+            },
+            style = style,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFFFFFFF)
+@Composable
+fun ContentSummaryPreview() {
+    MaterialTheme {
+        var isLiked by remember { mutableStateOf(false) }
+        var likes by remember { mutableIntStateOf(1234) }
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(24.dp)) {
+            ContentSummary(
+                avatarUrl = "",
+                author = "Takahashi",
+                creator = "UploaderX",
+                description = "这是一段非常非常长的漫画简介，默认情况下它应该只显示两行，但是当用户点击它的时候，它应该能够完全展开来显示所有的内容。这是一个很棒的用户体验优化。",
+                isLiked = isLiked,
+                likeCount = likes
+            )
+            HorizontalDivider()
+            ContentSummary(
+                avatarUrl = "",
+                author = "Fujimoto",
+                creator = "Fujimoto",
+                description = "这是一个简短的描述。",
+                isLiked = !isLiked,
+                likeCount = likes
             )
         }
-        Text(
-            description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 
 @Composable
 fun MangaBottomBar(
+    isFavorited: Boolean,
     modifier: Modifier = Modifier,
     onFavoriteClick: () -> Unit = {},
     onReadClick: () -> Unit = {},
@@ -237,18 +455,31 @@ fun MangaBottomBar(
                 .height(48.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            val icon = if (isFavorited) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder
+            val text = if (isFavorited) "已收藏" else "收藏"
+            val containerColor = if (isFavorited) {
+                MaterialTheme.colorScheme.primaryContainer
+            } else {
+                MaterialTheme.colorScheme.secondaryContainer
+            }
+            val contentColor = if (isFavorited) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSecondaryContainer
+            }
             FilledTonalButton(
                 onClick = onFavoriteClick,
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxHeight(),
                 colors = ButtonDefaults.filledTonalButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    contentColor = MaterialTheme.colorScheme.primary
+                    containerColor = containerColor,
+                    contentColor = contentColor
                 )
             ) {
-                Icon(Icons.Filled.FavoriteBorder, null)
-                Text(" 收藏")
+                Icon(imageVector = icon, contentDescription = text)
+                Spacer(Modifier.width(4.dp))
+                Text(text)
             }
 
             Button(
