@@ -79,7 +79,7 @@ fun RecommendComicDto.toComicSummary(): ComicSummary {
     return ComicSummary(
         id = id,
         title = title,
-        coverUrl = thumb.originalName,
+        coverUrl = thumb.originalImageUrl,
         author = author
     )
 }
