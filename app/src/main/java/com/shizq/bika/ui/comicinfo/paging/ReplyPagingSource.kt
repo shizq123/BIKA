@@ -17,7 +17,7 @@ class ReplyPagingSource @AssistedInject constructor(
         val page = params.key ?: 1
 
         return try {
-            val response = api.getReplyList(id, page)
+            val response = api.getReplyReply(id, page)
 
             val commentsPage = response.comments
 
