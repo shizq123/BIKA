@@ -59,7 +59,7 @@ data class CommentData(
     val likesCount: Int,
 
     @SerialName("commentsCount")
-    val commentsCount: Int,
+    val commentsCount: Int = 0,
 
     @SerialName("isLiked")
     val isLiked: Boolean
