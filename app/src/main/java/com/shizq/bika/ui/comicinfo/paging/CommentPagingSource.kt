@@ -27,7 +27,7 @@ class CommentPagingSource @AssistedInject constructor(
 
             LoadResult.Page(
                 data = commentsPage.docs.map { it.asExternalModel() },
-                prevKey = if (page == 1) null else page - 1,
+                prevKey = null,
                 nextKey = if (page >= commentsPage.pages) null else page + 1
             )
         } catch (e: Exception) {
