@@ -82,6 +82,7 @@ class ComicInfoActivity : ComponentActivity() {
         val pinnedComments by viewModel.pinnedComments.collectAsStateWithLifecycle()
         val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
 
+        val replyList = viewModel.replyList.collectAsLazyPagingItems()
         ComicDetailContent(
             unitedState = state,
 //            relatedComicsState = relatedComicsUiState,
@@ -114,7 +115,9 @@ class ComicInfoActivity : ComponentActivity() {
             pinnedComments = pinnedComments,
             regularComments = regularComments,
             onToggleCommentLike = viewModel::toggleCommentLike,
-            dispatch = viewModel::dispatch
+            dispatch = viewModel::dispatch,
+            onNavigate = viewModel::setReplyId,
+            replyList = replyList
         )
     }
 
@@ -122,7 +125,6 @@ class ComicInfoActivity : ComponentActivity() {
     @Composable
     fun ComicDetailContent(
         unitedState: UnitedDetailsUiState,
-//        relatedComicsState: RecommendationsUiState,
         episodes: LazyPagingItems<Episode>,
         pinnedComments: List<Comment>,
         regularComments: LazyPagingItems<Comment>,
@@ -133,6 +135,8 @@ class ComicInfoActivity : ComponentActivity() {
         navigationToComicList: (type: String, value: String) -> Unit = { _, _ -> },
         onToggleCommentLike: (String) -> Unit = {},
         dispatch: (UnitedDetailsAction) -> Unit = {},
+        onNavigate: (String) -> Unit = {},
+        replyList: LazyPagingItems<Comment>,
     ) {
         when (unitedState) {
             is UnitedDetailsUiState.Error -> {}
@@ -201,6 +205,18 @@ class ComicInfoActivity : ComponentActivity() {
                                     pinnedComments = pinnedComments,
                                     regularComments = regularComments,
                                     onToggleCommentLike = onToggleCommentLike,
+                                    replyList = replyList,
+                                    onExpandReplies = {
+                                        dispatch(
+                                            UnitedDetailsAction.ExpandReplies(
+                                                it
+                                            )
+                                        )
+                                    },
+//                                    onPostComment = { text, replyToId ->
+//                                        // 将发送评论的意图 dispatch 出去
+//                                        dispatch(UnitedDetailsAction.PostComment(text, replyToId))
+//                                    }
                                 )
                             }
                         }
