@@ -17,6 +17,7 @@ sealed interface UnitedDetailsUiState {
         val pinnedComments: List<Comment> = emptyList(),
         val episodes: PagingData<Episode> = PagingData.empty(),
         val regularComments: PagingData<Comment> = PagingData.empty(),
+        val viewingRepliesForId: String? = null // null 表示没有查看任何回复
     ) : UnitedDetailsUiState
 
     data class Error(val cause: Throwable) : UnitedDetailsUiState
