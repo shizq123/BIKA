@@ -1,9 +1,7 @@
 package com.shizq.bika.ui.comicinfo.page
 
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +38,7 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -82,6 +81,8 @@ fun CommentsPage(
     var actionState by remember {
         mutableStateOf<CommentsPageActionState>(CommentsPageActionState.Idle)
     }
+    val sheetState = rememberModalBottomSheetState()
+    val showBottomSheet = actionState is CommentsPageActionState.WritingComment
     val focusRequester = remember { FocusRequester() }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -90,9 +91,9 @@ fun CommentsPage(
             regularComments = regularComments,
             modifier = Modifier.fillMaxSize(),
             onToggleLike = onToggleCommentLike,
+//            contentPadding = PaddingValues(bottom = 72.dp),
             onReplyClick = { comment ->
-                actionState = CommentsPageActionState.Replying(comment)
-                focusRequester.requestFocus()
+                actionState = CommentsPageActionState.WritingComment(comment)
             },
             onExpandReplies = { comment ->
                 actionState = CommentsPageActionState.ViewingReplies(comment)
@@ -100,22 +101,38 @@ fun CommentsPage(
             }
         )
 
-        val replyingToComment = (actionState as? CommentsPageActionState.Replying)?.comment
+        val (text, setText) = remember { mutableStateOf("") }
+        FakeTextField(
+            text = text,
+            modifier = Modifier.align(Alignment.BottomCenter),
+            onClick = {
+                actionState = CommentsPageActionState.WritingComment(null)
+            }
+        )
+        if (showBottomSheet) {
+            val writingState = actionState as CommentsPageActionState.WritingComment
+            ModalBottomSheet(
+                onDismissRequest = { actionState = CommentsPageActionState.Idle },
+                sheetState = sheetState,
+                dragHandle = null,
+                shape = BottomSheetDefaults.HiddenShape,
+                modifier = Modifier.imePadding()
+            ) {
+                ReplyTextField(
+                    text = text,
+                    onTextChange = setText,
+                    replyingTo = writingState.replyTo?.user?.name,
+                    onSend = {
+                        onPostComment(text, writingState.replyTo?.id)
+                        actionState = CommentsPageActionState.Idle
+                    },
+                    focusRequester = focusRequester
+                )
+            }
 
-        AnimatedVisibility(
-            visible = replyingToComment != null,
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .imePadding(),
-        ) {
-            ReplyTextField(
-                replyingTo = replyingToComment?.user?.name,
-                onSend = { text ->
-                    onPostComment(text, replyingToComment?.id)
-                    actionState = CommentsPageActionState.Idle
-                },
-                focusRequester = focusRequester
-            )
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+            }
         }
 
         val viewingRepliesForComment =
@@ -172,6 +189,35 @@ fun CommentList(
     }
 }
 
+@Composable
+private fun FakeTextField(
+    text: String,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit,
+) {
+    Box(modifier = modifier) {
+        TextField(
+            value = text,
+            onValueChange = {},
+            modifier = Modifier.fillMaxWidth(),
+            placeholder = { Text("发表你的评论...") },
+            enabled = false,
+            colors = TextFieldDefaults.colors(
+                disabledTextColor = if (text.isEmpty()) Color.Transparent else MaterialTheme.colorScheme.onSurface,
+                disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                disabledIndicatorColor = Color.Transparent,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        )
+
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .clickable(onClick = onClick)
+        )
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReplyDetailsSheet(
@@ -200,6 +246,7 @@ fun ReplyDetailsSheet(
 private sealed interface CommentsPageActionState {
     data object Idle : CommentsPageActionState
     data class Replying(val comment: Comment) : CommentsPageActionState
+    data class WritingComment(val replyTo: Comment? = null) : CommentsPageActionState
     data class ViewingReplies(val comment: Comment) : CommentsPageActionState
 }
 
@@ -396,18 +443,13 @@ fun CommentReplyButton(totalComments: Int, onReplyClick: () -> Unit) {
 
 @Composable
 fun ReplyTextField(
+    text: String,
+    onTextChange: (String) -> Unit,
     replyingTo: String?,
-    onSend: (String) -> Unit,
+    onSend: () -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-    val (replyInput, setReplyInput) = remember { mutableStateOf("") }
-    val performSend = { text: String ->
-        onSend(text)
-        setReplyInput("")
-    }
     Card(
         modifier = modifier
             .fillMaxWidth(),
@@ -416,12 +458,11 @@ fun ReplyTextField(
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             TextField(
-                value = replyInput,
-                onValueChange = setReplyInput,
+                value = text,
+                onValueChange = onTextChange,
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester),
-                interactionSource = interactionSource,
                 placeholder = {
                     val placeholderText = if (replyingTo == null) {
                         "留下你的精彩评论吧！"
@@ -444,29 +485,27 @@ fun ReplyTextField(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
                     onSend = {
-                        if (replyInput.isNotBlank()) {
-                            performSend(replyInput)
+                        if (text.isNotBlank()) {
+                            onSend()
                         }
                     }
                 ),
             )
 
-            AnimatedVisibility(visible = isFocused) {
-                Column {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.End,
-                        verticalAlignment = Alignment.CenterVertically
+            Column {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = { onSend() },
+                        enabled = text.isNotBlank(),
+                        contentPadding = PaddingValues(horizontal = 24.dp)
                     ) {
-                        Button(
-                            onClick = { performSend(replyInput) },
-                            enabled = replyInput.isNotBlank(),
-                            contentPadding = PaddingValues(horizontal = 24.dp)
-                        ) {
-                            Text("发送")
-                        }
+                        Text("发送")
                     }
                 }
             }
@@ -483,12 +522,16 @@ private fun ReplyTextFieldPreview() {
         ) {
             var text by remember { mutableStateOf("") }
             ReplyTextField(
+                text = text,
+                onTextChange = { text = it },
                 onSend = {},
                 focusRequester = remember { FocusRequester() },
                 replyingTo = null
             )
 
             ReplyTextField(
+                text = text,
+                onTextChange = { text = it },
                 onSend = {},
                 focusRequester = remember { FocusRequester() },
                 replyingTo = "cursus"
