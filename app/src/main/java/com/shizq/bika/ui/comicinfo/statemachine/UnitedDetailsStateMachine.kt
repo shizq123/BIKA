@@ -113,6 +113,12 @@ class UnitedDetailsStateMachine @Inject constructor(
                         noChange()
                     }
                 }
+                on<UnitedDetailsAction.ExpandReplies> {
+                    mutate { copy(viewingRepliesForId = it.id) }
+                }
+                on<UnitedDetailsAction.CollapseReplies> {
+                    mutate { copy(viewingRepliesForId = null) }
+                }
             }
         }
     }
