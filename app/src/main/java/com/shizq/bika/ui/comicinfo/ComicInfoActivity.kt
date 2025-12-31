@@ -6,13 +6,10 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -20,7 +17,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
@@ -155,16 +151,13 @@ class ComicInfoActivity : ComponentActivity() {
                     Column(
                         modifier = Modifier
                             .padding(innerPadding)
+                            .fillMaxSize()
                     ) {
                         val pagerState = rememberPagerState { PageTab.entries.size }
                         val scope = rememberCoroutineScope()
 
                         PrimaryTabRow(
                             selectedTabIndex = pagerState.currentPage,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(48.dp)
-                                .background(MaterialTheme.colorScheme.surface),
                         ) {
                             PageTab.entries.forEachIndexed { index, tab ->
                                 Tab(
@@ -177,7 +170,7 @@ class ComicInfoActivity : ComponentActivity() {
 
                         HorizontalPager(
                             state = pagerState,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.weight(1f), 
                             verticalAlignment = Alignment.Top,
                             key = { it }
                         ) { page ->
