@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class ComicListViewModel(application: Application) : BaseViewModel(application) {
+class SearchViewModel(application: Application) : BaseViewModel(application) {
     var tag: String? = null
     var startpage = 0//起始页数，用于跳转页数后判断当前页数
     var page = 0//当前页数
