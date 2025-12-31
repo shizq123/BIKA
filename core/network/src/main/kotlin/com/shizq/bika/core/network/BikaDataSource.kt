@@ -13,6 +13,7 @@ import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
 import com.shizq.bika.core.network.model.ProfileData
 import com.shizq.bika.core.network.model.RecommendationData
+import com.shizq.bika.core.network.model.Type
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -96,6 +97,7 @@ class BikaDataSource @Inject constructor(
         }.body<ChapterPagesData>()
     }
 
+    // todo add type parameter
     suspend fun getComicComments(id: String, page: Int): CommentsData {
         return client.get("comics/$id/comments/") {
             parameter("page", page)
@@ -105,9 +107,15 @@ class BikaDataSource @Inject constructor(
     /**
      * 获取指定评论的回复列表
      */
-    suspend fun getCommentReplies(id: String, page: Int) {
-        client.get("comments/$id/childrens/") {
+    suspend fun getReplyReply(id: String, page: Int): CommentsData {
+        return client.get("comments/$id/childrens/") {
             parameter("page", page)
+        }.body()
+    }
+
+    suspend fun addReply(type: Type, id: String, content: String) {
+        client.post("${type.type}/$id/comments") {
+            setBody("""{"content":"$content"}""")
         }.bodyAsText()
     }
 
