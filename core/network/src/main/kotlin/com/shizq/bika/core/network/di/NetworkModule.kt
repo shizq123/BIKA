@@ -9,6 +9,8 @@ import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.network.BuildConfig
+import com.shizq.bika.core.network.plugin.ConnectionWarmer
+import com.shizq.bika.core.network.plugin.DomainConfig
 import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
 import com.shizq.bika.core.network.plugin.ResponseTransformer
 import com.shizq.bika.core.network.plugin.TokenAuthenticator
@@ -41,6 +43,7 @@ import okhttp3.OkHttpClient
 
 // TODO: 一个暂时的操作，迁移后删除
 var ProjectOkhttp: OkHttpClient? = null
+
 @Module
 @InstallIn(SingletonComponent::class)
 internal object NetworkModule {
@@ -87,6 +90,7 @@ internal object NetworkModule {
     fun okHttpCallFactory(
         tokenAuthenticator: TokenAuthenticator,
     ): OkHttpClient = trace("OkHttpClient") {
+
         OkHttpClient.Builder()
             .authenticator(tokenAuthenticator)
             .dns {
@@ -94,7 +98,7 @@ internal object NetworkModule {
                     .flatMap { Dns.SYSTEM.lookup(it) }
             }
             .build()
-            .also { ProjectOkhttp = it }
+            .also { ProjectOkhttp = it; ConnectionWarmer.warmUp(it, DomainConfig.imageDomains) }
     }
 
     @Provides
