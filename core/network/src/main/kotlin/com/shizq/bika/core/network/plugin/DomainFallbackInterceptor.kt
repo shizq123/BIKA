@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.asFlow
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 private const val TAG = "DomainFallbackCoil"
@@ -27,7 +28,7 @@ class DomainFallbackInterceptor : Interceptor {
         val httpUrl = originalUrl.toHttpUrlOrNull() ?: return initialResult
 
         val failedHost = httpUrl.host
-        val allManagedHosts = DomainConfig.imageDomains.mapNotNull { it.toHttpUrlOrNull()?.host }
+        val allManagedHosts = DomainConfig.imageDomains.map { it.toHttpUrl().host }
 
         if (failedHost !in allManagedHosts) {
             return initialResult
@@ -96,7 +97,10 @@ object DomainConfig {
     val imageDomains = listOf(
         "https://s3.picacomic.com",
         "https://s2.picacomic.com",
+        "https://storage.diwodiwo.xyz",
         "https://storage1.picacomic.com",
+        "https://storage.tipatipa.xyz",
+        "https://www.picacomic.com",
         "https://storage-b.picacomic.com",
     )
 }
