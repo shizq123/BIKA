@@ -4,6 +4,7 @@ import com.shizq.bika.core.network.model.ActionData
 import com.shizq.bika.core.network.model.ChapterPagesData
 import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
+import com.shizq.bika.core.network.model.ComicResource
 import com.shizq.bika.core.network.model.CommentsData
 import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.KeywordsData
@@ -24,6 +25,10 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.addAll
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.putJsonArray
 
 @Singleton
 class BikaDataSource @Inject constructor(
@@ -148,8 +153,8 @@ class BikaDataSource @Inject constructor(
         translationTeam: String? = null,
         sort: Sort,
         page: Int,
-    ) {
-        client.get("comics") {
+    ): ComicResource {
+        return client.get("comics") {
             parameter("c", topic)
             parameter("t", tag)
             parameter("a", authorName)
@@ -157,33 +162,20 @@ class BikaDataSource @Inject constructor(
             parameter("ct", translationTeam)
             parameter("s", sort)
             parameter("page", page)
-        }
+        }.body()
     }
 
-    //  /// 搜索
-    //    pub async fn advanced_search(
-    //        &self,
-    //        content: String,
-    //        sort: Sort,
-    //        page: i32,
-    //        categories: Vec<String>,
-    //    ) -> Result<ComicSearchResponseData> {
-    //        let url = format!("comics/advanced-search?page={}", page);
-    //        Ok(self
-    //            .pica_post(
-    //                url.as_str(),
-    //                json!({
-    //                    "keyword": content,
-    //                    "sort": sort.as_str(),
-    //                    "categories": categories,
-    //                }),
-    //            )
-    //            .await?)
-    //    }
     // ComicSearchResponseData
-    suspend fun advancedSearch(content: String, sort: String, page: Int, categories: List<String>) {
+    suspend fun advancedSearch(content: String, sort: String, categories: List<String>) {
         client.post("comics/advanced-search") {
-            setBody("""{"keyword":"$content","sort":"$sort","categories":${categories.joinToString()}}""")
+            val body = buildJsonObject {
+                put("keyword", JsonPrimitive(content))
+                put("sort", JsonPrimitive(sort))
+                putJsonArray("categories") {
+                    addAll(categories)
+                }
+            }
+            setBody(body)
         }
     }
 }
