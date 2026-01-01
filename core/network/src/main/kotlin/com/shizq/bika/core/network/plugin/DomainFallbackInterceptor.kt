@@ -5,6 +5,12 @@ import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.asFlow
+import kotlinx.coroutines.flow.filterIsInstance
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.flow.map
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 private const val TAG = "DomainFallbackCoil"
@@ -39,38 +45,50 @@ class DomainFallbackInterceptor : Interceptor {
             return initialResult
         }
 
-        var lastResult: ImageResult = initialResult
+        return raceFallbackRequests(chain, httpUrl, fallbackHosts) ?: initialResult
+    }
 
-        fallbackHosts.forEachIndexed { index, host ->
-            val newUrl = httpUrl.newBuilder().host(host).build().toString()
-            val newRequest = chain.request.newBuilder()
-                .data(newUrl)
-                .build()
+    private suspend fun raceFallbackRequests(
+        chain: Interceptor.Chain,
+        originalHttpUrl: okhttp3.HttpUrl,
+        fallbackHosts: List<String>
+    ): SuccessResult? = coroutineScope {
+        Log.i(TAG, "Racing fallback requests for hosts: $fallbackHosts")
 
-            Log.i(TAG, "Fallback attempt #${index + 1}: Trying new domain '$host'")
+        val deferredResults = fallbackHosts.map { host ->
+            async {
+                val newUrl = originalHttpUrl.newBuilder().host(host).build().toString()
+                val newRequest = chain.request.newBuilder().data(newUrl).build()
+                Log.d(TAG, "Starting fallback attempt for '$host' with url: $newUrl")
+                when (val result = chain.withRequest(newRequest).proceed()) {
+                    is SuccessResult -> {
+                        Log.i(TAG, "Fallback successful with host: '$host'")
+                        result
+                    }
 
-            val newChain = chain.withRequest(newRequest)
-            val fallbackResult = newChain.proceed()
-
-            if (fallbackResult is SuccessResult) {
-                Log.i(TAG, "Fallback successful with domain '$host'.")
-                return fallbackResult
-            } else if (fallbackResult is ErrorResult) {
-                Log.w(
-                    TAG,
-                    "Fallback attempt with domain '$host' failed.",
-                    fallbackResult.throwable
-                )
+                    is ErrorResult -> {
+                        Log.w(
+                            TAG,
+                            "Fallback attempt for host '$host' failed.",
+                            result.throwable
+                        )
+                        null
+                    }
+                }
             }
-
-            lastResult = fallbackResult
         }
 
-        Log.e(
-            TAG,
-            "All fallback attempts failed for original host '$failedHost'. Returning last error."
-        )
-        return lastResult
+        val firstSuccess = deferredResults
+            .asFlow()
+            .map { it.await() }
+            .filterIsInstance<SuccessResult>()
+            .firstOrNull()
+
+        if (firstSuccess == null) {
+            Log.e(TAG, "All fallback attempts failed for original url: $originalHttpUrl")
+        }
+
+        firstSuccess
     }
 }
 
