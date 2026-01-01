@@ -2,13 +2,29 @@ package com.shizq.bika.ui.comiclist
 
 import android.content.Context
 import android.content.Intent
+import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
+import com.shizq.bika.ui.theme.BikaTheme
+import dagger.hilt.android.AndroidEntryPoint
 
 /**
  * 漫画列表
  */
-
+// TODO: 迁移到 search
+@AndroidEntryPoint
 class ComicListActivity : ComponentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
+
+        setContent {
+            BikaTheme {
+                SearchScreen(onBackClick = ::finish)
+            }
+        }
+    }
 
     companion object {
         private var tag = arrayOf<CharSequence>(
