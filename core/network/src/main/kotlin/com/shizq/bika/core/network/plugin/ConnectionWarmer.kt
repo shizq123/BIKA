@@ -4,13 +4,14 @@ import android.util.Log
 import kotlinx.io.IOException
 import okhttp3.Call
 import okhttp3.Callback
+import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
 
 object ConnectionWarmer {
     fun warmUp(client: OkHttpClient, urls: List<String>) {
-        val uniqueHosts = urls.toSet()
+        val uniqueHosts = urls.map { it.toHttpUrl().host }.toSet()
 
         uniqueHosts.forEach { host ->
             val url = "https://${host}/"
