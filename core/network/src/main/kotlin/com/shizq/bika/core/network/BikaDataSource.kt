@@ -13,6 +13,7 @@ import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
 import com.shizq.bika.core.network.model.ProfileData
 import com.shizq.bika.core.network.model.RecommendationData
+import com.shizq.bika.core.network.model.Sort
 import com.shizq.bika.core.network.model.Type
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -137,5 +138,52 @@ class BikaDataSource @Inject constructor(
      */
     suspend fun toggleReplyLike(id: String): ActionData {
         return client.post("comments/$id/like").body()
+    }
+
+    suspend fun searchComics(
+        topic: String? = null,
+        tag: String? = null,
+        authorName: String? = null,
+        knight: String? = null,
+        translationTeam: String? = null,
+        sort: Sort,
+        page: Int,
+    ) {
+        client.get("comics") {
+            parameter("c", topic)
+            parameter("t", tag)
+            parameter("a", authorName)
+            parameter("ca", knight)
+            parameter("ct", translationTeam)
+            parameter("s", sort)
+            parameter("page", page)
+        }
+    }
+
+    //  /// 搜索
+    //    pub async fn advanced_search(
+    //        &self,
+    //        content: String,
+    //        sort: Sort,
+    //        page: i32,
+    //        categories: Vec<String>,
+    //    ) -> Result<ComicSearchResponseData> {
+    //        let url = format!("comics/advanced-search?page={}", page);
+    //        Ok(self
+    //            .pica_post(
+    //                url.as_str(),
+    //                json!({
+    //                    "keyword": content,
+    //                    "sort": sort.as_str(),
+    //                    "categories": categories,
+    //                }),
+    //            )
+    //            .await?)
+    //    }
+    // ComicSearchResponseData
+    suspend fun advancedSearch(content: String, sort: String, page: Int, categories: List<String>) {
+        client.post("comics/advanced-search") {
+            setBody("""{"keyword":"$content","sort":"$sort","categories":${categories.joinToString()}}""")
+        }
     }
 }
