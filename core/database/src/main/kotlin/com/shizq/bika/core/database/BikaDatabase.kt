@@ -5,16 +5,19 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.dao.RecentSearchQueryDao
+import com.shizq.bika.core.database.dao.TagDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.database.model.RecentSearchQueryEntity
+import com.shizq.bika.core.database.model.TagEntity
 import com.shizq.bika.core.database.util.InstantConverter
 
 @Database(
     entities = [
         ReadingHistoryEntity::class,
         ChapterProgressEntity::class,
-        RecentSearchQueryEntity::class
+        RecentSearchQueryEntity::class,
+        TagEntity::class
     ],
     version = 1,
     exportSchema = true,
@@ -23,4 +26,5 @@ import com.shizq.bika.core.database.util.InstantConverter
 internal abstract class BikaDatabase : RoomDatabase() {
     abstract fun recentSearchQueryDao(): RecentSearchQueryDao
     abstract fun readingHistoryDao(): ReadingHistoryDao
+    abstract fun tagDao(): TagDao
 }

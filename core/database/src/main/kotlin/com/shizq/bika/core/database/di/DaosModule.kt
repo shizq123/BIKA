@@ -3,6 +3,7 @@ package com.shizq.bika.core.database.di
 import com.shizq.bika.core.database.BikaDatabase
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.dao.RecentSearchQueryDao
+import com.shizq.bika.core.database.dao.TagDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -20,4 +21,9 @@ internal object DaosModule {
     fun providesReadingHistoryDao(
         database: BikaDatabase,
     ): ReadingHistoryDao = database.readingHistoryDao()
+
+    @Provides
+    fun providesTagDao(
+        database: BikaDatabase,
+    ): TagDao = database.tagDao()
 }
