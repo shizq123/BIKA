@@ -1,6 +1,9 @@
 package com.shizq.bika.core.network.model
 
+import kotlinx.serialization.Serializable
+
 @JvmInline
+@Serializable
 value class Sort(val value: String) {
     override fun toString(): String = value
 
