@@ -12,7 +12,6 @@ import dagger.hilt.android.AndroidEntryPoint
 /**
  * 漫画列表
  */
-// TODO: 迁移到 search
 @AndroidEntryPoint
 class ComicListActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,7 +20,7 @@ class ComicListActivity : ComponentActivity() {
 
         setContent {
             BikaTheme {
-                SearchScreen(onBackClick = ::finish)
+                TopicScreen(onBackClick = ::finish)
             }
         }
     }

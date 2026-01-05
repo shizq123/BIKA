@@ -6,7 +6,7 @@
 
         <variable
             name="viewModel"
-            type="com.shizq.bika.ui.comiclist.SearchViewModel" />
+            type="com.shizq.bika.ui.comiclist.TopicViewModel" />
     </data>
 
     <androidx.coordinatorlayout.widget.CoordinatorLayout
