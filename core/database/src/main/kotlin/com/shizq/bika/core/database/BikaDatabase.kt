@@ -19,7 +19,7 @@ import com.shizq.bika.core.database.util.InstantConverter
         RecentSearchQueryEntity::class,
         TagEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = true,
 )
 @TypeConverters(InstantConverter::class)
