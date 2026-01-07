@@ -1,5 +1,6 @@
 plugins {
     alias(libs.plugins.bika.android.library)
+    alias(libs.plugins.bika.android.library.compose)
 }
 
 android {
