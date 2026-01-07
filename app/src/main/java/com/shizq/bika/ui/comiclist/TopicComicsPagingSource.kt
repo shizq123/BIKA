@@ -2,8 +2,8 @@ package com.shizq.bika.ui.comiclist
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.network.model.ComicSimple
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject

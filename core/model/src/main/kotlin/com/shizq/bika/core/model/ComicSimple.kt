@@ -1,17 +1,11 @@
-package com.shizq.bika.core.network.model
+package com.shizq.bika.core.model
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.JsonNames
 
 @Serializable
-data class ComicResource(
-    @SerialName("comics")
-    val comics: PageData<ComicSimple>,
-)
-@Serializable
 data class ComicSimple(
-    @JsonNames("_id", "id")
+    @SerialName("_id")
     val id: String,
     val title: String,
     val author: String,

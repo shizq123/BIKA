@@ -11,8 +11,8 @@ import androidx.paging.cachedIn
 import androidx.paging.filter
 import androidx.paging.map
 import com.shizq.bika.core.data.repository.TagsRepository
+import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.network.model.ComicSimple
 import com.shizq.bika.core.network.model.Sort
 import com.shizq.bika.ui.tag.FilterGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
