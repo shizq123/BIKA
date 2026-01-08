@@ -9,8 +9,6 @@ import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.network.BuildConfig
-import com.shizq.bika.core.network.plugin.ConnectionWarmer
-import com.shizq.bika.core.network.plugin.DomainConfig
 import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
 import com.shizq.bika.core.network.plugin.ResponseTransformer
 import com.shizq.bika.core.network.plugin.TokenAuthenticator
@@ -98,7 +96,7 @@ internal object NetworkModule {
                     .flatMap { Dns.SYSTEM.lookup(it) }
             }
             .build()
-            .also { ProjectOkhttp = it; ConnectionWarmer.warmUp(it, DomainConfig.imageDomains) }
+            .also { ProjectOkhttp = it }
     }
 
     @Provides
