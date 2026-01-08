@@ -31,6 +31,7 @@ import com.shizq.bika.ui.tag.rememberFilterState
 @Composable
 internal fun TopicScreen(
     onBackClick: () -> Unit,
+    navigationToComicInfo: (id: String) -> Unit,
     topicViewModel: TopicViewModel = hiltViewModel(),
 ) {
     val topic by topicViewModel.topic.collectAsStateWithLifecycle()
@@ -45,6 +46,7 @@ internal fun TopicScreen(
         availableTags = availableTags,
         updateFilters = topicViewModel::updateFilters,
         onBackClick = onBackClick,
+        navigationToComicInfo = navigationToComicInfo,
     )
 }
 
@@ -57,6 +59,7 @@ fun TopicContent(
     availableTags: List<String> = emptyList(),
     updateFilters: (Map<FilterGroup, List<String>>) -> Unit = {},
     onBackClick: () -> Unit = {},
+    navigationToComicInfo: (String) -> Unit = {},
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
@@ -110,7 +113,9 @@ fun TopicContent(
             items(pagedComics.itemCount) {
                 val comic = pagedComics[it]
                 if (comic != null) {
-                    ComicCard(comic = comic)
+                    ComicCard(comic = comic) {
+                        navigationToComicInfo(comic.id)
+                    }
                 }
             }
         }
