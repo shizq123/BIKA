@@ -1,6 +1,6 @@
 package com.shizq.bika.ui.comiclist
 
-import com.shizq.bika.core.network.model.Sort
+import com.shizq.bika.core.model.Sort
 
 /**
  * 封装漫画搜索的所有参数
