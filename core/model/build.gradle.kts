@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.bika.android.library)
     alias(libs.plugins.kotlin.serialization)
+    id("kotlin-parcelize")
 }
 
 android {
