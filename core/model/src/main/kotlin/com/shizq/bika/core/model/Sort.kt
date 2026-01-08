@@ -1,10 +1,13 @@
-package com.shizq.bika.core.network.model
+package com.shizq.bika.core.model
 
+import android.os.Parcelable
+import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 
 @JvmInline
 @Serializable
-value class Sort(val value: String) {
+@Parcelize
+value class Sort(val value: String) : Parcelable {
     override fun toString(): String = value
 
     companion object {
