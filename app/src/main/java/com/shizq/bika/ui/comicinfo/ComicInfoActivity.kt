@@ -105,8 +105,8 @@ class ComicInfoActivity : ComponentActivity() {
             navigationToComicInfo = {
                 start(this, it)
             },
-            navigationToComicList = { type, value ->
-                ComicListActivity.start(this, type, value, value)
+            navigationToComicList = { type, title, navigationArgument ->
+                ComicListActivity.start(this, type, title, navigationArgument)
             },
             pinnedComments = pinnedComments,
             regularComments = regularComments,
@@ -128,7 +128,7 @@ class ComicInfoActivity : ComponentActivity() {
         navigationToReader: (id: String, index: Int) -> Unit = { _, _ -> },
         onCommentClick: (String) -> Unit = {},
         navigationToComicInfo: (String) -> Unit = {},
-        navigationToComicList: (type: String, value: String) -> Unit = { _, _ -> },
+        navigationToComicList: (type: String, title: String, navigationArgument: String) -> Unit = { _, _, _ -> },
         onToggleCommentLike: (String) -> Unit = {},
         dispatch: (UnitedDetailsAction) -> Unit = {},
         onNavigate: (String) -> Unit = {},
@@ -170,7 +170,7 @@ class ComicInfoActivity : ComponentActivity() {
 
                         HorizontalPager(
                             state = pagerState,
-                            modifier = Modifier.weight(1f), 
+                            modifier = Modifier.weight(1f),
                             verticalAlignment = Alignment.Top,
                             key = { it }
                         ) { page ->
@@ -181,8 +181,8 @@ class ComicInfoActivity : ComponentActivity() {
                                     onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
                                     onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
                                     navigationToReader = { navigationToReader(detail.id, 1) },
-                                    navigationToSearch = { type, value ->
-                                        navigationToComicList(type, value)
+                                    navigationToSearch = { type, value, navigationArgument ->
+                                        navigationToComicList(type, value, navigationArgument)
                                     },
                                     navigationToComicInfo = { navigationToComicInfo(it) }
                                 )

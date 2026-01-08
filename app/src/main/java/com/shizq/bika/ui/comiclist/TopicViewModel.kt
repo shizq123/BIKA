@@ -37,7 +37,8 @@ class TopicViewModel @Inject constructor(
     private val tagsRepository: TagsRepository,
 ) : ViewModel() {
     private val topicType = savedStateHandle.getStateFlow(SEARCH_TYPE, TopicType.Latest.key)
-    val topic = savedStateHandle.getStateFlow(SEARCH_QUERY, "")
+    val topicText = savedStateHandle.getStateFlow(SEARCH_TITLE, "")
+    private val topic = savedStateHandle.getStateFlow(SEARCH_QUERY, "")
     private val sortOrder = savedStateHandle.getStateFlow(SORT_ORDER, Sort.NEWEST)
     private val selectedFilters = MutableStateFlow<Map<FilterGroup, List<String>>>(emptyMap())
 
@@ -120,7 +121,7 @@ class TopicViewModel @Inject constructor(
             is TopicType.Latest -> ComicSearchParams(sort = params.sort)
             is TopicType.Tags -> ComicSearchParams(tag = params.query, sort = params.sort)
             is TopicType.Author -> ComicSearchParams(authorName = params.query, sort = params.sort)
-            is TopicType.Knight -> ComicSearchParams(knight = params.query, sort = params.sort)
+            is TopicType.Knight -> ComicSearchParams(knightId = params.query, sort = params.sort)
             is TopicType.Translate -> ComicSearchParams(
                 translationTeam = params.query,
                 sort = params.sort
@@ -143,6 +144,7 @@ data class SearchParameters(
 )
 
 private const val SEARCH_TYPE = "tag"
+private const val SEARCH_TITLE = "title"
 private const val SEARCH_QUERY = "value"
 private const val SORT_ORDER = "sort_order"
 private val PAGING_CONFIG = PagingConfig(pageSize = 40)

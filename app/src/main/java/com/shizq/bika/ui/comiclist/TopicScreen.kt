@@ -34,7 +34,7 @@ internal fun TopicScreen(
     navigationToComicInfo: (id: String) -> Unit,
     topicViewModel: TopicViewModel = hiltViewModel(),
 ) {
-    val topic by topicViewModel.topic.collectAsStateWithLifecycle()
+    val topic by topicViewModel.topicText.collectAsStateWithLifecycle()
     val pagedComics = topicViewModel.pagedComics.collectAsLazyPagingItems()
     val searchParameters by topicViewModel.searchParametersFlow.collectAsStateWithLifecycle()
     val availableTags by topicViewModel.availableTags.collectAsStateWithLifecycle()

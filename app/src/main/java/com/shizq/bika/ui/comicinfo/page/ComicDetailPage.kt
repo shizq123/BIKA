@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Favorite
@@ -79,7 +80,7 @@ fun ComicDetailPage(
     onFavoriteClick: () -> Unit = {},
     onLikedClick: () -> Unit = {},
     navigationToReader: () -> Unit = {},
-    navigationToSearch: (String, String) -> Unit = { _, _ -> },
+    navigationToSearch: (String, String, String) -> Unit = { _, _, _ -> },
     navigationToComicInfo: (String) -> Unit = {},
 ) {
     Box(
@@ -99,7 +100,7 @@ fun ComicDetailPage(
                 view = detail.totalViews,
                 chineseTeam = detail.chineseTeam,
                 onTranslateClick = {
-                    navigationToSearch("translate", it)
+                    navigationToSearch("translate", it, it)
                 }
             )
 
@@ -111,8 +112,14 @@ fun ComicDetailPage(
                 isLiked = detail.isLiked,
                 likeCount = detail.totalLikes,
                 onLikedClick = onLikedClick,
-                onUploaderClick = { navigationToSearch("knight", it) },
-                onAuthorClick = { navigationToSearch("author", it) }
+                onUploaderClick = {
+                    navigationToSearch(
+                        "knight",
+                        detail.creator.name,
+                        detail.creator.id,
+                    )
+                },
+                onAuthorClick = { navigationToSearch("author", detail.author, detail.author) }
             )
             val all = detail.tags + detail.categories
             FlowRow(
@@ -121,7 +128,7 @@ fun ComicDetailPage(
             ) {
                 all.fastForEach {
                     SuggestionChip(
-                        { navigationToSearch("tags", it) },
+                        { navigationToSearch("tags", it, it) },
                         label = {
                             Text(
                                 it,
@@ -177,9 +184,9 @@ fun MediaSummary(
     title: String,
     isFinished: Boolean,
     view: Int,
-    chineseTeam: String?,
-    onTranslateClick: (String) -> Unit = {},
+    chineseTeam: String,
     modifier: Modifier = Modifier,
+    onTranslateClick: (String) -> Unit = {},
 ) {
     Row(
         modifier = modifier
@@ -200,12 +207,14 @@ fun MediaSummary(
             modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
+            SelectionContainer {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
             Row(
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -230,12 +239,12 @@ fun MediaSummary(
                     )
                 }
             }
-            chineseTeam?.let {
+            if (chineseTeam.isNotEmpty()) {
                 InfoLine(
-                    "汉化组",
-                    it,
-                    { onTranslateClick(it) },
-                    MaterialTheme.typography.labelLarge
+                    label = "汉化组",
+                    name = chineseTeam,
+                    onClick = { onTranslateClick(chineseTeam) },
+                    style = MaterialTheme.typography.labelLarge
                 )
             }
         }
@@ -317,8 +326,8 @@ fun ContentSummary(
     likeCount: Int,
     modifier: Modifier = Modifier,
     onLikedClick: () -> Unit = {},
-    onUploaderClick: (String) -> Unit = {},
-    onAuthorClick: (String) -> Unit = {}
+    onUploaderClick: () -> Unit = {},
+    onAuthorClick: () -> Unit = {}
 ) {
     var isDescriptionExpanded by remember { mutableStateOf(false) }
 
@@ -340,14 +349,14 @@ fun ContentSummary(
                 InfoLine(
                     label = stringResource(R.string.comic_author_label),
                     name = author,
-                    onClick = { onAuthorClick(author) },
+                    onClick = onAuthorClick,
                     style = MaterialTheme.typography.titleMedium,
                 )
                 Spacer(Modifier.weight(1f))
                 InfoLine(
                     label = stringResource(R.string.comic_uploader_label),
                     name = creator,
-                    onClick = { onUploaderClick(creator) },
+                    onClick = onUploaderClick,
                     style = MaterialTheme.typography.bodyMedium,
                 )
             }
@@ -360,20 +369,21 @@ fun ContentSummary(
                 modifier = Modifier
             )
         }
-
-        Text(
-            text = description,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = if (isDescriptionExpanded) Int.MAX_VALUE else 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null
-                ) { isDescriptionExpanded = !isDescriptionExpanded }
-                .animateContentSize()
-        )
+        SelectionContainer {
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = if (isDescriptionExpanded) Int.MAX_VALUE else 2,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier
+                    .clickable(
+                        interactionSource = null,
+                        indication = null
+                    ) { isDescriptionExpanded = !isDescriptionExpanded }
+                    .animateContentSize()
+            )
+        }
     }
 }
 
@@ -381,31 +391,34 @@ fun ContentSummary(
 private fun InfoLine(
     label: String,
     name: String,
-    onClick: () -> Unit,
     style: TextStyle,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
             .clip(MaterialTheme.shapes.small)
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = null,
                 indication = null,
-                onClick = onClick
+                onClick = onClick,
             )
     ) {
-        Text(
-            buildAnnotatedString {
-                withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
-                    append("$label: ")
-                }
-                withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
-                    append(name)
-                }
-            },
-            style = style,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
+        SelectionContainer {
+
+            Text(
+                buildAnnotatedString {
+                    withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
+                        append("$label: ")
+                    }
+                    withStyle(style = SpanStyle(fontWeight = FontWeight.Bold)) {
+                        append(name)
+                    }
+                },
+                style = style,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
     }
 }
 
