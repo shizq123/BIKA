@@ -31,7 +31,8 @@ fun rememberFilterState(
     selections: Map<FilterGroup, List<String>>,
     dynamicTags: List<String>
 ): FilterState {
-    val filterGroups = listOf(FilterGroup.Topic, FilterGroup.Status)
+    val tagGroup = FilterGroup.Tag(dynamicTags)
+    val filterGroups = listOf(FilterGroup.Topic, FilterGroup.Status, tagGroup)
 
     val chips = filterGroups.map { group ->
         val currentSelection = selections.getOrDefault(group, emptyList())
@@ -39,11 +40,13 @@ fun rememberFilterState(
         val label = when (group) {
             is FilterGroup.Topic -> "主题"
             is FilterGroup.Status -> "状态"
+            is FilterGroup.Tag -> "标签"
         }
 
         val values = when (group) {
-            is FilterGroup.Topic -> dynamicTags
+            is FilterGroup.Topic -> group.values
             is FilterGroup.Status -> group.values
+            is FilterGroup.Tag -> dynamicTags
         }
 
         FilterChipState(
