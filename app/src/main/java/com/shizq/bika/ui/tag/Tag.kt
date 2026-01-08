@@ -3,7 +3,7 @@ package com.shizq.bika.ui.tag
 import androidx.compose.runtime.Immutable
 
 @Immutable
-sealed class FilterGroup(val values: List<String>) {
+sealed class FilterGroup(open val values: List<String>) {
     @Immutable
     data object Topic : FilterGroup(
         listOf(
@@ -47,4 +47,5 @@ sealed class FilterGroup(val values: List<String>) {
 
     @Immutable
     data object Status : FilterGroup(listOf("完结"))
+    data class Tag(override val values: List<String>) : FilterGroup(values)
 }
