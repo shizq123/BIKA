@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network
 
+import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.model.ActionData
 import com.shizq.bika.core.network.model.ChapterPagesData
 import com.shizq.bika.core.network.model.CollectionsData
@@ -14,7 +15,6 @@ import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
 import com.shizq.bika.core.network.model.ProfileData
 import com.shizq.bika.core.network.model.RecommendationData
-import com.shizq.bika.core.network.model.Sort
 import com.shizq.bika.core.network.model.Type
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
