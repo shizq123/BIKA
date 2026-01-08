@@ -20,7 +20,7 @@ data class ComicData(
         @SerialName("categories")
         val categories: List<String> = listOf(),
         @SerialName("chineseTeam")
-        val chineseTeam: String? = null,
+        val chineseTeam: String = "",
         @SerialName("commentsCount")
         val commentsCount: Int = 0,
         @SerialName("created_at")

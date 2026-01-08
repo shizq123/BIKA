@@ -50,7 +50,7 @@ fun ComicData.toComicDetail(): ComicDetail {
 data class ComicDetail(
     val author: String = "",
     val categories: List<String> = listOf(),
-    val chineseTeam: String? = null,
+    val chineseTeam: String = "",
     val commentsCount: Int = 0,
     val createdAt: String = "",
     val creator: Creator = Creator(),
