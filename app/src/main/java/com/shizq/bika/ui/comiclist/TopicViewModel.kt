@@ -12,8 +12,8 @@ import androidx.paging.filter
 import androidx.paging.map
 import com.shizq.bika.core.data.repository.TagsRepository
 import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.network.model.Sort
 import com.shizq.bika.ui.tag.FilterGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
@@ -66,16 +66,14 @@ class TopicViewModel @Inject constructor(
         .flatMapLatest { params ->
             createComicsPagerFlow(params)
                 .map { pagingData ->
-                    // 任务 2: 保存标签的副作用
                     pagingData.map { comic ->
                         viewModelScope.launch {
-                            tagsRepository.saveTags(comic.categories)
+                            tagsRepository.saveTags(comic.tags)
                         }
                         comic
                     }
                 }
                 .map { pagingData ->
-                    // 任务 2: 客户端过滤逻辑
                     val topicFilters = params.filters[FilterGroup.Topic] ?: emptyList()
                     val statusFilters = params.filters[FilterGroup.Status] ?: emptyList()
 
