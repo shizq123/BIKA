@@ -149,7 +149,7 @@ class BikaDataSource @Inject constructor(
         topic: String? = null,
         tag: String? = null,
         authorName: String? = null,
-        knight: String? = null,
+        knightId: String? = null,
         translationTeam: String? = null,
         sort: Sort,
         page: Int,
@@ -158,7 +158,7 @@ class BikaDataSource @Inject constructor(
             parameter("c", topic)
             parameter("t", tag)
             parameter("a", authorName)
-            parameter("ca", knight)
+            parameter("ca", knightId)
             parameter("ct", translationTeam)
             parameter("s", sort)
             parameter("page", page)

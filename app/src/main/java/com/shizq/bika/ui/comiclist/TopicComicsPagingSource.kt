@@ -20,7 +20,7 @@ class TopicComicsPagingSource @AssistedInject constructor(
                 topic = searchParams.topic,
                 tag = searchParams.tag,
                 authorName = searchParams.authorName,
-                knight = searchParams.knight,
+                knightId = searchParams.knightId,
                 translationTeam = searchParams.translationTeam,
                 sort = searchParams.sort,
                 page = page

@@ -7,7 +7,7 @@ import com.shizq.bika.core.model.Sort
  * @param topic 通用搜索关键词 (原 topic)
  * @param tag 标签
  * @param authorName 作者名
- * @param knight 上传者/骑士
+ * @param knightId 上传者/骑士
  * @param translationTeam 汉化组
  * @param sort 排序方式
  */
@@ -15,7 +15,7 @@ data class ComicSearchParams(
     val topic: String? = null,
     val tag: String? = null,
     val authorName: String? = null,
-    val knight: String? = null,
+    val knightId: String? = null,
     val translationTeam: String? = null,
     val sort: Sort,
 )
