@@ -165,18 +165,23 @@ class BikaDataSource @Inject constructor(
         }.body()
     }
 
-    // ComicSearchResponseData
-    suspend fun advancedSearch(content: String, sort: String, categories: List<String>) {
-        client.post("comics/advanced-search") {
+    suspend fun advancedSearch(
+        content: String,
+        categories: List<String>,
+        sort: Sort,
+        page: Int
+    ): ComicResource {
+        return client.post("comics/advanced-search") {
             val body = buildJsonObject {
                 put("keyword", JsonPrimitive(content))
-                put("sort", JsonPrimitive(sort))
+                put("sort", JsonPrimitive(sort.value))
                 putJsonArray("categories") {
                     addAll(categories)
                 }
             }
+            parameter("page", page)
             setBody(body)
-        }
+        }.body()
     }
 
     suspend fun getFavouriteComics(sort: Sort, page: Int): ComicResource {
