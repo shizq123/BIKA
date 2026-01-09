@@ -38,11 +38,6 @@ class TopicViewModel @Inject constructor(
     private val favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
     private val tagsRepository: TagsRepository,
 ) : ViewModel() {
-    init {
-        viewModelScope.launch {
-        }
-    }
-
     private val topicType = savedStateHandle.getStateFlow(SEARCH_TYPE, TopicType.Latest.key)
     val topicText = savedStateHandle.getStateFlow(SEARCH_TITLE, "")
     private val topic = savedStateHandle.getStateFlow(SEARCH_QUERY, "")
