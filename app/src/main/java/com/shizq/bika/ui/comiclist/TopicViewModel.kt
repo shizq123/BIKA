@@ -39,7 +39,7 @@ class TopicViewModel @Inject constructor(
     private val topicType = savedStateHandle.getStateFlow(SEARCH_TYPE, TopicType.Latest.key)
     val topicText = savedStateHandle.getStateFlow(SEARCH_TITLE, "")
     private val topic = savedStateHandle.getStateFlow(SEARCH_QUERY, "")
-    private val sortOrder = savedStateHandle.getStateFlow(SORT_ORDER, Sort.NEWEST)
+    val sortOrder = savedStateHandle.getStateFlow(SORT_ORDER, Sort.NEWEST)
     private val selectedFilters = MutableStateFlow<Map<FilterGroup, List<String>>>(emptyMap())
 
     val searchParametersFlow =
@@ -59,7 +59,7 @@ class TopicViewModel @Inject constructor(
     val availableTags: StateFlow<List<String>> = tagsRepository.getTags()
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.Eagerly,
             initialValue = emptyList()
         )
 
@@ -78,7 +78,13 @@ class TopicViewModel @Inject constructor(
                     val topicFilters = params.filters[FilterGroup.Topic] ?: emptyList()
                     val statusFilters = params.filters[FilterGroup.Status] ?: emptyList()
 
-                    if (topicFilters.isEmpty() && statusFilters.isEmpty()) {
+                    val tagFilters = params.filters.keys
+                        .filterIsInstance<FilterGroup.Tag>()
+                        .firstOrNull() // 假设只有一个标签过滤器组
+                        ?.let { key -> params.filters[key] }
+                        ?: emptyList()
+
+                    if (topicFilters.isEmpty() && statusFilters.isEmpty() && tagFilters.isEmpty()) {
                         return@map pagingData
                     }
 
@@ -90,12 +96,14 @@ class TopicViewModel @Inject constructor(
                         }
 
                         val statusMatch = when {
-                            statusFilters.isEmpty() || statusFilters.size > 1 -> true
+                            statusFilters.isEmpty() -> true
                             "完结" in statusFilters -> comic.finished
                             else -> true
                         }
+                        val tagMatch = tagFilters.isEmpty() ||
+                                comic.tags.any { it in tagFilters }
 
-                        topicMatch && statusMatch
+                        topicMatch && statusMatch && tagMatch
                     }
                 }
         }

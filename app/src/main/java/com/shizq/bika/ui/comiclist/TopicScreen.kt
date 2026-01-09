@@ -1,7 +1,7 @@
 package com.shizq.bika.ui.comiclist
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
@@ -23,9 +23,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.ui.ComicCard
-import com.shizq.bika.ui.tag.FilterChipsRow
+import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterGroup
+import com.shizq.bika.ui.tag.SortChip
 import com.shizq.bika.ui.tag.rememberFilterState
 
 @Composable
@@ -35,6 +37,7 @@ internal fun TopicScreen(
     topicViewModel: TopicViewModel = hiltViewModel(),
 ) {
     val topic by topicViewModel.topicText.collectAsStateWithLifecycle()
+    val currentSort by topicViewModel.sortOrder.collectAsStateWithLifecycle()
     val pagedComics = topicViewModel.pagedComics.collectAsLazyPagingItems()
     val searchParameters by topicViewModel.searchParametersFlow.collectAsStateWithLifecycle()
     val availableTags by topicViewModel.availableTags.collectAsStateWithLifecycle()
@@ -42,6 +45,8 @@ internal fun TopicScreen(
     TopicContent(
         topicLabel = topic,
         pagedComics = pagedComics,
+        currentSort = currentSort,
+        updateSort = topicViewModel::onSortOrderChanged,
         selectedFilters = searchParameters.filters,
         availableTags = availableTags,
         updateFilters = topicViewModel::updateFilters,
@@ -55,9 +60,11 @@ internal fun TopicScreen(
 fun TopicContent(
     topicLabel: String = "",
     pagedComics: LazyPagingItems<ComicSimple>,
+    currentSort: Sort,
+    updateSort: (Sort) -> Unit = {},
     selectedFilters: Map<FilterGroup, List<String>> = emptyMap(),
     availableTags: List<String> = emptyList(),
-    updateFilters: (Map<FilterGroup, List<String>>) -> Unit = {},
+    updateFilters: (Map<FilterGroup, List<String>>) -> Unit,
     onBackClick: () -> Unit = {},
     navigationToComicInfo: (String) -> Unit = {},
 ) {
@@ -81,33 +88,41 @@ fun TopicContent(
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.padding(innerPadding),
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item {
                 val filterState = rememberFilterState(selectedFilters, availableTags)
-
-                FilterChipsRow(
-                    state = filterState,
-                    onSelectionChanged = { chipState, value ->
-                        val kind = chipState.kind ?: return@FilterChipsRow
-
-                        val currentSelection =
-                            selectedFilters.getOrDefault(kind, emptyList()).toMutableList()
-
-                        if (value in currentSelection) {
-                            currentSelection.remove(value)
-                        } else {
-                            currentSelection.add(value)
-                        }
-
-                        val newFilters = selectedFilters.toMutableMap().apply {
-                            this[kind] = currentSelection
-                        }
-
-                        updateFilters(newFilters)
+                // TODO: tag 打开时会卡顿一下
+                FlowRow(
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    for (chipState in filterState.chips) {
+                        FilterChip(
+                            state = chipState,
+                            onSelectionChanged = { value ->
+                                val kind = chipState.kind ?: return@FilterChip
+                                val currentSelection =
+                                    selectedFilters.getOrDefault(kind, emptyList()).toMutableList()
+                                if (value in currentSelection) {
+                                    currentSelection.remove(value)
+                                } else {
+                                    currentSelection.add(value)
+                                }
+                                val newFilters = selectedFilters.toMutableMap().apply {
+                                    this[kind] = currentSelection
+                                }
+                                updateFilters(newFilters)
+                            }
+                        )
                     }
-                )
+                    SortChip(
+                        currentSort = currentSort,
+                        onSortSelected = { newSort ->
+                            updateSort(newSort)
+                        }
+                    )
+                }
             }
 
             items(pagedComics.itemCount) {
