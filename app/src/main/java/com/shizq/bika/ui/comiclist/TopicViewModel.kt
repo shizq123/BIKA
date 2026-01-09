@@ -14,6 +14,7 @@ import com.shizq.bika.core.data.repository.TagsRepository
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.paging.AdvancedSearchPagingSource
 import com.shizq.bika.paging.FavouriteComicsPagingSource
 import com.shizq.bika.ui.tag.FilterGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -36,6 +37,7 @@ class TopicViewModel @Inject constructor(
     private val api: BikaDataSource,
     private val topicComicsPagingSourceFactory: TopicComicsPagingSource.Factory,
     private val favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
+    private val advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
     private val tagsRepository: TagsRepository,
 ) : ViewModel() {
     private val topicType = savedStateHandle.getStateFlow(SEARCH_TYPE, TopicType.Latest.key)
@@ -140,6 +142,11 @@ class TopicViewModel @Inject constructor(
             is TopicType.Favourite -> ComicSearchParams(
                 sort = params.sort
             )
+
+            TopicType.Search -> ComicSearchParams(
+                topic = params.query,
+                sort = params.sort
+            )
         }
 
         return Pager(
@@ -147,6 +154,8 @@ class TopicViewModel @Inject constructor(
         ) {
             if (params.type is TopicType.Favourite) {
                 favouriteComicsPagingSourceFactory(apiParams)
+            } else if (params.type is TopicType.Search) {
+                advancedSearchPagingSourceFactory(apiParams)
             } else {
                 topicComicsPagingSourceFactory(apiParams)
             }
