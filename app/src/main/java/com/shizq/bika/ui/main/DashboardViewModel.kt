@@ -102,7 +102,7 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    fun onLogin() {
+    fun migration() {
         viewModelScope.launch {
             val username = SPUtil.get("username", "") as String
             val password = SPUtil.get("password", "") as String
