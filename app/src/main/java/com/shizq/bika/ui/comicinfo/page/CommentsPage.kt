@@ -64,7 +64,7 @@ import coil3.compose.AsyncImage
 import com.shizq.bika.R
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
-import com.shizq.bika.ui.theme.BikaTheme
+import com.shizq.bika.core.designsystem.theme.BikaTheme
 import kotlinx.coroutines.flow.flowOf
 
 @OptIn(ExperimentalMaterial3Api::class)

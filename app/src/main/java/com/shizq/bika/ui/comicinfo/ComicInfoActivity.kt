@@ -33,6 +33,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.data.model.Comment
+import com.shizq.bika.core.designsystem.theme.BikaTheme
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.ui.comicinfo.page.ComicDetailPage
 import com.shizq.bika.ui.comicinfo.page.CommentsPage
@@ -42,7 +43,6 @@ import com.shizq.bika.ui.comicinfo.page.PageTab
 import com.shizq.bika.ui.comiclist.ComicListActivity
 import com.shizq.bika.ui.comment.CommentsActivity
 import com.shizq.bika.ui.reader.ReaderActivity
-import com.shizq.bika.ui.theme.BikaTheme
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 
@@ -59,15 +59,6 @@ class ComicInfoActivity : ComponentActivity() {
         }
     }
 
-    //
-//        fun Creator() {
-//            //搜索上传者
-//            val intent = Intent(this@ComicInfoActivity, ComicListActivity::class.java)
-//            intent.putExtra("tag", "knight")
-//            intent.putExtra("title", binding.comicinfoCreatorName.text.toString())
-//            intent.putExtra("value", viewModel.creatorId)
-//            startActivity(intent)
-//        }
     @Composable
     fun ComicDetailScreen(viewModel: ComicInfoViewModel = hiltViewModel()) {
         val state by viewModel.state.collectAsStateWithLifecycle()
