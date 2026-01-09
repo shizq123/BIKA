@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.theme
+package com.shizq.bika.core.designsystem.theme
 
 import androidx.compose.ui.graphics.Color
 
