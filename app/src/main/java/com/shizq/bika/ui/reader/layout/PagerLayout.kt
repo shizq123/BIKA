@@ -29,20 +29,26 @@ class PagerLayout(
         chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
+        val pageContent: @Composable (Int) -> Unit = { pageIndex ->
+            PageItem(chapterPages, pageIndex)
+        }
+
         if (direction == Direction.Vertical) {
             VerticalPager(
                 state = pagerState,
                 modifier = modifier,
-                key = chapterPages.itemKey { it.id }
-            ) { idx -> PageItem(chapterPages, idx) }
+                key = chapterPages.itemKey { it.id },
+                pageContent = { pageContent(it) }
+            )
         } else {
             val layoutDirection = if (isRtl) LayoutDirection.Rtl else LayoutDirection.Ltr
             CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
                 HorizontalPager(
                     state = pagerState,
                     modifier = modifier,
-                    key = chapterPages.itemKey { it.id }
-                ) { idx -> PageItem(chapterPages, idx) }
+                    key = chapterPages.itemKey { it.id },
+                    pageContent = { pageContent(it) }
+                )
             }
         }
     }

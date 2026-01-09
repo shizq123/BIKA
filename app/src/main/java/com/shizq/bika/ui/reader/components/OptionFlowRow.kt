@@ -12,10 +12,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 
-/**
- * 自动换行的选项组 (核心布局)
- * 使用 M3 的 FlowRow
- */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun <T> OptionFlowRow(
@@ -26,7 +22,6 @@ fun <T> OptionFlowRow(
 ) {
     FlowRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier.fillMaxWidth()
     ) {
         options.forEach { item ->
