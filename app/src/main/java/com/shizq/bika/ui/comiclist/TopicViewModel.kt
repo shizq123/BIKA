@@ -14,6 +14,7 @@ import com.shizq.bika.core.data.repository.TagsRepository
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.paging.FavouriteComicsPagingSource
 import com.shizq.bika.ui.tag.FilterGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
@@ -34,8 +35,14 @@ class TopicViewModel @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val api: BikaDataSource,
     private val topicComicsPagingSourceFactory: TopicComicsPagingSource.Factory,
+    private val favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
     private val tagsRepository: TagsRepository,
 ) : ViewModel() {
+    init {
+        viewModelScope.launch {
+        }
+    }
+
     private val topicType = savedStateHandle.getStateFlow(SEARCH_TYPE, TopicType.Latest.key)
     val topicText = savedStateHandle.getStateFlow(SEARCH_TITLE, "")
     private val topic = savedStateHandle.getStateFlow(SEARCH_QUERY, "")
@@ -80,7 +87,7 @@ class TopicViewModel @Inject constructor(
 
                     val tagFilters = params.filters.keys
                         .filterIsInstance<FilterGroup.Tag>()
-                        .firstOrNull() // 假设只有一个标签过滤器组
+                        .firstOrNull()
                         ?.let { key -> params.filters[key] }
                         ?: emptyList()
 
@@ -134,12 +141,20 @@ class TopicViewModel @Inject constructor(
                 translationTeam = params.query,
                 sort = params.sort
             )
+
+            is TopicType.Favourite -> ComicSearchParams(
+                sort = params.sort
+            )
         }
 
         return Pager(
             config = PAGING_CONFIG,
         ) {
-            topicComicsPagingSourceFactory(apiParams)
+            if (params.type is TopicType.Favourite) {
+                favouriteComicsPagingSourceFactory(apiParams)
+            } else {
+                topicComicsPagingSourceFactory(apiParams)
+            }
         }.flow
     }
 }

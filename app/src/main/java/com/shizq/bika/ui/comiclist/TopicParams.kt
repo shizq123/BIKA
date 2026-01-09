@@ -27,6 +27,7 @@ sealed class TopicType(val key: String) {
     object Author : TopicType("author")
     object Knight : TopicType("knight")
     object Translate : TopicType("translate")
+    object Favourite : TopicType("favourite")
 
     companion object {
         fun fromKey(key: String?): TopicType? {
@@ -37,6 +38,7 @@ sealed class TopicType(val key: String) {
                 Author.key -> Author
                 Knight.key -> Knight
                 Translate.key -> Translate
+                Favourite.key -> Favourite
                 else -> null
             }
         }
