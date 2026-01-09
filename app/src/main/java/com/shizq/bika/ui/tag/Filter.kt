@@ -1,8 +1,6 @@
 package com.shizq.bika.ui.tag
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
@@ -74,22 +72,6 @@ data class FilterChipState(
 ) {
     val hasSelection: Boolean
         get() = selected.isNotEmpty()
-}
-
-@Composable
-fun FilterChipsRow(
-    state: FilterState,
-    onSelectionChanged: (chipState: FilterChipState, value: String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for (chipState in state.chips) {
-            FilterChip(
-                state = chipState,
-                onSelectionChanged = { value -> onSelectionChanged(chipState, value) }
-            )
-        }
-    }
 }
 
 @Composable
