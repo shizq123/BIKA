@@ -178,4 +178,11 @@ class BikaDataSource @Inject constructor(
             setBody(body)
         }
     }
+
+    suspend fun getFavouriteComics(sort: Sort, page: Int): ComicResource {
+        return client.get("users/favourite") {
+            parameter("s", sort)
+            parameter("page", page)
+        }.body()
+    }
 }
