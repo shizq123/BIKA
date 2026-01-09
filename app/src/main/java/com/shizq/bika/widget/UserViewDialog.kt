@@ -3,18 +3,22 @@ package com.shizq.bika.widget
 import android.app.ActivityOptions
 import android.app.ProgressDialog
 import android.content.Intent
-import android.graphics.Bitmap
-import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
-import android.widget.*
+import android.widget.ImageView
+import android.widget.PopupWindow
+import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
 import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.R
-import com.shizq.bika.bean.*
+import com.shizq.bika.bean.ChatMessageBean
+import com.shizq.bika.bean.CommentsBean
+import com.shizq.bika.bean.NotificationsBean
+import com.shizq.bika.bean.ProfileBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
@@ -125,39 +129,7 @@ class UserViewDialog(val context: AppCompatActivity) {
         )
     }
 
-    fun showUserDialog(t: ComicInfoBean.Comic.Creator) {
-        if (t == null) {
-            return
-        }
-        userDialog(
-            t.name,
-            t.title,
-            t.gender,
-            t.level,
-            t.slogan,
-            { if (t.avatar != null) t.avatar.fileServer else "" },
-            { if (t.avatar != null) t.avatar.path else "" },
-            t.character
-        )
-    }
-
     fun showUserDialog(t: NotificationsBean.Notifications.Doc.Sender) {
-        if (t == null) {
-            return
-        }
-        userDialog(
-            t.name,
-            t.title,
-            t.gender,
-            t.level,
-            t.slogan,
-            { if (t.avatar != null) t.avatar.fileServer else "" },
-            { if (t.avatar != null) t.avatar.path else "" },
-            t.character
-        )
-    }
-
-    fun showUserDialog(t: KnightBean.Users) {
         if (t == null) {
             return
         }
@@ -275,18 +247,6 @@ class UserViewDialog(val context: AppCompatActivity) {
             context.startActivity(intent, options.toBundle())
 
         }
-    }
-
-    fun PopupWindow(bitmap: Bitmap) {
-        popupImage.setImageBitmap(bitmap)
-        StatusBarUtil.hide(context)
-        //PopupWindow会被BottomSheetDialog的view覆盖 解决办法用BottomSheetDialog的view替换this.window.decorView
-        mPopupWindow.showAtLocation(
-            context.window.decorView,
-            Gravity.BOTTOM,
-            0,
-            0
-        )
     }
 
     private fun getProfile(userId: String) {

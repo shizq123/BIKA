@@ -1,41 +1,24 @@
 package com.shizq.bika.network
 
 import com.shizq.bika.bean.ActionBean
-import com.shizq.bika.bean.Box
-import com.shizq.bika.bean.Catalogue
-import com.shizq.bika.bean.CategoriesBean
-import com.shizq.bika.bean.Category
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.ChatRoomBlackListBean
 import com.shizq.bika.bean.ChatRoomBlackListDeleteBean
 import com.shizq.bika.bean.ChatRoomBlockUserBean
 import com.shizq.bika.bean.ChatRoomListBean
-import com.shizq.bika.bean.ChatRoomListOldBean
 import com.shizq.bika.bean.ChatRoomProfileBean
 import com.shizq.bika.bean.ChatRoomSignInBean
-import com.shizq.bika.bean.CollectionsBean
-import com.shizq.bika.bean.ComicEpisodeData
-import com.shizq.bika.bean.ComicInfoBean
 import com.shizq.bika.bean.ComicListBean
 import com.shizq.bika.bean.ComicListBean2
 import com.shizq.bika.bean.CommentsBean
-import com.shizq.bika.bean.EpisodeBean
 import com.shizq.bika.bean.GameInfoBean
 import com.shizq.bika.bean.GamesBean
 import com.shizq.bika.bean.InitBean
-import com.shizq.bika.bean.KeywordsBean
-import com.shizq.bika.bean.KnightBean
-import com.shizq.bika.bean.LoginData
 import com.shizq.bika.bean.MyCommentsBean
 import com.shizq.bika.bean.NotificationsBean
-import com.shizq.bika.bean.PicaAppsBean
-import com.shizq.bika.bean.PicaInitBean
 import com.shizq.bika.bean.ProfileBean
-import com.shizq.bika.bean.PunchInBean
-import com.shizq.bika.bean.RecommendBean
 import com.shizq.bika.bean.ReportBean
 import com.shizq.bika.bean.SignInBean
-import com.shizq.bika.bean.UserProfile
 import com.shizq.bika.network.base.BaseResponse
 import io.reactivex.rxjava3.core.Observable
 import okhttp3.RequestBody
@@ -53,29 +36,11 @@ interface ApiService {
     @GET("init")
     fun initGet(): Observable<InitBean>
 
-    //平台 info 不清楚用途
-    @GET("init")
-    fun picaInitGet(
-        @Query("platform") platform: String,
-        @HeaderMap headers: Map<String, String>
-    ): Observable<PicaInitBean>
-
     //用户个人信息
     @GET("users/profile")
     fun profileGet(
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ProfileBean>>
-
-    @GET("users/profile")
-    suspend fun profileGet2(
-        @HeaderMap headers: Map<String, String>
-    ): Box<UserProfile>
-
-    //打卡签到
-    @POST("users/punch-in")
-    fun punchInPOST(
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<PunchInBean>>
 
     //登录
     @POST("auth/sign-in")
@@ -83,12 +48,6 @@ interface ApiService {
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<SignInBean>>
-
-    @POST("auth/sign-in")
-    suspend fun signInPost2(
-        @Body requestBody: RequestBody,
-        @HeaderMap headers: Map<String, String>
-    ): Box<LoginData>
 
     //注册
     @POST("auth/register")
@@ -118,37 +77,6 @@ interface ApiService {
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<Any>>
 
-    //首页推荐
-    @GET("collections")
-    suspend fun collectionsGet(
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<CollectionsBean>
-
-    //分类
-    @GET("categories")
-    fun categoriesGet(
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<CategoriesBean>>
-
-    @GET("categories")
-    suspend fun categoriesGet2(
-        @HeaderMap headers: Map<String, String>
-    ): Box<Category>
-
-    //骑士榜
-    @GET("comics/knight-leaderboard")
-    fun knightGet(
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<KnightBean>>
-
-    //热门榜 tt=H24 D7 D30
-    @GET("comics/leaderboard")
-    fun leaderboardGet(
-        @Query("tt") tt: String,
-        @Query("ct") ct: String,
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ComicListBean2>>
-
     //漫画列表
     @GET("comics")
     suspend fun comicsListGet(
@@ -174,69 +102,11 @@ interface ApiService {
         @HeaderMap headers: Map<String, String>
     ): BaseResponse<ComicListBean>
 
-    //搜索 热搜词条
-    @GET("keywords")
-    fun keywordsGet(
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<KeywordsBean>>
-
     //随机漫画
     @GET("comics/random")
     suspend fun randomGet(
         @HeaderMap headers: Map<String, String>
     ): BaseResponse<ComicListBean2>
-
-    //漫画详情
-    @GET("comics/{bookId}")
-    suspend fun comicsInfoGet(
-        @Path("bookId") bookId: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicInfoBean>
-
-    //漫画详情下面的推荐漫画
-    @GET("comics/{bookId}/recommendation")
-    suspend fun recommendGet(
-        @Path("bookId") bookId: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<RecommendBean>
-
-    //漫画 喜欢
-    @POST("comics/{bookId}/like")
-    suspend fun comicsLikePost(
-        @Path("bookId") bookId: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ActionBean>
-
-    //漫画 收藏
-    @POST("comics/{bookId}/favourite")
-    suspend fun comicsFavouritePost(
-        @Path("bookId") bookId: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ActionBean>
-
-    //漫画章节
-    @GET("comics/{bookId}/eps")
-    suspend fun comicsEpisodeGet(
-        @Path("bookId") bookId: String,
-        @Query("page") page: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<EpisodeBean>
-
-    //漫画章节
-    @GET("comics/{bookId}/eps")
-    suspend fun comicsEpisodeGet2(
-        @Path("bookId") id: String,
-        @Query("page") page: Int,
-        @HeaderMap headers: Map<String, String>
-    ): Box<Catalogue>
-
-    @GET("comics/{bookId}/order/{order}/pages")
-    suspend fun comicsPictureGet2(
-        @Path("bookId") bookId: String,
-        @Path("order") order: Int,
-        @Query("page") page: Int,
-        @HeaderMap headers: Map<String, String>
-    ): Box<ComicEpisodeData>
 
     //评论列表
     @GET("{comics_games}/{id}/comments")
@@ -367,18 +237,6 @@ interface ApiService {
         @Query("page") page: String,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<NotificationsBean>>
-
-    //小程序列表
-    @GET("pica-apps")
-    suspend fun picaAppsGet(
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<PicaAppsBean>
-
-    //聊天室列表
-    @GET("chat")
-    suspend fun oldChatRoomListGet(
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ChatRoomListOldBean>
 
     //上传头像 //抓包得出上传的分辨率是200*200 //聊天室抓包，图片其中一边的最大分辨率是800
     @PUT("users/avatar")

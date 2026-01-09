@@ -1,10 +1,6 @@
 package com.shizq.bika.ui.comment
 
-import com.shizq.bika.bean.ActionBean
-import com.shizq.bika.bean.EpisodeBean
-import com.shizq.bika.bean.ComicInfoBean
 import com.shizq.bika.bean.CommentsBean
-import com.shizq.bika.bean.RecommendBean
 import com.shizq.bika.network.Result
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
