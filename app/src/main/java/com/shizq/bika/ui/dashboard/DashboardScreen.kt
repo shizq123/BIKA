@@ -47,6 +47,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -61,6 +62,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalResources
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -75,11 +77,16 @@ import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.model.ChannelDataSource.allChannels
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
-fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
+fun DashboardScreen(
+    navigationToCollections: () -> Unit,
+    navigationToRandom: () -> Unit,
+    viewModel: DashboardViewModel = hiltViewModel()
+) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
@@ -87,26 +94,26 @@ fun DashboardScreen(viewModel: DashboardViewModel = hiltViewModel()) {
         viewModel.migration()
     }
     DashboardContent(
-//            dashboardState = dashboardUiState,
         userProfileUiState = userProfileUiState,
         onCheckInClick = viewModel::onCheckIn,
         channelSettingsUiState = channelSettingsUiState,
-        onRetry = viewModel::restart,
         onChannelToggled = viewModel::onChannelToggled,
-        onOrderChange = viewModel::onChannelsReordered
+        onOrderChange = viewModel::onChannelsReordered,
+        navigationToCollections = navigationToCollections,
+        navigationToRandom = navigationToRandom,
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardContent(
-//        dashboardState: DashboardUiState,
     userProfileUiState: UserProfileUiState,
     onCheckInClick: () -> Unit,
-    onRetry: () -> Unit,
     channelSettingsUiState: List<Channel>,
     onChannelToggled: (Channel, Boolean) -> Unit,
     onOrderChange: (List<Channel>) -> Unit,
+    navigationToCollections: () -> Unit,
+    navigationToRandom: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -137,100 +144,55 @@ fun DashboardContent(
         val activeChannels = remember(channelSettingsUiState) {
             channelSettingsUiState.filter { it.isActive }
         }
-        DashboardContent(
-            activeChannels = activeChannels,
-            allChannels = channelSettingsUiState,
-            onChannelToggled = onChannelToggled,
-            onDrawerOpen = { scope.launch { drawerState.open() } },
-            onOrderChange = onOrderChange,
-        )
-    }
-}
 
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun DashboardContent(
-    activeChannels: List<Channel>,
-    allChannels: List<Channel>,
-    onChannelToggled: (Channel, Boolean) -> Unit,
-    onOrderChange: (List<Channel>) -> Unit,
-    onDrawerOpen: () -> Unit,
-) {
-    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("哔咔") },
-                navigationIcon = {
-                    IconButton(onClick = onDrawerOpen) {
-                        Icon(Icons.Default.Menu, contentDescription = "打开菜单")
-                    }
-                },
-                actions = {
-                    var showChannelSettings by remember { mutableStateOf(false) }
-
-                    IconButton(onClick = { showChannelSettings = true }) {
-                        Icon(Icons.Filled.FilterList, contentDescription = "Channel Filter")
-                    }
-                    if (showChannelSettings) {
-                        ChannelSettingsDialog(
-                            channels = allChannels,
-                            onDismiss = { showChannelSettings = false },
-                            onChannelToggle = onChannelToggled,
-                            onOrderChange = onOrderChange
-                        )
-                    }
-
-                    IconButton(
-                        onClick = {
-//                            startActivity(
-//                                Intent(
-//                                    this@MainActivity,
-//                                    SearchActivity::class.java
-//                                )
-//                            )
-                        }
-                    ) {
-                        Icon(
-                            Icons.Default.Search,
-                            contentDescription = "Search"
-                        )
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
-        },
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(scrollBehavior.nestedScrollConnection),
-    ) { innerPadding ->
-        val state: LazyGridState = rememberLazyGridState()
-
-        val context = LocalContext.current
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
-            state = state,
+        val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+        Scaffold(
+            topBar = {
+                DashboardAppBar(
+                    scrollBehavior = scrollBehavior,
+                    onDrawerOpen = { scope.launch { drawerState.open() } },
+                    onChannelToggled = onChannelToggled,
+                    onOrderChange = onOrderChange
+                )
+            },
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            items(
-                activeChannels,
-                key = { it.hashCode() }
-            ) { item ->
-                if (item.isActive) {
-                    val resId = context.resources.getIdentifier(
-                        item.resName,
-                        "drawable",
-                        context.packageName
-                    )
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+        ) { innerPadding ->
+            val state: LazyGridState = rememberLazyGridState()
 
-                    ChannelGridItem(
-                        iconRes = resId,
-                        label = item.displayName,
-                        modifier = Modifier.animateItem(),
-                    ) {
-                        navigation(item)
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                state = state,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            ) {
+                items(
+                    activeChannels,
+                    key = { it.resName }
+                ) { item ->
+                    val context = LocalContext.current
+                    val resources = LocalResources.current
+
+                    if (item.isActive) {
+                        val resId = resources.getIdentifier(
+                            item.resName,
+                            "drawable",
+                            context.packageName
+                        )
+
+                        ChannelGridItem(
+                            iconRes = resId,
+                            label = item.displayName,
+                            modifier = Modifier.animateItem(),
+                        ) {
+                            navigation(
+                                channel = item,
+                                navigationToCollections = navigationToCollections,
+                                navigationToRandom = navigationToRandom,
+                            )
+                        }
                     }
                 }
             }
@@ -238,10 +200,66 @@ fun DashboardContent(
     }
 }
 
-fun navigation(channel: Channel) {
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DashboardAppBar(
+    scrollBehavior: TopAppBarScrollBehavior,
+    onDrawerOpen: () -> Unit,
+    onChannelToggled: (Channel, Boolean) -> Unit,
+    onOrderChange: (List<Channel>) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    TopAppBar(
+        modifier = modifier,
+        title = { Text("哔咔") },
+        navigationIcon = {
+            IconButton(onClick = onDrawerOpen) {
+                Icon(Icons.Default.Menu, contentDescription = "打开菜单")
+            }
+        },
+        actions = {
+            var showChannelSettings by remember { mutableStateOf(false) }
+
+            IconButton(onClick = { showChannelSettings = true }) {
+                Icon(Icons.Filled.FilterList, contentDescription = "Channel Filter")
+            }
+            if (showChannelSettings) {
+                ChannelSettingsDialog(
+                    channels = allChannels,
+                    onDismiss = { showChannelSettings = false },
+                    onChannelToggle = onChannelToggled,
+                    onOrderChange = onOrderChange
+                )
+            }
+
+            IconButton(
+                onClick = {
+//                            startActivity(
+//                                Intent(
+//                                    this@MainActivity,
+//                                    SearchActivity::class.java
+//                                )
+//                            )
+                }
+            ) {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = "Search"
+                )
+            }
+        },
+        scrollBehavior = scrollBehavior,
+    )
+}
+
+private fun navigation(
+    channel: Channel,
+    navigationToCollections: () -> Unit,
+    navigationToRandom: () -> Unit,
+) {
     if (channel.link == null) {
-//        when (channel.displayName) {
-//            "推荐" -> start(CollectionsActivity::class.java)
+        when (channel.displayName) {
+            "推荐" -> navigationToCollections()
 //            "排行榜" -> start(LeaderboardActivity::class.java)
 //            "游戏推荐" -> start(GamesActivity::class.java)
 ////                "哔咔小程序" -> start(AppsActivity::class.java)
@@ -257,16 +275,7 @@ fun navigation(channel: Channel) {
 //                startActivity(intent)
 //            }
 
-//            "随机本子" -> {
-//                val targetClass = ComicListActivity::class.java
-//                val intent = Intent(this, targetClass).apply {
-//
-//                    putExtra("tag", "random")
-//                    putExtra("title", channel.displayName)
-//                    putExtra("value", channel.displayName)
-//                }
-//                startActivity(intent)
-//            }
+            "随机本子" -> navigationToRandom()
 
 //            else -> {
 //                val intent = Intent(this, ComicListActivity::class.java)
@@ -274,7 +283,7 @@ fun navigation(channel: Channel) {
 //                intent.putExtra("title", channel.displayName)
 //                intent.putExtra("value", channel.displayName)
 //                startActivity(intent)
-//            }
+        }
     }
 //    } else {
 //        val token = SPUtil.get("token", "")
