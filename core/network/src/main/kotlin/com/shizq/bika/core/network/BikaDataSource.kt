@@ -5,6 +5,7 @@ import com.shizq.bika.core.network.model.ActionData
 import com.shizq.bika.core.network.model.ChapterPagesData
 import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
+import com.shizq.bika.core.network.model.ComicRandomData
 import com.shizq.bika.core.network.model.ComicResource
 import com.shizq.bika.core.network.model.CommentsData
 import com.shizq.bika.core.network.model.EpisodeData
@@ -189,5 +190,9 @@ class BikaDataSource @Inject constructor(
             parameter("s", sort)
             parameter("page", page)
         }.body()
+    }
+
+    suspend fun getRandomComics(): ComicRandomData {
+        return client.get("comics/random").body()
     }
 }

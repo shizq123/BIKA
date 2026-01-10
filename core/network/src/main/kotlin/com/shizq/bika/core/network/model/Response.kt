@@ -11,10 +11,17 @@ data class ComicResource(
 )
 
 @Serializable
+data class ComicRandomData(
+    @SerialName("comics")
+    val comics: List<ComicSimple>,
+)
+
+@Serializable
 data class ComicSearchResponseData(
     @SerialName("comics")
     val comics: PageData<ComicInSearch>,
 )
+
 
 @Serializable
 data class ComicInSearch(
