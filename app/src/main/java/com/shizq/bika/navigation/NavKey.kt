@@ -10,4 +10,6 @@ object DashboardNavKey : NavKey
 sealed interface FeedNavKey : NavKey {
     object Collection : FeedNavKey
     object Random : FeedNavKey
+    data class Topic(val name: String) : FeedNavKey
+    object Recent : FeedNavKey
 }

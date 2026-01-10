@@ -7,9 +7,12 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.FeedNavKey
 import com.shizq.bika.paging.SinglePagePagingSource
+import com.shizq.bika.paging.TopicComicsPagingSource
+import com.shizq.bika.ui.comiclist.ComicSearchParams
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -18,6 +21,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 @HiltViewModel(assistedFactory = FeedViewModel.Factory::class)
 class FeedViewModel @AssistedInject constructor(
     private val api: BikaDataSource,
+    topicComicsPagingSourceFactory: TopicComicsPagingSource.Factory,
     @Assisted private val feedNavKey: FeedNavKey,
 ) : ViewModel() {
     private val pagingSource: PagingSource<Int, ComicSimple> = when (feedNavKey) {
@@ -31,6 +35,18 @@ class FeedViewModel @AssistedInject constructor(
         FeedNavKey.Random -> SinglePagePagingSource {
             val collectionsData = api.getRandomComics()
             collectionsData.comics
+        }
+
+        is FeedNavKey.Topic -> {
+            topicComicsPagingSourceFactory.create(
+                ComicSearchParams(topic = feedNavKey.name, sort = Sort.NEWEST)
+            )
+        }
+
+        is FeedNavKey.Recent -> {
+            topicComicsPagingSourceFactory.create(
+                ComicSearchParams(sort = Sort.NEWEST)
+            )
         }
     }
     val pagedComics = Pager(PagingConfig(40, 1)) {

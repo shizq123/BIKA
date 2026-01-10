@@ -16,6 +16,7 @@ import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.paging.AdvancedSearchPagingSource
 import com.shizq.bika.paging.FavouriteComicsPagingSource
+import com.shizq.bika.paging.TopicComicsPagingSource
 import com.shizq.bika.ui.tag.FilterGroup
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
@@ -157,7 +158,7 @@ class TopicViewModel @Inject constructor(
             } else if (params.type is TopicType.Search) {
                 advancedSearchPagingSourceFactory(apiParams)
             } else {
-                topicComicsPagingSourceFactory(apiParams)
+                topicComicsPagingSourceFactory.create(apiParams)
             }
         }.flow
     }

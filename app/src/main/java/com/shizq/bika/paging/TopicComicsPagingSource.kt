@@ -1,9 +1,10 @@
-package com.shizq.bika.ui.comiclist
+package com.shizq.bika.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.ui.comiclist.ComicSearchParams
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -47,7 +48,6 @@ class TopicComicsPagingSource @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        operator fun invoke(params: ComicSearchParams): TopicComicsPagingSource
+        fun create(params: ComicSearchParams): TopicComicsPagingSource
     }
 }
-

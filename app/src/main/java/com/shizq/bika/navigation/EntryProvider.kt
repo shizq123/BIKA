@@ -12,6 +12,8 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
         DashboardScreen(
             navigationToCollections = { navigator.navigate(FeedNavKey.Collection) },
             navigationToRandom = { navigator.navigate(FeedNavKey.Random) },
+            navigationToTopic = { navigator.navigate(FeedNavKey.Topic(it)) },
+            navigationToRecent = { navigator.navigate(FeedNavKey.Recent) },
         )
     }
 }
@@ -28,6 +30,26 @@ fun EntryProviderScope<NavKey>.feedEntry(navigator: Navigator) {
         )
     }
     entry<FeedNavKey.Random> { key ->
+        FeedScreen(
+            onBackClick = { navigator.goBack() },
+            viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
+                key = key.toString(),
+            ) { factory ->
+                factory.create(key)
+            },
+        )
+    }
+    entry<FeedNavKey.Topic> { key ->
+        FeedScreen(
+            onBackClick = { navigator.goBack() },
+            viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
+                key = key.toString(),
+            ) { factory ->
+                factory.create(key)
+            },
+        )
+    }
+    entry<FeedNavKey.Recent> { key ->
         FeedScreen(
             onBackClick = { navigator.goBack() },
             viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(

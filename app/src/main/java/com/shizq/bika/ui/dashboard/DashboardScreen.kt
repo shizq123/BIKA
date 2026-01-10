@@ -1,5 +1,7 @@
 package com.shizq.bika.ui.dashboard
 
+import android.content.Context
+import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -67,6 +69,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -78,6 +81,7 @@ import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.ChannelDataSource.allChannels
+import com.shizq.bika.utils.SPUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -85,6 +89,8 @@ import kotlinx.coroutines.launch
 fun DashboardScreen(
     navigationToCollections: () -> Unit,
     navigationToRandom: () -> Unit,
+    navigationToRecent: () -> Unit,
+    navigationToTopic: (String) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
@@ -101,6 +107,8 @@ fun DashboardScreen(
         onOrderChange = viewModel::onChannelsReordered,
         navigationToCollections = navigationToCollections,
         navigationToRandom = navigationToRandom,
+        navigationToTopic = navigationToTopic,
+        navigationToRecent = navigationToRecent,
     )
 }
 
@@ -114,6 +122,8 @@ fun DashboardContent(
     onOrderChange: (List<Channel>) -> Unit,
     navigationToCollections: () -> Unit,
     navigationToRandom: () -> Unit,
+    navigationToRecent: () -> Unit,
+    navigationToTopic: (String) -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -188,9 +198,12 @@ fun DashboardContent(
                             modifier = Modifier.animateItem(),
                         ) {
                             navigation(
+                                context = context,
                                 channel = item,
                                 navigationToCollections = navigationToCollections,
                                 navigationToRandom = navigationToRandom,
+                                navigationToTopic = navigationToTopic,
+                                navigationToRecent = navigationToRecent,
                             )
                         }
                     }
@@ -254,52 +267,34 @@ private fun DashboardAppBar(
 
 private fun navigation(
     channel: Channel,
+    context: Context,
     navigationToCollections: () -> Unit,
     navigationToRandom: () -> Unit,
+    navigationToRecent: () -> Unit,
+    navigationToTopic: (String) -> Unit,
 ) {
     if (channel.link == null) {
         when (channel.displayName) {
             "推荐" -> navigationToCollections()
 //            "排行榜" -> start(LeaderboardActivity::class.java)
 //            "游戏推荐" -> start(GamesActivity::class.java)
-////                "哔咔小程序" -> start(AppsActivity::class.java)
+//            "哔咔小程序" -> start(AppsActivity::class.java)
 //            "留言板" -> start(ChatRoomListActivity::class.java)
-//            "最近更新" -> {
-//                val targetClass = ComicListActivity::class.java
-//                val intent = Intent(this, targetClass).apply {
-//
-//                    putExtra("tag", "latest")
-//                    putExtra("title", channel.displayName)
-//                    putExtra("value", channel.displayName)
-//                }
-//                startActivity(intent)
-//            }
+            "最近更新" -> navigationToRecent()
 
             "随机本子" -> navigationToRandom()
 
-//            else -> {
-//                val intent = Intent(this, ComicListActivity::class.java)
-//                intent.putExtra("tag", "categories")
-//                intent.putExtra("title", channel.displayName)
-//                intent.putExtra("value", channel.displayName)
-//                startActivity(intent)
+            else -> navigationToTopic(channel.displayName)
         }
+    } else {
+        val token = SPUtil.get("token", "")
+        val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
+        val fullUrl = "${channel.link}/?token=$token&secret=$secret"
+
+        val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
+        context.startActivity(intent)
     }
-//    } else {
-//        val token = SPUtil.get("token", "")
-//        val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
-//        val fullUrl = "${channel.link}/?token=$token&secret=$secret"
-//
-//        val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
-//        startActivity(intent)
-//    }
 }
-//    fun navigateToDashboardEntry(entry: DashboardEntry) {
-//        when (entry) {
-//            is DashboardEntry.Native -> {
-//                when (entry.type) {
-//                    EntryType.RECOMMEND -> start(CollectionsActivity::class.java)
-//
 //                    EntryType.LEADERBOARD -> start(LeaderboardActivity::class.java)
 //
 //                    EntryType.GAME -> start(GamesActivity::class.java)
@@ -312,34 +307,6 @@ private fun navigation(
 //                        val intent = Intent(this, CommentsActivity::class.java).apply {
 //                            putExtra("id", "5822a6e3ad7ede654696e482")
 //                            putExtra("comics_games", "comics")
-//                        }
-//                        startActivity(intent)
-//                    }
-//
-//                    EntryType.LATEST, EntryType.RANDOM -> {
-//                        val targetClass = ComicListActivity::class.java
-//                        val intent = Intent(this, targetClass).apply {
-//                            val tagValue =
-//                                if (entry.type == EntryType.LATEST) "latest" else "random"
-//                            val titleValue = getString(entry.titleResId)
-//
-//                            putExtra("tag", tagValue)
-//                            putExtra("title", titleValue)
-//                            putExtra("value", titleValue)
-//                        }
-//                        startActivity(intent)
-//                    }
-//                }
-//            }
-//
-//            is DashboardEntry.Remote -> {
-//                if (entry.isWeb && !entry.link.isNullOrEmpty()) {
-
-//                } else {
-
-//            }
-//        }
-//    }
 
 @Composable
 fun DashboardDrawerContent(
