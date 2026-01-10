@@ -44,8 +44,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".ui.account.AccountActivity"/>
-        <activity
-            android:name=".ui.main.MainActivity">
+        <activity android:name=".MainActivity">
         </activity>
         <activity
             android:name=".ui.history.HistoryActivity"
