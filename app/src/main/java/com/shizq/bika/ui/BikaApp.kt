@@ -22,6 +22,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.navigation.Navigator
+import com.shizq.bika.navigation.comicFeedEntry
 import com.shizq.bika.navigation.dashboardEntry
 import com.shizq.bika.navigation.toEntries
 
@@ -55,6 +56,7 @@ fun BikaApp(
         ) {
             val entryProvider = entryProvider {
                 dashboardEntry(navigator)
+                comicFeedEntry(navigator)
             }
 
             NavDisplay(
