@@ -21,10 +21,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
-import com.shizq.bika.core.designsystem.component.BikaNavigationSuiteScaffold
 import com.shizq.bika.navigation.Navigator
+import com.shizq.bika.navigation.dashboardEntry
 import com.shizq.bika.navigation.toEntries
-import com.shizq.bika.navigation.youEntry
 
 @Composable
 fun BikaApp(
@@ -35,39 +34,33 @@ fun BikaApp(
 
     val navigator = remember { Navigator(appState.navigationState) }
 
-    BikaNavigationSuiteScaffold(
-        navigationSuiteItems = {},
-        windowAdaptiveInfo = windowAdaptiveInfo,
-    ) {
-        Scaffold(
-            modifier = modifier.semantics {
-                testTagsAsResourceId = true
-            },
-            containerColor = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onBackground,
-            contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        ) { padding ->
-            Column(
-                Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .consumeWindowInsets(padding)
-                    .windowInsetsPadding(
-                        WindowInsets.safeDrawing.only(
-                            WindowInsetsSides.Horizontal,
-                        ),
+    Scaffold(
+        modifier = modifier.semantics {
+            testTagsAsResourceId = true
+        },
+        containerColor = Color.Transparent,
+        contentColor = MaterialTheme.colorScheme.onBackground,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) { padding ->
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding)
+                .windowInsetsPadding(
+                    WindowInsets.safeDrawing.only(
+                        WindowInsetsSides.Horizontal,
                     ),
-            ) {
-                val entryProvider = entryProvider {
-                    youEntry(navigator)
-                }
-
-                NavDisplay(
-                    entries = appState.navigationState.toEntries(entryProvider),
-                    onBack = { navigator.goBack() },
-                )
+                ),
+        ) {
+            val entryProvider = entryProvider {
+                dashboardEntry(navigator)
             }
 
+            NavDisplay(
+                entries = appState.navigationState.toEntries(entryProvider),
+                onBack = { navigator.goBack() },
+            )
         }
     }
 }
