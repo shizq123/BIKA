@@ -4,20 +4,19 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import kotlin.coroutines.cancellation.CancellationException
 
-abstract class SinglePagePagingSource<Key : Any, V : Any> : PagingSource<Key, V>() {
-    final override fun getRefreshKey(state: PagingState<Key, V>): Key? = null
-}
-
 @Suppress("FunctionName")
 fun <Key : Any, V : Any> SinglePagePagingSource(
-    load: suspend PagingSource<Key, V>.(params: PagingSource.LoadParams<Key>) -> PagingSource.LoadResult<Key, V>
+    fetcher: suspend () -> List<V>
 ): PagingSource<Key, V> {
-    @Suppress("UnnecessaryVariable", "RedundantSuppression")
-    val load1 = load
     return object : PagingSource<Key, V>() {
         override suspend fun load(params: LoadParams<Key>): LoadResult<Key, V> {
             return try {
-                load1(params)
+                val data = fetcher()
+                LoadResult.Page(
+                    data = data,
+                    prevKey = null,
+                    nextKey = null
+                )
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
@@ -25,6 +24,11 @@ fun <Key : Any, V : Any> SinglePagePagingSource(
             }
         }
 
-        override fun getRefreshKey(state: PagingState<Key, V>): Key? = null
+        override fun getRefreshKey(state: PagingState<Key, V>): Key? {
+            return state.anchorPosition?.let { anchorPosition ->
+                state.closestPageToPosition(anchorPosition)?.prevKey
+                    ?: state.closestPageToPosition(anchorPosition)?.nextKey
+            }
+        }
     }
 }
