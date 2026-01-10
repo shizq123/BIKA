@@ -71,14 +71,15 @@ dependencies {
     implementation(libs.androidx.core.splashscreen)
     implementation(libs.androidx.hilt.navigation.compose)
     implementation(libs.androidx.lifecycle.runtimeCompose)
-    implementation(libs.androidx.navigation.compose)
+    implementation(libs.androidx.lifecycle.viewModel.navigation3)
+    implementation(libs.androidx.navigation3.runtime)
+    implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.profileinstaller)
+    implementation(libs.androidx.savedstate.compose)
     implementation(libs.androidx.tracing.ktx)
     implementation(libs.androidx.window.core)
     implementation(libs.coil.kt)
     implementation(libs.kotlinx.serialization.json)
-
-
 
     implementation(libs.material)
     implementation(libs.androidx.core.ktx)
@@ -102,6 +103,7 @@ dependencies {
     implementation(libs.retrofit.converter.kotlinx.serialization)
 
     implementation(libs.glide)
+
     ksp(libs.glide.compiler)
     implementation(libs.glide.okhttp3)
 
@@ -137,6 +139,4 @@ dependencies {
     implementation("me.saket.telephoto:zoomable:0.18.0")
 
     kapt("org.jetbrains.kotlin:kotlin-metadata-jvm:2.3.0")
-
-    implementation("io.github.flaringapp:ComposeCollapsingTopBar:1.2.0")
 }
