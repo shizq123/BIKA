@@ -7,7 +7,7 @@ import kotlinx.serialization.Serializable
 object DashboardNavKey : NavKey
 
 @Serializable
-sealed interface ComicFeedNavKey : NavKey {
-    data object Collection : ComicFeedNavKey
-
+sealed interface FeedNavKey : NavKey {
+    object Collection : FeedNavKey
+    object Random : FeedNavKey
 }
