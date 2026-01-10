@@ -15,10 +15,10 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.Navigation
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
+import com.shizq.bika.MainActivity
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseFragment
 import com.shizq.bika.databinding.FragmentSigninBinding
-import com.shizq.bika.ui.main.MainActivity
 import com.shizq.bika.utils.SPUtil
 
 
