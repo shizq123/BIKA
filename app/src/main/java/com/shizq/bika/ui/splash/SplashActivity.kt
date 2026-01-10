@@ -5,12 +5,12 @@ import android.os.Bundle
 import android.view.View
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import com.shizq.bika.BR
+import com.shizq.bika.MainActivity
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.bean.InitBean
 import com.shizq.bika.databinding.ActivitySplashBinding
 import com.shizq.bika.ui.account.AccountActivity
-import com.shizq.bika.ui.main.MainActivity
 import com.shizq.bika.utils.SPUtil
 
 
