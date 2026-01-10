@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.main
+package com.shizq.bika.ui.dashboard
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
@@ -143,7 +143,7 @@ private fun ChannelSettingItem(
             text = name,
             style = MaterialTheme.typography.bodyLarge,
             color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f) // 占满剩余空间
+            modifier = Modifier.weight(1f)
         )
 
         Row(verticalAlignment = Alignment.CenterVertically) {

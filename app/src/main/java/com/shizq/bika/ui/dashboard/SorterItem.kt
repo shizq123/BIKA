@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.main
+package com.shizq.bika.ui.dashboard
 
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background

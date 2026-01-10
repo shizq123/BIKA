@@ -1,6 +1,5 @@
-package com.shizq.bika.ui.main
+package com.shizq.bika.ui.dashboard
 
-import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -31,7 +30,6 @@ fun ChannelGridItem(
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
-    Log.d("ChannelGridItem", "$iconRes $label")
     Column(
         modifier = modifier
             .padding(8.dp)

@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.main
+package com.shizq.bika.ui.dashboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
