@@ -65,16 +65,7 @@
             android:name=".ui.comiclist.ComicListActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.leaderboard.LeaderboardActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.collections.CollectionsActivity"
-            android:exported="false" />
-        <activity
             android:name=".ui.comment.CommentsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.comicinfo.ComicInfoActivity"
             android:exported="false" />
         <activity
             android:name=".ui.reader.ReaderActivity"
@@ -84,12 +75,6 @@
             android:exported="false" />
         <activity
             android:name=".ui.games.GameInfoActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.apps.AppsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.chatroom.old.ChatRoomActivity"
             android:exported="false" />
         <activity
             android:name=".ui.chatroom.current.ChatRoomActivity"
