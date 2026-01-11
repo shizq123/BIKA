@@ -152,7 +152,7 @@ class BikaDataSource @Inject constructor(
         authorName: String? = null,
         knightId: String? = null,
         translationTeam: String? = null,
-        sort: Sort,
+        sort: Sort?,
         page: Int,
     ): ComicResource {
         return client.get("comics") {

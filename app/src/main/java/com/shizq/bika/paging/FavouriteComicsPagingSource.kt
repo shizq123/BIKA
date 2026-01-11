@@ -3,6 +3,7 @@ package com.shizq.bika.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.ui.comiclist.ComicSearchParams
 import dagger.assisted.Assisted
@@ -18,7 +19,7 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
 
         return try {
             val response = api.getFavouriteComics(
-                sort = searchParams.sort,
+                sort = searchParams.sort ?: Sort.NEWEST,
                 page = page
             )
 

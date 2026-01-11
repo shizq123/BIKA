@@ -3,6 +3,7 @@ package com.shizq.bika.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.ui.comiclist.ComicSearchParams
 import dagger.assisted.Assisted
@@ -21,7 +22,7 @@ class AdvancedSearchPagingSource @AssistedInject constructor(
             val response = api.advancedSearch(
                 content = "",
                 categories = emptyList(),
-                sort = searchParams.sort,
+                sort = searchParams.sort ?: Sort.NEWEST,
                 page = page
             )
 

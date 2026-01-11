@@ -48,6 +48,10 @@ class FeedViewModel @AssistedInject constructor(
                 ComicSearchParams(sort = Sort.NEWEST)
             )
         }
+
+        is FeedNavKey.Knight -> topicComicsPagingSourceFactory.create(
+            ComicSearchParams(knightId = feedNavKey.id)
+        )
     }
     val pagedComics = Pager(PagingConfig(40, 1)) {
         pagingSource

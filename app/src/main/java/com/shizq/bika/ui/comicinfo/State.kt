@@ -9,10 +9,10 @@ import com.shizq.bika.core.network.model.RecommendComicDto
 import com.shizq.bika.core.network.model.RecommendationData
 
 sealed interface UnitedDetailsUiState {
-    data object I : UnitedDetailsUiState
+    data class Initialize(val id: String) : UnitedDetailsUiState
     data class Content(
         val id: String,
-        val detail: ComicDetail? = null,
+        val detail: ComicDetail = ComicDetail(),
         val recommendations: List<ComicSummary> = emptyList(),
         val pinnedComments: List<Comment> = emptyList(),
         val episodes: PagingData<Episode> = PagingData.empty(),

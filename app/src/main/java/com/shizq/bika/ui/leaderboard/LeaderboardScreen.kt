@@ -34,7 +34,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -45,14 +44,26 @@ import kotlinx.coroutines.launch
 
 
 @Composable
-fun LeaderboardScreen(viewModel: LeaderboardViewModel = hiltViewModel()) {
+fun LeaderboardScreen(
+    navigationToUnitedDetail: (String) -> Unit,
+    viewModel: LeaderboardViewModel = hiltViewModel(),
+    navigationToKnight: (String, String) -> Unit
+) {
     val leaderboardState by viewModel.leaderboardUiState.collectAsStateWithLifecycle()
-    LeaderboardContent(leaderboardState)
+    LeaderboardContent(
+        leaderboardState,
+        navigationToUnitedDetail = navigationToUnitedDetail,
+        navigationToKnight = navigationToKnight,
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun LeaderboardContent(leaderboardState: LeaderboardUiState) {
+fun LeaderboardContent(
+    leaderboardState: LeaderboardUiState,
+    navigationToUnitedDetail: (String) -> Unit,
+    navigationToKnight: (String, String) -> Unit,
+) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val pagerState = rememberPagerState(pageCount = { LEADERBOARD_TABS.size })
 
@@ -98,7 +109,9 @@ fun LeaderboardContent(leaderboardState: LeaderboardUiState) {
                 is LeaderboardUiState.Success -> {
                     LeaderboardPagerContent(
                         pagerState = pagerState,
-                        successState = leaderboardState
+                        successState = leaderboardState,
+                        navigationToUnitedDetail = navigationToUnitedDetail,
+                        navigationToKnight = navigationToKnight,
                     )
                 }
             }
@@ -110,14 +123,31 @@ fun LeaderboardContent(leaderboardState: LeaderboardUiState) {
 @Composable
 private fun LeaderboardPagerContent(
     pagerState: PagerState,
-    successState: LeaderboardUiState.Success
+    successState: LeaderboardUiState.Success,
+    navigationToUnitedDetail: (String) -> Unit,
+    navigationToKnight: (String, String) -> Unit,
 ) {
     HorizontalPager(state = pagerState) { page ->
         when (page) {
-            0 -> ComicLeaderboardPage(list = successState.dailyList)
-            1 -> ComicLeaderboardPage(list = successState.weeklyList)
-            2 -> ComicLeaderboardPage(list = successState.monthlyList)
-            3 -> KnightLeaderboardPage(knightList = successState.knightList)
+            0 -> ComicLeaderboardPage(
+                list = successState.dailyList,
+                navigationToUnitedDetail = navigationToUnitedDetail
+            )
+
+            1 -> ComicLeaderboardPage(
+                list = successState.weeklyList,
+                navigationToUnitedDetail = navigationToUnitedDetail
+            )
+
+            2 -> ComicLeaderboardPage(
+                list = successState.monthlyList,
+                navigationToUnitedDetail = navigationToUnitedDetail
+            )
+
+            3 -> KnightLeaderboardPage(
+                knightList = successState.knightList,
+                navigationToKnight = navigationToKnight
+            )
             else -> Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -131,14 +161,14 @@ private fun LeaderboardPagerContent(
 @Composable
 fun ComicLeaderboardPage(
     list: List<ComicSimple>,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    navigationToUnitedDetail: (String) -> Unit
 ) {
     if (list.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("暂无数据")
         }
     } else {
-        val context = LocalContext.current
         LazyColumn(
             modifier = modifier.fillMaxSize(),
             contentPadding = PaddingValues(vertical = 8.dp)
@@ -146,10 +176,8 @@ fun ComicLeaderboardPage(
             items(list, key = { it.id }) { item ->
                 ComicCard(
                     item,
-//                    onTagClick = { ComicListActivity.start(context, "tags", it, it) }
-                ) {
-//                    ComicInfoActivity.start(this@LeaderboardActivity, item.id)
-                }
+                    onItemClick = { navigationToUnitedDetail(item.id) },
+                )
             }
         }
     }

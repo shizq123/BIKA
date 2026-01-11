@@ -7,7 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import com.shizq.bika.core.designsystem.theme.BikaTheme
-import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 /**
@@ -21,10 +20,10 @@ class ComicListActivity : ComponentActivity() {
 
         setContent {
             BikaTheme {
-                TopicScreen(
-                    onBackClick = ::finish,
-                    navigationToComicInfo = { ComicInfoActivity.start(this, it) }
-                )
+//                TopicScreen(
+//                    onBackClick = ::finish,
+//                    navigationToComicInfo = { ComicInfoActivity.start(this, it) }
+//                )
             }
         }
     }

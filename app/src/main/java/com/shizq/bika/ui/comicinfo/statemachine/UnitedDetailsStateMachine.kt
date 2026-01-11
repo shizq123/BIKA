@@ -3,7 +3,6 @@ package com.shizq.bika.ui.comicinfo.statemachine
 import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
-import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.network.BikaDataSource
@@ -25,12 +24,11 @@ class UnitedDetailsStateMachine @Inject constructor(
 ) : FlowReduxStateMachineFactory<UnitedDetailsUiState, UnitedDetailsAction>() {
 
     init {
-        initializeWith { UnitedDetailsUiState.I }
         spec {
-            inState<UnitedDetailsUiState.I> {
+            inState<UnitedDetailsUiState.Initialize> {
                 onEnter {
                     override {
-                        UnitedDetailsUiState.Content(id = savedStateHandle["id"] ?: "")
+                        UnitedDetailsUiState.Content(id)
                     }
                 }
             }
@@ -78,7 +76,7 @@ class UnitedDetailsStateMachine @Inject constructor(
                     }
                 }
                 on<UnitedDetailsAction.ToggleLike> {
-                    val currentDetail = snapshot.detail ?: return@on noChange()
+                    val currentDetail = snapshot.detail
 
                     try {
                         val r = network.toggleComicLike(snapshot.id)
@@ -96,7 +94,7 @@ class UnitedDetailsStateMachine @Inject constructor(
                     }
                 }
                 on<UnitedDetailsAction.ToggleFavorite> {
-                    val currentDetail = snapshot.detail ?: return@on noChange()
+                    val currentDetail = snapshot.detail
 
                     try {
                         val r = network.toggleComicFavourite(snapshot.id)

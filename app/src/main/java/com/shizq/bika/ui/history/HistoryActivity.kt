@@ -27,7 +27,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.data.model.DetailedReadingHistory
 import com.shizq.bika.ui.ComicCard
-import com.shizq.bika.ui.comicinfo.ComicInfoActivity
 import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
@@ -83,10 +82,10 @@ class HistoryActivity : ComponentActivity() {
                         item, modifier = Modifier
                             .padding(8.dp),
                         onClick = {
-                            ComicInfoActivity.start(
-                                this@HistoryActivity,
-                                item.history.id
-                            )
+//                            ComicInfoActivity.start(
+//                                this@HistoryActivity,
+//                                item.history.id
+//                            )
                         },
                         onLongClick = {
                             onDeleteOneClick(item.history.id, item.history.title)

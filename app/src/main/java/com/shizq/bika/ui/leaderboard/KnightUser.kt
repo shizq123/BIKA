@@ -33,12 +33,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
 import com.shizq.bika.core.data.model.User
-import com.shizq.bika.ui.comiclist.ComicListActivity
 
 @Composable
 fun KnightLeaderboardPage(
     knightList: List<User>,
     modifier: Modifier = Modifier,
+    navigationToKnight: (String, String) -> Unit,
 ) {
     if (knightList.isEmpty()) {
         Box(
@@ -58,7 +58,7 @@ fun KnightLeaderboardPage(
                     user = user,
                     rank = index + 1
                 ) {
-                    ComicListActivity.start(context, "knight", user.name, user.id)
+                    navigationToKnight(user.name, user.id)
                 }
             }
         }

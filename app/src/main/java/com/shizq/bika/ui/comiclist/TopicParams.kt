@@ -17,7 +17,7 @@ data class ComicSearchParams(
     val authorName: String? = null,
     val knightId: String? = null,
     val translationTeam: String? = null,
-    val sort: Sort,
+    val sort: Sort? = null,
 )
 
 sealed class TopicType(val key: String) {
