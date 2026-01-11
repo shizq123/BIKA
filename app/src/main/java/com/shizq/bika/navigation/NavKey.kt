@@ -20,3 +20,6 @@ object LeaderboardNavKey : NavKey
 
 @Serializable
 data class UnitedDetailNavKey(val id: String) : NavKey
+
+@Serializable
+data class ReaderNavKey(val id: String, val order: Int) : NavKey

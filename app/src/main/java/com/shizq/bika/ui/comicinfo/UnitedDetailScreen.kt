@@ -36,7 +36,12 @@ import com.shizq.bika.ui.comicinfo.page.PageTab
 import kotlinx.coroutines.launch
 
 @Composable
-fun ComicDetailScreen(viewModel: ComicInfoViewModel = hiltViewModel()) {
+fun ComicDetailScreen(
+    viewModel: ComicInfoViewModel = hiltViewModel(),
+    navigationToReader: (id: String, index: Int) -> Unit,
+    onForYouClick: (String) -> Unit,
+    onBackClick: () -> Unit,
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
 
@@ -47,13 +52,9 @@ fun ComicDetailScreen(viewModel: ComicInfoViewModel = hiltViewModel()) {
     ComicDetailContent(
         unitedState = state,
         episodes = episodes,
-        onBackClick = {},
-        navigationToReader = { id, index ->
-//            ReaderActivity.start(this, id, index)
-        },
-        navigationToComicInfo = {
-//            start(this, it)
-        },
+        onBackClick = onBackClick,
+        navigationToReader = navigationToReader,
+        navigationToComicInfo = onForYouClick,
         navigationToComicList = { type, title, navigationArgument ->
 //            ComicListActivity.start(this, type, title, navigationArgument)
         },

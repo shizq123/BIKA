@@ -9,6 +9,8 @@ import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
+import com.shizq.bika.ui.reader.ReaderScreen
+import com.shizq.bika.ui.reader.ReaderViewModel
 
 fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
     entry<DashboardNavKey> {
@@ -38,6 +40,23 @@ fun EntryProviderScope<NavKey>.unitedDetailNavKeyEntry(navigator: Navigator) {
                 key = id,
             ) { factory ->
                 factory.create(id)
+            },
+            navigationToReader = { id, index -> navigator.navigate(ReaderNavKey(id, index)) },
+            onBackClick = { navigator.goBack() },
+            onForYouClick = { navigator.navigate(UnitedDetailNavKey(it)) }
+        )
+    }
+}
+
+fun EntryProviderScope<NavKey>.readerNavKeyEntry(navigator: Navigator) {
+    entry<ReaderNavKey> { key ->
+        val id = key.id
+        ReaderScreen(
+            onBackClick = { navigator.goBack() },
+            viewModel = hiltViewModel<ReaderViewModel, ReaderViewModel.Factory>(
+                key = id,
+            ) { factory ->
+                factory.create(id, key.order)
             },
         )
     }
