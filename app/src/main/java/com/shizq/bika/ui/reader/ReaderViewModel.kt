@@ -8,7 +8,6 @@ import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ChapterPagesPagingSource
-import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
 import com.shizq.bika.ui.reader.state.ReaderAction
 import com.shizq.bika.ui.reader.statemachine.ReaderStateMachine
 import dagger.assisted.Assisted
@@ -29,7 +28,7 @@ class ReaderViewModel @AssistedInject constructor(
     @Assisted id: String,
     @Assisted order: Int
 ) : ViewModel() {
-    private val currentChapterOrder = savedStateHandle.getStateFlow(EXTRA_ORDER, order)
+    private val currentChapterOrder = savedStateHandle.getStateFlow("order", order)
 
     private val stateMachineFactory = readerStateMachineFactory(id, currentChapterOrder.value)
     private val stateMachine = stateMachineFactory.launchIn(viewModelScope)
