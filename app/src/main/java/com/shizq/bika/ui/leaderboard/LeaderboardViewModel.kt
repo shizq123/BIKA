@@ -2,9 +2,9 @@ package com.shizq.bika.ui.leaderboard
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shizq.bika.core.data.model.Comic
 import com.shizq.bika.core.data.model.User
 import com.shizq.bika.core.data.model.asExternalModel
+import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
@@ -20,7 +20,7 @@ import kotlinx.coroutines.flow.stateIn
 class LeaderboardViewModel @Inject constructor(
     private val api: BikaDataSource,
 ) : ViewModel() {
-    val uiState = combine(
+    val leaderboardUiState = combine(
         getLeaderboard(TIME_H24),
         getLeaderboard(TIME_D7),
         getLeaderboard(TIME_D30),
@@ -47,7 +47,7 @@ class LeaderboardViewModel @Inject constructor(
                         dailyList = allData.dailyComics,
                         weeklyList = allData.weeklyComics,
                         monthlyList = allData.monthlyComics,
-                        knightList = allData.knightUsers // ADDED: 填充骑士榜数据
+                        knightList = allData.knightUsers
                     )
                 }
             }
@@ -65,14 +65,14 @@ class LeaderboardViewModel @Inject constructor(
 
     private fun getLeaderboard(timeType: String) = flow {
         val response = api.getLeaderboard(timeType)
-        val comics = response.comics.map { it.asExternalModel() }
+        val comics = response.comics
         emit(comics)
     }
 
     private data class AllLeaderboards(
-        val dailyComics: List<Comic>,
-        val weeklyComics: List<Comic>,
-        val monthlyComics: List<Comic>,
+        val dailyComics: List<ComicSimple>,
+        val weeklyComics: List<ComicSimple>,
+        val monthlyComics: List<ComicSimple>,
         val knightUsers: List<User>
     )
 }
@@ -83,9 +83,9 @@ private const val TIME_D30 = "D30"
 
 sealed interface LeaderboardUiState {
     data class Success(
-        val dailyList: List<Comic>,
-        val weeklyList: List<Comic>,
-        val monthlyList: List<Comic>,
+        val dailyList: List<ComicSimple>,
+        val weeklyList: List<ComicSimple>,
+        val monthlyList: List<ComicSimple>,
         val knightList: List<User>
     ) : LeaderboardUiState
 

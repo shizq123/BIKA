@@ -13,3 +13,6 @@ sealed interface FeedNavKey : NavKey {
     data class Topic(val name: String) : FeedNavKey
     object Recent : FeedNavKey
 }
+
+@Serializable
+object LeaderboardNavKey : NavKey

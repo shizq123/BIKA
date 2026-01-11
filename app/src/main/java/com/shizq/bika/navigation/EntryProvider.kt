@@ -6,6 +6,7 @@ import androidx.navigation3.runtime.NavKey
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
+import com.shizq.bika.ui.leaderboard.LeaderboardScreen
 
 fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
     entry<DashboardNavKey> {
@@ -14,7 +15,14 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
             navigationToRandom = { navigator.navigate(FeedNavKey.Random) },
             navigationToTopic = { navigator.navigate(FeedNavKey.Topic(it)) },
             navigationToRecent = { navigator.navigate(FeedNavKey.Recent) },
+            navigationToLeaderboard = { navigator.navigate(LeaderboardNavKey) },
         )
+    }
+}
+
+fun EntryProviderScope<NavKey>.leaderboardEntry(navigator: Navigator) {
+    entry<LeaderboardNavKey> {
+        LeaderboardScreen()
     }
 }
 

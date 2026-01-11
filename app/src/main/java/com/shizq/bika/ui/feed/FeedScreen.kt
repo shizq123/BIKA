@@ -14,6 +14,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -40,19 +41,23 @@ private fun FeedContent(
     items: LazyPagingItems<ComicSimple>,
     onBackClick: () -> Unit
 ) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         topBar = {
             FeedAppBar(
                 topicLabel = "Feed",
-                scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(),
+                scrollBehavior = scrollBehavior,
                 onBackClick = onBackClick
             )
-        }
+        },
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         LazyColumn(Modifier.padding(innerPadding)) {
             items(items.itemCount, key = items.itemKey { it.id }) { index ->
                 items[index]?.let { item ->
-                    ComicCard(comic = item)
+                    ComicCard(comic = item) {
+
+                    }
                 }
             }
         }

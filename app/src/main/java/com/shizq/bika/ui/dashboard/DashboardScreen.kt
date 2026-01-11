@@ -81,6 +81,8 @@ import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.ChannelDataSource.allChannels
+import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
+import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.utils.SPUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -90,8 +92,9 @@ fun DashboardScreen(
     navigationToCollections: () -> Unit,
     navigationToRandom: () -> Unit,
     navigationToRecent: () -> Unit,
+    navigationToLeaderboard: () -> Unit,
     navigationToTopic: (String) -> Unit,
-    viewModel: DashboardViewModel = hiltViewModel()
+    viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
@@ -109,6 +112,7 @@ fun DashboardScreen(
         navigationToRandom = navigationToRandom,
         navigationToTopic = navigationToTopic,
         navigationToRecent = navigationToRecent,
+        navigationToLeaderboard = navigationToLeaderboard,
     )
 }
 
@@ -124,6 +128,7 @@ fun DashboardContent(
     navigationToRandom: () -> Unit,
     navigationToRecent: () -> Unit,
     navigationToTopic: (String) -> Unit,
+    navigationToLeaderboard: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -204,6 +209,7 @@ fun DashboardContent(
                                 navigationToRandom = navigationToRandom,
                                 navigationToTopic = navigationToTopic,
                                 navigationToRecent = navigationToRecent,
+                                navigationToLeaderboard = navigationToLeaderboard,
                             )
                         }
                     }
@@ -272,21 +278,9 @@ private fun navigation(
     navigationToRandom: () -> Unit,
     navigationToRecent: () -> Unit,
     navigationToTopic: (String) -> Unit,
+    navigationToLeaderboard: () -> Unit,
 ) {
-    if (channel.link == null) {
-        when (channel.displayName) {
-            "推荐" -> navigationToCollections()
-//            "排行榜" -> start(LeaderboardActivity::class.java)
-//            "游戏推荐" -> start(GamesActivity::class.java)
-//            "哔咔小程序" -> start(AppsActivity::class.java)
-//            "留言板" -> start(ChatRoomListActivity::class.java)
-            "最近更新" -> navigationToRecent()
-
-            "随机本子" -> navigationToRandom()
-
-            else -> navigationToTopic(channel.displayName)
-        }
-    } else {
+    if (channel.link != null) {
         val token = SPUtil.get("token", "")
         val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
         val fullUrl = "${channel.link}/?token=$token&secret=$secret"
@@ -294,19 +288,26 @@ private fun navigation(
         val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
         context.startActivity(intent)
     }
+    when (channel.displayName) {
+        "推荐" -> navigationToCollections()
+        "排行榜" -> navigationToLeaderboard()
+        "游戏推荐" -> {
+            val intent = Intent(context, GamesActivity::class.java)
+            context.startActivity(intent)
+        }
+//            "哔咔小程序" -> start(AppsActivity::class.java)
+        "留言板" -> {
+            val intent = Intent(context, ChatRoomListActivity::class.java)
+            context.startActivity(intent)
+        }
+
+        "最近更新" -> navigationToRecent()
+
+        "随机本子" -> navigationToRandom()
+
+        else -> navigationToTopic(channel.displayName)
+    }
 }
-//                    EntryType.LEADERBOARD -> start(LeaderboardActivity::class.java)
-//
-//                    EntryType.GAME -> start(GamesActivity::class.java)
-//
-//                    EntryType.APPS -> start(AppsActivity::class.java)
-//
-//                    EntryType.CHAT -> start(ChatRoomListActivity::class.java)
-//
-//                    EntryType.FORUM -> {
-//                        val intent = Intent(this, CommentsActivity::class.java).apply {
-//                            putExtra("id", "5822a6e3ad7ede654696e482")
-//                            putExtra("comics_games", "comics")
 
 @Composable
 fun DashboardDrawerContent(
