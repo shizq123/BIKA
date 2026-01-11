@@ -7,7 +7,6 @@ import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.ui.reader.ReaderActivity.Companion.EXTRA_ORDER
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.state.ChapterState
 import com.shizq.bika.ui.reader.state.ReaderAction
@@ -54,7 +53,7 @@ class ReaderStateMachine @AssistedInject constructor(
             }
             inState<ReaderUiState.Ready> {
                 on<ReaderAction.JumpToChapter> { chapter ->
-                    savedStateHandle[EXTRA_ORDER] = chapter.chapter.order
+                    savedStateHandle["order"] = chapter.chapter.order
 
                     val startPage = withContext(Dispatchers.IO) {
                         val history =
