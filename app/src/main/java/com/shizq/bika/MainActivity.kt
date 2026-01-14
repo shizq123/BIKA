@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.metrics.performance.JankStats
 import com.shizq.bika.core.designsystem.theme.BikaTheme
+import com.shizq.bika.core.ui.composition.LocalWindow
 import com.shizq.bika.ui.BikaApp
 import com.shizq.bika.ui.rememberAppState
 import dagger.Lazy
@@ -26,7 +27,9 @@ class MainActivity : ComponentActivity() {
         setContent {
             val appState = rememberAppState()
 
-            CompositionLocalProvider {
+            CompositionLocalProvider(
+                LocalWindow provides window
+            ) {
                 BikaTheme(darkTheme = false) {
                     BikaApp(appState)
                 }
