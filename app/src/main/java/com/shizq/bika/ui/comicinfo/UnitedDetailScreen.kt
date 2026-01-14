@@ -82,8 +82,8 @@ fun ComicDetailContent(
     replyList: LazyPagingItems<Comment>,
 ) {
     when (unitedState) {
-        is UnitedDetailsUiState.Error -> {}
         is UnitedDetailsUiState.Initialize -> {}
+        is UnitedDetailsUiState.Error -> {}
 
         is UnitedDetailsUiState.Content -> {
             val detail = unitedState.detail

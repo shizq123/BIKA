@@ -41,33 +41,27 @@ class ComicInfoViewModel @AssistedInject constructor(
     init {
         unitedDetailsStateMachine.initializeWith { UnitedDetailsUiState.Initialize(id) }
     }
+
     private val stateMachine = unitedDetailsStateMachine.launchIn(viewModelScope)
     val state = stateMachine.state
-    val episodesFlow: Flow<PagingData<Episode>> = Pager(
-                    config = PagingConfig(
-                        pageSize = 40,
-                    ),
-                    pagingSourceFactory = { EpisodePagingSource(network, id) }
-                ).flow
+    val episodesFlow: Flow<PagingData<Episode>> = Pager(PagingConfig(40)) {
+        EpisodePagingSource(network, id)
+    }
+        .flow
         .cachedIn(viewModelScope)
     val pinnedComments: StateFlow<List<Comment>>
         field = MutableStateFlow(emptyList())
-    val regularComments: Flow<PagingData<Comment>> =
-                Pager(
-                    config = PagingConfig(
-                        pageSize = 40,
-                    ),
-                ) {
-                    commentPagingSourceFactory(id) {
-                        pinnedComments.value = it
-                    }
-                }.flow
+    val regularComments: Flow<PagingData<Comment>> = Pager(PagingConfig(40)) {
+        commentPagingSourceFactory(id) {
+            pinnedComments.value = it
+        }
+    }.flow
 
     val replyList = state.map {
         (it as? UnitedDetailsUiState.Content)?.viewingRepliesForId
     }.filterNotNull()
         .flatMapLatest {
-            Pager(config = PagingConfig(pageSize = 5)) {
+            Pager(PagingConfig(5)) {
                 replyPagingSourceFactory(it)
             }.flow
         }.cachedIn(viewModelScope)

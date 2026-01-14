@@ -36,6 +36,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.context.findActivity
+import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
@@ -47,6 +48,7 @@ import com.shizq.bika.ui.reader.components.ReadingSettingsBottomSheet
 import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.layout.ReaderConfig
+import com.shizq.bika.ui.reader.layout.ReaderController
 import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.SideSheetLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
@@ -63,6 +65,7 @@ import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.ui.reader.util.preload.PagingPreload
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
 @Composable
@@ -71,8 +74,6 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -
 
     val imageList = viewModel.imageListFlow.collectAsLazyPagingItems()
     val chapterList = viewModel.chapterListFlow.collectAsLazyPagingItems()
-
-    KeepScreenOnEffect()
 
     ReaderContent(
         state = uiState,
@@ -111,6 +112,7 @@ private fun ReaderContent(
             val controller = readerContext.controller
 
             SystemUiController(showSystemUI = overlayState.showSystemBars)
+            KeepScreenOnEffect()
             OrientationEffect(config.screenOrientation)
             ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
 
@@ -121,13 +123,12 @@ private fun ReaderContent(
                 }
             }
 
-            val visibleItemIndex by controller.visibleItemIndex.collectAsState(0)
-
-            DisposableEffect(visibleItemIndex) {
-                dispatch(SyncReadingProgress(visibleItemIndex))
-                onDispose {
-                    dispatch(SyncReadingProgress(visibleItemIndex))
-                }
+            LaunchedEffect(controller) {
+                controller.visibleItemIndex
+                    .debounce(1000)
+                    .collect { index ->
+                        dispatch(SyncReadingProgress(index))
+                    }
             }
 
             val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
@@ -145,8 +146,8 @@ private fun ReaderContent(
                     TopBar(title = { Text(title) }, onBackClick = onBackClick)
                 },
                 bottomBar = {
-                    ReaderBottomBar(
-                        currentPage = visibleItemIndex,
+                    LiveReaderBottomBar(
+                        controller = controller,
                         totalPages = chapterState.totalPages,
                         readingMode = config.readingMode,
                         onSeekToPage = {
@@ -160,8 +161,8 @@ private fun ReaderContent(
                 },
                 floatingMessage = {
                     if (chapterState.totalPages > 0) {
-                        PageIndicatorBadge(
-                            current = visibleItemIndex + 1,
+                        LivePageIndicatorBadge(
+                            controller = controller,
                             total = chapterState.totalPages
                         )
                     }
@@ -309,7 +310,7 @@ private fun SystemUiController(showSystemUI: Boolean) {
     val context = LocalContext.current
     val window = (context as? Activity)?.window ?: return
 
-    LaunchedEffect(window, showSystemUI) {
+    DisposableEffect(window, showSystemUI) {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -319,5 +320,39 @@ private fun SystemUiController(showSystemUI: Boolean) {
         } else {
             controller.hide(WindowInsetsCompat.Type.systemBars())
         }
+
+        onDispose {
+            controller.show(WindowInsetsCompat.Type.systemBars())
+        }
     }
+}
+
+@Composable
+private fun LivePageIndicatorBadge(controller: ReaderController, total: Int) {
+    val current by controller.visibleItemIndex.collectAsState(0)
+    PageIndicatorBadge(current = current + 1, total = total)
+}
+
+@Composable
+private fun LiveReaderBottomBar(
+    controller: ReaderController,
+    totalPages: Int,
+    readingMode: ReadingMode,
+    onSeekToPage: (Int) -> Unit,
+    onToggleChapterList: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenReadingMode: () -> Unit,
+    onOpenOrientation: () -> Unit
+) {
+    val currentPage by controller.visibleItemIndex.collectAsState(0)
+    ReaderBottomBar(
+        currentPage = currentPage,
+        totalPages = totalPages,
+        readingMode = readingMode,
+        onSeekToPage = onSeekToPage,
+        onToggleChapterList = onToggleChapterList,
+        onOpenSettings = onOpenSettings,
+        onOpenReadingMode = onOpenReadingMode,
+        onOpenOrientation = onOpenOrientation
+    )
 }
