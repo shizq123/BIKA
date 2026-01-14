@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -148,6 +149,7 @@ private fun LeaderboardPagerContent(
                 knightList = successState.knightList,
                 navigationToKnight = navigationToKnight
             )
+
             else -> Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center
@@ -164,6 +166,7 @@ fun ComicLeaderboardPage(
     modifier: Modifier = Modifier,
     navigationToUnitedDetail: (String) -> Unit
 ) {
+    val listState = rememberLazyListState()
     if (list.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("暂无数据")
@@ -171,7 +174,8 @@ fun ComicLeaderboardPage(
     } else {
         LazyColumn(
             modifier = modifier.fillMaxSize(),
-            contentPadding = PaddingValues(vertical = 8.dp)
+            state = listState,
+            contentPadding = PaddingValues(vertical = 8.dp),
         ) {
             items(list, key = { it.id }) { item ->
                 ComicCard(

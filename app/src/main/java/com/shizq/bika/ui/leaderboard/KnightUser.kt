@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FileUpload
@@ -27,7 +28,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -40,6 +40,7 @@ fun KnightLeaderboardPage(
     modifier: Modifier = Modifier,
     navigationToKnight: (String, String) -> Unit,
 ) {
+    val listState = rememberLazyListState()
     if (knightList.isEmpty()) {
         Box(
             modifier = modifier.fillMaxSize(),
@@ -48,9 +49,9 @@ fun KnightLeaderboardPage(
             Text("暂无骑士榜数据")
         }
     } else {
-        val context = LocalContext.current
         LazyColumn(
             modifier = modifier.fillMaxSize(),
+            state = listState,
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
             itemsIndexed(knightList, key = { _, user -> user.id }) { index, user ->
