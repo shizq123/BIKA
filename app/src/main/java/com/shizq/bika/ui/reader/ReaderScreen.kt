@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.reader
 
-import android.app.Activity
 import android.content.pm.ActivityInfo
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility
@@ -26,7 +25,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -38,6 +36,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
+import com.shizq.bika.core.ui.composition.LocalWindow
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.bar.ReaderBottomBar
@@ -289,26 +288,19 @@ fun OrientationEffect(orientation: ScreenOrientation) {
 
 @Composable
 fun KeepScreenOnEffect() {
-    val view = LocalView.current
-    val window = (view.context as? Activity)?.window
+    val window = LocalWindow.current
 
     DisposableEffect(Unit) {
-        if (window != null) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-
-            onDispose {
-                window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-            }
-        } else {
-            onDispose {}
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         }
     }
 }
 
 @Composable
 private fun SystemUiController(showSystemUI: Boolean) {
-    val context = LocalContext.current
-    val window = (context as? Activity)?.window ?: return
+    val window = LocalWindow.current
 
     DisposableEffect(window, showSystemUI) {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
