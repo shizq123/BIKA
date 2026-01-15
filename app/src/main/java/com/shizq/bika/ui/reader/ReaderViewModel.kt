@@ -6,9 +6,11 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.cachedIn
+import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ChapterPagesPagingSource
 import com.shizq.bika.ui.reader.state.ReaderAction
+import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.statemachine.ReaderStateMachine
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -24,22 +26,23 @@ class ReaderViewModel @AssistedInject constructor(
     savedStateHandle: SavedStateHandle,
     private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory,
-    readerStateMachineFactory: ReaderStateMachine.Factory,
+    readerStateMachine: ReaderStateMachine,
     @Assisted id: String,
     @Assisted order: Int
 ) : ViewModel() {
     private val currentChapterOrder = savedStateHandle.getStateFlow("order", order)
 
-    private val stateMachineFactory = readerStateMachineFactory(id, currentChapterOrder.value)
-    private val stateMachine = stateMachineFactory.launchIn(viewModelScope)
+    init {
+        readerStateMachine.initializeWith { ReaderUiState.Initializing(id, order) }
+    }
+
+    private val stateMachine = readerStateMachine.launchIn(viewModelScope)
     val stateFlow = stateMachine.state
 
     //  图片列表流
     val imageListFlow = currentChapterOrder
         .flatMapLatest { order ->
-            Pager(
-                config = PagingConfig(pageSize = 40, prefetchDistance = 5, initialLoadSize = 40)
-            ) {
+            Pager(PagingConfig(40)) {
                 chapterPagesPagingSourceFactory.create(id, order) { meta ->
                     dispatch(ReaderAction.ChapterMetaLoaded(meta))
                 }

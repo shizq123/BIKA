@@ -9,7 +9,8 @@ import com.shizq.bika.paging.ChapterMeta
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 
 sealed interface ReaderUiState {
-    data object Initializing : ReaderUiState
+    @Immutable
+    data class Initializing(val id: String, val order: Int) : ReaderUiState
 
     @Immutable
     data class Ready(

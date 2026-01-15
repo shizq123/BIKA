@@ -2,7 +2,6 @@ package com.shizq.bika.ui.reader.statemachine
 
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
-import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
@@ -14,36 +13,27 @@ import com.shizq.bika.ui.reader.state.ReaderSheet
 import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.state.UiControlState
-import dagger.assisted.Assisted
-import dagger.assisted.AssistedFactory
-import dagger.assisted.AssistedInject
+import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
-class ReaderStateMachine @AssistedInject constructor(
+class ReaderStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
-    @Assisted private val id: String,
-    @Assisted private val startOrder: Int,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
     init {
-        initializeWith { ReaderUiState.Initializing }
         spec {
             inState<ReaderUiState.Initializing> {
                 onEnter {
-                    val startPage = withContext(Dispatchers.IO) {
-                        val history = historyDao.getDetailedHistoryById(id) ?: return@withContext 0
-                        history.asExternalModel().progressList
-                            .find { it.chapterNumber == startOrder }
-                            ?.currentPage ?: 0
-                    }
+                    val startPage = getStartPage(snapshot.id, snapshot.order)
+
                     override {
                         ReaderUiState.Ready(
                             id = id,
                             chapter = ChapterState(
-                                order = startOrder,
+                                order = order,
                                 initialPage = startPage,
                                 isLoading = true
                             )
@@ -53,19 +43,13 @@ class ReaderStateMachine @AssistedInject constructor(
             }
             inState<ReaderUiState.Ready> {
                 on<ReaderAction.JumpToChapter> { chapter ->
-                    savedStateHandle["order"] = chapter.chapter.order
+                    val newOrder = chapter.chapter.order
+                    savedStateHandle["order"] = newOrder
 
-                    val startPage = withContext(Dispatchers.IO) {
-                        val history =
-                            historyDao.getDetailedHistoryById(snapshot.id) ?: return@withContext 0
-                        history.asExternalModel().progressList
-                            .find { it.chapterNumber == chapter.chapter.order }
-                            ?.currentPage ?: 0
-                    }
-
+                    val startPage = getStartPage(snapshot.id, newOrder)
                     mutate {
                         val newChapterState = ChapterState(
-                            order = chapter.chapter.order,
+                            order = newOrder,
                             isLoading = true,
                             initialPage = startPage,
                         )
@@ -159,8 +143,12 @@ class ReaderStateMachine @AssistedInject constructor(
         }
     }
 
-    @AssistedFactory
-    interface Factory {
-        operator fun invoke(id: String, order: Int): ReaderStateMachine
+    private suspend fun getStartPage(historyId: String, chapterOrder: Int): Int {
+        return withContext(Dispatchers.IO) {
+            val history = historyDao.getDetailedHistoryById(historyId) ?: return@withContext 0
+            history.asExternalModel().progressList
+                .find { it.chapterNumber == chapterOrder }
+                ?.currentPage ?: 0
+        }
     }
 }

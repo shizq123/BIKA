@@ -36,6 +36,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
+import com.shizq.bika.core.ui.FullScreenLoading
 import com.shizq.bika.core.ui.composition.LocalWindow
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
@@ -93,7 +94,7 @@ private fun ReaderContent(
     dispatch: (ReaderAction) -> Unit = {},
 ) {
     when (state) {
-        ReaderUiState.Initializing -> {}
+        is ReaderUiState.Initializing -> FullScreenLoading()
         is ReaderUiState.Ready -> {
             val context = LocalContext.current
             val scope = rememberCoroutineScope()
