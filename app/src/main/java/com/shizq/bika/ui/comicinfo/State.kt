@@ -1,22 +1,22 @@
 package com.shizq.bika.ui.comicinfo
 
-import androidx.paging.PagingData
+import androidx.compose.runtime.Immutable
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.model.ComicData
 import com.shizq.bika.core.network.model.ComicData.Comic.Creator
-import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.network.model.RecommendComicDto
 import com.shizq.bika.core.network.model.RecommendationData
 
 sealed interface UnitedDetailsUiState {
+    @Immutable
     data class Initialize(val id: String) : UnitedDetailsUiState
+
+    @Immutable
     data class Content(
         val id: String,
         val detail: ComicDetail = ComicDetail(),
         val recommendations: List<ComicSummary> = emptyList(),
         val pinnedComments: List<Comment> = emptyList(),
-        val episodes: PagingData<Episode> = PagingData.empty(),
-        val regularComments: PagingData<Comment> = PagingData.empty(),
         val viewingRepliesForId: String? = null // null 表示没有查看任何回复
     ) : UnitedDetailsUiState
 
