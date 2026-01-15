@@ -287,6 +287,7 @@ private fun navigation(
 
         val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
         context.startActivity(intent)
+        return
     }
     when (channel.displayName) {
         "推荐" -> navigationToCollections()
