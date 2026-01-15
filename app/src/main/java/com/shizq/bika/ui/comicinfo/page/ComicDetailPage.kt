@@ -8,10 +8,10 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -190,7 +190,6 @@ fun MediaSummary(
 ) {
     Row(
         modifier = modifier
-            .height(160.dp)
             .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -200,7 +199,7 @@ fun MediaSummary(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .width(120.dp)
-                .fillMaxHeight()
+                .aspectRatio(3f / 4f)
                 .clip(ShapeDefaults.Medium)
         )
         Column(
@@ -211,7 +210,6 @@ fun MediaSummary(
                 Text(
                     title,
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
@@ -332,43 +330,46 @@ fun ContentSummary(
     var isDescriptionExpanded by remember { mutableStateOf(false) }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            modifier = Modifier.height(IntrinsicSize.Min)
-        ) {
-            AsyncImage(
-                model = avatarUrl,
-                contentDescription = null,
-                modifier = Modifier
-                    .size(56.dp)
-                    .clip(CircleShape)
-            )
-
-            Column {
-                InfoLine(
-                    label = stringResource(R.string.comic_author_label),
-                    name = author,
-                    onClick = onAuthorClick,
-                    style = MaterialTheme.typography.titleMedium,
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(
+                verticalAlignment = Alignment.Top,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                // 头像保持不变
+                AsyncImage(
+                    model = avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
                 )
-                Spacer(Modifier.weight(1f))
-                InfoLine(
-                    label = stringResource(R.string.comic_uploader_label),
-                    name = creator,
-                    onClick = onUploaderClick,
-                    style = MaterialTheme.typography.bodyMedium,
+
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    InfoLine(
+                        label = stringResource(R.string.comic_author_label),
+                        name = author,
+                        onClick = onAuthorClick,
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    InfoLine(
+                        label = stringResource(R.string.comic_uploader_label),
+                        name = creator,
+                        onClick = onUploaderClick,
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+
+                LikeButton(
+                    isLiked,
+                    likeCount,
+                    onClick = onLikedClick
                 )
             }
-
-            Spacer(Modifier.weight(1f))
-            LikeButton(
-                isLiked,
-                likeCount,
-                onClick = onLikedClick,
-                modifier = Modifier
-            )
         }
+
         SelectionContainer {
             Text(
                 text = description,
@@ -405,7 +406,6 @@ private fun InfoLine(
             )
     ) {
         SelectionContainer {
-
             Text(
                 buildAnnotatedString {
                     withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.onSurfaceVariant)) {
