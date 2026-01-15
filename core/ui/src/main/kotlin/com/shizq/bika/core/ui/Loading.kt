@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.progressSemantics
+import androidx.compose.material3.CircularWavyProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,6 +41,7 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.max
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FullScreenLoading(modifier: Modifier = Modifier) {
     Box(
@@ -50,6 +53,17 @@ fun FullScreenLoading(modifier: Modifier = Modifier) {
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+fun LoadingState(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .wrapContentSize(Alignment.Center),
+    ) {
+        CircularWavyProgressIndicator()
+    }
+}
 @Composable
 fun Loading(
     modifier: Modifier = Modifier,
