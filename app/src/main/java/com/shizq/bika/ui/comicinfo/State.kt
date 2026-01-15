@@ -8,8 +8,7 @@ import com.shizq.bika.core.network.model.RecommendComicDto
 import com.shizq.bika.core.network.model.RecommendationData
 
 sealed interface UnitedDetailsUiState {
-    @Immutable
-    data class Initialize(val id: String) : UnitedDetailsUiState
+    data object Initialize : UnitedDetailsUiState
 
     @Immutable
     data class Content(
