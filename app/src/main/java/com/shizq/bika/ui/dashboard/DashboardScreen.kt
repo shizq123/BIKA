@@ -81,7 +81,7 @@ import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.ChannelDataSource.allChannels
-import com.shizq.bika.navigation.DashboardAction
+import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.utils.SPUtil
@@ -91,7 +91,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun DashboardScreen(
     navigationToLeaderboard: () -> Unit,
-    navigateToSearch: (DashboardAction) -> Unit,
+    navigateToSearch: (DiscoveryAction) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
@@ -120,7 +120,7 @@ fun DashboardContent(
     onChannelToggled: (Channel, Boolean) -> Unit,
     onOrderChange: (List<Channel>) -> Unit,
     navigationToLeaderboard: () -> Unit,
-    navigateToSearch: (DashboardAction) -> Unit,
+    navigateToSearch: (DiscoveryAction) -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -264,7 +264,7 @@ private fun navigation(
     channel: Channel,
     context: Context,
     navigationToLeaderboard: () -> Unit,
-    navigateToSearch: (DashboardAction) -> Unit,
+    navigateToSearch: (DiscoveryAction) -> Unit,
 ) {
     if (channel.link != null) {
         val token = SPUtil.get("token", "")
@@ -277,7 +277,7 @@ private fun navigation(
     }
 
     when (channel.displayName) {
-        "推荐" -> navigateToSearch(DashboardAction.ToCollections)
+        "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)
         "排行榜" -> navigationToLeaderboard()
         "游戏推荐" -> {
             val intent = Intent(context, GamesActivity::class.java)
@@ -289,12 +289,12 @@ private fun navigation(
             context.startActivity(intent)
         }
 
-        "最近更新" -> navigateToSearch(DashboardAction.ToRecent)
+        "最近更新" -> navigateToSearch(DiscoveryAction.ToRecent)
 
-        "随机本子" -> navigateToSearch(DashboardAction.ToRandom)
+        "随机本子" -> navigateToSearch(DiscoveryAction.ToRandom)
 
         else -> navigateToSearch(
-            DashboardAction.AdvancedSearch(
+            DiscoveryAction.AdvancedSearch(
                 channel.displayName,
                 topic = channel.displayName
             )
