@@ -43,9 +43,12 @@ fun EntryProviderScope<NavKey>.unitedDetailNavKeyEntry(navigator: Navigator) {
             ) { factory ->
                 factory.create(id)
             },
-            navigationToReader = { id, index -> navigator.navigate(ReaderNavKey(id, index)) },
             onBackClick = { navigator.goBack() },
-            onForYouClick = { navigator.navigate(UnitedDetailNavKey(it)) }
+            navigationToReader = { id, index -> navigator.navigate(ReaderNavKey(id, index)) },
+            onForYouClick = { navigator.navigateToUnitedDetail(it) },
+            navigationToFeed = { action ->
+                navigator.navigate(FeedNavKey(action))
+            }
         )
     }
 }

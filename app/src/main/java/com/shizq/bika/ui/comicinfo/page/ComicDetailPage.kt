@@ -68,6 +68,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import coil3.compose.AsyncImage
 import com.shizq.bika.R
+import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
 
@@ -80,8 +81,8 @@ fun ComicDetailPage(
     onFavoriteClick: () -> Unit = {},
     onLikedClick: () -> Unit = {},
     navigationToReader: () -> Unit = {},
-    navigationToSearch: (String, String, String) -> Unit = { _, _, _ -> },
     navigationToComicInfo: (String) -> Unit = {},
+    navigationToFeed: (DiscoveryAction) -> Unit,
 ) {
     Box(
         modifier = modifier
@@ -100,7 +101,7 @@ fun ComicDetailPage(
                 view = detail.totalViews,
                 chineseTeam = detail.chineseTeam,
                 onTranslateClick = {
-                    navigationToSearch("translate", it, it)
+                    navigationToFeed(DiscoveryAction.AdvancedSearch(it, translationTeam = it))
                 }
             )
 
@@ -113,13 +114,21 @@ fun ComicDetailPage(
                 likeCount = detail.totalLikes,
                 onLikedClick = onLikedClick,
                 onUploaderClick = {
-                    navigationToSearch(
-                        "knight",
-                        detail.creator.name,
-                        detail.creator.id,
+                    navigationToFeed(
+                        DiscoveryAction.Knight(
+                            detail.creator.name,
+                            detail.creator.id,
+                        )
                     )
                 },
-                onAuthorClick = { navigationToSearch("author", detail.author, detail.author) }
+                onAuthorClick = {
+                    navigationToFeed(
+                        DiscoveryAction.AdvancedSearch(
+                            detail.author,
+                            authorName = detail.author
+                        )
+                    )
+                }
             )
             val all = detail.tags + detail.categories
             FlowRow(
@@ -128,7 +137,7 @@ fun ComicDetailPage(
             ) {
                 all.fastForEach {
                     SuggestionChip(
-                        { navigationToSearch("tags", it, it) },
+                        { navigationToFeed(DiscoveryAction.AdvancedSearch(it, tag = it)) },
                         label = {
                             Text(
                                 it,

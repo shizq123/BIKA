@@ -37,6 +37,7 @@ import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
+import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.page.ComicDetailPage
 import com.shizq.bika.ui.comicinfo.page.CommentsPage
 import com.shizq.bika.ui.comicinfo.page.EpisodeItem
@@ -50,6 +51,7 @@ fun ComicDetailScreen(
     navigationToReader: (id: String, index: Int) -> Unit,
     onForYouClick: (String) -> Unit,
     onBackClick: () -> Unit,
+    navigationToFeed: (DiscoveryAction) -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
@@ -64,14 +66,12 @@ fun ComicDetailScreen(
         onBackClick = onBackClick,
         navigationToReader = navigationToReader,
         navigationToComicInfo = onForYouClick,
-        navigationToComicList = { type, title, navigationArgument ->
-//            ComicListActivity.start(this, type, title, navigationArgument)
-        },
         pinnedComments = pinnedComments,
         regularComments = regularComments,
         onToggleCommentLike = viewModel::toggleCommentLike,
         dispatch = viewModel::dispatch,
-        replyList = replyList
+        replyList = replyList,
+        navigationToFeed = navigationToFeed,
     )
 }
 
@@ -85,10 +85,10 @@ fun ComicDetailContent(
     onBackClick: () -> Unit = {},
     navigationToReader: (id: String, index: Int) -> Unit = { _, _ -> },
     navigationToComicInfo: (String) -> Unit = {},
-    navigationToComicList: (type: String, title: String, navigationArgument: String) -> Unit = { _, _, _ -> },
     onToggleCommentLike: (String) -> Unit = {},
     dispatch: (UnitedDetailsAction) -> Unit = {},
     replyList: LazyPagingItems<Comment>,
+    navigationToFeed: (DiscoveryAction) -> Unit,
 ) {
     when (unitedState) {
         is UnitedDetailsUiState.Initialize -> LoadingState()
@@ -146,10 +146,8 @@ fun ComicDetailContent(
                                 onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
                                 onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
                                 navigationToReader = { navigationToReader(detail.id, 1) },
-                                navigationToSearch = { type, value, navigationArgument ->
-                                    navigationToComicList(type, value, navigationArgument)
-                                },
-                                navigationToComicInfo = { navigationToComicInfo(it) }
+                                navigationToComicInfo = { navigationToComicInfo(it) },
+                                navigationToFeed = navigationToFeed
                             )
 
                             1 -> EpisodesPage(

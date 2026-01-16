@@ -34,7 +34,7 @@ class FeedViewModel @AssistedInject constructor(
 
         is DiscoveryAction.AdvancedSearch -> topicComicsPagingSourceFactory.create(
             ComicSearchParams(
-                topic = action.name,
+                topic = action.topic,
                 tag = action.tag,
                 authorName = action.authorName,
                 translationTeam = action.translationTeam,
