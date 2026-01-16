@@ -4,7 +4,7 @@ import com.shizq.bika.core.model.Sort
 
 /**
  * 封装漫画搜索的所有参数
- * @param topic 通用搜索关键词 (原 topic)
+ * @param topic 搜索关键词 (原 category)
  * @param tag 标签
  * @param authorName 作者名
  * @param knightId 上传者/骑士
