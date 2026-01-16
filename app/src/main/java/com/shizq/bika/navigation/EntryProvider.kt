@@ -15,11 +15,10 @@ import com.shizq.bika.ui.reader.ReaderViewModel
 fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
     entry<DashboardNavKey> {
         DashboardScreen(
-            navigationToCollections = { navigator.navigate(FeedNavKey.Collection) },
-            navigationToRandom = { navigator.navigate(FeedNavKey.Random) },
-            navigationToTopic = { navigator.navigate(FeedNavKey.Topic(it)) },
-            navigationToRecent = { navigator.navigate(FeedNavKey.Recent) },
             navigationToLeaderboard = { navigator.navigate(LeaderboardNavKey) },
+            navigateToSearch = { action ->
+                navigator.navigate(FeedNavKey(action))
+            },
         )
     }
 }
@@ -27,8 +26,11 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
 fun EntryProviderScope<NavKey>.leaderboardEntry(navigator: Navigator) {
     entry<LeaderboardNavKey> {
         LeaderboardScreen(
-            navigationToUnitedDetail = { navigator.navigate(UnitedDetailNavKey(it)) },
-            navigationToKnight = { name, id -> navigator.navigate(FeedNavKey.Knight(name, id)) })
+            navigationToUnitedDetail = { navigator.navigateToUnitedDetail(it) },
+            navigationToKnight = { name, id ->
+                navigator.navigate(FeedNavKey(DashboardAction.Knight(name, id)))
+            }
+        )
     }
 }
 
@@ -63,27 +65,20 @@ fun EntryProviderScope<NavKey>.readerNavKeyEntry(navigator: Navigator) {
 }
 
 fun EntryProviderScope<NavKey>.feedEntry(navigator: Navigator) {
-    addEntryProvider<FeedNavKey.Collection>(navigator)
-    addEntryProvider<FeedNavKey.Random>(navigator)
-    addEntryProvider<FeedNavKey.Topic>(navigator)
-    addEntryProvider<FeedNavKey.Recent>(navigator)
-    addEntryProvider<FeedNavKey.Knight>(navigator)
-}
-
-fun Navigator.navigateToUnitedDetail(id: String) {
-    navigate(UnitedDetailNavKey(id))
-}
-
-inline fun <reified T> EntryProviderScope<NavKey>.addEntryProvider(navigator: Navigator) where T : NavKey, T : FeedNavKey {
-    entry<T> { key ->
+    entry<FeedNavKey> { key ->
         FeedScreen(
+            title = key.action.name,
             onBackClick = { navigator.goBack() },
             navigationToComicDetail = navigator::navigateToUnitedDetail,
             viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
                 key = key.toString(),
             ) { factory ->
-                factory.create(key)
+                factory.create(key.action)
             },
         )
     }
+}
+
+fun Navigator.navigateToUnitedDetail(id: String) {
+    navigate(UnitedDetailNavKey(id))
 }
