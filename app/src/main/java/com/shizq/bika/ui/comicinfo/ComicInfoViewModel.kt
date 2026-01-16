@@ -1,13 +1,11 @@
 package com.shizq.bika.ui.comicinfo
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
-import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
@@ -31,19 +29,17 @@ private const val TAG = "ComicInfoViewModel"
 
 @HiltViewModel(assistedFactory = ComicInfoViewModel.Factory::class)
 class ComicInfoViewModel @AssistedInject constructor(
-    private val savedStateHandle: SavedStateHandle,
     private val network: BikaDataSource,
     private val commentPagingSourceFactory: CommentPagingSource.Factory,
     private val replyPagingSourceFactory: ReplyPagingSource.Factory,
-    unitedDetailsStateMachine: UnitedDetailsStateMachine,
-    @Assisted val id: String,
+    stateMachineFactory: UnitedDetailsStateMachine.Factory,
+    @Assisted private val id: String,
 ) : ViewModel() {
-    init {
-        unitedDetailsStateMachine.initializeWith { UnitedDetailsUiState.Initialize(id) }
-    }
 
-    private val stateMachine = unitedDetailsStateMachine.launchIn(viewModelScope)
+    private val stateMachine = stateMachineFactory.create(id).launchIn(viewModelScope)
+
     val state = stateMachine.state
+
     val episodesFlow: Flow<PagingData<Episode>> = Pager(PagingConfig(40)) {
         EpisodePagingSource(network, id)
     }

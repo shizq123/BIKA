@@ -81,6 +81,7 @@ import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.ChannelDataSource.allChannels
+import com.shizq.bika.navigation.DashboardAction
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.utils.SPUtil
@@ -89,11 +90,8 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun DashboardScreen(
-    navigationToCollections: () -> Unit,
-    navigationToRandom: () -> Unit,
-    navigationToRecent: () -> Unit,
     navigationToLeaderboard: () -> Unit,
-    navigationToTopic: (String) -> Unit,
+    navigateToSearch: (DashboardAction) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
@@ -108,11 +106,8 @@ fun DashboardScreen(
         channelSettingsUiState = channelSettingsUiState,
         onChannelToggled = viewModel::onChannelToggled,
         onOrderChange = viewModel::onChannelsReordered,
-        navigationToCollections = navigationToCollections,
-        navigationToRandom = navigationToRandom,
-        navigationToTopic = navigationToTopic,
-        navigationToRecent = navigationToRecent,
         navigationToLeaderboard = navigationToLeaderboard,
+        navigateToSearch = navigateToSearch,
     )
 }
 
@@ -124,11 +119,8 @@ fun DashboardContent(
     channelSettingsUiState: List<Channel>,
     onChannelToggled: (Channel, Boolean) -> Unit,
     onOrderChange: (List<Channel>) -> Unit,
-    navigationToCollections: () -> Unit,
-    navigationToRandom: () -> Unit,
-    navigationToRecent: () -> Unit,
-    navigationToTopic: (String) -> Unit,
     navigationToLeaderboard: () -> Unit,
+    navigateToSearch: (DashboardAction) -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -205,11 +197,8 @@ fun DashboardContent(
                             navigation(
                                 context = context,
                                 channel = item,
-                                navigationToCollections = navigationToCollections,
-                                navigationToRandom = navigationToRandom,
-                                navigationToTopic = navigationToTopic,
-                                navigationToRecent = navigationToRecent,
                                 navigationToLeaderboard = navigationToLeaderboard,
+                                navigateToSearch = navigateToSearch,
                             )
                         }
                     }
@@ -274,11 +263,8 @@ private fun DashboardAppBar(
 private fun navigation(
     channel: Channel,
     context: Context,
-    navigationToCollections: () -> Unit,
-    navigationToRandom: () -> Unit,
-    navigationToRecent: () -> Unit,
-    navigationToTopic: (String) -> Unit,
     navigationToLeaderboard: () -> Unit,
+    navigateToSearch: (DashboardAction) -> Unit,
 ) {
     if (channel.link != null) {
         val token = SPUtil.get("token", "")
@@ -289,8 +275,9 @@ private fun navigation(
         context.startActivity(intent)
         return
     }
+
     when (channel.displayName) {
-        "推荐" -> navigationToCollections()
+        "推荐" -> navigateToSearch(DashboardAction.ToCollections)
         "排行榜" -> navigationToLeaderboard()
         "游戏推荐" -> {
             val intent = Intent(context, GamesActivity::class.java)
@@ -302,11 +289,16 @@ private fun navigation(
             context.startActivity(intent)
         }
 
-        "最近更新" -> navigationToRecent()
+        "最近更新" -> navigateToSearch(DashboardAction.ToRecent)
 
-        "随机本子" -> navigationToRandom()
+        "随机本子" -> navigateToSearch(DashboardAction.ToRandom)
 
-        else -> navigationToTopic(channel.displayName)
+        else -> navigateToSearch(
+            DashboardAction.AdvancedSearch(
+                channel.displayName,
+                topic = channel.displayName
+            )
+        )
     }
 }
 
