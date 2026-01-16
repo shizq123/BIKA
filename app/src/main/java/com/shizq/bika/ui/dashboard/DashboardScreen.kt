@@ -84,6 +84,10 @@ import com.shizq.bika.core.model.ChannelDataSource.allChannels
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.games.GamesActivity
+import com.shizq.bika.ui.mycomments.MyCommentsActivity
+import com.shizq.bika.ui.notifications.NotificationsActivity
+import com.shizq.bika.ui.settings.SettingsActivity
+import com.shizq.bika.ui.user.UserActivity
 import com.shizq.bika.utils.SPUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -93,12 +97,12 @@ fun DashboardScreen(
     navigationToLeaderboard: () -> Unit,
     navigateToSearch: (DiscoveryAction) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
+    navigationToHistory: () -> Unit,
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
     LaunchedEffect(Unit) {
         viewModel.onCheckIn()
-        viewModel.migration()
     }
     DashboardContent(
         userProfileUiState = userProfileUiState,
@@ -108,6 +112,7 @@ fun DashboardScreen(
         onOrderChange = viewModel::onChannelsReordered,
         navigationToLeaderboard = navigationToLeaderboard,
         navigateToSearch = navigateToSearch,
+        navigationToHistory = navigationToHistory,
     )
 }
 
@@ -121,6 +126,7 @@ fun DashboardContent(
     onOrderChange: (List<Channel>) -> Unit,
     navigationToLeaderboard: () -> Unit,
     navigateToSearch: (DiscoveryAction) -> Unit,
+    navigationToHistory: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -143,7 +149,9 @@ fun DashboardContent(
             ModalDrawerSheet {
                 DashboardDrawerContent(
                     userProfile = userProfileUiState,
-                    onCheckInClick = onCheckInClick
+                    onCheckInClick = onCheckInClick,
+                    navigationToHistory = navigationToHistory,
+                    navigateToSearch = navigateToSearch,
                 )
             }
         },
@@ -307,7 +315,10 @@ fun DashboardDrawerContent(
     userProfile: UserProfileUiState,
     modifier: Modifier = Modifier,
     onCheckInClick: () -> Unit = {},
+    navigationToHistory: () -> Unit,
+    navigateToSearch: (DiscoveryAction) -> Unit,
 ) {
+    val context = LocalContext.current
     when (userProfile) {
         is UserProfileUiState.Error -> {
 
@@ -320,12 +331,8 @@ fun DashboardDrawerContent(
                     state = userProfile,
                     onCheckInClick = onCheckInClick,
                     onEditProfile = {
-//                        startActivity(
-//                            Intent(
-//                                this@MainActivity,
-//                                UserActivity::class.java
-//                            )
-//                        )
+                        val intent = Intent(context, UserActivity::class.java)
+                        context.startActivity(intent)
                     }
                 )
                 HorizontalDivider()
@@ -342,14 +349,7 @@ fun DashboardDrawerContent(
                     NavigationDrawerItem(
                         label = { Text("历史记录") },
                         selected = false,
-                        onClick = {
-//                            startActivity(
-//                                Intent(
-//                                    this@MainActivity,
-//                                    HistoryActivity::class.java
-//                                )
-//                            )
-                        },
+                        onClick = navigationToHistory,
                         icon = {
                             Icon(
                                 painterResource(R.drawable.ic_history),
@@ -362,15 +362,7 @@ fun DashboardDrawerContent(
                         label = { Text("我的收藏") },
                         selected = false,
                         onClick = {
-//                            val intent =
-//                                Intent(
-//                                    this@MainActivity,
-//                                    ComicListActivity::class.java
-//                                ).apply {
-//                                    putExtra("tag", "favourite")
-//                                    putExtra("title", "我的收藏")
-//                                }
-//                            startActivity(intent)
+                            navigateToSearch(DiscoveryAction.ToFavourite)
                         },
                         icon = { Icon(Icons.Filled.Favorite, "Favorite") },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -379,12 +371,8 @@ fun DashboardDrawerContent(
                         label = { Text("我的消息") },
                         selected = false,
                         onClick = {
-//                            startActivity(
-//                                Intent(
-//                                    this@MainActivity,
-//                                    NotificationsActivity::class.java
-//                                )
-//                            )
+                            val intent = Intent(context, NotificationsActivity::class.java)
+                            context.startActivity(intent)
                         },
                         icon = { Icon(Icons.Filled.Email, "Email") },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -393,12 +381,8 @@ fun DashboardDrawerContent(
                         label = { Text("我的评论") },
                         selected = false,
                         onClick = {
-//                            startActivity(
-//                                Intent(
-//                                    this@MainActivity,
-//                                    MyCommentsActivity::class.java
-//                                )
-//                            )
+                            val intent = Intent(context, MyCommentsActivity::class.java)
+                            context.startActivity(intent)
                         },
                         icon = {
                             Icon(
@@ -412,12 +396,8 @@ fun DashboardDrawerContent(
                         label = { Text("设置") },
                         selected = false,
                         onClick = {
-//                            startActivity(
-//                                Intent(
-//                                    this@MainActivity,
-//                                    SettingsActivity::class.java
-//                                )
-//                            )
+                            val intent = Intent(context, SettingsActivity::class.java)
+                            context.startActivity(intent)
                         },
                         icon = { Icon(Icons.Filled.Settings, "Settings") },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
@@ -438,7 +418,6 @@ fun UserProfileCard(
     val user = state.user
     Column(
         modifier = modifier
-            .fillMaxWidth()
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -458,7 +437,6 @@ fun UserProfileCard(
             }
 
             Spacer(modifier = Modifier.width(16.dp))
-
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
@@ -486,6 +464,32 @@ fun UserProfileCard(
                             )
                             .padding(horizontal = 4.dp, vertical = 2.dp)
                     )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = onEditProfile
+                ) {
+                    Text(text = "修改资料")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = onCheckInClick,
+                    enabled = !user.hasCheckedIn,
+                    colors = ButtonDefaults.buttonColors(
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                ) {
+                    Text(text = if (user.hasCheckedIn) "已打卡" else "打卡")
                 }
             }
         }
@@ -521,32 +525,6 @@ fun UserProfileCard(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End
-        ) {
-            TextButton(
-                onClick = onEditProfile
-            ) {
-                Text(text = "修改资料")
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Button(
-                onClick = onCheckInClick,
-                enabled = !user.hasCheckedIn,
-                colors = ButtonDefaults.buttonColors(
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            ) {
-                Text(text = if (user.hasCheckedIn) "已打卡" else "打卡")
-            }
         }
     }
 }

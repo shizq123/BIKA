@@ -9,7 +9,6 @@ import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
-import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -100,19 +99,6 @@ class DashboardViewModel @Inject constructor(
 //                return@launch
 //            }
             network.punchIn()
-        }
-    }
-
-    fun migration() {
-        viewModelScope.launch {
-            val username = SPUtil.get("username", "") as String
-            val password = SPUtil.get("password", "") as String
-            userCredentialsDataSource.setUsername(username)
-            userCredentialsDataSource.setPassword(password)
-            val loginData = network.login(username, password)
-
-            userCredentialsDataSource.setToken(loginData.token)
-            SPUtil.put("token", loginData.token)
         }
     }
 }
