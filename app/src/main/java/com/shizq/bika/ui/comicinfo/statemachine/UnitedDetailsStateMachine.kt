@@ -1,8 +1,8 @@
 package com.shizq.bika.ui.comicinfo.statemachine
 
 import android.util.Log
-import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
+import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.network.BikaDataSource
@@ -10,69 +10,77 @@ import com.shizq.bika.ui.comicinfo.UnitedDetailsAction
 import com.shizq.bika.ui.comicinfo.UnitedDetailsUiState
 import com.shizq.bika.ui.comicinfo.toComicDetail
 import com.shizq.bika.ui.comicinfo.toComicSummaryList
-import jakarta.inject.Inject
+import dagger.assisted.Assisted
+import dagger.assisted.AssistedFactory
+import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
-class UnitedDetailsStateMachine @Inject constructor(
-    private val savedStateHandle: SavedStateHandle,
+class UnitedDetailsStateMachine @AssistedInject constructor(
     private val network: BikaDataSource,
     private val historyDao: ReadingHistoryDao,
+    @Assisted private val id: String,
 ) : FlowReduxStateMachineFactory<UnitedDetailsUiState, UnitedDetailsAction>() {
 
     init {
+        initializeWith { UnitedDetailsUiState.Initialize }
         spec {
             inState<UnitedDetailsUiState.Initialize> {
-                onEnter {
-                    override {
-                        UnitedDetailsUiState.Content(id)
-                    }
-                }
-            }
-            inState<UnitedDetailsUiState.Content> {
                 onEnter {
                     try {
                         val (detail, recommendations) = coroutineScope {
                             val detailDeferred =
-                                async { network.getComicDetails(snapshot.id).toComicDetail() }
+                                async { network.getComicDetails(id).toComicDetail() }
                             val recommendationsDeferred = async {
-                                network.getRecommendations(snapshot.id).toComicSummaryList()
+                                network.getRecommendations(id).toComicSummaryList()
                             }
                             detailDeferred.await() to recommendationsDeferred.await()
                         }
-
-                        withContext(Dispatchers.IO) {
-                            val now = Clock.System.now()
-                            val rowsUpdated = historyDao.updateLastReadAt(detail.id, now)
-                            if (rowsUpdated > 0) {
-                                Log.d(
-                                    TAG,
-                                    "History exists. Updated timestamp for '${detail.title}'."
-                                )
-                            } else {
-                                val newRecord = ReadingHistoryEntity(
-                                    id = detail.id,
-                                    title = detail.title,
-                                    author = detail.author,
-                                    coverUrl = detail.cover,
-                                    lastInteractionAt = now
-                                )
-                                historyDao.upsertHistory(newRecord)
-                                Log.d(
-                                    TAG,
-                                    "No history found. Creating new record for '${detail.title}'."
-                                )
-                            }
-                        }
-
-                        mutate {
-                            copy(detail = detail, recommendations = recommendations)
+                        override {
+                            UnitedDetailsUiState.Content(
+                                id = id,
+                                detail = detail,
+                                recommendations = recommendations
+                            )
                         }
                     } catch (e: Exception) {
                         override { UnitedDetailsUiState.Error(e) }
+                    }
+                }
+            }
+
+            inState<UnitedDetailsUiState.Content> {
+                onEnterEffect {
+                    withContext(Dispatchers.IO) {
+                        val now = Clock.System.now()
+
+                        val id = snapshot.id
+                        val detail = snapshot.detail
+                        val title = detail.title
+
+                        val rowsUpdated = historyDao.updateLastReadAt(id, now)
+                        if (rowsUpdated > 0) {
+                            Log.d(
+                                TAG,
+                                "History exists. Updated timestamp for '$title'."
+                            )
+                        } else {
+                            val newRecord = ReadingHistoryEntity(
+                                id = id,
+                                title = title,
+                                author = detail.author,
+                                coverUrl = detail.cover,
+                                lastInteractionAt = now
+                            )
+                            historyDao.upsertHistory(newRecord)
+                            Log.d(
+                                TAG,
+                                "No history found. Creating new record for '$title'."
+                            )
+                        }
                     }
                 }
                 on<UnitedDetailsAction.ToggleLike> {
@@ -118,7 +126,18 @@ class UnitedDetailsStateMachine @Inject constructor(
                     mutate { copy(viewingRepliesForId = null) }
                 }
             }
+
+            inState<UnitedDetailsUiState.Error> {
+                on<UnitedDetailsAction.Retry> {
+                    override { UnitedDetailsUiState.Initialize }
+                }
+            }
         }
+    }
+
+    @AssistedFactory
+    interface Factory {
+        fun create(id: String): UnitedDetailsStateMachine
     }
 
     private companion object {
