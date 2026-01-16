@@ -7,6 +7,7 @@ import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.core.Serializer
 import androidx.datastore.dataStoreFile
 import com.shizq.bika.core.coroutine.ApplicationScope
+import com.shizq.bika.core.datastore.credentialMigration
 import com.shizq.bika.core.datastore.model.UserCredentials
 import com.shizq.bika.core.model.UserPreferences
 import dagger.Module
@@ -90,6 +91,7 @@ object DataStoreModule {
                     get() = UserCredentials()
             },
             scope = CoroutineScope(scope.coroutineContext + Dispatchers.IO),
+            migrations = listOf(credentialMigration(context))
         ) {
             context.dataStoreFile("user_credentials")
         }
