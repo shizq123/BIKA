@@ -5,23 +5,19 @@ import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.ui.comiclist.ComicSearchParams
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 
 class FavouriteComicsPagingSource @AssistedInject constructor(
     private val api: BikaDataSource,
-    @Assisted private val searchParams: ComicSearchParams,
+    @Assisted private val sortValue: String,
 ) : PagingSource<Int, ComicSimple>() {
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSimple> {
         val page = params.key ?: 1
 
         return try {
-            val response = api.getFavouriteComics(
-                sort = searchParams.sort ?: Sort.NEWEST,
-                page = page
-            )
+            val response = api.getFavouriteComics(Sort(sortValue), page)
 
             val comicsPage = response.comics
 
@@ -44,6 +40,6 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        operator fun invoke(params: ComicSearchParams): FavouriteComicsPagingSource
+        fun create(sortValue: String): FavouriteComicsPagingSource
     }
 }

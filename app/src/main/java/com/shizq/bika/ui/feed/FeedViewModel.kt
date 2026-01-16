@@ -10,6 +10,7 @@ import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
+import com.shizq.bika.paging.FavouriteComicsPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
 import com.shizq.bika.paging.TopicComicsPagingSource
 import com.shizq.bika.ui.comiclist.ComicSearchParams
@@ -22,6 +23,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 class FeedViewModel @AssistedInject constructor(
     private val api: BikaDataSource,
     topicComicsPagingSourceFactory: TopicComicsPagingSource.Factory,
+    favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
     @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
     private val pagingSource: PagingSource<Int, ComicSimple> = when (action) {
@@ -55,8 +57,10 @@ class FeedViewModel @AssistedInject constructor(
         DiscoveryAction.ToRecent -> topicComicsPagingSourceFactory.create(
             ComicSearchParams(sort = Sort.NEWEST)
         )
+
+        DiscoveryAction.ToFavourite -> favouriteComicsPagingSourceFactory.create(Sort.NEWEST.value)
     }
-    val pagedComics = Pager(PagingConfig(40, 1)) {
+    val pagedComics = Pager(PagingConfig(40)) {
         pagingSource
     }.flow
         .cachedIn(viewModelScope)
