@@ -26,11 +26,13 @@ import com.shizq.bika.core.ui.ComicCard
 fun FeedScreen(
     onBackClick: () -> Unit,
     navigationToComicDetail: (String) -> Unit,
-    viewModel: FeedViewModel = hiltViewModel()
+    viewModel: FeedViewModel = hiltViewModel(),
+    title: String
 ) {
     val items = viewModel.pagedComics.collectAsLazyPagingItems()
 
     FeedContent(
+        title = title,
         items = items,
         onBackClick = onBackClick,
         navigationToComicDetail = navigationToComicDetail,
@@ -40,6 +42,7 @@ fun FeedScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FeedContent(
+    title: String,
     items: LazyPagingItems<ComicSimple>,
     navigationToComicDetail: (String) -> Unit,
     onBackClick: () -> Unit
@@ -48,7 +51,7 @@ private fun FeedContent(
     Scaffold(
         topBar = {
             FeedAppBar(
-                topicLabel = "Feed",
+                topicLabel = title,
                 scrollBehavior = scrollBehavior,
                 onBackClick = onBackClick
             )

@@ -9,7 +9,7 @@ import androidx.paging.cachedIn
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.navigation.FeedNavKey
+import com.shizq.bika.navigation.DashboardAction
 import com.shizq.bika.paging.SinglePagePagingSource
 import com.shizq.bika.paging.TopicComicsPagingSource
 import com.shizq.bika.ui.comiclist.ComicSearchParams
@@ -22,35 +22,38 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 class FeedViewModel @AssistedInject constructor(
     private val api: BikaDataSource,
     topicComicsPagingSourceFactory: TopicComicsPagingSource.Factory,
-    @Assisted private val feedNavKey: FeedNavKey,
+    @Assisted private val action: DashboardAction,
 ) : ViewModel() {
-    private val pagingSource: PagingSource<Int, ComicSimple> = when (feedNavKey) {
-        FeedNavKey.Collection -> {
-            SinglePagePagingSource {
-                val collectionsData = api.getCollections()
-                collectionsData.collections.firstOrNull()?.comics ?: emptyList()
-            }
+    private val pagingSource: PagingSource<Int, ComicSimple> = when (action) {
+        is DashboardAction.Knight -> topicComicsPagingSourceFactory.create(
+            ComicSearchParams(
+                knightId = action.id,
+                sort = Sort.NEWEST
+            )
+        )
+
+        is DashboardAction.AdvancedSearch -> topicComicsPagingSourceFactory.create(
+            ComicSearchParams(
+                topic = action.name,
+                tag = action.tag,
+                authorName = action.authorName,
+                translationTeam = action.translationTeam,
+                sort = Sort.NEWEST
+            )
+        )
+
+        DashboardAction.ToCollections -> SinglePagePagingSource {
+            val collectionsData = api.getCollections()
+            collectionsData.collections.firstOrNull()?.comics ?: emptyList()
         }
 
-        FeedNavKey.Random -> SinglePagePagingSource {
+        DashboardAction.ToRandom -> SinglePagePagingSource {
             val collectionsData = api.getRandomComics()
             collectionsData.comics
         }
 
-        is FeedNavKey.Topic -> {
-            topicComicsPagingSourceFactory.create(
-                ComicSearchParams(topic = feedNavKey.name, sort = Sort.NEWEST)
-            )
-        }
-
-        is FeedNavKey.Recent -> {
-            topicComicsPagingSourceFactory.create(
-                ComicSearchParams(sort = Sort.NEWEST)
-            )
-        }
-
-        is FeedNavKey.Knight -> topicComicsPagingSourceFactory.create(
-            ComicSearchParams(knightId = feedNavKey.id)
+        DashboardAction.ToRecent -> topicComicsPagingSourceFactory.create(
+            ComicSearchParams(sort = Sort.NEWEST)
         )
     }
     val pagedComics = Pager(PagingConfig(40, 1)) {
@@ -61,7 +64,7 @@ class FeedViewModel @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(
-            feedNavKey: FeedNavKey,
+            action: DashboardAction,
         ): FeedViewModel
     }
 }
