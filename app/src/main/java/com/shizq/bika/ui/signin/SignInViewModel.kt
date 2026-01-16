@@ -4,13 +4,11 @@ import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.JsonObject
 import com.shizq.bika.base.BaseViewModel
-import com.shizq.bika.bean.ProfileBean
 import com.shizq.bika.bean.SignInBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
@@ -21,18 +19,11 @@ class SignInViewModel(application: Application) : BaseViewModel(application) {
     var email: String? = null
     var password: String? = null
 
-    val liveData_signin: MutableLiveData<BaseResponse<SignInBean>> by lazy {
-        MutableLiveData<BaseResponse<SignInBean>>()
-    }
+    val liveData_signin = MutableLiveData<BaseResponse<SignInBean>>()
 
-    val liveData_forgot: MutableLiveData<BaseResponse<SignInBean>> by lazy {
-        MutableLiveData<BaseResponse<SignInBean>>()
-    }
+    val liveData_forgot = MutableLiveData<BaseResponse<SignInBean>>()
 
-    val liveData_password: MutableLiveData<BaseResponse<SignInBean>> by lazy {
-        MutableLiveData<BaseResponse<SignInBean>>()
-    }
-
+    val liveData_password = MutableLiveData<BaseResponse<SignInBean>>()
 
     fun getSignIn() {
         val body = RequestBody.create(
