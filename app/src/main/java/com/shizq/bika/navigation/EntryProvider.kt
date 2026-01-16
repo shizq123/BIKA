@@ -28,7 +28,7 @@ fun EntryProviderScope<NavKey>.leaderboardEntry(navigator: Navigator) {
         LeaderboardScreen(
             navigationToUnitedDetail = { navigator.navigateToUnitedDetail(it) },
             navigationToKnight = { name, id ->
-                navigator.navigate(FeedNavKey(DashboardAction.Knight(name, id)))
+                navigator.navigate(FeedNavKey(DiscoveryAction.Knight(name, id)))
             }
         )
     }

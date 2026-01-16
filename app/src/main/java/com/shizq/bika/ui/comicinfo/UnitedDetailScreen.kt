@@ -102,7 +102,7 @@ fun ComicDetailContent(
             Scaffold(
                 topBar = {
                     TopAppBar(
-                        title = { Text(detail.title) },
+                        title = { },
                         navigationIcon = {
                             IconButton(onBackClick) {
                                 Icon(Icons.AutoMirrored.Rounded.ArrowBack, null)

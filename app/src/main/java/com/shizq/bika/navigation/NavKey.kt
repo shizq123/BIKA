@@ -7,22 +7,22 @@ import kotlinx.serialization.Serializable
 object DashboardNavKey : NavKey
 
 //@Serializable
-sealed interface DashboardAction {
+sealed interface DiscoveryAction {
     val name: String
 
-    object ToCollections : DashboardAction {
+    object ToCollections : DiscoveryAction {
         override val name: String = "本子妹推薦"
     }
 
-    object ToRecent : DashboardAction {
+    object ToRecent : DiscoveryAction {
         override val name: String = "最近更新"
     }
 
-    object ToRandom : DashboardAction {
+    object ToRandom : DiscoveryAction {
         override val name: String = "随机本子"
     }
 
-    data class Knight(override val name: String, val id: String) : DashboardAction
+    data class Knight(override val name: String, val id: String) : DiscoveryAction
 
     data class AdvancedSearch(
         override val name: String,
@@ -31,11 +31,11 @@ sealed interface DashboardAction {
         val authorName: String? = null,
         val knightId: String? = null,
         val translationTeam: String? = null
-    ) : DashboardAction
+    ) : DiscoveryAction
 }
 
 @Serializable
-data class FeedNavKey(val action: DashboardAction) : NavKey
+data class FeedNavKey(val action: DiscoveryAction) : NavKey
 
 @Serializable
 object LeaderboardNavKey : NavKey

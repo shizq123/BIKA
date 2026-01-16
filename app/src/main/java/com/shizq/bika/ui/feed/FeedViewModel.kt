@@ -9,7 +9,7 @@ import androidx.paging.cachedIn
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.navigation.DashboardAction
+import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.paging.SinglePagePagingSource
 import com.shizq.bika.paging.TopicComicsPagingSource
 import com.shizq.bika.ui.comiclist.ComicSearchParams
@@ -22,17 +22,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 class FeedViewModel @AssistedInject constructor(
     private val api: BikaDataSource,
     topicComicsPagingSourceFactory: TopicComicsPagingSource.Factory,
-    @Assisted private val action: DashboardAction,
+    @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
     private val pagingSource: PagingSource<Int, ComicSimple> = when (action) {
-        is DashboardAction.Knight -> topicComicsPagingSourceFactory.create(
+        is DiscoveryAction.Knight -> topicComicsPagingSourceFactory.create(
             ComicSearchParams(
                 knightId = action.id,
                 sort = Sort.NEWEST
             )
         )
 
-        is DashboardAction.AdvancedSearch -> topicComicsPagingSourceFactory.create(
+        is DiscoveryAction.AdvancedSearch -> topicComicsPagingSourceFactory.create(
             ComicSearchParams(
                 topic = action.name,
                 tag = action.tag,
@@ -42,17 +42,17 @@ class FeedViewModel @AssistedInject constructor(
             )
         )
 
-        DashboardAction.ToCollections -> SinglePagePagingSource {
+        DiscoveryAction.ToCollections -> SinglePagePagingSource {
             val collectionsData = api.getCollections()
             collectionsData.collections.firstOrNull()?.comics ?: emptyList()
         }
 
-        DashboardAction.ToRandom -> SinglePagePagingSource {
+        DiscoveryAction.ToRandom -> SinglePagePagingSource {
             val collectionsData = api.getRandomComics()
             collectionsData.comics
         }
 
-        DashboardAction.ToRecent -> topicComicsPagingSourceFactory.create(
+        DiscoveryAction.ToRecent -> topicComicsPagingSourceFactory.create(
             ComicSearchParams(sort = Sort.NEWEST)
         )
     }
@@ -64,7 +64,7 @@ class FeedViewModel @AssistedInject constructor(
     @AssistedFactory
     interface Factory {
         fun create(
-            action: DashboardAction,
+            action: DiscoveryAction,
         ): FeedViewModel
     }
 }
