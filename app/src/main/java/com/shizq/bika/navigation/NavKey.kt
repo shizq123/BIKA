@@ -6,23 +6,36 @@ import kotlinx.serialization.Serializable
 @Serializable
 object DashboardNavKey : NavKey
 
-@Serializable
-sealed interface FeedNavKey : NavKey {
-    @Serializable
-    object Collection : FeedNavKey
+//@Serializable
+sealed interface DashboardAction {
+    val name: String
 
-    @Serializable
-    object Random : FeedNavKey
+    object ToCollections : DashboardAction {
+        override val name: String = "本子妹推薦"
+    }
 
-    @Serializable
-    data class Topic(val name: String) : FeedNavKey
+    object ToRecent : DashboardAction {
+        override val name: String = "最近更新"
+    }
 
-    @Serializable
-    object Recent : FeedNavKey
+    object ToRandom : DashboardAction {
+        override val name: String = "随机本子"
+    }
 
-    @Serializable
-    data class Knight(val name: String, val id: String) : FeedNavKey
+    data class Knight(override val name: String, val id: String) : DashboardAction
+
+    data class AdvancedSearch(
+        override val name: String,
+        val topic: String? = null,
+        val tag: String? = null,
+        val authorName: String? = null,
+        val knightId: String? = null,
+        val translationTeam: String? = null
+    ) : DashboardAction
 }
+
+@Serializable
+data class FeedNavKey(val action: DashboardAction) : NavKey
 
 @Serializable
 object LeaderboardNavKey : NavKey
@@ -32,3 +45,14 @@ data class UnitedDetailNavKey(val id: String) : NavKey
 
 @Serializable
 data class ReaderNavKey(val id: String, val order: Int) : NavKey
+
+@Serializable
+internal data class SearchKey(
+    val topic: String? = null,
+    val tag: String? = null,
+    val authorName: String? = null,
+    val knightId: String? = null,
+    val translationTeam: String? = null,
+) : NavKey {
+//    override val name: String = STRING_LITERAL_SEARCH
+}
