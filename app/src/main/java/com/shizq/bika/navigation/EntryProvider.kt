@@ -8,6 +8,7 @@ import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
+import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
 import com.shizq.bika.ui.reader.ReaderScreen
 import com.shizq.bika.ui.reader.ReaderViewModel
@@ -19,6 +20,7 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
             navigateToSearch = { action ->
                 navigator.navigate(FeedNavKey(action))
             },
+            navigationToHistory = { navigator.navigate(HistoryNavKey) },
         )
     }
 }
@@ -78,6 +80,15 @@ fun EntryProviderScope<NavKey>.feedEntry(navigator: Navigator) {
             ) { factory ->
                 factory.create(key.action)
             },
+        )
+    }
+}
+
+fun EntryProviderScope<NavKey>.historyEntry(navigator: Navigator) {
+    entry<HistoryNavKey> {
+        HistoryScreen(
+            onComicClick = navigator::navigateToUnitedDetail,
+            onBackClick = navigator::goBack
         )
     }
 }

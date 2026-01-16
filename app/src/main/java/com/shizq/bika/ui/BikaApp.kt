@@ -24,6 +24,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.navigation.Navigator
 import com.shizq.bika.navigation.dashboardEntry
 import com.shizq.bika.navigation.feedEntry
+import com.shizq.bika.navigation.historyEntry
 import com.shizq.bika.navigation.leaderboardEntry
 import com.shizq.bika.navigation.readerNavKeyEntry
 import com.shizq.bika.navigation.toEntries
@@ -63,6 +64,7 @@ fun BikaApp(
                 leaderboardEntry(navigator)
                 unitedDetailNavKeyEntry(navigator)
                 readerNavKeyEntry(navigator)
+                historyEntry(navigator)
             }
 
             NavDisplay(
