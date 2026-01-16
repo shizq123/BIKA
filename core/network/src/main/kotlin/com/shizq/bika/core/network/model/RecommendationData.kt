@@ -12,11 +12,11 @@ data class RecommendationData(
 data class RecommendComicDto(
     @SerialName("_id") val id: String,
     val title: String,
-    val author: String,
-    val pagesCount: Int,
-    val epsCount: Int,
-    val finished: Boolean,
-    val categories: List<String>,
+    val author: String = "",
+    val pagesCount: Int = 0,
+    val epsCount: Int = 0,
+    val finished: Boolean = false,
+    val categories: List<String> = emptyList(),
     val thumb: Media,
-    val likesCount: Int
+    val likesCount: Int = 0
 )
