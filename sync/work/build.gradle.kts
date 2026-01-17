@@ -5,6 +5,9 @@ plugins {
 
 android {
     namespace = "com.shizq.bika.sync"
+    defaultConfig {
+        testInstrumentationRunner = "com.shizq.bika.core.testing.BikaTestRunner"
+    }
 }
 
 dependencies {
