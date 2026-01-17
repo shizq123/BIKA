@@ -17,6 +17,7 @@ import com.shizq.bika.core.network.model.NetworkBootstrapConfig
 import com.shizq.bika.core.network.model.ProfileData
 import com.shizq.bika.core.network.model.RecommendationData
 import com.shizq.bika.core.network.model.Type
+import com.shizq.bika.core.network.plugin.ExpectRawResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -36,7 +37,9 @@ class BikaDataSource @Inject constructor(
     private val client: HttpClient,
 ) {
     suspend fun getNetworkConfig(): NetworkBootstrapConfig {
-        return client.get("http://68.183.234.72/init").body()
+        return client.get("http://68.183.234.72/init") {
+            attributes.put(ExpectRawResponse, Unit)
+        }.body()
     }
 
     suspend fun login(username: String, password: String): LoginData {

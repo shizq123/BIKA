@@ -9,8 +9,8 @@ import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.network.BuildConfig
+import com.shizq.bika.core.network.plugin.ApiEnvelopePlugin
 import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
-import com.shizq.bika.core.network.plugin.ResponseTransformer
 import com.shizq.bika.core.network.plugin.TokenAuthenticator
 import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
@@ -59,7 +59,7 @@ internal object NetworkModule {
             url("https://picaapi.picacomic.com")
             contentType(ContentType.Application.Json.withCharset(Charsets.UTF_8))
         }
-        install(ResponseTransformer)
+        install(ApiEnvelopePlugin)
         install(ContentNegotiation) {
             json(
                 Json { ignoreUnknownKeys = true }
