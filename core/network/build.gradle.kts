@@ -30,4 +30,5 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.commons.codec)
+    implementation(libs.okhttp.dnsoverhttps)
 }
