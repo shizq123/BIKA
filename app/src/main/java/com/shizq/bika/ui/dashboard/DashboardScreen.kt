@@ -146,12 +146,29 @@ fun DashboardContent(
     ModalNavigationDrawer(
         drawerState = drawerState,
         drawerContent = {
-            ModalDrawerSheet {
+            ModalDrawerSheet(
+                drawerState = drawerState
+            ) {
                 DashboardDrawerContent(
                     userProfile = userProfileUiState,
-                    onCheckInClick = onCheckInClick,
-                    navigationToHistory = navigationToHistory,
-                    navigateToSearch = navigateToSearch,
+                    onCheckInClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onCheckInClick()
+                        }
+                    },
+                    navigationToHistory = {
+                        scope.launch {
+                            drawerState.close()
+                            navigationToHistory()
+                        }
+                    },
+                    navigateToSearch = {
+                        scope.launch {
+                            drawerState.close()
+                            navigateToSearch(it)
+                        }
+                    },
                 )
             }
         },
@@ -315,8 +332,8 @@ fun DashboardDrawerContent(
     userProfile: UserProfileUiState,
     modifier: Modifier = Modifier,
     onCheckInClick: () -> Unit = {},
-    navigationToHistory: () -> Unit,
-    navigateToSearch: (DiscoveryAction) -> Unit,
+    navigationToHistory: () -> Unit = {},
+    navigateToSearch: (DiscoveryAction) -> Unit = {},
 ) {
     val context = LocalContext.current
     when (userProfile) {
@@ -341,7 +358,7 @@ fun DashboardDrawerContent(
                 Column(modifier = Modifier.padding(vertical = 8.dp)) {
                     NavigationDrawerItem(
                         label = { Text("首页") },
-                        selected = true, // 这里简单处理，实际应根据路由判断
+                        selected = false,
                         onClick = { /* Stay here */ },
                         icon = { Icon(painterResource(R.drawable.ic_home), null) },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
