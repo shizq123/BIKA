@@ -36,7 +36,7 @@ class BikaDataSource @Inject constructor(
     private val client: HttpClient,
 ) {
     suspend fun getNetworkConfig(): NetworkBootstrapConfig {
-        return client.get("init").body()
+        return client.get("http://68.183.234.72/init").body()
     }
 
     suspend fun login(username: String, password: String): LoginData {
