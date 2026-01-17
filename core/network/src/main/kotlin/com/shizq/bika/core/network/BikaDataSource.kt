@@ -35,7 +35,7 @@ import kotlinx.serialization.json.putJsonArray
 class BikaDataSource @Inject constructor(
     private val client: HttpClient,
 ) {
-    suspend fun fetchInitConfig(): NetworkBootstrapConfig {
+    suspend fun getNetworkConfig(): NetworkBootstrapConfig {
         return client.get("init").body()
     }
 
