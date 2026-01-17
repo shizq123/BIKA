@@ -20,4 +20,5 @@ dependencies {
 
     androidTestImplementation(libs.androidx.work.testing)
     androidTestImplementation(libs.hilt.android.testing)
+    androidTestImplementation(projects.core.testing)
 }
