@@ -10,6 +10,7 @@ import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.network.BuildConfig
 import com.shizq.bika.core.network.plugin.ApiEnvelopePlugin
+import com.shizq.bika.core.network.plugin.DirectDns
 import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
 import com.shizq.bika.core.network.plugin.TokenAuthenticator
 import com.shizq.bika.core.network.plugin.bikaAuth
@@ -36,7 +37,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
-import okhttp3.Dns
 import okhttp3.OkHttpClient
 
 // TODO: 一个暂时的操作，迁移后删除
@@ -87,14 +87,11 @@ internal object NetworkModule {
     @Singleton
     fun okHttpCallFactory(
         tokenAuthenticator: TokenAuthenticator,
+        directDns: DirectDns,
     ): OkHttpClient = trace("OkHttpClient") {
-
         OkHttpClient.Builder()
             .authenticator(tokenAuthenticator)
-            .dns {
-                listOf("172.67.194.19", "104.21.20.188", "104.19.53.76")
-                    .flatMap { Dns.SYSTEM.lookup(it) }
-            }
+            .dns(directDns)
             .build()
             .also { ProjectOkhttp = it }
     }
