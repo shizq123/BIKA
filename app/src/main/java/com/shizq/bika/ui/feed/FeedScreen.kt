@@ -1,6 +1,7 @@
 package com.shizq.bika.ui.feed
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -16,12 +17,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.ui.ComicCard
+import com.shizq.bika.core.ui.ErrorState
+import com.shizq.bika.core.ui.LoadingState
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
     onBackClick: () -> Unit,
@@ -45,9 +50,9 @@ private fun FeedContent(
     title: String,
     items: LazyPagingItems<ComicSimple>,
     navigationToComicDetail: (String) -> Unit,
-    onBackClick: () -> Unit
+    onBackClick: () -> Unit,
+    scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     Scaffold(
         topBar = {
             FeedAppBar(
@@ -58,11 +63,24 @@ private fun FeedContent(
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
-        LazyColumn(Modifier.padding(innerPadding)) {
-            items(items.itemCount, key = items.itemKey { it.id }) { index ->
-                items[index]?.let { item ->
-                    ComicCard(comic = item) {
-                        navigationToComicDetail(item.id)
+        when (items.loadState.refresh) {
+            is LoadState.Loading -> LoadingState()
+
+            is LoadState.Error -> ErrorState({ items.retry() })
+
+            is LoadState.NotLoading -> {
+                LazyColumn(Modifier.padding(innerPadding)) {
+                    items(items.itemCount, key = items.itemKey { it.id }) { index ->
+                        items[index]?.let { item ->
+                            ComicCard(comic = item) {
+                                navigationToComicDetail(item.id)
+                            }
+                        }
+                    }
+                    if (items.loadState.append is LoadState.Loading) {
+                        item {
+                            LoadingState(Modifier.wrapContentHeight())
+                        }
                     }
                 }
             }
