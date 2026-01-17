@@ -8,7 +8,8 @@ import com.shizq.bika.core.datastore.model.UserCredentials
 fun credentialMigration(context: Context): SharedPreferencesMigration<UserCredentials> {
     return SharedPreferencesMigration(
         context,
-        "com.shizq.bika_preferences"
+        "com.shizq.bika_preferences",
+        keysToMigrate = setOf("username", "password")
     ) { prefs: SharedPreferencesView, credentials: UserCredentials ->
         credentials.copy(
             username = prefs.getString("username", null),
