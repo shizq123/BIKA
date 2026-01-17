@@ -17,4 +17,5 @@ data class UserPreferences(
     val darkThemeConfig: DarkThemeConfig = DarkThemeConfig.FOLLOW_SYSTEM,
     val selectedNetworkLine: NetworkLine = NetworkLine.LINE_1,
     val autoCheckIn: Boolean = true,
+    val dns: Set<String> = setOf("104.21.20.188"),
 )

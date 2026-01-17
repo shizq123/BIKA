@@ -69,4 +69,10 @@ class UserPreferencesDataSource @Inject constructor(
             it.copy(autoCheckIn = enabled)
         }
     }
+
+    suspend fun setDns(dns: Set<String>) {
+        userPreferences.updateData {
+            it.copy(dns = it.dns + dns)
+        }
+    }
 }
