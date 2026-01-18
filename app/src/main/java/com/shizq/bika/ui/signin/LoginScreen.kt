@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.signin
 
-import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -30,8 +29,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -41,7 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
@@ -53,6 +49,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.ui.CircularProgressIndicator
 
 @Composable
@@ -62,32 +59,14 @@ fun LoginScreen(
     onSignUpClick: () -> Unit,
     onForgotPasswordClick: () -> Unit,
 ) {
-    val loginState by viewModel.uiState.collectAsState()
-
-    val context = LocalContext.current
-
-    LaunchedEffect(loginState.loginSuccess, loginState.errorMessage) {
-        if (loginState.loginSuccess) {
-            onLoginSuccess()
-        }
-        loginState.errorMessage?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
-            viewModel.errorMessageShown()
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        viewModel.requestCredentialsForAutofill()
-    }
+    val loginState by viewModel.state.collectAsStateWithLifecycle()
 
     LoginContent(
         loginState = loginState,
-        onAccountChange = viewModel::onAccountChanged,
-        onPasswordChange = viewModel::onPasswordChanged,
         onRememberMeChange = { },
-        onLoginClick = viewModel::onManualSignInClick,
         onSignUpClick = { },
         onForgotPasswordClick = { },
+        dispatch = viewModel::dispatch,
     )
 }
 
@@ -96,21 +75,14 @@ fun LoginScreen(
 fun LoginContent(
     loginState: LoginUiState,
     modifier: Modifier = Modifier,
-    onAccountChange: (String) -> Unit = {},
-    onPasswordChange: (String) -> Unit = {},
     onRememberMeChange: (Boolean) -> Unit = {},
-    onLoginClick: () -> Unit = {},
     onSignUpClick: () -> Unit = {},
     onForgotPasswordClick: () -> Unit = {},
+    dispatch: (LoginAction) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
 
     val passwordFocusRequester = remember { FocusRequester() }
-
-    val performLogin = {
-        focusManager.clearFocus()
-        onLoginClick()
-    }
 
     Scaffold(
         modifier = modifier
@@ -151,8 +123,8 @@ fun LoginContent(
 
                 // 账号输入框
                 EmailTextField(
-                    email = loginState.accountInput,
-                    onEmailChange = onAccountChange,
+                    email = loginState.username,
+                    onEmailChange = { dispatch(LoginAction.AccountChanged(it)) },
                     onNext = { passwordFocusRequester.requestFocus() },
                     isError = loginState.errorMessage?.contains("邮箱") == true,
                     modifier = Modifier
@@ -165,14 +137,16 @@ fun LoginContent(
 
                 // 密码输入框
                 PasswordTextField(
-                    password = loginState.passwordInput,
-                    onPasswordChange = onPasswordChange,
+                    password = loginState.password,
+                    onPasswordChange = { dispatch(LoginAction.PasswordChanged(it)) },
                     modifier = Modifier
                         .semantics {
-                            contentType = ContentType.NewPassword
+                            contentType = ContentType.Password
                         }
                         .focusRequester(passwordFocusRequester),
-                    onDone = performLogin
+                    onDone = {
+                        focusManager.clearFocus()
+                    }
                 )
 
                 Spacer(modifier = Modifier.height(12.dp))
@@ -207,14 +181,11 @@ fun LoginContent(
                 Spacer(modifier = Modifier.height(32.dp))
                 Button(
                     onClick = {
-                        performLogin()
+                        dispatch(LoginAction.LoginClicked)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    enabled = loginState.accountInput.isNotBlank() &&
-                            loginState.passwordInput.isNotBlank() &&
-                            !loginState.isLoading,
                     shape = MaterialTheme.shapes.large
                 ) {
                     if (loginState.isLoading) {
