@@ -26,6 +26,7 @@ import com.shizq.bika.navigation.dashboardEntry
 import com.shizq.bika.navigation.feedEntry
 import com.shizq.bika.navigation.historyEntry
 import com.shizq.bika.navigation.leaderboardEntry
+import com.shizq.bika.navigation.loginEntry
 import com.shizq.bika.navigation.readerNavKeyEntry
 import com.shizq.bika.navigation.toEntries
 import com.shizq.bika.navigation.unitedDetailNavKeyEntry
@@ -59,6 +60,7 @@ fun BikaApp(
                 ),
         ) {
             val entryProvider = entryProvider {
+                loginEntry(navigator)
                 dashboardEntry(navigator)
                 feedEntry(navigator)
                 leaderboardEntry(navigator)

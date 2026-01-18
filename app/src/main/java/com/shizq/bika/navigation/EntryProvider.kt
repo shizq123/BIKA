@@ -12,6 +12,17 @@ import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
 import com.shizq.bika.ui.reader.ReaderScreen
 import com.shizq.bika.ui.reader.ReaderViewModel
+import com.shizq.bika.ui.signin.LoginScreen
+
+fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
+    entry<LoginNavKey> {
+        LoginScreen(
+            onLoginSuccess = {},
+            onSignUpClick = {},
+            onForgotPasswordClick = {}
+        )
+    }
+}
 
 fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
     entry<DashboardNavKey> {

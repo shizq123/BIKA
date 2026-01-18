@@ -7,6 +7,9 @@ import kotlinx.serialization.Serializable
 object DashboardNavKey : NavKey
 
 @Serializable
+object LoginNavKey : NavKey
+
+@Serializable
 sealed interface DiscoveryAction {
     val name: String
 

@@ -4,18 +4,19 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.navigation3.runtime.NavKey
 import com.shizq.bika.core.ui.TrackDisposableJank
-import com.shizq.bika.navigation.DashboardNavKey
 import com.shizq.bika.navigation.NavigationState
-import com.shizq.bika.navigation.TOP_LEVEL_NAV_ITEMS
+import com.shizq.bika.navigation.TOP_LEVEL_ROUTES
 import com.shizq.bika.navigation.rememberNavigationState
 import kotlinx.coroutines.CoroutineScope
 
 @Composable
 fun rememberAppState(
+    startDestination: NavKey,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ): AppState {
-    val navigationState = rememberNavigationState(DashboardNavKey, TOP_LEVEL_NAV_ITEMS.keys)
+    val navigationState = rememberNavigationState(startDestination, TOP_LEVEL_ROUTES)
 
     NavigationTrackingSideEffect(navigationState)
 
