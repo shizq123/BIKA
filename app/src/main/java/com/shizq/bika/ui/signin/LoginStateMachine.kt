@@ -36,8 +36,6 @@ class LoginStateMachine @Inject constructor(
                         return@on mutate { copy(errorMessage = "请输入密码") }
                     }
 
-                    mutate { copy(isLoading = true, errorMessage = null) }
-
                     try {
                         val loginData = api.login(snapshot.username, snapshot.password)
                         userCredentialsDataSource.setToken(loginData.token)
@@ -52,6 +50,9 @@ class LoginStateMachine @Inject constructor(
                     } catch (e: Exception) {
                         mutate { copy(isLoading = false, errorMessage = e.message ?: "登录失败") }
                     }
+                }
+                condition({ it.isLoading }) {
+
                 }
                 collectWhileInState(passwordCredentialManager.getPasswordCredential()) { result ->
                     when (result) {

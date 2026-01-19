@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.signin
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +40,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
@@ -61,11 +64,20 @@ fun LoginScreen(
 ) {
     val loginState by viewModel.state.collectAsStateWithLifecycle()
 
+    LaunchedEffect(loginState.isSuccess) {
+        if (loginState.isSuccess) {
+            onLoginSuccess()
+        }
+    }
+    val context = LocalContext.current
     LoginContent(
         loginState = loginState,
-        onRememberMeChange = { },
+        onRememberMeChange = { viewModel.dispatch(LoginAction.ToggleRememberMe(it)) },
         onSignUpClick = { },
-        onForgotPasswordClick = { },
+        onForgotPasswordClick = {
+            onForgotPasswordClick()
+            Toast.makeText(context, "功能暂不可用", Toast.LENGTH_SHORT).show()
+        },
         dispatch = viewModel::dispatch,
     )
 }
