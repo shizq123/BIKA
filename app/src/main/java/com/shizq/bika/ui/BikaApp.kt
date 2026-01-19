@@ -28,6 +28,7 @@ import com.shizq.bika.navigation.historyEntry
 import com.shizq.bika.navigation.leaderboardEntry
 import com.shizq.bika.navigation.loginEntry
 import com.shizq.bika.navigation.readerNavKeyEntry
+import com.shizq.bika.navigation.settingsEntry
 import com.shizq.bika.navigation.toEntries
 import com.shizq.bika.navigation.unitedDetailNavKeyEntry
 
@@ -67,6 +68,7 @@ fun BikaApp(
                 unitedDetailNavKeyEntry(navigator)
                 readerNavKeyEntry(navigator)
                 historyEntry(navigator)
+                settingsEntry(navigator)
             }
 
             NavDisplay(

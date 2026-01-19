@@ -86,7 +86,6 @@ import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.notifications.NotificationsActivity
-import com.shizq.bika.ui.settings.SettingsActivity
 import com.shizq.bika.ui.user.UserActivity
 import com.shizq.bika.utils.SPUtil
 import kotlinx.coroutines.delay
@@ -98,6 +97,7 @@ fun DashboardScreen(
     navigateToSearch: (DiscoveryAction) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
     navigationToHistory: () -> Unit,
+    navigationToSettings: () -> Unit,
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
@@ -113,6 +113,7 @@ fun DashboardScreen(
         navigationToLeaderboard = navigationToLeaderboard,
         navigateToSearch = navigateToSearch,
         navigationToHistory = navigationToHistory,
+        navigationToSettings = navigationToSettings,
     )
 }
 
@@ -127,6 +128,7 @@ fun DashboardContent(
     navigationToLeaderboard: () -> Unit,
     navigateToSearch: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
+    navigationToSettings: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -169,6 +171,12 @@ fun DashboardContent(
                             navigateToSearch(it)
                         }
                     },
+                    navigationToSettings = {
+                        scope.launch {
+                            drawerState.close()
+                            navigationToSettings()
+                        }
+                    }
                 )
             }
         },
@@ -334,6 +342,7 @@ fun DashboardDrawerContent(
     onCheckInClick: () -> Unit = {},
     navigationToHistory: () -> Unit = {},
     navigateToSearch: (DiscoveryAction) -> Unit = {},
+    navigationToSettings: () -> Unit = {},
 ) {
     val context = LocalContext.current
     when (userProfile) {
@@ -412,10 +421,7 @@ fun DashboardDrawerContent(
                     NavigationDrawerItem(
                         label = { Text("设置") },
                         selected = false,
-                        onClick = {
-                            val intent = Intent(context, SettingsActivity::class.java)
-                            context.startActivity(intent)
-                        },
+                        onClick = navigationToSettings,
                         icon = { Icon(Icons.Filled.Settings, "Settings") },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
                     )

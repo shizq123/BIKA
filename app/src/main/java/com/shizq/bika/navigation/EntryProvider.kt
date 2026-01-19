@@ -12,12 +12,13 @@ import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
 import com.shizq.bika.ui.reader.ReaderScreen
 import com.shizq.bika.ui.reader.ReaderViewModel
+import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 
 fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     entry<LoginNavKey> {
         LoginScreen(
-            onLoginSuccess = {},
+            onLoginSuccess = { navigator.navigate(DashboardNavKey) },
             onSignUpClick = {},
             onForgotPasswordClick = {}
         )
@@ -32,6 +33,7 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
                 navigator.navigate(FeedNavKey(action))
             },
             navigationToHistory = { navigator.navigate(HistoryNavKey) },
+            navigationToSettings = { navigator.navigate(SettingsNavKey) },
         )
     }
 }
@@ -99,6 +101,15 @@ fun EntryProviderScope<NavKey>.historyEntry(navigator: Navigator) {
     entry<HistoryNavKey> {
         HistoryScreen(
             onComicClick = navigator::navigateToUnitedDetail,
+            onBackClick = navigator::goBack
+        )
+    }
+}
+
+fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
+    entry<SettingsNavKey> {
+        SettingsScreen(
+            onLogoutClicked = { },
             onBackClick = navigator::goBack
         )
     }

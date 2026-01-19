@@ -63,6 +63,9 @@ data class ReaderNavKey(val id: String, val order: Int) : NavKey
 object HistoryNavKey : NavKey
 
 @Serializable
+object SettingsNavKey : NavKey
+
+@Serializable
 internal data class SearchKey(
     val topic: String? = null,
     val tag: String? = null,
