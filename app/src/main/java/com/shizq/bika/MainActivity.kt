@@ -7,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
@@ -57,11 +58,12 @@ class MainActivity : ComponentActivity() {
                     when (val state = uiState) {
                         is MainActivityUiState.Loading -> {}
                         is MainActivityUiState.Success -> {
-                            val startDestination =
-                                if (state.token != null) DashboardNavKey else LoginNavKey
-
-                            val appState = rememberAppState(startDestination)
-                            BikaApp(appState)
+                            key(state.token) {
+                                val startDestination =
+                                    if (state.token != null) DashboardNavKey else LoginNavKey
+                                val appState = rememberAppState(startDestination)
+                                BikaApp(appState)
+                            }
                         }
                     }
                 }
