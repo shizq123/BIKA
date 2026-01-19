@@ -39,7 +39,6 @@
         android:theme="@style/AppTheme"
         tools:ignore="UnusedAttribute">
 
-        <activity android:name=".ui.account.AccountActivity" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -66,9 +65,6 @@
             android:exported="false" />
         <activity
             android:name=".ui.comment.CommentsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.reader.ReaderActivity"
             android:exported="false" />
         <activity
             android:name=".ui.games.GamesActivity"

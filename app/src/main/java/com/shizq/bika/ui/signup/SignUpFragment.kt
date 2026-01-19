@@ -11,7 +11,6 @@ import android.view.ViewGroup
 import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 import androidx.appcompat.widget.PopupMenu
-import androidx.navigation.Navigation
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.R
@@ -19,7 +18,7 @@ import com.shizq.bika.base.BaseFragment
 import com.shizq.bika.databinding.FragmentSignupBinding
 import com.shizq.bika.utils.SPUtil
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Date
 
 
 /**
@@ -379,9 +378,6 @@ class SignUpFragment : BaseFragment<FragmentSignupBinding, SignUpViewModel>() {
                     .setPositiveButton("确定") { dialog, which ->
                         // TODO 需要优化 添加 自动登录 或者 跳转到登录页（登录页要显示注册的账号密码）
 //                        Navigation.findNavController(activity as AppCompatActivity,R.id.login_fcv).navigateUp()
-                        Navigation.findNavController(activity as AppCompatActivity, R.id.login_fcv)
-                            .navigate(R.id.action_signUpFragment_to_signInFragment)
-
                     }
                     .setNegativeButton("取消",null)
                     .show()

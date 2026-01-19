@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.settings
 
-import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -22,7 +21,6 @@ import com.shizq.bika.R
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseResponse
-import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.utils.GlideCacheUtil
 import com.shizq.bika.utils.SPUtil
 import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
@@ -195,24 +193,6 @@ class SettingsPreferenceFragment : PreferenceFragmentCompat(),
                 }
                 return false
             }
-
-            "setting_exit" -> {
-                activity?.let {
-                    MaterialAlertDialogBuilder(it)
-                        .setTitle("你确定要退出登录吗")
-                        .setPositiveButton("确定") { _, _ ->
-                            SPUtil.remove("token")
-                            SPUtil.remove("chat_token")
-                            startActivity(Intent(activity, AccountActivity::class.java))
-                            activity?.finishAffinity()
-                        }
-                        .setNegativeButton("取消", null)
-                        .show()
-
-                }
-                return false
-            }
-
         }
         return false
     }

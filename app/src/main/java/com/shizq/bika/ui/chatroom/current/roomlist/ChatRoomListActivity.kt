@@ -15,7 +15,6 @@ import com.shizq.bika.adapter.ChatRoomListAdapter
 import com.shizq.bika.base.BaseActivity
 import com.shizq.bika.databinding.ActivityChatRoomListBinding
 import com.shizq.bika.network.Result
-import com.shizq.bika.ui.account.AccountActivity
 import com.shizq.bika.ui.chatroom.current.ChatRoomActivity
 import com.shizq.bika.ui.chatroom.current.blacklist.ChatBlacklistActivity
 import com.shizq.bika.utils.SPUtil
@@ -116,7 +115,7 @@ class ChatRoomListActivity : BaseActivity<ActivityChatRoomListBinding, ChatRoomL
                     .setPositiveButton("重新登录") { _, _ ->
                         SPUtil.remove("token")
                         SPUtil.remove("chat_token")
-                        startActivity(Intent(this, AccountActivity::class.java))
+//                        startActivity(Intent(this, AccountActivity::class.java))
                         finishAffinity()
                     }
                     .setNegativeButton("取消") { _, _ ->

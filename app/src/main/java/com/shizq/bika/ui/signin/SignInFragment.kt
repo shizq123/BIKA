@@ -12,7 +12,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
-import androidx.navigation.Navigation
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.BR
 import com.shizq.bika.MainActivity
@@ -81,8 +80,7 @@ class SignInFragment : BaseFragment<FragmentSigninBinding, SignInViewModel>() {
         }
 
         fun SignUp() {
-            Navigation.findNavController(activity!!, R.id.login_fcv)
-                .navigate(R.id.action_signInFragment_to_signUpFragment)
+
         }
 
         fun Forgot() {
