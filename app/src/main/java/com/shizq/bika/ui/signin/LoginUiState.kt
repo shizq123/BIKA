@@ -14,8 +14,5 @@ sealed interface LoginAction {
     data class PasswordChanged(val password: String) : LoginAction
     data class ToggleRememberMe(val checked: Boolean) : LoginAction
 
-    // Action for when the process fails, is cancelled, or finds no credentials
-    data class CredentialFetchFailed(val errorMessage: String?) : LoginAction
-
     data object LoginClicked : LoginAction
 }
