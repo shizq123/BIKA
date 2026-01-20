@@ -2,19 +2,14 @@ package com.shizq.bika.ui.signup
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.Card
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,7 +17,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -35,57 +32,63 @@ data class BasicInfoData(
     val password: String = ""
 )
 
-// 基本信息状态管理
 class BasicInfoState {
     var nickname by mutableStateOf("")
     var username by mutableStateOf("")
     var password by mutableStateOf("")
     var passwordVisible by mutableStateOf(false)
 
+    // 追踪字段是否被触碰过
+    var nicknameTouched by mutableStateOf(false)
+    var usernameTouched by mutableStateOf(false)
+    var passwordTouched by mutableStateOf(false)
+
     fun toData() = BasicInfoData(
-        nickname = nickname,
-        username = username,
+        nickname = nickname.trim(),
+        username = username.trim(),
         password = password
     )
 
     fun validate(): ValidationResult {
-        validateNickname().let { result ->
-            if (result is ValidationResult.Error) return result
-        }
-        validateUsername().let { result ->
-            if (result is ValidationResult.Error) return result
-        }
-        return validatePassword()
+        nicknameTouched = true
+        usernameTouched = true
+        passwordTouched = true
+
+        return validateNickname().takeIfError()
+            ?: validateUsername().takeIfError()
+            ?: validatePassword()
     }
 
-    fun validateNickname(): ValidationResult {
-        return when {
-            nickname.isEmpty() -> ValidationResult.Error("请输入昵称")
-            nickname.length < 2 -> ValidationResult.Error("昵称必须至少2个字符")
-            nickname.length > 50 -> ValidationResult.Error("昵称不能超过50个字符")
-            else -> ValidationResult.Success
-        }
+    fun validateNickname(): ValidationResult = when {
+        nickname.isBlank() -> ValidationResult.Error("请输入昵称")
+        nickname.trim().length < 2 -> ValidationResult.Error("昵称至少需要2个字符")
+        nickname.trim().length > 50 -> ValidationResult.Error("昵称不能超过50个字符")
+        else -> ValidationResult.Success
     }
 
     fun validateUsername(): ValidationResult {
-        val usernameRegex = "^[a-zA-Z0-9]+$".toRegex()
+        val trimmed = username.trim()
         return when {
-            username.isEmpty() -> ValidationResult.Error("请输入用户名")
-            !username.matches(usernameRegex) -> ValidationResult.Error("用户名只能包含字母和数字，不能包含特殊符号")
+            trimmed.isEmpty() -> ValidationResult.Error("请输入用户名")
+            !trimmed.matches(USERNAME_REGEX) -> ValidationResult.Error("用户名只能包含字母和数字")
             else -> ValidationResult.Success
         }
     }
 
-    fun validatePassword(): ValidationResult {
-        return when {
-            password.isEmpty() -> ValidationResult.Error("请输入密码")
-            password.length <= 8 -> ValidationResult.Error("密码必须大于8个字符")
-            else -> ValidationResult.Success
-        }
+    fun validatePassword(): ValidationResult = when {
+        password.isEmpty() -> ValidationResult.Error("请输入密码")
+        password.length < 8 -> ValidationResult.Error("密码至少需要8个字符")
+        else -> ValidationResult.Success
+    }
+
+    private fun ValidationResult.takeIfError(): ValidationResult? =
+        this as? ValidationResult.Error
+
+    companion object {
+        private val USERNAME_REGEX = "^[a-zA-Z0-9]+$".toRegex()
     }
 }
 
-// 基本信息输入组件
 @Composable
 fun BasicInfoStep(
     state: BasicInfoState,
@@ -93,169 +96,87 @@ fun BasicInfoStep(
     modifier: Modifier = Modifier
 ) {
     val focusManager = LocalFocusManager.current
+
     Column(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 昵称输入
-        NicknameField(
+        SignUpTextField(
             value = state.nickname,
             onValueChange = { state.nickname = it },
-            isError = errorMessage != null &&
-                    state.validateNickname() is ValidationResult.Error
+            label = "昵称",
+            supportingText = "2-50个字符",
+            isError = errorMessage != null && state.validateNickname() is ValidationResult.Error,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
         )
 
-        // 用户名输入
-        UsernameField(
+        SignUpTextField(
             value = state.username,
             onValueChange = { state.username = it },
-            isError = errorMessage != null &&
-                    state.validateUsername() is ValidationResult.Error,
-            modifier = Modifier
+            label = "用户名",
+            supportingText = "用户名不能包含特殊符号",
+            isError = errorMessage != null && state.validateUsername() is ValidationResult.Error,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { focusManager.moveFocus(FocusDirection.Down) })
         )
 
-        // 密码输入
-        PasswordField(
+        SignUpTextField(
             value = state.password,
             onValueChange = { state.password = it },
-            passwordVisible = state.passwordVisible,
-            onPasswordVisibilityChange = { state.passwordVisible = it },
-            isError = errorMessage != null &&
-                    state.validatePassword() is ValidationResult.Error
-        )
-    }
-}
-
-// 昵称输入字段
-@Composable
-fun NicknameField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    isError: Boolean,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text("昵称") },
-        supportingText = {
-            Text("昵称必须在2到50个字符之间")
-        },
-        isError = isError,
-        modifier = modifier.fillMaxWidth(),
-        singleLine = true
-    )
-}
-
-// 用户名输入字段
-@Composable
-fun UsernameField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    isError: Boolean,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text("用户名") },
-        supportingText = {
-            Text("只能包含字母和数字")
-        },
-        isError = isError,
-        modifier = modifier.fillMaxWidth(),
-        singleLine = true,
-        keyboardOptions = KeyboardOptions.Default,
-        keyboardActions = KeyboardActions(),
-    )
-}
-
-// 密码输入字段
-@Composable
-fun PasswordField(
-    value: String,
-    onValueChange: (String) -> Unit,
-    passwordVisible: Boolean,
-    onPasswordVisibilityChange: (Boolean) -> Unit,
-    isError: Boolean,
-    modifier: Modifier = Modifier
-) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        label = { Text("密码") },
-        supportingText = {
-            Text("密码必须大于8个字符")
-        },
-        isError = isError,
-        visualTransformation = if (passwordVisible)
-            VisualTransformation.None
-        else
-            PasswordVisualTransformation(),
-        trailingIcon = {
-            IconButton(onClick = { onPasswordVisibilityChange(!passwordVisible) }) {
-                Icon(
-                    imageVector = if (passwordVisible)
-                        Icons.Default.Visibility
-                    else
-                        Icons.Default.VisibilityOff,
-                    contentDescription = if (passwordVisible)
-                        "隐藏密码"
-                    else
-                        "显示密码"
-                )
+            label = "密码",
+            supportingText = "至少8个字符",
+            isError = errorMessage != null && state.validatePassword() is ValidationResult.Error,
+            keyboardOptions = KeyboardOptions(
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            keyboardActions = KeyboardActions(onDone = { focusManager.clearFocus() }),
+            visualTransformation = if (state.passwordVisible) {
+                VisualTransformation.None
+            } else {
+                PasswordVisualTransformation()
+            },
+            trailingIcon = {
+                IconButton(onClick = { state.passwordVisible = !state.passwordVisible }) {
+                    Icon(
+                        imageVector = if (state.passwordVisible) {
+                            Icons.Default.Visibility
+                        } else {
+                            Icons.Default.VisibilityOff
+                        },
+                        contentDescription = if (state.passwordVisible) "隐藏密码" else "显示密码"
+                    )
+                }
             }
-        },
-        modifier = modifier.fillMaxWidth(),
-        singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password)
-    )
-}
-
-// 信息确认组件
-@Composable
-fun BasicInfoConfirmation(
-    data: BasicInfoData,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = "请确认您的信息",
-                style = MaterialTheme.typography.titleMedium
-            )
-            HorizontalDivider()
-            InfoRow(label = "昵称", value = data.nickname)
-            InfoRow(label = "用户名", value = data.username)
-            InfoRow(label = "密码", value = "••••••••")
-        }
+        )
     }
 }
 
 @Composable
-fun InfoRow(
-    label: String,
+private fun SignUpTextField(
     value: String,
-    modifier: Modifier = Modifier
+    onValueChange: (String) -> Unit,
+    label: String,
+    supportingText: String,
+    isError: Boolean,
+    modifier: Modifier = Modifier,
+    keyboardOptions: KeyboardOptions = KeyboardOptions.Default,
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailingIcon: @Composable (() -> Unit)? = null
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
-    ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-    }
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        label = { Text(label) },
+        supportingText = { Text(supportingText) },
+        isError = isError,
+        singleLine = true,
+        keyboardOptions = keyboardOptions,
+        keyboardActions = keyboardActions,
+        visualTransformation = visualTransformation,
+        trailingIcon = trailingIcon,
+        modifier = modifier.fillMaxWidth()
+    )
 }
