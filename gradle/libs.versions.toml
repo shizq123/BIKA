@@ -190,3 +190,6 @@ bika-android-room = { id = "bika.android.room" }
 bika-android-test = { id = "bika.android.test" }
 bika-hilt = { id = "bika.hilt" }
 bika-root = { id = "bika.root" }
+
+[bundles]
+androidx-compose-ui-test = ["androidx-compose-ui-test", "androidx-compose-ui-testManifest"]
