@@ -26,6 +26,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import com.shizq.bika.core.ui.wizard.ValidationResult
@@ -33,51 +34,60 @@ import kotlinx.datetime.LocalDate
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.atStartOfDayIn
 import kotlinx.datetime.format
-import kotlinx.datetime.minus
+import kotlinx.datetime.number
 import kotlinx.datetime.toLocalDateTime
+import kotlinx.datetime.todayIn
 import kotlin.time.Clock
 import kotlin.time.Instant
 
-// 性别枚举
 enum class Gender(val displayName: String) {
     MALE("男"),
     FEMALE("女"),
     ROBOT("机器人")
 }
 
-// 个人信息数据类
 data class PersonalInfoData(
     val birthday: LocalDate,
     val gender: Gender
 )
 
-// 个人信息状态管理
 class PersonalInfoState {
-    private val current = Clock.System.now().toLocalDateTime(TimeZone.currentSystemDefault()).date
-    var birthday by mutableStateOf(current)
+    var birthday by mutableStateOf(defaultBirthday())
     var gender by mutableStateOf(Gender.MALE)
     var showDatePicker by mutableStateOf(false)
-
+    val age: Int
+        get() = calculateAge(birthday, today())
     fun toData() = PersonalInfoData(
         birthday = birthday,
         gender = gender
     )
-
     fun validate(): ValidationResult {
-        val period = birthday - current
-        if (period.years < 18) {
-            return ValidationResult.Error("您必须年满18岁才能注册")
+        if (age < MIN_AGE) {
+            return ValidationResult.Error("您必须年满${MIN_AGE}岁才能注册")
         }
-
         return ValidationResult.Success
     }
 
-    fun getAge(): Int {
-        return (current - birthday).years
+    companion object {
+        private const val MIN_AGE = 18
+        private fun today(): LocalDate = Clock.System.todayIn(TimeZone.currentSystemDefault())
+        private fun defaultBirthday(): LocalDate {
+            val today = today()
+            return LocalDate(today.year - MIN_AGE, today.month.number, today.day)
+        }
+
+        private fun calculateAge(birthday: LocalDate, today: LocalDate): Int {
+            var age = today.year - birthday.year
+            if (today.month.number < birthday.month.number ||
+                (today.month.number == birthday.month.number && today.day < birthday.day)
+            ) {
+                age--
+            }
+            return age
+        }
     }
 }
 
-// 个人信息输入组件
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun PersonalInfoStep(
@@ -89,66 +99,70 @@ fun PersonalInfoStep(
         modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        // 生日选择
         BirthdaySelector(
             birthday = state.birthday,
             onBirthdayClick = { state.showDatePicker = true },
-            age = state.getAge(),
-            isError = errorMessage != null,
-            modifier = Modifier.fillMaxWidth()
+            age = state.age,
+            isError = errorMessage != null
         )
 
-        // 性别选择
         GenderSelector(
             selectedGender = state.gender,
-            onGenderSelected = { state.gender = it },
-            isError = errorMessage != null,
-            modifier = Modifier.fillMaxWidth()
+            onGenderSelected = { state.gender = it }
         )
     }
 
-    // 日期选择器对话框
     if (state.showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = state.birthday
-                .atStartOfDayIn(TimeZone.UTC)
-                .toEpochMilliseconds()
+        BirthdayDatePickerDialog(
+            initialDate = state.birthday,
+            onDateSelected = { state.birthday = it },
+            onDismiss = { state.showDatePicker = false }
         )
-
-        state.birthday
-            .atStartOfDayIn(TimeZone.UTC)
-            .toEpochMilliseconds()
-        DatePickerDialog(
-            onDismissRequest = { state.showDatePicker = false },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        datePickerState.selectedDateMillis?.let { millis ->
-                            val selectedDate = Instant.fromEpochMilliseconds(millis)
-                                .toLocalDateTime(TimeZone.UTC)
-                                .date
-                            state.birthday = selectedDate
-                        }
-                        state.showDatePicker = false
-                    }
-                ) {
-                    Text("确定")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { state.showDatePicker = false }) {
-                    Text("取消")
-                }
-            }
-        ) {
-            DatePicker(state = datePickerState)
-        }
     }
 }
 
-// 生日选择器
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BirthdaySelector(
+private fun BirthdayDatePickerDialog(
+    initialDate: LocalDate,
+    onDateSelected: (LocalDate) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = initialDate
+            .atStartOfDayIn(TimeZone.UTC)
+            .toEpochMilliseconds()
+    )
+
+    DatePickerDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    datePickerState.selectedDateMillis?.let { millis ->
+                        val selectedDate = Instant.fromEpochMilliseconds(millis)
+                            .toLocalDateTime(TimeZone.UTC)
+                            .date
+                        onDateSelected(selectedDate)
+                    }
+                    onDismiss()
+                }
+            ) {
+                Text("确定")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("取消")
+            }
+        }
+    ) {
+        DatePicker(state = datePickerState)
+    }
+}
+
+@Composable
+private fun BirthdaySelector(
     birthday: LocalDate,
     onBirthdayClick: () -> Unit,
     age: Int,
@@ -156,7 +170,7 @@ fun BirthdaySelector(
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
@@ -168,16 +182,20 @@ fun BirthdaySelector(
             onClick = onBirthdayClick,
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.outlinedCardColors(
-                containerColor = if (isError)
+                containerColor = if (isError) {
                     MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.1f)
-                else
+                } else {
                     MaterialTheme.colorScheme.surface
+                }
             ),
             border = CardDefaults.outlinedCardBorder().copy(
-                brush = if (isError)
-                    androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.error)
-                else
-                    androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.outline)
+                brush = SolidColor(
+                    if (isError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.outline
+                    }
+                )
             )
         ) {
             Row(
@@ -188,32 +206,20 @@ fun BirthdaySelector(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column {
-                    val format = birthday.format(
-                        LocalDate.Format {
-                            year()
-                            chars("年")
-                            monthNumber()
-                            chars("月")
-                            day()
-                            chars("日")
-                        }
-                    )
                     Text(
-                        text = format,
+                        text = birthday.formatChinese(),
                         style = MaterialTheme.typography.bodyLarge,
                         color = MaterialTheme.colorScheme.onSurface
                     )
-
-                    if (age != null) {
-                        Text(
-                            text = "年龄：$age 岁",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = if (age >= 18)
-                                MaterialTheme.colorScheme.primary
-                            else
-                                MaterialTheme.colorScheme.error
-                        )
-                    }
+                    Text(
+                        text = "年龄：$age 岁",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (age >= 18) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.error
+                        }
+                    )
                 }
 
                 Icon(
@@ -232,16 +238,25 @@ fun BirthdaySelector(
     }
 }
 
-// 性别选择器
+private val ChineseDateFormat = LocalDate.Format {
+    year()
+    chars("年")
+    monthNumber()
+    chars("月")
+    day()
+    chars("日")
+}
+
+private fun LocalDate.formatChinese(): String = format(ChineseDateFormat)
+
 @Composable
-fun GenderSelector(
-    selectedGender: Gender?,
+private fun GenderSelector(
+    selectedGender: Gender,
     onGenderSelected: (Gender) -> Unit,
-    isError: Boolean,
     modifier: Modifier = Modifier
 ) {
     Column(
-        modifier = modifier,
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         Text(
@@ -259,21 +274,18 @@ fun GenderSelector(
                 GenderOption(
                     gender = gender,
                     selected = selectedGender == gender,
-                    onClick = { onGenderSelected(gender) },
-                    isError = isError
+                    onClick = { onGenderSelected(gender) }
                 )
             }
         }
     }
 }
 
-// 性别选项
 @Composable
-fun GenderOption(
+private fun GenderOption(
     gender: Gender,
     selected: Boolean,
     onClick: () -> Unit,
-    isError: Boolean,
     modifier: Modifier = Modifier
 ) {
     OutlinedCard(
@@ -285,17 +297,20 @@ fun GenderOption(
                 role = Role.RadioButton
             ),
         colors = CardDefaults.outlinedCardColors(
-            containerColor = if (selected)
+            containerColor = if (selected) {
                 MaterialTheme.colorScheme.primaryContainer
-            else
+            } else {
                 MaterialTheme.colorScheme.surface
+            }
         ),
         border = CardDefaults.outlinedCardBorder().copy(
-            brush = when {
-                selected -> androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary)
-                isError -> androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.error)
-                else -> androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.outline)
-            }
+            brush = SolidColor(
+                if (selected) {
+                    MaterialTheme.colorScheme.primary
+                } else {
+                    MaterialTheme.colorScheme.outline
+                }
+            )
         )
     ) {
         Row(
@@ -308,10 +323,11 @@ fun GenderOption(
             Text(
                 text = gender.displayName,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (selected)
+                color = if (selected) {
                     MaterialTheme.colorScheme.onPrimaryContainer
-                else
+                } else {
                     MaterialTheme.colorScheme.onSurface
+                }
             )
 
             RadioButton(
