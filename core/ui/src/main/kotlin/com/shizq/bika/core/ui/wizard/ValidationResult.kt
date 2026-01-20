@@ -1,10 +1,18 @@
 package com.shizq.bika.core.ui.wizard
 
 /**
- * 步骤的验证结果
+ * 校验结果密封类
  */
 sealed interface ValidationResult {
-    object Valid : ValidationResult
-    data class Invalid(val message: String? = null) : ValidationResult
-    data class Validating(val message: String? = null) : ValidationResult
+    /** 校验成功 */
+    object Success : ValidationResult
+
+    /** 校验失败 */
+    data class Error(
+        val message: String,
+        val fieldErrors: Map<String, String> = emptyMap()
+    ) : ValidationResult
+
+    val isSuccess: Boolean get() = this is Success
+    val isError: Boolean get() = this is Error
 }
