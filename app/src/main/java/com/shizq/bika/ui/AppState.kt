@@ -7,6 +7,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation3.runtime.NavKey
 import com.shizq.bika.core.ui.TrackDisposableJank
 import com.shizq.bika.navigation.NavigationState
+import com.shizq.bika.navigation.RegisterNavKey
 import com.shizq.bika.navigation.TOP_LEVEL_ROUTES
 import com.shizq.bika.navigation.rememberNavigationState
 import kotlinx.coroutines.CoroutineScope
@@ -16,7 +17,7 @@ fun rememberAppState(
     startDestination: NavKey,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ): AppState {
-    val navigationState = rememberNavigationState(startDestination, TOP_LEVEL_ROUTES)
+    val navigationState = rememberNavigationState(RegisterNavKey, TOP_LEVEL_ROUTES)
 
     NavigationTrackingSideEffect(navigationState)
 
