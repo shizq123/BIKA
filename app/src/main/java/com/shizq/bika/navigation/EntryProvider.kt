@@ -14,6 +14,7 @@ import com.shizq.bika.ui.reader.ReaderScreen
 import com.shizq.bika.ui.reader.ReaderViewModel
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
+import com.shizq.bika.ui.signup.RegistrationScreen
 
 fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     entry<LoginNavKey> {
@@ -22,6 +23,11 @@ fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
             onSignUpClick = {},
             onForgotPasswordClick = {}
         )
+    }
+}
+fun EntryProviderScope<NavKey>.registerEntry(navigator: Navigator) {
+    entry<RegisterNavKey> {
+        RegistrationScreen()
     }
 }
 

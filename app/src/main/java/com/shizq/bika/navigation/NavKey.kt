@@ -10,6 +10,9 @@ object DashboardNavKey : NavKey
 object LoginNavKey : NavKey
 
 @Serializable
+object RegisterNavKey : NavKey
+
+@Serializable
 sealed interface DiscoveryAction {
     val name: String
 
