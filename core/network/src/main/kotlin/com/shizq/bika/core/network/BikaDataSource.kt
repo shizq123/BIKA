@@ -9,6 +9,7 @@ import com.shizq.bika.core.network.model.ComicRandomData
 import com.shizq.bika.core.network.model.ComicResource
 import com.shizq.bika.core.network.model.CommentsData
 import com.shizq.bika.core.network.model.EpisodeData
+import com.shizq.bika.core.network.model.GameData
 import com.shizq.bika.core.network.model.KeywordsData
 import com.shizq.bika.core.network.model.KnightLeaderboardData
 import com.shizq.bika.core.network.model.LeaderboardData
@@ -211,6 +212,12 @@ class BikaDataSource @Inject constructor(
         return client.post("auth/register") {
             attributes.put(ExpectRawResponse, Unit)
             setBody(obj)
+        }.body()
+    }
+
+    suspend fun getGameList(page: Int): GameData {
+        return client.get("games") {
+            parameter("page", page)
         }.body()
     }
 }
