@@ -72,6 +72,9 @@ object SettingsNavKey : NavKey
 object GameNavKey : NavKey
 
 @Serializable
+data class GameDetailNavKey(val id: String) : NavKey
+
+@Serializable
 internal data class SearchKey(
     val topic: String? = null,
     val tag: String? = null,

@@ -8,6 +8,7 @@ import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
+import com.shizq.bika.ui.games.GameDetailScreen
 import com.shizq.bika.ui.games.GameScreen
 import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
@@ -128,7 +129,18 @@ fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
 
 fun EntryProviderScope<NavKey>.gameEntry(navigator: Navigator) {
     entry<GameNavKey> {
-        GameScreen()
+        GameScreen(
+            navigationToGameDetail = { navigator.navigate(GameDetailNavKey(it)) },
+            onBackClick = navigator::goBack
+        )
+    }
+}
+
+fun EntryProviderScope<NavKey>.gameDetailEntry(navigator: Navigator) {
+    entry<GameDetailNavKey> {
+        GameDetailScreen(
+            onBackClick = navigator::goBack
+        )
     }
 }
 
