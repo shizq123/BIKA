@@ -73,7 +73,7 @@ fun LoginScreen(
     LoginContent(
         loginState = loginState,
         onRememberMeChange = { viewModel.dispatch(LoginAction.ToggleRememberMe(it)) },
-        onSignUpClick = { },
+        onSignUpClick = onSignUpClick,
         onForgotPasswordClick = {
             onForgotPasswordClick()
             Toast.makeText(context, "功能暂不可用", Toast.LENGTH_SHORT).show()

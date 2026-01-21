@@ -20,14 +20,17 @@ fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     entry<LoginNavKey> {
         LoginScreen(
             onLoginSuccess = { navigator.navigate(DashboardNavKey) },
-            onSignUpClick = {},
+            onSignUpClick = { navigator.navigate(RegisterNavKey) },
             onForgotPasswordClick = {}
         )
     }
 }
+
 fun EntryProviderScope<NavKey>.registerEntry(navigator: Navigator) {
     entry<RegisterNavKey> {
-        RegistrationScreen()
+        RegistrationScreen(
+            onBackClicked = navigator::goBack
+        )
     }
 }
 
