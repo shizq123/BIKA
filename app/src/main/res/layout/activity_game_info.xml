@@ -2,17 +2,6 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <data>
-
-        <variable
-            name="clickListener"
-            type="com.shizq.bika.ui.games.GameInfoActivity.ClickListener" />
-
-        <variable
-            name="viewModel"
-            type="com.shizq.bika.ui.games.GameInfoViewModel" />
-    </data>
-
     <androidx.coordinatorlayout.widget.CoordinatorLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -30,7 +19,6 @@
             android:layout_height="wrap_content"
             android:layout_gravity="bottom|end"
             android:layout_margin="@dimen/fab_margin"
-            android:onClick="@{()->clickListener.Download()}"
             android:text="下载"
             android:visibility="gone" />
 
@@ -117,7 +105,6 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:onClick="@{()->clickListener.Like()}"
                         android:orientation="vertical">
 
                         <ImageView
@@ -161,7 +148,6 @@
                         android:layout_height="wrap_content"
                         android:layout_weight="1"
                         android:gravity="center"
-                        android:onClick="@{()->clickListener.Comment()}"
                         android:orientation="vertical">
 
                         <ImageView

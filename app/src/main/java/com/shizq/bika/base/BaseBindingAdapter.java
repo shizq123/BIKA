@@ -6,8 +6,6 @@ import androidx.annotation.LayoutRes;
 import androidx.annotation.NonNull;
 import androidx.databinding.ViewDataBinding;
 
-import com.shizq.bika.BR;
-
 import java.util.List;
 
 import me.jingbin.library.adapter.BaseByRecyclerViewAdapter;
@@ -41,7 +39,6 @@ public abstract class BaseBindingAdapter<T, B extends ViewDataBinding> extends B
         @Override
         protected void onBindingView(BaseBindingHolder holder, T bean, int position) {
             if (holder != null && bean != null && binding != null) {
-                holder.binding.setVariable(BR.m, bean);
                 bindView(holder, bean, binding, position);
                 holder.binding.executePendingBindings();
             }
