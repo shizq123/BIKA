@@ -1,10 +1,13 @@
 package com.shizq.bika.ui.signin
 
+import com.freeletics.flowredux2.ChangeableState
+import com.freeletics.flowredux2.ChangedState
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
 import jakarta.inject.Inject
+import kotlinx.coroutines.flow.first
 
 class LoginStateMachine @Inject constructor(
     private val passwordCredentialManager: PasswordCredentialManager,
@@ -15,9 +18,6 @@ class LoginStateMachine @Inject constructor(
         initializeWith { LoginUiState() }
         spec {
             inState<LoginUiState> {
-                onEnterEffect {
-                    passwordCredentialManager.prepareGetCredential()
-                }
                 on<LoginAction.AccountChanged> {
                     mutate { copy(username = it.account) }
                 }
@@ -63,12 +63,23 @@ class LoginStateMachine @Inject constructor(
                             )
                         }
 
-                        is CredentialResult.Error -> mutate { copy(errorMessage = result.message) }
-                        CredentialResult.NoCredentialFound -> mutate { copy(errorMessage = null) }
-                        CredentialResult.Cancelled -> mutate { copy(errorMessage = null) }
+                        is CredentialResult.Error -> fillFromUserData(result.message)
+                        CredentialResult.NoCredentialFound -> fillFromUserData(null)
+                        CredentialResult.Cancelled -> fillFromUserData(null)
                     }
                 }
             }
+        }
+    }
+
+    private suspend fun ChangeableState<LoginUiState>.fillFromUserData(errorMessage: String?): ChangedState<LoginUiState> {
+        val data = userCredentialsDataSource.userData.first()
+        return mutate {
+            copy(
+                errorMessage = errorMessage,
+                username = data.username ?: "",
+                password = data.password ?: ""
+            )
         }
     }
 }
