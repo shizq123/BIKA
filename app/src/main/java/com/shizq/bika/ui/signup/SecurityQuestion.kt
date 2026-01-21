@@ -12,6 +12,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
@@ -29,6 +30,7 @@ data class SecurityQuestionsData(
     val questions: List<SecurityQuestion> = List(QUESTION_COUNT) { SecurityQuestion() }
 )
 
+@Stable
 class SecurityQuestionsState {
     private val _questions = mutableStateListOf(
         SecurityQuestion(),

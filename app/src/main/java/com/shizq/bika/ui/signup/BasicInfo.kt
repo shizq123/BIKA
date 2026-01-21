@@ -13,6 +13,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -28,13 +29,19 @@ import com.shizq.bika.core.ui.wizard.ValidationResult
 
 data class BasicInfoData(
     val nickname: String = "",
-    val username: String = "",
+    val email: String = "",
     val password: String = ""
 )
 
+@Stable
 class BasicInfoState {
+    /**
+     * 昵称
+     */
     var nickname by mutableStateOf("")
-    var username by mutableStateOf("")
+
+    // email为用户名, 不一定是邮箱
+    var email by mutableStateOf("")
     var password by mutableStateOf("")
     var passwordVisible by mutableStateOf(false)
 
@@ -45,7 +52,7 @@ class BasicInfoState {
 
     fun toData() = BasicInfoData(
         nickname = nickname.trim(),
-        username = username.trim(),
+        email = email.trim(),
         password = password
     )
 
@@ -67,7 +74,7 @@ class BasicInfoState {
     }
 
     fun validateUsername(): ValidationResult {
-        val trimmed = username.trim()
+        val trimmed = email.trim()
         return when {
             trimmed.isEmpty() -> ValidationResult.Error("请输入用户名")
             !trimmed.matches(USERNAME_REGEX) -> ValidationResult.Error("用户名只能包含字母和数字")
@@ -112,8 +119,8 @@ fun BasicInfoStep(
         )
 
         SignUpTextField(
-            value = state.username,
-            onValueChange = { state.username = it },
+            value = state.email,
+            onValueChange = { state.email = it },
             label = "用户名",
             supportingText = "用户名不能包含特殊符号",
             isError = errorMessage != null && state.validateUsername() is ValidationResult.Error,

@@ -21,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -47,20 +48,29 @@ enum class Gender(val displayName: String) {
 }
 
 data class PersonalInfoData(
-    val birthday: LocalDate,
-    val gender: Gender
+    val birthday: String,
+    val gender: String
 )
 
+@Stable
 class PersonalInfoState {
     var birthday by mutableStateOf(defaultBirthday())
     var gender by mutableStateOf(Gender.MALE)
     var showDatePicker by mutableStateOf(false)
     val age: Int
         get() = calculateAge(birthday, today())
-    fun toData() = PersonalInfoData(
-        birthday = birthday,
-        gender = gender
-    )
+
+    fun toData(): PersonalInfoData {
+        return PersonalInfoData(
+            birthday = birthday.toString(),
+            gender = when (gender) {
+                Gender.MALE -> "m"
+                Gender.FEMALE -> "f"
+                Gender.ROBOT -> "bot"
+            }
+        )
+    }
+
     fun validate(): ValidationResult {
         if (age < MIN_AGE) {
             return ValidationResult.Error("您必须年满${MIN_AGE}岁才能注册")
