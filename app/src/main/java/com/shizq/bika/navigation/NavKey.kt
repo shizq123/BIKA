@@ -69,6 +69,9 @@ object HistoryNavKey : NavKey
 object SettingsNavKey : NavKey
 
 @Serializable
+object GameNavKey : NavKey
+
+@Serializable
 internal data class SearchKey(
     val topic: String? = null,
     val tag: String? = null,

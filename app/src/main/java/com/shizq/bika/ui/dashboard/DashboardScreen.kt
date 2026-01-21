@@ -83,7 +83,6 @@ import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.ChannelDataSource.allChannels
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
-import com.shizq.bika.ui.games.GamesActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.notifications.NotificationsActivity
 import com.shizq.bika.ui.user.UserActivity
@@ -98,6 +97,7 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
+    navigateToGame: () -> Unit,
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
@@ -114,6 +114,7 @@ fun DashboardScreen(
         navigateToSearch = navigateToSearch,
         navigationToHistory = navigationToHistory,
         navigationToSettings = navigationToSettings,
+        navigateToGame = navigateToGame,
     )
 }
 
@@ -129,6 +130,7 @@ fun DashboardContent(
     navigateToSearch: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
+    navigateToGame: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -232,6 +234,7 @@ fun DashboardContent(
                                 channel = item,
                                 navigationToLeaderboard = navigationToLeaderboard,
                                 navigateToSearch = navigateToSearch,
+                                navigateToGame = navigateToGame,
                             )
                         }
                     }
@@ -298,6 +301,7 @@ private fun navigation(
     context: Context,
     navigationToLeaderboard: () -> Unit,
     navigateToSearch: (DiscoveryAction) -> Unit,
+    navigateToGame: () -> Unit,
 ) {
     if (channel.link != null) {
         val token = SPUtil.get("token", "")
@@ -312,10 +316,7 @@ private fun navigation(
     when (channel.displayName) {
         "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)
         "排行榜" -> navigationToLeaderboard()
-        "游戏推荐" -> {
-            val intent = Intent(context, GamesActivity::class.java)
-            context.startActivity(intent)
-        }
+        "游戏推荐" -> navigateToGame()
 //            "哔咔小程序" -> start(AppsActivity::class.java)
         "留言板" -> {
             val intent = Intent(context, ChatRoomListActivity::class.java)

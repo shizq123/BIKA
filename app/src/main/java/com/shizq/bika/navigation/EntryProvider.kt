@@ -8,6 +8,7 @@ import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
+import com.shizq.bika.ui.games.GameScreen
 import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
 import com.shizq.bika.ui.reader.ReaderScreen
@@ -43,6 +44,7 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
             },
             navigationToHistory = { navigator.navigate(HistoryNavKey) },
             navigationToSettings = { navigator.navigate(SettingsNavKey) },
+            navigateToGame = { navigator.navigate(GameNavKey) }
         )
     }
 }
@@ -121,6 +123,12 @@ fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
             onLogoutClicked = { },
             onBackClick = navigator::goBack
         )
+    }
+}
+
+fun EntryProviderScope<NavKey>.gameEntry(navigator: Navigator) {
+    entry<GameNavKey> {
+        GameScreen()
     }
 }
 
