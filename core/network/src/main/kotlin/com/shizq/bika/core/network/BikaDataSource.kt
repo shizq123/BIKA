@@ -27,6 +27,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addAll
 import kotlinx.serialization.json.buildJsonObject
@@ -197,5 +198,19 @@ class BikaDataSource @Inject constructor(
 
     suspend fun getRandomComics(): ComicRandomData {
         return client.get("comics/random").body()
+    }
+
+    /**
+     *  {
+     *     "code": 400,
+     *     "error": "1008",
+     *     "message": "email is already exist"
+     *   }
+     */
+    suspend fun requestSignUp(obj: JsonObject): JsonObject {
+        return client.post("auth/register") {
+            attributes.put(ExpectRawResponse, Unit)
+            setBody(obj)
+        }.body()
     }
 }
