@@ -7,13 +7,12 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.recyclerview.widget.RecyclerView
+import com.bumptech.glide.Glide
 import com.bumptech.glide.request.target.CustomTarget
 import com.bumptech.glide.request.transition.Transition
 import com.shizq.bika.R
 import com.shizq.bika.bean.GameInfoBean
-import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
-import com.shizq.bika.utils.dp
 
 class GameScreenshotAdapter(val context: Context) :
     RecyclerView.Adapter<GameScreenshotAdapter.ViewHolder>() {
@@ -68,7 +67,7 @@ class GameScreenshotAdapter(val context: Context) :
                 .centerCrop()
                 .placeholder(R.drawable.placeholder_transparent)
                 .dontTransform()
-                .into(object : CustomTarget<Drawable>(1, 240.dp) {
+                .into(object : CustomTarget<Drawable>(1, 240) {
                     override fun onLoadStarted(placeholder: Drawable?) {
                         super.onLoadStarted(placeholder)
                         mImageView.setImageDrawable(placeholder)

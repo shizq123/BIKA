@@ -3,14 +3,13 @@ package com.shizq.bika.adapter.holder
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.app.AppCompatActivity
+import com.bumptech.glide.Glide
 import com.google.android.material.chip.Chip
 import com.shizq.bika.R
 import com.shizq.bika.base.BaseBindingHolder
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.databinding.ItemChatMessageReceiveBinding
-import com.bumptech.glide.Glide
 import com.shizq.bika.utils.GlideUrlNewKey
-import com.shizq.bika.utils.dp
 import com.shizq.bika.widget.UserViewDialog
 
 //新聊天室 收到的消息
