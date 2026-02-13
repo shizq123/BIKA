@@ -43,14 +43,34 @@ class PasswordCredentialManager @Inject constructor(
     }
 
     suspend fun savePasswordCredential(username: String, password: String) {
-        val request = CreatePasswordRequest(id = username, password = password)
         try {
+            // 先检查是否已存在相同的凭据
+            val existing = getPasswordCredential(username)
+            if (existing?.password == password) {
+                return
+            }
+
+            val request = CreatePasswordRequest(
+                id = username,
+                password = password
+            )
             credentialManager.createCredential(context, request)
         } catch (e: Exception) {
             Log.e(TAG, "Save credential failed", e)
         }
     }
 
+    private suspend fun getPasswordCredential(username: String): PasswordCredential? {
+        return try {
+            val request = GetCredentialRequest.Builder()
+                .addCredentialOption(GetPasswordOption())
+                .build()
+            val result = credentialManager.getCredential(context, request)
+            (result.credential as? PasswordCredential)?.takeIf { it.id == username }
+        } catch (e: Exception) {
+            null
+        }
+    }
     /**
      * 触发系统UI来获取用户选择的密码凭据。
      */
@@ -89,4 +109,4 @@ sealed class CredentialResult {
     data class Error(val message: String, val throwable: Throwable? = null) : CredentialResult()
 }
 
-private const val TAG = "CredentialHelper"
+private const val TAG = "PasswordCredential"
