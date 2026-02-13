@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.dashboard
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.coroutine.FlowRestarter
@@ -98,7 +99,11 @@ class DashboardViewModel @Inject constructor(
 //            if (!userPreferencesDataSource.userData.first().autoCheckIn) {
 //                return@launch
 //            }
-            network.punchIn()
+            try {
+                network.punchIn()
+            } catch (e: Exception) {
+                Log.e("DashboardViewModel", "签到失败", e)
+            }
         }
     }
 }
