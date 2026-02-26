@@ -2,16 +2,22 @@ package com.shizq.bika
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.util.trace
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.metrics.performance.JankStats
@@ -21,9 +27,14 @@ import com.shizq.bika.navigation.DashboardNavKey
 import com.shizq.bika.navigation.LoginNavKey
 import com.shizq.bika.ui.BikaApp
 import com.shizq.bika.ui.rememberAppState
+import com.shizq.bika.util.isSystemInDarkTheme
 import dagger.Lazy
 import dagger.hilt.android.AndroidEntryPoint
 import jakarta.inject.Inject
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
 @AndroidEntryPoint
@@ -36,31 +47,69 @@ class MainActivity : ComponentActivity() {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 
-        enableEdgeToEdge()
+        var themeSettings by mutableStateOf(
+            ThemeSettings(
+                darkTheme = resources.configuration.isSystemInDarkTheme,
+                androidTheme = MainActivityUiState.Loading.shouldUseAndroidTheme,
+                disableDynamicTheming = MainActivityUiState.Loading.shouldDisableDynamicTheming,
+            ),
+        )
 
-        var uiState by mutableStateOf<MainActivityUiState>(MainActivityUiState.Loading)
-
+        // Update the uiState
         lifecycleScope.launch {
             lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
-                viewModel.uiState.collect {
-                    uiState = it
+                combine(
+                    isSystemInDarkTheme(),
+                    viewModel.uiState,
+                ) { systemDark, uiState ->
+                    ThemeSettings(
+                        darkTheme = uiState.shouldUseDarkTheme(systemDark),
+                        androidTheme = uiState.shouldUseAndroidTheme,
+                        disableDynamicTheming = uiState.shouldDisableDynamicTheming,
+                    )
                 }
+                    .onEach { themeSettings = it }
+                    .map { it.darkTheme }
+                    .distinctUntilChanged()
+                    .collect { darkTheme ->
+                        trace("BikaEdgeToEdge") {
+                            // Turn off the decor fitting system windows, which allows us to handle insets,
+                            // including IME animations, and go edge-to-edge.
+                            // This is the same parameters as the default enableEdgeToEdge call, but we manually
+                            // resolve whether or not to show dark theme using uiState, since it can be different
+                            // than the configuration's dark theme value based on the user preference.
+                            enableEdgeToEdge(
+                                statusBarStyle = SystemBarStyle.auto(
+                                    lightScrim = android.graphics.Color.TRANSPARENT,
+                                    darkScrim = android.graphics.Color.TRANSPARENT,
+                                ) { darkTheme },
+                                navigationBarStyle = SystemBarStyle.auto(
+                                    lightScrim = lightScrim,
+                                    darkScrim = darkScrim,
+                                ) { darkTheme },
+                            )
+                        }
+                    }
             }
         }
 
-        splashScreen.setKeepOnScreenCondition { uiState.shouldKeepSplashScreen() }
+        splashScreen.setKeepOnScreenCondition { viewModel.uiState.value.shouldKeepSplashScreen() }
 
         setContent {
+            val uiState by viewModel.uiState.collectAsStateWithLifecycle()
             CompositionLocalProvider(
                 LocalWindow provides window
             ) {
-                BikaTheme(darkTheme = false) {
+                BikaTheme(darkTheme = themeSettings.darkTheme) {
                     when (val state = uiState) {
-                        is MainActivityUiState.Loading -> {}
+                        is MainActivityUiState.Loading -> {
+                            Box(modifier = Modifier.fillMaxSize())
+                        }
+
                         is MainActivityUiState.Success -> {
-                            key(state.token) {
+                            key(state.isLoggedIn) {
                                 val startDestination =
-                                    if (state.token != null) DashboardNavKey else LoginNavKey
+                                    if (state.isLoggedIn) LoginNavKey else DashboardNavKey
                                 val appState = rememberAppState(startDestination)
                                 BikaApp(appState)
                             }
