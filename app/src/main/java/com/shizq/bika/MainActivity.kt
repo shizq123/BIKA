@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -21,6 +20,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import androidx.metrics.performance.JankStats
+import com.shizq.bika.MainActivityUiState.Loading
+import com.shizq.bika.MainActivityUiState.Success
 import com.shizq.bika.core.designsystem.theme.BikaTheme
 import com.shizq.bika.core.ui.composition.LocalWindow
 import com.shizq.bika.navigation.DashboardNavKey
@@ -50,8 +51,8 @@ class MainActivity : ComponentActivity() {
         var themeSettings by mutableStateOf(
             ThemeSettings(
                 darkTheme = resources.configuration.isSystemInDarkTheme,
-                androidTheme = MainActivityUiState.Loading.shouldUseAndroidTheme,
-                disableDynamicTheming = MainActivityUiState.Loading.shouldDisableDynamicTheming,
+                androidTheme = Loading.shouldUseAndroidTheme,
+                disableDynamicTheming = Loading.shouldDisableDynamicTheming,
             ),
         )
 
@@ -102,17 +103,15 @@ class MainActivity : ComponentActivity() {
             ) {
                 BikaTheme(darkTheme = themeSettings.darkTheme) {
                     when (val state = uiState) {
-                        is MainActivityUiState.Loading -> {
+                        is Loading -> {
                             Box(modifier = Modifier.fillMaxSize())
                         }
 
-                        is MainActivityUiState.Success -> {
-                            key(state.isLoggedIn) {
-                                val startDestination =
-                                    if (state.isLoggedIn) LoginNavKey else DashboardNavKey
-                                val appState = rememberAppState(startDestination)
-                                BikaApp(appState)
-                            }
+                        is Success -> {
+                            val startDestination =
+                                if (state.isLoggedIn) DashboardNavKey else LoginNavKey
+                            val appState = rememberAppState(startDestination)
+                            BikaApp(appState)
                         }
                     }
                 }
