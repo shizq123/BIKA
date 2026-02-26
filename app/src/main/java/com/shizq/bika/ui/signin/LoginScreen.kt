@@ -138,7 +138,6 @@ fun LoginContent(
                     email = loginState.username,
                     onEmailChange = { dispatch(LoginAction.AccountChanged(it)) },
                     onNext = { passwordFocusRequester.requestFocus() },
-                    isError = loginState.errorMessage?.contains("邮箱") == true,
                     modifier = Modifier
                         .semantics {
                             contentType = ContentType.Username
