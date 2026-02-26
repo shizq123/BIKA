@@ -80,7 +80,6 @@ import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
-import com.shizq.bika.core.model.ChannelDataSource.allChannels
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
@@ -192,6 +191,7 @@ fun DashboardContent(
             topBar = {
                 DashboardAppBar(
                     scrollBehavior = scrollBehavior,
+                    channelState = channelSettingsUiState,
                     onDrawerOpen = { scope.launch { drawerState.open() } },
                     onChannelToggled = onChannelToggled,
                     onOrderChange = onOrderChange
@@ -248,6 +248,7 @@ fun DashboardContent(
 @Composable
 private fun DashboardAppBar(
     scrollBehavior: TopAppBarScrollBehavior,
+    channelState: List<Channel>,
     onDrawerOpen: () -> Unit,
     onChannelToggled: (Channel, Boolean) -> Unit,
     onOrderChange: (List<Channel>) -> Unit,
@@ -269,7 +270,7 @@ private fun DashboardAppBar(
             }
             if (showChannelSettings) {
                 ChannelSettingsDialog(
-                    channels = allChannels,
+                    channels = channelState,
                     onDismiss = { showChannelSettings = false },
                     onChannelToggle = onChannelToggled,
                     onOrderChange = onOrderChange
