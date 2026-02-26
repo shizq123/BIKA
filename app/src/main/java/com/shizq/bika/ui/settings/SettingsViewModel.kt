@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import coil3.imageLoader
+import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.DarkThemeConfig
@@ -11,8 +12,8 @@ import com.shizq.bika.core.model.NetworkLine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +25,7 @@ import java.text.DecimalFormat
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext application: Context,
+    @ApplicationScope private val scope: CoroutineScope,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val userCredentialsDataSource: UserCredentialsDataSource
 ) : ViewModel() {
@@ -44,8 +46,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun logout() {
-        viewModelScope.launch(NonCancellable) {
+        scope.launch {
             userCredentialsDataSource.setToken(null)
+            userCredentialsDataSource.setPassword(null)
         }
     }
     fun updateDarkThemeConfig(config: DarkThemeConfig) {
