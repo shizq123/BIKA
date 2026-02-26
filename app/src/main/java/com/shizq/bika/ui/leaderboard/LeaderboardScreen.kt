@@ -9,8 +9,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -43,7 +43,6 @@ import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.ui.ComicCard
 import kotlinx.coroutines.launch
 
-
 @Composable
 fun LeaderboardScreen(
     navigationToUnitedDetail: (String) -> Unit,
@@ -51,8 +50,10 @@ fun LeaderboardScreen(
     navigationToKnight: (String, String) -> Unit
 ) {
     val leaderboardState by viewModel.leaderboardUiState.collectAsStateWithLifecycle()
+
     LeaderboardContent(
         leaderboardState,
+        scrollStates = viewModel.scrollStates,
         navigationToUnitedDetail = navigationToUnitedDetail,
         navigationToKnight = navigationToKnight,
     )
@@ -62,6 +63,7 @@ fun LeaderboardScreen(
 @Composable
 fun LeaderboardContent(
     leaderboardState: LeaderboardUiState,
+    scrollStates: List<LazyListState>,
     navigationToUnitedDetail: (String) -> Unit,
     navigationToKnight: (String, String) -> Unit,
 ) {
@@ -111,6 +113,7 @@ fun LeaderboardContent(
                     LeaderboardPagerContent(
                         pagerState = pagerState,
                         successState = leaderboardState,
+                        scrollStates = scrollStates,
                         navigationToUnitedDetail = navigationToUnitedDetail,
                         navigationToKnight = navigationToKnight,
                     )
@@ -125,6 +128,7 @@ fun LeaderboardContent(
 private fun LeaderboardPagerContent(
     pagerState: PagerState,
     successState: LeaderboardUiState.Success,
+    scrollStates: List<LazyListState>,
     navigationToUnitedDetail: (String) -> Unit,
     navigationToKnight: (String, String) -> Unit,
 ) {
@@ -132,21 +136,25 @@ private fun LeaderboardPagerContent(
         when (page) {
             0 -> ComicLeaderboardPage(
                 list = successState.dailyList,
+                listState = scrollStates[0],
                 navigationToUnitedDetail = navigationToUnitedDetail
             )
 
             1 -> ComicLeaderboardPage(
                 list = successState.weeklyList,
+                listState = scrollStates[1],
                 navigationToUnitedDetail = navigationToUnitedDetail
             )
 
             2 -> ComicLeaderboardPage(
                 list = successState.monthlyList,
+                listState = scrollStates[2],
                 navigationToUnitedDetail = navigationToUnitedDetail
             )
 
             3 -> KnightLeaderboardPage(
                 knightList = successState.knightList,
+                listState = scrollStates[3],
                 navigationToKnight = navigationToKnight
             )
 
@@ -163,10 +171,10 @@ private fun LeaderboardPagerContent(
 @Composable
 fun ComicLeaderboardPage(
     list: List<ComicSimple>,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
     navigationToUnitedDetail: (String) -> Unit
 ) {
-    val listState = rememberLazyListState()
     if (list.isEmpty()) {
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text("暂无数据")

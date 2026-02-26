@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.leaderboard
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.data.model.User
@@ -20,6 +21,7 @@ import kotlinx.coroutines.flow.stateIn
 class LeaderboardViewModel @Inject constructor(
     private val api: BikaDataSource,
 ) : ViewModel() {
+    val scrollStates = List(4) { LazyListState() }
     val leaderboardUiState = combine(
         getLeaderboard(TIME_H24),
         getLeaderboard(TIME_D7),
@@ -56,7 +58,6 @@ class LeaderboardViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = LeaderboardUiState.Loading
         )
-
     private fun getKnightLeaderboardFlow() = flow {
         val response = api.getKnightLeaderboard()
         val users = response.users.map { it.asExternalModel() }

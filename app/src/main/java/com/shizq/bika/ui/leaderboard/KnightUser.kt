@@ -12,8 +12,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FileUpload
@@ -37,10 +37,10 @@ import com.shizq.bika.core.data.model.User
 @Composable
 fun KnightLeaderboardPage(
     knightList: List<User>,
+    listState: LazyListState,
     modifier: Modifier = Modifier,
     navigationToKnight: (String, String) -> Unit,
 ) {
-    val listState = rememberLazyListState()
     if (knightList.isEmpty()) {
         Box(
             modifier = modifier.fillMaxSize(),
