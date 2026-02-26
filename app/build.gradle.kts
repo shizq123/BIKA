@@ -137,8 +137,4 @@ dependencies {
     implementation(kotlin("test-junit"))
 
     implementation("me.saket.telephoto:zoomable:0.18.0")
-
-    ksp("org.jetbrains.kotlin:kotlin-metadata-jvm:2.3.0")
-
-    implementation("androidx.credentials:credentials:1.6.0-rc01")
 }
