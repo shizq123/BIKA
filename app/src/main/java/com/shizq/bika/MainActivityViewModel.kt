@@ -21,7 +21,7 @@ class MainActivityViewModel @Inject constructor(
         userCredentialsDataSource.userData
             .combine(userPreferencesDataSource.userData) { credentials, preferences ->
                 MainActivityUiState.Success(
-                    isLoggedIn = credentials.username.isNullOrBlank() && credentials.password.isNullOrBlank(),
+                    isLoggedIn = !credentials.username.isNullOrBlank() && !credentials.password.isNullOrBlank(),
                     darkThemeConfig = preferences.darkThemeConfig
                 )
             }.stateIn(
