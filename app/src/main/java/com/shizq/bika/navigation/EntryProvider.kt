@@ -9,6 +9,7 @@ import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
 import com.shizq.bika.ui.games.GameDetailScreen
+import com.shizq.bika.ui.games.GameDetailViewModel
 import com.shizq.bika.ui.games.GameScreen
 import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
@@ -121,7 +122,6 @@ fun EntryProviderScope<NavKey>.historyEntry(navigator: Navigator) {
 fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
     entry<SettingsNavKey> {
         SettingsScreen(
-            onLogoutClicked = { },
             onBackClick = navigator::goBack
         )
     }
@@ -137,9 +137,14 @@ fun EntryProviderScope<NavKey>.gameEntry(navigator: Navigator) {
 }
 
 fun EntryProviderScope<NavKey>.gameDetailEntry(navigator: Navigator) {
-    entry<GameDetailNavKey> {
+    entry<GameDetailNavKey> { key ->
         GameDetailScreen(
-            onBackClick = navigator::goBack
+            onBackClick = navigator::goBack,
+            viewModel = hiltViewModel<GameDetailViewModel, GameDetailViewModel.Factory>(
+                key = key.id,
+            ) { factory ->
+                factory.create(key.id)
+            },
         )
     }
 }

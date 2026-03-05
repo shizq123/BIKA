@@ -10,6 +10,7 @@ import com.shizq.bika.core.network.model.ComicResource
 import com.shizq.bika.core.network.model.CommentsData
 import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.GameData
+import com.shizq.bika.core.network.model.GameDetailsDataa
 import com.shizq.bika.core.network.model.KeywordsData
 import com.shizq.bika.core.network.model.KnightLeaderboardData
 import com.shizq.bika.core.network.model.LeaderboardData
@@ -219,5 +220,9 @@ class BikaDataSource @Inject constructor(
         return client.get("games") {
             parameter("page", page)
         }.body()
+    }
+
+    suspend fun getGameDetail(id: String): GameDetailsDataa {
+        return client.get("games/$id").body()
     }
 }

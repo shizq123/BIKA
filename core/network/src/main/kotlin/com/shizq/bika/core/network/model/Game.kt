@@ -28,3 +28,40 @@ data class Game(
     val androidLinks: List<String> = emptyList(),
     val iosLinks: List<String> = emptyList()
 )
+
+@Serializable
+data class GameDetailsDataa(
+    @SerialName("game")
+    val details: GameDetails
+)
+
+@Serializable
+data class GameDetails(
+    @SerialName("_id")
+    val id: String = "",
+    val title: String = "",
+    val description: String = "",
+    val version: String = "",
+    val icon: Image2,
+    val publisher: String = "",
+    val ios: Boolean = false,
+    val iosLinks: List<String> = emptyList(),
+    val android: Boolean = false,
+    val androidLinks: List<String> = emptyList(),
+    val adult: Boolean = false,
+    val suggest: Boolean = false,
+    val downloadsCount: Int = 0,
+    val screenshots: List<Image2> = emptyList(),
+    val androidSize: Long = 0,
+    val iosSize: Long = 0,
+    val updateContent: String = "",
+    val videoLink: String = "",
+    @SerialName("updated_at")
+    val updatedAt: String = "",
+    @SerialName("created_at")
+    val createdAt: String = "",
+    val picaLink: Boolean = false,
+    val likesCount: Int = 0,
+    val isLiked: Boolean = false,
+    val commentsCount: Int = 0
+)
