@@ -9,11 +9,9 @@ import com.shizq.bika.bean.ChatRoomListBean
 import com.shizq.bika.bean.ChatRoomProfileBean
 import com.shizq.bika.bean.ChatRoomSignInBean
 import com.shizq.bika.bean.ComicListBean
-import com.shizq.bika.bean.ComicListBean2
 import com.shizq.bika.bean.CommentsBean
 import com.shizq.bika.bean.GameInfoBean
 import com.shizq.bika.bean.GamesBean
-import com.shizq.bika.bean.InitBean
 import com.shizq.bika.bean.MyCommentsBean
 import com.shizq.bika.bean.NotificationsBean
 import com.shizq.bika.bean.ProfileBean
@@ -32,29 +30,6 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ApiService {
-    //节点
-    @GET("init")
-    fun initGet(): Observable<InitBean>
-
-    //用户个人信息
-    @GET("users/profile")
-    fun profileGet(
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<ProfileBean>>
-
-    //登录
-    @POST("auth/sign-in")
-    fun signInPost(
-        @Body requestBody: RequestBody,
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<SignInBean>>
-
-    //注册
-    @POST("auth/register")
-    fun signUpPost(
-        @Body requestBody: RequestBody,
-        @HeaderMap headers: Map<String, String>
-    ): Observable<BaseResponse<SignInBean>>
 
     //忘记密码
     @POST("auth/forgot-password")
@@ -76,37 +51,6 @@ interface ApiService {
         @Body requestBody: RequestBody,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<Any>>
-
-    //漫画列表
-    @GET("comics")
-    suspend fun comicsListGet(
-        @Query("page") page: String,
-        @Query("c") name: String,
-        @Query("s") type: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicListBean>
-
-    //漫画列表
-    @GET("comics")
-    suspend fun comicsListGet(
-        @Query("page") page: String,
-        @Query("s") type: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicListBean>
-
-    //搜索漫画列表
-    @POST("comics/advanced-search")
-    suspend fun comicsSearchPOST(
-        @Query("page") page: Int,
-        @Body requestBody: RequestBody,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicListBean>
-
-    //随机漫画
-    @GET("comics/random")
-    suspend fun randomGet(
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicListBean2>
 
     //评论列表
     @GET("{comics_games}/{id}/comments")
@@ -155,38 +99,6 @@ interface ApiService {
         @Path("id") id: String,
         @HeaderMap headers: Map<String, String>
     ): Observable<BaseResponse<ReportBean>>
-
-    //漫画详细 搜索 标签
-    @GET("comics")
-    suspend fun tagsGet(
-        @Query("page") page: String,
-        @Query("t") tagsName: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicListBean>
-
-    //漫画详细 搜索 汉化组
-    @GET("comics")
-    suspend fun translateGet(
-        @Query("page") page: String,
-        @Query("ct") translate: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicListBean>
-
-    //漫画详细 搜索 作者
-    @GET("comics")
-    suspend fun authorGet(
-        @Query("page") page: String,
-        @Query("a") author: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicListBean>
-
-    //漫画详细 搜索 创作者
-    @GET("comics")
-    suspend fun creatorGet(
-        @Query("page") page: String,
-        @Query("ca") creator: String,
-        @HeaderMap headers: Map<String, String>
-    ): BaseResponse<ComicListBean>
 
     //s=dd新到旧,da旧到新,ld最多爱心,vd最多指名
     @GET("users/favourite")

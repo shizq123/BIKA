@@ -9,7 +9,6 @@ import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
@@ -70,19 +69,4 @@ class UserViewModel(application: Application) : BaseViewModel(application) {
             })
     }
 
-    fun getProfile() {
-        RetrofitUtil.service.profileGet(BaseHeaders("users/profile", "GET").getHeaderMapAndToken())
-            .doOnSubscribe(this)
-            .subscribe(object : BaseObserver<ProfileBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<ProfileBean>) {
-                    // 请求成功
-                    liveData_profile.postValue(baseResponse)
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<ProfileBean>) {
-                    liveData_profile.postValue(baseResponse)
-                }
-
-            })
-    }
 }

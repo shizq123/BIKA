@@ -16,37 +16,10 @@ class SignInViewModel(application: Application) : BaseViewModel(application) {
     var forgot_answer: String? = null
     var forgot_email: String? = null
     var forgot_questionNo: String? = null
-    var email: String? = null
-    var password: String? = null
-
-    val liveData_signin = MutableLiveData<BaseResponse<SignInBean>>()
 
     val liveData_forgot = MutableLiveData<BaseResponse<SignInBean>>()
 
     val liveData_password = MutableLiveData<BaseResponse<SignInBean>>()
-
-    fun getSignIn() {
-        val body = RequestBody.create(
-            "application/json; charset=UTF-8".toMediaTypeOrNull(),
-            JsonObject().apply {
-                addProperty("email", email)
-                addProperty("password", password)
-            }.asJsonObject.toString()
-        )
-        val headers = BaseHeaders("auth/sign-in", "POST").getHeaders()
-
-        RetrofitUtil.service.signInPost(body, headers)
-            .doOnSubscribe(this@SignInViewModel)
-            .subscribe(object : BaseObserver<SignInBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<SignInBean>) {
-                    liveData_signin.postValue(baseResponse)
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<SignInBean>) {
-                    liveData_signin.postValue(baseResponse)
-                }
-            })
-    }
 
     fun getForgot() {
         val body = RequestBody.create(
