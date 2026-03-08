@@ -45,9 +45,7 @@ kotlinxSerialization = "1.10.0"
 ksp = "2.3.4"
 ktor = "3.4.1"
 material = "1.13.0"
-androidxNavigationFragment = "2.9.6"
 okhttp = "5.3.2"
-okhttp3Integration = "5.0.5"
 photoview = "2.3.0"
 pictureselector = "v3.10.7"
 reorderable = "3.0.0"
@@ -112,8 +110,6 @@ coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp"
 androidx-lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "androidxLifecycle" }
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidxLifecycle" }
 androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidxLifecycle" }
-androidx-navigation-fragment-ktx = { module = "androidx.navigation:navigation-fragment-ktx", version.ref = "androidxNavigationFragment" }
-androidx-navigation-ui-ktx = { module = "androidx.navigation:navigation-ui-ktx", version.ref = "androidxNavigationFragment" }
 androidx-preference-ktx = { module = "androidx.preference:preference-ktx", version.ref = "androidPreference" }
 androidx-recyclerview = { module = "androidx.recyclerview:recyclerview", version.ref = "androidxRecyclerview" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
@@ -122,9 +118,7 @@ androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "
 byrecyclerview = { module = "com.github.youlookwhat:ByRecyclerView", version.ref = "byrecyclerview" }
 commons-codec = { module = "commons-codec:commons-codec", version.ref = "commonsCodec" }
 flowredux = { module = "com.freeletics.flowredux2:flowredux", version.ref = "flowredux" }
-glide-compiler = { module = "com.github.bumptech.glide:compiler", version.ref = "glide" }
 glide = { module = "com.github.bumptech.glide:glide", version.ref = "glide" }
-glide-okhttp3 = { module = "com.github.bumptech.glide:okhttp3-integration", version.ref = "okhttp3Integration" }
 
 hilt-android = { group = "com.google.dagger", name = "hilt-android", version.ref = "hilt" }
 hilt-android-testing = { group = "com.google.dagger", name = "hilt-android-testing", version.ref = "hilt" }
@@ -149,14 +143,12 @@ ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version
 
 material = { module = "com.google.android.material:material", version.ref = "material" }
 okhttp-dnsoverhttps = { module = "com.squareup.okhttp3:okhttp-dnsoverhttps", version.ref = "okhttp" }
-okhttp-logging-interceptor = { module = "com.squareup.okhttp3:logging-interceptor", version.ref = "okhttp" }
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 photoview = { module = "com.github.chrisbanes:PhotoView", version.ref = "photoview" }
 pictureselector = { module = "io.github.lucksiege:pictureselector", version.ref = "pictureselector" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
 retrofit = { module = "com.squareup.retrofit2:retrofit", version.ref = "retrofit" }
 retrofit-adapter-rxjava3 = { module = "com.squareup.retrofit2:adapter-rxjava3", version.ref = "retrofit" }
-retrofit-converter-kotlinx-serialization = { module = "com.squareup.retrofit2:converter-kotlinx-serialization", version.ref = "retrofit" }
 retrofit-converter-gson = { module = "com.squareup.retrofit2:converter-gson", version.ref = "retrofit" }
 rxandroid = { module = "io.reactivex.rxjava3:rxandroid", version.ref = "rxandroid" }
 ucrop = { module = "io.github.lucksiege:ucrop", version.ref = "pictureselector" }

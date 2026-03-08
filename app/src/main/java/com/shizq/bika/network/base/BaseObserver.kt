@@ -9,7 +9,6 @@ import io.reactivex.rxjava3.core.Observer
 import io.reactivex.rxjava3.disposables.Disposable
 import org.apache.http.conn.ConnectTimeoutException
 import org.json.JSONException
-import retrofit2.HttpException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -29,17 +28,7 @@ abstract class BaseObserver<T> : Observer<BaseResponse<T>> {
     override fun onError(e: Throwable) {
         var baseResponse : BaseResponse<T> = BaseResponse()
         try {
-            if (e is HttpException) {   //  处理服务器返回的非成功异常
-                val responseBody = e.response()!!.errorBody()
-                if (responseBody != null) {
-                    val type = object : TypeToken<BaseResponse<T>>() {}.type
-                    baseResponse = Gson().fromJson(responseBody.string(), type)
-
-                    onSuccess(baseResponse)
-                } else {
-                    onCodeError(baseResponse)
-                }
-            } else if (e is JsonParseException
+            if (e is JsonParseException
                 || e is JSONException
                 || e is ParseException
                 || e is MalformedJsonException
