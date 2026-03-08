@@ -3,26 +3,18 @@ package com.shizq.bika.ui.chatroom.current
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.UserMention
-import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.utils.SPUtil
-import io.reactivex.rxjava3.core.Observer
-import io.reactivex.rxjava3.disposables.Disposable
 import okhttp3.Headers
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
 import okhttp3.RequestBody.Companion.toRequestBody
-import retrofit2.HttpException
 import java.io.File
-import java.util.*
+import java.util.UUID
 
 class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
     var roomId = ""
@@ -80,36 +72,36 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
         val body = Gson().toJson(map)
             .toRequestBody("application/json; charset=UTF-8".toMediaType())
         val headers = BaseHeaders().getChatHeaderMapAndToken()
-        RetrofitUtil.service_live.chatSendMessagePost(body, headers)
-            .doOnSubscribe(this)
-            .subscribe(object : Observer<ChatMessageBean> {
-                override fun onSubscribe(d: Disposable) {
-
-                }
-
-                override fun onError(e: Throwable) {
-                    var t: ChatMessageBean? = null
-                    if (e is HttpException) {   //  处理服务器返回的非成功异常
-                        val responseBody = e.response()!!.errorBody()
-                        if (responseBody != null) {
-                            val type = object : TypeToken<ChatMessageBean>() {}.type
-                            t = Gson().fromJson(responseBody.string(), type)
-                            liveDataSendMessage.postValue(t)
-                        } else {
-                            liveDataSendMessage.postValue(t)
-                        }
-                    }
-                }
-
-                override fun onComplete() {
-
-                }
-
-                override fun onNext(t: ChatMessageBean) {
-                    liveDataSendMessage.postValue(t)
-                }
-
-            })
+//        RetrofitUtil.service_live.chatSendMessagePost(body, headers)
+//            .doOnSubscribe(this)
+//            .subscribe(object : Observer<ChatMessageBean> {
+//                override fun onSubscribe(d: Disposable) {
+//
+//                }
+//
+//                override fun onError(e: Throwable) {
+//                    var t: ChatMessageBean? = null
+//                    if (e is HttpException) {   //  处理服务器返回的非成功异常
+//                        val responseBody = e.response()!!.errorBody()
+//                        if (responseBody != null) {
+//                            val type = object : TypeToken<ChatMessageBean>() {}.type
+//                            t = Gson().fromJson(responseBody.string(), type)
+//                            liveDataSendMessage.postValue(t)
+//                        } else {
+//                            liveDataSendMessage.postValue(t)
+//                        }
+//                    }
+//                }
+//
+//                override fun onComplete() {
+//
+//                }
+//
+//                override fun onNext(t: ChatMessageBean) {
+//                    liveDataSendMessage.postValue(t)
+//                }
+//
+//            })
     }
 
     //发送图片 当前只能发送单张
@@ -150,36 +142,36 @@ class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
         val headers = BaseHeaders().getChatHeaderMapAndToken()
         headers["content-type"] = "multipart/form-data; boundary=${multipartBodyBuild.boundary}"
 
-        RetrofitUtil.service_live.chatSendImagePost(headers, multipartBodyBuild)
-            .doOnSubscribe(this@ChatRoomViewModel)
-            .subscribe(object : Observer<ChatMessageBean> {
-                override fun onSubscribe(d: Disposable) {
-
-                }
-
-                override fun onError(e: Throwable) {
-                    var t: ChatMessageBean? = null
-                    if (e is HttpException) {   //  处理服务器返回的非成功异常
-                        val responseBody = e.response()!!.errorBody()
-                        if (responseBody != null) {
-                            val type = object : TypeToken<ChatMessageBean>() {}.type
-                            t = Gson().fromJson(responseBody.string(), type)
-                            liveDataSendMessage.postValue(t)
-                        } else {
-                            liveDataSendMessage.postValue(t)
-                        }
-                    }
-                }
-
-                override fun onComplete() {
-
-                }
-
-                override fun onNext(t: ChatMessageBean) {
-                    liveDataSendMessage.postValue(t)
-                }
-
-            })
+//        RetrofitUtil.service_live.chatSendImagePost(headers, multipartBodyBuild)
+//            .doOnSubscribe(this@ChatRoomViewModel)
+//            .subscribe(object : Observer<ChatMessageBean> {
+//                override fun onSubscribe(d: Disposable) {
+//
+//                }
+//
+//                override fun onError(e: Throwable) {
+//                    var t: ChatMessageBean? = null
+//                    if (e is HttpException) {   //  处理服务器返回的非成功异常
+//                        val responseBody = e.response()!!.errorBody()
+//                        if (responseBody != null) {
+//                            val type = object : TypeToken<ChatMessageBean>() {}.type
+//                            t = Gson().fromJson(responseBody.string(), type)
+//                            liveDataSendMessage.postValue(t)
+//                        } else {
+//                            liveDataSendMessage.postValue(t)
+//                        }
+//                    }
+//                }
+//
+//                override fun onComplete() {
+//
+//                }
+//
+//                override fun onNext(t: ChatMessageBean) {
+//                    liveDataSendMessage.postValue(t)
+//                }
+//
+//            })
     }
 
     //非服务器返回的数据 用于显示ui的数据
