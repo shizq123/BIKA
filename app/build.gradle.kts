@@ -1,3 +1,5 @@
+import com.android.build.api.variant.impl.VariantOutputImpl
+
 plugins {
     alias(libs.plugins.bika.android.application)
     alias(libs.plugins.bika.android.application.compose)
@@ -43,13 +45,13 @@ android {
         dataBinding = true
         buildConfig = true
     }
+}
 
-    applicationVariants.all {
-        outputs
-            .map { it as com.android.build.gradle.internal.api.ApkVariantOutputImpl }
-            .forEach { output ->
-                output.outputFileName = "BIKA_v${versionName}.apk"
-            }
+androidComponents {
+    onVariants { variant ->
+        variant.outputs.forEach { output ->
+            (output as? VariantOutputImpl)?.outputFileName = "BIKA_v${variant.name}.apk"
+        }
     }
 }
 
@@ -90,22 +92,12 @@ dependencies {
     implementation(libs.androidx.lifecycle.livedata.ktx)
 
     implementation(libs.androidx.recyclerview)
-    implementation(libs.androidx.navigation.fragment.ktx)
-    implementation(libs.androidx.navigation.ui.ktx)
     implementation(libs.androidx.preference.ktx)
     implementation(libs.androidx.core.splashscreen)
 
     implementation(libs.byrecyclerview)
 
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.gson)
-    implementation(libs.retrofit.adapter.rxjava3)
-    implementation(libs.retrofit.converter.kotlinx.serialization)
-
     implementation(libs.glide)
-
-    ksp(libs.glide.compiler)
-    implementation(libs.glide.okhttp3)
 
     implementation(libs.rxandroid)
 
@@ -114,18 +106,14 @@ dependencies {
 
     implementation(libs.photoview)
 
-    implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
-    implementation(libs.okhttp.logging.interceptor)
 
     implementation(libs.commons.codec)
 
     implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)
-
-    implementation(libs.retrofit.converter.kotlinx.serialization)
 
     implementation(libs.coil.compose)
 
