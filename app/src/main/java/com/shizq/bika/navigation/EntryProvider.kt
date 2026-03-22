@@ -1,8 +1,17 @@
 package com.shizq.bika.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.dashboard.DashboardScreen
@@ -19,7 +28,8 @@ import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
-
+import com.shizq.bika.utils.SPUtil.Companion.put
+import androidx.navigation3.runtime.metadata
 fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     entry<LoginNavKey> {
         LoginScreen(
@@ -30,7 +40,32 @@ fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     }
 }
 fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
-    entry<SearchNavKey> {
+    entry<SearchNavKey>(
+        metadata =  metadata {
+            put(NavDisplay.TransitionKey) {
+                slideInVertically(
+                    initialOffsetY = { it },
+                    animationSpec = tween(1000)
+                ) togetherWith ExitTransition.KeepUntilTransitionsFinished
+            }
+
+            put(NavDisplay.PopTransitionKey) {
+                EnterTransition.None togetherWith
+                        slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(1000)
+                        )
+            }
+
+            put(NavDisplay.PredictivePopTransitionKey) {
+                EnterTransition.None togetherWith
+                        slideOutVertically(
+                            targetOffsetY = { it },
+                            animationSpec = tween(1000)
+                        )
+            }
+        }
+    ) {
         SearchScreen(
             onBackClick = navigator::goBack
         )
