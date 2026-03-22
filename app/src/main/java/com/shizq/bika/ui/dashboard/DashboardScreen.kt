@@ -92,11 +92,12 @@ import kotlinx.coroutines.launch
 @Composable
 fun DashboardScreen(
     navigationToLeaderboard: () -> Unit,
-    navigateToSearch: (DiscoveryAction) -> Unit,
-    viewModel: DashboardViewModel = hiltViewModel(),
+    navigateToFavourite: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
     navigateToGame: () -> Unit,
+    onSearchClicked: () -> Unit,
+    viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
@@ -110,10 +111,11 @@ fun DashboardScreen(
         onChannelToggled = viewModel::onChannelToggled,
         onOrderChange = viewModel::onChannelsReordered,
         navigationToLeaderboard = navigationToLeaderboard,
-        navigateToSearch = navigateToSearch,
+        navigateToFavourite = navigateToFavourite,
         navigationToHistory = navigationToHistory,
         navigationToSettings = navigationToSettings,
         navigateToGame = navigateToGame,
+        onSearchClicked = onSearchClicked,
     )
 }
 
@@ -126,10 +128,11 @@ fun DashboardContent(
     onChannelToggled: (Channel, Boolean) -> Unit,
     onOrderChange: (List<Channel>) -> Unit,
     navigationToLeaderboard: () -> Unit,
-    navigateToSearch: (DiscoveryAction) -> Unit,
+    navigateToFavourite: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
     navigateToGame: () -> Unit,
+    onSearchClicked: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -166,10 +169,10 @@ fun DashboardContent(
                             navigationToHistory()
                         }
                     },
-                    navigateToSearch = {
+                    navigateToFavourite = {
                         scope.launch {
                             drawerState.close()
-                            navigateToSearch(it)
+                            navigateToFavourite(it)
                         }
                     },
                     navigationToSettings = {
@@ -194,7 +197,8 @@ fun DashboardContent(
                     channelState = channelSettingsUiState,
                     onDrawerOpen = { scope.launch { drawerState.open() } },
                     onChannelToggled = onChannelToggled,
-                    onOrderChange = onOrderChange
+                    onOrderChange = onOrderChange,
+                    onSearchClicked = onSearchClicked,
                 )
             },
             modifier = Modifier
@@ -233,7 +237,7 @@ fun DashboardContent(
                                 context = context,
                                 channel = item,
                                 navigationToLeaderboard = navigationToLeaderboard,
-                                navigateToSearch = navigateToSearch,
+                                navigateToSearch = navigateToFavourite,
                                 navigateToGame = navigateToGame,
                             )
                         }
@@ -252,6 +256,7 @@ private fun DashboardAppBar(
     onDrawerOpen: () -> Unit,
     onChannelToggled: (Channel, Boolean) -> Unit,
     onOrderChange: (List<Channel>) -> Unit,
+    onSearchClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -278,14 +283,7 @@ private fun DashboardAppBar(
             }
 
             IconButton(
-                onClick = {
-//                            startActivity(
-//                                Intent(
-//                                    this@MainActivity,
-//                                    SearchActivity::class.java
-//                                )
-//                            )
-                }
+                onClick = onSearchClicked
             ) {
                 Icon(
                     Icons.Default.Search,
@@ -343,7 +341,7 @@ fun DashboardDrawerContent(
     modifier: Modifier = Modifier,
     onCheckInClick: () -> Unit = {},
     navigationToHistory: () -> Unit = {},
-    navigateToSearch: (DiscoveryAction) -> Unit = {},
+    navigateToFavourite: (DiscoveryAction) -> Unit = {},
     navigationToSettings: () -> Unit = {},
 ) {
     val context = LocalContext.current
@@ -390,7 +388,7 @@ fun DashboardDrawerContent(
                         label = { Text("我的收藏") },
                         selected = false,
                         onClick = {
-                            navigateToSearch(DiscoveryAction.ToFavourite)
+                            navigateToFavourite(DiscoveryAction.ToFavourite)
                         },
                         icon = { Icon(Icons.Filled.Favorite, "Favorite") },
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
