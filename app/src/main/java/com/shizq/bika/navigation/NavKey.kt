@@ -57,6 +57,9 @@ data class FeedNavKey(val action: DiscoveryAction) : NavKey
 object LeaderboardNavKey : NavKey
 
 @Serializable
+object SearchNavKey : NavKey
+
+@Serializable
 data class UnitedDetailNavKey(val id: String) : NavKey
 
 @Serializable

@@ -15,6 +15,7 @@ import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
 import com.shizq.bika.ui.reader.ReaderScreen
 import com.shizq.bika.ui.reader.ReaderViewModel
+import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
@@ -25,6 +26,13 @@ fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
             onLoginSuccess = { navigator.navigate(DashboardNavKey) },
             onSignUpClick = { navigator.navigate(RegisterNavKey) },
             onForgotPasswordClick = {}
+        )
+    }
+}
+fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
+    entry<SearchNavKey> {
+        SearchScreen(
+            onBackClick = navigator::goBack
         )
     }
 }
@@ -41,12 +49,13 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
     entry<DashboardNavKey> {
         DashboardScreen(
             navigationToLeaderboard = { navigator.navigate(LeaderboardNavKey) },
-            navigateToSearch = { action ->
+            navigateToFavourite = { action ->
                 navigator.navigate(FeedNavKey(action))
             },
             navigationToHistory = { navigator.navigate(HistoryNavKey) },
             navigationToSettings = { navigator.navigate(SettingsNavKey) },
-            navigateToGame = { navigator.navigate(GameNavKey) }
+            navigateToGame = { navigator.navigate(GameNavKey) },
+            onSearchClicked = { navigator.navigate(SearchNavKey) },
         )
     }
 }

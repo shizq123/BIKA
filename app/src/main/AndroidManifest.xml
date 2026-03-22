@@ -55,9 +55,6 @@
             android:name=".ui.mycomments.MyCommentsActivity"
             android:exported="false" />
         <activity
-            android:name=".ui.search.SearchActivity"
-            android:exported="false" />
-        <activity
             android:name=".ui.comiclist.ComicListActivity"
             android:exported="false" />
         <activity
