@@ -4,9 +4,7 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
@@ -28,7 +26,6 @@ import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
-import com.shizq.bika.utils.SPUtil.Companion.put
 import androidx.navigation3.runtime.metadata
 
 fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
@@ -149,7 +146,7 @@ fun EntryProviderScope<NavKey>.feedEntry(navigator: Navigator) {
         FeedScreen(
             title = key.action.name,
             onBackClick = { navigator.goBack() },
-            navigationToComicDetail = navigator::navigateToUnitedDetail,
+            onComicClick = navigator::navigateToUnitedDetail,
             viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
                 key = key.toString(),
             ) { factory ->
