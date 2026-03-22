@@ -11,13 +11,13 @@ import dagger.assisted.AssistedInject
 
 class FavouriteComicsPagingSource @AssistedInject constructor(
     private val api: BikaDataSource,
-    @Assisted private val sortValue: String,
+    @Assisted private val sort: Sort,
 ) : PagingSource<Int, ComicSimple>() {
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSimple> {
         val page = params.key ?: 1
 
         return try {
-            val response = api.getFavouriteComics(Sort(sortValue), page)
+            val response = api.getFavouriteComics(sort, page)
 
             val comicsPage = response.comics
 
@@ -40,6 +40,6 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        fun create(sortValue: String): FavouriteComicsPagingSource
+        fun create(sort: Sort): FavouriteComicsPagingSource
     }
 }
