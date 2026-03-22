@@ -326,11 +326,7 @@ private fun navigation(
 
         "随机本子" -> navigateToSearch(DiscoveryAction.ToRandom)
 
-        else -> navigateToSearch(
-            DiscoveryAction.AdvancedSearch(
-                channel.displayName,
-                topic = channel.displayName
-            )
+        else -> navigateToSearch(DiscoveryAction.Channel (channel.displayName,)
         )
     }
 }
