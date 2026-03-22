@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
+import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import com.shizq.bika.core.model.ComicSimple
@@ -19,47 +20,61 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.update
 import javax.inject.Provider
 
 @HiltViewModel(assistedFactory = FeedViewModel.Factory::class)
 class FeedViewModel @AssistedInject constructor(
     private val api: BikaDataSource,
-    channelPagingSourceFactory: ChannelPagingSource.Factory,
-    favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
-    advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
-    recentUpdatesPagingSourceProvider: Provider<RecentUpdatesPagingSource>,
+    private val channelPagingSourceFactory: ChannelPagingSource.Factory,
+    private val favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
+    private val advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
+    private val recentUpdatesPagingSourceProvider: Provider<RecentUpdatesPagingSource>,
     @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
-    private val pagingSource: PagingSource<Int, ComicSimple> = when (action) {
-        is DiscoveryAction.Channel->channelPagingSourceFactory.create(action.name, Sort.NEWEST)
-        is DiscoveryAction.Knight -> advancedSearchPagingSourceFactory.create(
-            query = action.name,
-            sort = Sort.NEWEST
-        )
-
-        is DiscoveryAction.AdvancedSearch -> advancedSearchPagingSourceFactory.create(
-            query = action.name,
-            sort = Sort.NEWEST
-        )
-
-        DiscoveryAction.ToCollections -> SinglePagePagingSource {
-            val collectionsData = api.getCollections()
-            collectionsData.collections.firstOrNull()?.comics ?: emptyList()
+    val currentSortOrder: StateFlow<Sort>
+        field = MutableStateFlow(Sort.NEWEST)
+    val pagedComics : Flow<PagingData<ComicSimple>> = currentSortOrder
+        .flatMapLatest { sort ->
+            Pager(PagingConfig(pageSize = 40)) {
+                createPagingSource(action, sort)
+            }.flow
         }
-
-        DiscoveryAction.ToRandom -> SinglePagePagingSource {
-            val collectionsData = api.getRandomComics()
-            collectionsData.comics
-        }
-
-        DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get()
-
-        DiscoveryAction.ToFavourite -> favouriteComicsPagingSourceFactory.create(Sort.NEWEST)
-    }
-    val pagedComics = Pager(PagingConfig(40)) {
-        pagingSource
-    }.flow
         .cachedIn(viewModelScope)
+
+    fun updateSortOrder(newSort: Sort) {
+        currentSortOrder.update { newSort }
+    }
+
+    private fun createPagingSource(
+        action: DiscoveryAction,
+        sort: Sort
+    ): PagingSource<Int, ComicSimple> {
+        return when (action) {
+            is DiscoveryAction.Channel -> channelPagingSourceFactory.create(action.name, sort)
+            is DiscoveryAction.Knight -> advancedSearchPagingSourceFactory.create(action.name, sort)
+            is DiscoveryAction.AdvancedSearch -> advancedSearchPagingSourceFactory.create(
+                action.name,
+                sort
+            )
+
+            is DiscoveryAction.ToFavourite -> favouriteComicsPagingSourceFactory.create(sort)
+
+            DiscoveryAction.ToCollections -> SinglePagePagingSource {
+                api.getCollections().collections.firstOrNull()?.comics ?: emptyList()
+            }
+
+            DiscoveryAction.ToRandom -> SinglePagePagingSource {
+                api.getRandomComics().comics
+            }
+
+            DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get()
+        }
+    }
 
     @AssistedFactory
     interface Factory {
