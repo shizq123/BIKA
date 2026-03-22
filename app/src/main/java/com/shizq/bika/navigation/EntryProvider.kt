@@ -67,6 +67,9 @@ fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
         }
     ) {
         SearchScreen(
+            onSearchClick = {
+                navigator.navigate(FeedNavKey(DiscoveryAction.AdvancedSearch(it)))
+            },
             onBackClick = navigator::goBack
         )
     }
