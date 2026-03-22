@@ -101,7 +101,7 @@ fun ComicDetailPage(
                 view = detail.totalViews,
                 chineseTeam = detail.chineseTeam,
                 onTranslateClick = {
-                    navigationToFeed(DiscoveryAction.AdvancedSearch(it, translationTeam = it))
+                    navigationToFeed(DiscoveryAction.AdvancedSearch(it))
                 }
             )
 
@@ -123,10 +123,7 @@ fun ComicDetailPage(
                 },
                 onAuthorClick = {
                     navigationToFeed(
-                        DiscoveryAction.AdvancedSearch(
-                            detail.author,
-                            authorName = detail.author
-                        )
+                        DiscoveryAction.AdvancedSearch(detail.author,)
                     )
                 }
             )
@@ -137,7 +134,7 @@ fun ComicDetailPage(
             ) {
                 all.fastForEach {
                     SuggestionChip(
-                        { navigationToFeed(DiscoveryAction.AdvancedSearch(it, tag = it)) },
+                        { navigationToFeed(DiscoveryAction.AdvancedSearch(it)) },
                         label = {
                             Text(
                                 it,

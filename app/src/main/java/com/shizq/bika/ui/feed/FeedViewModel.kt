@@ -10,38 +10,36 @@ import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
+import com.shizq.bika.paging.AdvancedSearchPagingSource
+import com.shizq.bika.paging.ChannelPagingSource
 import com.shizq.bika.paging.FavouriteComicsPagingSource
+import com.shizq.bika.paging.RecentUpdatesPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
-import com.shizq.bika.paging.TopicComicsPagingSource
-import com.shizq.bika.ui.comiclist.ComicSearchParams
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Provider
 
 @HiltViewModel(assistedFactory = FeedViewModel.Factory::class)
 class FeedViewModel @AssistedInject constructor(
     private val api: BikaDataSource,
-    topicComicsPagingSourceFactory: TopicComicsPagingSource.Factory,
+    channelPagingSourceFactory: ChannelPagingSource.Factory,
     favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
+    advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
+    recentUpdatesPagingSourceProvider: Provider<RecentUpdatesPagingSource>,
     @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
     private val pagingSource: PagingSource<Int, ComicSimple> = when (action) {
-        is DiscoveryAction.Knight -> topicComicsPagingSourceFactory.create(
-            ComicSearchParams(
-                knightId = action.id,
-                sort = Sort.NEWEST
-            )
+        is DiscoveryAction.Channel->channelPagingSourceFactory.create(action.name, Sort.NEWEST)
+        is DiscoveryAction.Knight -> advancedSearchPagingSourceFactory.create(
+            query = action.name,
+            sort = Sort.NEWEST
         )
 
-        is DiscoveryAction.AdvancedSearch -> topicComicsPagingSourceFactory.create(
-            ComicSearchParams(
-                topic = action.topic,
-                tag = action.tag,
-                authorName = action.authorName,
-                translationTeam = action.translationTeam,
-                sort = Sort.NEWEST
-            )
+        is DiscoveryAction.AdvancedSearch -> advancedSearchPagingSourceFactory.create(
+            query = action.name,
+            sort = Sort.NEWEST
         )
 
         DiscoveryAction.ToCollections -> SinglePagePagingSource {
@@ -54,11 +52,9 @@ class FeedViewModel @AssistedInject constructor(
             collectionsData.comics
         }
 
-        DiscoveryAction.ToRecent -> topicComicsPagingSourceFactory.create(
-            ComicSearchParams(sort = Sort.NEWEST)
-        )
+        DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get()
 
-        DiscoveryAction.ToFavourite -> favouriteComicsPagingSourceFactory.create(Sort.NEWEST.value)
+        DiscoveryAction.ToFavourite -> favouriteComicsPagingSourceFactory.create(Sort.NEWEST)
     }
     val pagedComics = Pager(PagingConfig(40)) {
         pagingSource

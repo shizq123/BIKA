@@ -40,14 +40,10 @@ sealed interface DiscoveryAction {
     data class Knight(override val name: String, val id: String) : DiscoveryAction
 
     @Serializable
-    data class AdvancedSearch(
-        override val name: String,
-        val topic: String? = null,
-        val tag: String? = null,
-        val authorName: String? = null,
-        val knightId: String? = null,
-        val translationTeam: String? = null
-    ) : DiscoveryAction
+    data class AdvancedSearch(override val name: String, ) : DiscoveryAction
+
+    @Serializable
+    data class Channel(override val name: String) : DiscoveryAction
 }
 
 @Serializable
