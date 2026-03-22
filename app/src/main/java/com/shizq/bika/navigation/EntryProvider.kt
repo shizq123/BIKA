@@ -30,6 +30,7 @@ import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 import com.shizq.bika.utils.SPUtil.Companion.put
 import androidx.navigation3.runtime.metadata
+
 fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     entry<LoginNavKey> {
         LoginScreen(
@@ -39,28 +40,29 @@ fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
         )
     }
 }
+
 fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
     entry<SearchNavKey>(
-        metadata =  metadata {
+        metadata = metadata {
             put(NavDisplay.TransitionKey) {
-                slideInVertically(
-                    initialOffsetY = { it },
+                slideInHorizontally(
+                    initialOffsetX = { it },
                     animationSpec = tween(1000)
                 ) togetherWith ExitTransition.KeepUntilTransitionsFinished
             }
 
             put(NavDisplay.PopTransitionKey) {
                 EnterTransition.None togetherWith
-                        slideOutVertically(
-                            targetOffsetY = { it },
+                        slideOutHorizontally(
+                            targetOffsetX = { it },
                             animationSpec = tween(1000)
                         )
             }
-
+           
             put(NavDisplay.PredictivePopTransitionKey) {
                 EnterTransition.None togetherWith
-                        slideOutVertically(
-                            targetOffsetY = { it },
+                        slideOutHorizontally(
+                            targetOffsetX = { it },
                             animationSpec = tween(1000)
                         )
             }
