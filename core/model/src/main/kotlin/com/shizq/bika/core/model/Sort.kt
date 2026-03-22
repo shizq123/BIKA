@@ -17,4 +17,6 @@ enum class Sort(val value: String) {
 
     /** 最多浏览 */
     MOST_VIEWED("vd");
+
+    override fun toString(): String = value
 }
