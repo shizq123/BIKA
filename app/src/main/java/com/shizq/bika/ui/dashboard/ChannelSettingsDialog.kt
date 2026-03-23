@@ -1,7 +1,5 @@
 package com.shizq.bika.ui.dashboard
 
-import android.R.attr.scaleX
-import android.R.attr.scaleY
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
@@ -34,7 +32,6 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
@@ -52,7 +49,7 @@ fun ChannelSettingsDialog(
 ) {
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
 
-    ChannelSettingsDialog(
+    ChannelSettingsDialogContent(
         channels = channelSettingsUiState,
         onDismiss = onDismiss,
         onSave =viewModel::saveChannelSettings
@@ -60,7 +57,7 @@ fun ChannelSettingsDialog(
 }
 
 @Composable
-fun ChannelSettingsDialog(
+fun ChannelSettingsDialogContent(
     channels: List<Channel>,
     onDismiss: () -> Unit,
     onSave: (List<Channel>) -> Unit
@@ -164,7 +161,7 @@ private fun ChannelSettingItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { if (!isDragging) onToggle(!isActive) }
+            .clickable(enabled = !isDragging) { onToggle(!isActive) }
             .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween

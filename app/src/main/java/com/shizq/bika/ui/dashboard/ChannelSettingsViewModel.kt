@@ -7,11 +7,9 @@ import com.shizq.bika.core.model.Channel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlin.collections.map
 
 @HiltViewModel
 class ChannelSettingsViewModel @Inject constructor(
