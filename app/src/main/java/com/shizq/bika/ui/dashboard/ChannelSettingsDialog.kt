@@ -5,13 +5,13 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -34,7 +34,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.zIndex
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -52,7 +54,7 @@ fun ChannelSettingsDialog(
     ChannelSettingsDialogContent(
         channels = channelSettingsUiState,
         onDismiss = onDismiss,
-        onSave =viewModel::saveChannelSettings
+        onSave = viewModel::saveChannelSettings
     )
 }
 
@@ -74,13 +76,18 @@ fun ChannelSettingsDialogContent(
         lazyListState = listState
     )
 
+    val windowInfo = LocalWindowInfo.current
+
     AlertDialog(
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier
+            .widthIn(max = windowInfo.containerDpSize.width - 80.dp)
+            .height(400.dp),
         onDismissRequest = onDismiss,
         title = {
             Text("频道显示设置", style = MaterialTheme.typography.titleLarge)
         },
         text = {
-            Box(modifier = Modifier.heightIn(max = 400.dp)) {
                 LazyColumn(
                     state = listState,
                     verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -101,7 +108,8 @@ fun ChannelSettingsDialogContent(
                                 targetValue = if (isDragging) 1.05f else 1f,
                                 label = "scale"
                             )
-                            val bgColor = if (isDragging) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+                            val bgColor =
+                                if (isDragging) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
 
                             ChannelSettingItem(
                                 name = channel.displayName,
@@ -134,7 +142,6 @@ fun ChannelSettingsDialogContent(
                         }
                     }
                 }
-            }
         },
         confirmButton = {
             TextButton(

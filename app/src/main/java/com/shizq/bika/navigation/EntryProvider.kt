@@ -9,9 +9,12 @@ import androidx.compose.animation.togetherWith
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.metadata
+import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
+import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
@@ -26,9 +29,6 @@ import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
-import androidx.navigation3.runtime.metadata
-import androidx.navigation3.scene.DialogSceneStrategy
-import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
 
 fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     entry<LoginNavKey> {
