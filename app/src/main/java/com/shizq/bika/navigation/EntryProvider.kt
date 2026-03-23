@@ -46,7 +46,7 @@ fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
             put(NavDisplay.TransitionKey) {
                 slideInHorizontally(
                     initialOffsetX = { it },
-                    animationSpec = tween(1000)
+                    animationSpec = tween(300)
                 ) togetherWith ExitTransition.KeepUntilTransitionsFinished
             }
 
@@ -54,7 +54,7 @@ fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
                 EnterTransition.None togetherWith
                         slideOutHorizontally(
                             targetOffsetX = { it },
-                            animationSpec = tween(1000)
+                            animationSpec = tween(300)
                         )
             }
 
@@ -62,7 +62,7 @@ fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
                 EnterTransition.None togetherWith
                         slideOutHorizontally(
                             targetOffsetX = { it },
-                            animationSpec = tween(1000)
+                            animationSpec = tween(300)
                         )
             }
         }

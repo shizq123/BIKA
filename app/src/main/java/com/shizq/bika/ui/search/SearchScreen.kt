@@ -1,20 +1,22 @@
 package com.shizq.bika.ui.search
 
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsBottomHeight
+import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.rounded.Close
@@ -24,12 +26,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
-import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -50,7 +50,6 @@ import androidx.compose.ui.util.fastForEach
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
@@ -65,7 +64,7 @@ fun SearchScreen(
         searchQuery = searchQuery,
         recentSearchesUiState = recentSearchQueriesUiState,
         onSearchQueryChanged = searchViewModel::onSearchQueryChanged,
-        onBackClicked = onBackClick,
+        onBackClick = onBackClick,
         onSearchTriggered = {
             searchViewModel.onSearchTriggered(it)
             onSearchClick(it)
@@ -82,94 +81,113 @@ fun SearchContent(
     onSearchQueryChanged: (String) -> Unit = {},
     onSearchTriggered: (String) -> Unit = {},
     onClearRecentSearches: () -> Unit = {},
-    onBackClicked: () -> Unit = {},
+    onBackClick: () -> Unit = {},
 ) {
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("搜索") },
-                navigationIcon = {
-                    IconButton(onClick = onBackClicked) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
-        },
-    ) { innerPadding ->
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        Spacer(Modifier.windowInsetsTopHeight(WindowInsets.safeDrawing))
+        SearchToolbar(
+            onBackClick = onBackClick,
+            onSearchQueryChanged = onSearchQueryChanged,
+            onSearchTriggered = onSearchTriggered,
+            searchQuery = searchQuery,
+        )
+
         when (recentSearchesUiState) {
-            is RecentSearchQueriesUiState.Error -> {}
-            RecentSearchQueriesUiState.Loading -> {}
+            is RecentSearchQueriesUiState.Error,
+            RecentSearchQueriesUiState.Loading -> Unit
+
             is RecentSearchQueriesUiState.Success -> {
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    SearchTextField(
-                        searchQuery = searchQuery,
-                        onSearchQueryChanged = onSearchQueryChanged,
-                        onSearchTriggered = onSearchTriggered,
-                    )
-
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(text = "历史", style = MaterialTheme.typography.titleMedium)
-                            TextButton(onClick = onClearRecentSearches) {
-                                Text("清空")
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(4.dp))
-
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            itemVerticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            recentSearchesUiState.recentQueries.fastForEach { recentSearchQuery ->
-                                AssistChip(
-                                    onClick = { onSearchQueryChanged(recentSearchQuery.query) },
-                                    label = { Text(recentSearchQuery.query) }
-                                )
-                            }
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "历史", style = MaterialTheme.typography.titleMedium)
+                        TextButton(onClick = onClearRecentSearches) {
+                            Text("清空")
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(20.dp))
+                    Spacer(modifier = Modifier.height(4.dp))
 
-                    Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                        Text(
-                            text = "大家都在搜",
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        FlowRow(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            itemVerticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            recentSearchesUiState.hotKeywords.fastForEach { tag ->
-                                AssistChip(
-                                    onClick = {
-                                        onSearchQueryChanged(tag)
-                                        onSearchTriggered(tag)
-                                    },
-                                    label = { Text(tag) }
-                                )
-                            }
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        recentSearchesUiState.recentQueries.fastForEach { recentSearchQuery ->
+                            AssistChip(
+                                onClick = {
+                                    onSearchQueryChanged(recentSearchQuery.query)
+                                    onSearchTriggered(recentSearchQuery.query)
+                                },
+                                label = { Text(recentSearchQuery.query) }
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(20.dp))
+
+                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                    Text(
+                        text = "大家都在搜",
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        itemVerticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        recentSearchesUiState.hotKeywords.fastForEach { tag ->
+                            AssistChip(
+                                onClick = {
+                                    onSearchQueryChanged(tag)
+                                    onSearchTriggered(tag)
+                                },
+                                label = { Text(tag) }
+                            )
                         }
                     }
                 }
             }
         }
+        Spacer(Modifier.windowInsetsBottomHeight(WindowInsets.safeDrawing))
+    }
+}
+
+@Composable
+private fun SearchToolbar(
+    searchQuery: String,
+    onSearchQueryChanged: (String) -> Unit,
+    onSearchTriggered: (String) -> Unit,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.fillMaxWidth(),
+    ) {
+        IconButton(onClick = onBackClick) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                contentDescription = "返回",
+            )
+        }
+        SearchTextField(
+            onSearchQueryChanged = onSearchQueryChanged,
+            onSearchTriggered = onSearchTriggered,
+            searchQuery = searchQuery,
+        )
     }
 }
 
