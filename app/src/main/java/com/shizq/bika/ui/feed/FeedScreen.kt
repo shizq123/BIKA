@@ -1,8 +1,14 @@
 package com.shizq.bika.ui.feed
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -26,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +45,10 @@ import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.ui.ComicCard
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
+import com.shizq.bika.ui.tag.FilterChip
+import com.shizq.bika.ui.tag.FilterGroup
+import com.shizq.bika.ui.tag.FilterState
+import com.shizq.bika.ui.tag.rememberFilterState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +60,7 @@ fun FeedScreen(
 ) {
     val pagedComics = viewModel.pagedComics.collectAsLazyPagingItems()
     val currentSortOrder by viewModel.currentSortOrder.collectAsStateWithLifecycle()
+    val filterSelections by viewModel.filterSelections.collectAsStateWithLifecycle()
     FeedContent(
         title = title,
         pagedComics = pagedComics,
@@ -56,55 +68,9 @@ fun FeedScreen(
         onComicClick = onComicClick,
         currentSortOrder = currentSortOrder,
         onSortOrderChanged = viewModel::updateSortOrder,
+        filterSelections = filterSelections,
+        onFilterChanged = viewModel::toggleFilter,
     )
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun FeedContent(
-    title: String,
-    pagedComics: LazyPagingItems<ComicSimple>,
-    currentSortOrder: Sort,
-    onSortOrderChanged: (Sort) -> Unit,
-    onComicClick: (comicId: String) -> Unit,
-    onBackClick: () -> Unit,
-    scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-) {
-    Scaffold(
-        topBar = {
-            FeedAppBar(
-                title = title,
-                scrollBehavior = scrollBehavior,
-                onBackClick = onBackClick,
-                currentSortOrder = currentSortOrder,
-                onSortOrderChanged = onSortOrderChanged,
-            )
-        },
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-    ) { innerPadding ->
-        when (pagedComics.loadState.refresh) {
-            is LoadState.Loading -> LoadingState()
-
-            is LoadState.Error -> ErrorState(pagedComics::retry)
-
-            is LoadState.NotLoading -> {
-                LazyColumn(Modifier.padding(innerPadding)) {
-                    items(pagedComics.itemCount, key = pagedComics.itemKey { it.id }) { index ->
-                        pagedComics[index]?.let { item ->
-                            ComicCard(comic = item) {
-                                onComicClick(item.id)
-                            }
-                        }
-                    }
-                    if (pagedComics.loadState.append is LoadState.Loading) {
-                        item {
-                            LoadingState(Modifier.wrapContentHeight())
-                        }
-                    }
-                }
-            }
-        }
-    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -158,4 +124,106 @@ private fun FeedAppBar(
         },
         scrollBehavior = scrollBehavior,
     )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+private fun FeedContent(
+    title: String,
+    pagedComics: LazyPagingItems<ComicSimple>,
+    currentSortOrder: Sort,
+    onSortOrderChanged: (Sort) -> Unit,
+    onComicClick: (comicId: String) -> Unit,
+    onBackClick: () -> Unit,
+    // --- 新增过滤器相关参数 ---
+    filterSelections: Map<FilterGroup, List<String>>,
+    onFilterChanged: (group: FilterGroup, value: String) -> Unit, // 通知父组件去更新 Map
+    // ----------------------
+    scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+) {
+    Scaffold(
+        topBar = {
+            FeedAppBar(
+                title = title,
+                scrollBehavior = scrollBehavior,
+                onBackClick = onBackClick,
+                currentSortOrder = currentSortOrder,
+                onSortOrderChanged = onSortOrderChanged,
+            )
+        },
+        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            val filterState = rememberFilterState(filterSelections)
+
+            FilterRow(
+                filterState = filterState,
+                onFilterChanged = onFilterChanged,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+            // 2. 根据分页加载状态显示内容
+            when (pagedComics.loadState.refresh) {
+                is LoadState.Loading -> {
+                    LoadingState(Modifier.weight(1f)) // 使用 weight 占据剩余空间
+                }
+
+                is LoadState.Error -> {
+                    ErrorState(
+                        onRetry = pagedComics::retry,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                is LoadState.NotLoading -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f) // 占据过滤器下方的所有剩余空间
+                    ) {
+                        items(pagedComics.itemCount, key = pagedComics.itemKey { it.id }) { index ->
+                            pagedComics[index]?.let { item ->
+                                ComicCard(comic = item) {
+                                    onComicClick(item.id)
+                                }
+                            }
+                        }
+
+                        if (pagedComics.loadState.append is LoadState.Loading) {
+                            item {
+                                LoadingState(Modifier.wrapContentHeight())
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FilterRow(
+    filterState: FilterState,
+    onFilterChanged: (group: FilterGroup, value: String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LazyRow(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp) // Chip 之间的间距
+    ) {
+        items(filterState.chips) { chipState ->
+            FilterChip(
+                state = chipState,
+                onSelectionChanged = { value ->
+                    // 确保 kind 不为空时，将事件回传给外层
+                    chipState.kind?.let { group ->
+                        onFilterChanged(group, value)
+                    }
+                }
+            )
+        }
+    }
 }
