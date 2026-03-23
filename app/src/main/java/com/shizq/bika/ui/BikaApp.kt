@@ -19,7 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.scene.DialogSceneStrategy
+import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.navigation.Navigator
 import com.shizq.bika.navigation.dashboardEntry
@@ -64,6 +67,8 @@ fun BikaApp(
                     ),
                 ),
         ) {
+            val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
+
             val entryProvider = entryProvider {
                 searchEntry(navigator)
                 loginEntry(navigator)
@@ -82,6 +87,7 @@ fun BikaApp(
             NavDisplay(
                 entries = appState.navigationState.toEntries(entryProvider),
                 onBack = { navigator.goBack() },
+                sceneStrategies = listOf(dialogStrategy)
             )
         }
     }
