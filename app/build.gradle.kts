@@ -50,7 +50,7 @@ android {
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            (output as? VariantOutputImpl)?.outputFileName = "BIKA_v${variant.name}.apk"
+            (output as? VariantOutputImpl)?.outputFileName = "BIKA_v${output.versionName.get()}.apk"
         }
     }
 }
