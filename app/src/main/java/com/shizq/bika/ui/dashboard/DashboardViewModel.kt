@@ -13,6 +13,7 @@ import com.shizq.bika.core.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -22,13 +23,14 @@ import kotlinx.coroutines.launch
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    private val userCredentialsDataSource: UserCredentialsDataSource,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val network: BikaDataSource,
 ) : ViewModel() {
     private val dashboardRestarter = FlowRestarter()
     val userChannelPreferences = userPreferencesDataSource.userData
-        .map { it.channels }
+        .map { preferences ->
+            preferences.channels.filter { it.isActive }
+        }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
@@ -67,29 +69,6 @@ class DashboardViewModel @Inject constructor(
 
     fun restart() {
         dashboardRestarter.restart()
-    }
-
-    fun onChannelToggled(targetChannel: Channel, enable: Boolean) {
-        viewModelScope.launch {
-            val userPreferences = userPreferencesDataSource.userData.first()
-            val currentList = userPreferences.channels
-
-            val newList = currentList.map { item ->
-                if (item.displayName == targetChannel.displayName) {
-                    item.copy(isActive = enable)
-                } else {
-                    item
-                }
-            }
-
-            userPreferencesDataSource.updateChannels(newList)
-        }
-    }
-
-    fun onChannelsReordered(newOrderedList: List<Channel>) {
-        viewModelScope.launch {
-            userPreferencesDataSource.updateChannels(newOrderedList)
-        }
     }
 
     // performAutoCheckIn

@@ -54,10 +54,8 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -97,6 +95,7 @@ fun DashboardScreen(
     navigationToSettings: () -> Unit,
     navigateToGame: () -> Unit,
     onSearchClicked: () -> Unit,
+    onChannelPreferenceClicked: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
@@ -108,14 +107,13 @@ fun DashboardScreen(
         userProfileUiState = userProfileUiState,
         onCheckInClick = viewModel::onCheckIn,
         channelSettingsUiState = channelSettingsUiState,
-        onChannelToggled = viewModel::onChannelToggled,
-        onOrderChange = viewModel::onChannelsReordered,
         navigationToLeaderboard = navigationToLeaderboard,
         navigateToFavourite = navigateToFavourite,
         navigationToHistory = navigationToHistory,
         navigationToSettings = navigationToSettings,
         navigateToGame = navigateToGame,
         onSearchClicked = onSearchClicked,
+        onChannelPreferenceClicked = onChannelPreferenceClicked,
     )
 }
 
@@ -125,14 +123,13 @@ fun DashboardContent(
     userProfileUiState: UserProfileUiState,
     onCheckInClick: () -> Unit,
     channelSettingsUiState: List<Channel>,
-    onChannelToggled: (Channel, Boolean) -> Unit,
-    onOrderChange: (List<Channel>) -> Unit,
     navigationToLeaderboard: () -> Unit,
     navigateToFavourite: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
     navigateToGame: () -> Unit,
     onSearchClicked: () -> Unit,
+    onChannelPreferenceClicked: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -185,20 +182,14 @@ fun DashboardContent(
             }
         },
     ) {
-        val activeChannels = remember(channelSettingsUiState) {
-            channelSettingsUiState.filter { it.isActive }
-        }
-
         val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
         Scaffold(
             topBar = {
                 DashboardAppBar(
                     scrollBehavior = scrollBehavior,
-                    channelState = channelSettingsUiState,
                     onDrawerOpen = { scope.launch { drawerState.open() } },
-                    onChannelToggled = onChannelToggled,
-                    onOrderChange = onOrderChange,
                     onSearchClicked = onSearchClicked,
+                    onChannelPreferenceClicked= onChannelPreferenceClicked,
                 )
             },
             modifier = Modifier
@@ -215,7 +206,7 @@ fun DashboardContent(
                     .padding(innerPadding),
             ) {
                 items(
-                    activeChannels,
+                    channelSettingsUiState,
                     key = { it.resName }
                 ) { item ->
                     val context = LocalContext.current
@@ -252,11 +243,9 @@ fun DashboardContent(
 @Composable
 private fun DashboardAppBar(
     scrollBehavior: TopAppBarScrollBehavior,
-    channelState: List<Channel>,
     onDrawerOpen: () -> Unit,
-    onChannelToggled: (Channel, Boolean) -> Unit,
-    onOrderChange: (List<Channel>) -> Unit,
     onSearchClicked: () -> Unit,
+    onChannelPreferenceClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -268,18 +257,8 @@ private fun DashboardAppBar(
             }
         },
         actions = {
-            var showChannelSettings by remember { mutableStateOf(false) }
-
-            IconButton(onClick = { showChannelSettings = true }) {
+            IconButton(onClick = onChannelPreferenceClicked) {
                 Icon(Icons.Filled.FilterList, contentDescription = "Channel Filter")
-            }
-            if (showChannelSettings) {
-                ChannelSettingsDialog(
-                    channels = channelState,
-                    onDismiss = { showChannelSettings = false },
-                    onChannelToggle = onChannelToggled,
-                    onOrderChange = onOrderChange
-                )
             }
 
             IconButton(

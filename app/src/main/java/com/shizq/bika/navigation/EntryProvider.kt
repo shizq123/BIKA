@@ -27,6 +27,8 @@ import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 import androidx.navigation3.runtime.metadata
+import androidx.navigation3.scene.DialogSceneStrategy
+import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
 
 fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     entry<LoginNavKey> {
@@ -55,7 +57,7 @@ fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
                             animationSpec = tween(1000)
                         )
             }
-           
+
             put(NavDisplay.PredictivePopTransitionKey) {
                 EnterTransition.None togetherWith
                         slideOutHorizontally(
@@ -93,6 +95,17 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
             navigationToSettings = { navigator.navigate(SettingsNavKey) },
             navigateToGame = { navigator.navigate(GameNavKey) },
             onSearchClicked = { navigator.navigate(SearchNavKey) },
+            onChannelPreferenceClicked = { navigator.navigate(ChannelSettingsNavKey) }
+        )
+    }
+}
+
+fun EntryProviderScope<NavKey>.channelSettingsEntry(navigator: Navigator) {
+    entry<ChannelSettingsNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) {
+        ChannelSettingsDialog(
+            onDismiss = navigator::goBack,
         )
     }
 }

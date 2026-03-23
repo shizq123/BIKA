@@ -1,6 +1,9 @@
 package com.shizq.bika.ui.dashboard
 
+import android.R.attr.scaleX
+import android.R.attr.scaleY
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -25,6 +28,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
@@ -32,19 +36,36 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.model.Channel
 import sh.calvin.reorderable.ReorderableItem
 import sh.calvin.reorderable.rememberReorderableLazyListState
 
 @Composable
 fun ChannelSettingsDialog(
+    onDismiss: () -> Unit,
+    viewModel: ChannelSettingsViewModel = hiltViewModel(),
+) {
+    val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
+
+    ChannelSettingsDialog(
+        channels = channelSettingsUiState,
+        onDismiss = onDismiss,
+        onSave =viewModel::saveChannelSettings
+    )
+}
+
+@Composable
+fun ChannelSettingsDialog(
     channels: List<Channel>,
     onDismiss: () -> Unit,
-    onChannelToggle: (Channel, Boolean) -> Unit,
-    onOrderChange: (List<Channel>) -> Unit
+    onSave: (List<Channel>) -> Unit
 ) {
-    val data = remember { channels.toMutableStateList() }
+    val data = remember(channels) { channels.toMutableStateList() }
 
     val listState = rememberLazyListState()
     val state = rememberReorderableLazyListState(
@@ -74,22 +95,32 @@ fun ChannelSettingsDialog(
                         ReorderableItem(
                             state = state, key = channel.displayName,
                         ) { isDragging ->
-                            val elevation = animateDpAsState(
-                                if (isDragging) 8.dp else 0.dp,
+                            val elevation by animateDpAsState(
+                                targetValue = if (isDragging) 8.dp else 0.dp,
                                 label = "elevation"
                             )
-                            val bgColor =
-                                if (isDragging) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
+
+                            val scale by animateFloatAsState(
+                                targetValue = if (isDragging) 1.05f else 1f,
+                                label = "scale"
+                            )
+                            val bgColor = if (isDragging) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
 
                             ChannelSettingItem(
                                 name = channel.displayName,
                                 isActive = channel.isActive,
                                 isDragging = isDragging,
                                 modifier = Modifier
-                                    .shadow(elevation.value)
-                                    .background(bgColor, RoundedCornerShape(4.dp)),
+                                    .zIndex(if (isDragging) 1f else 0f)
+                                    .graphicsLayer {
+                                        scaleX = scale
+                                        scaleY = scale
+                                        shadowElevation = elevation.toPx()
+                                        shape = RoundedCornerShape(8.dp)
+                                        clip = false
+                                    }
+                                    .background(bgColor, RoundedCornerShape(8.dp)),
                                 onToggle = { isChecked ->
-                                    onChannelToggle(channel, isChecked)
                                     val index = data.indexOf(channel)
                                     if (index != -1) {
                                         data[index] = channel.copy(isActive = isChecked)
@@ -98,12 +129,11 @@ fun ChannelSettingsDialog(
                                 dragHandleModifier = Modifier.draggableHandle()
                             )
 
-                            if (!isDragging) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(horizontal = 8.dp),
-                                    thickness = 0.5.dp
-                                )
-                            }
+                            HorizontalDivider(
+                                modifier = Modifier.padding(horizontal = 8.dp),
+                                thickness = 0.5.dp,
+                                color = if (isDragging) Color.Transparent else MaterialTheme.colorScheme.outlineVariant
+                            )
                         }
                     }
                 }
@@ -112,7 +142,7 @@ fun ChannelSettingsDialog(
         confirmButton = {
             TextButton(
                 onClick = {
-                    onOrderChange(data.toList())
+                    onSave(data.toList())
                     onDismiss()
                 }
             ) {
@@ -149,7 +179,7 @@ private fun ChannelSettingItem(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Switch(
                 checked = isActive,
-                onCheckedChange = onToggle,
+                onCheckedChange = null,
                 modifier = Modifier.scale(0.8f)
             )
 

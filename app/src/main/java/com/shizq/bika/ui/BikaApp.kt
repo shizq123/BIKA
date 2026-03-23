@@ -25,6 +25,7 @@ import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.navigation.Navigator
+import com.shizq.bika.navigation.channelSettingsEntry
 import com.shizq.bika.navigation.dashboardEntry
 import com.shizq.bika.navigation.feedEntry
 import com.shizq.bika.navigation.gameDetailEntry
@@ -82,6 +83,8 @@ fun BikaApp(
                 settingsEntry(navigator)
                 gameEntry(navigator)
                 gameDetailEntry(navigator)
+
+                channelSettingsEntry(navigator)
             }
 
             NavDisplay(
