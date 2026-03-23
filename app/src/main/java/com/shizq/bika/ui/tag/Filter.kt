@@ -17,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -26,36 +27,28 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun rememberFilterState(
-    selections: Map<FilterGroup, List<String>>,
-    dynamicTags: List<String>
+    selections: Map<FilterGroup, List<String>>
 ): FilterState {
-    val tagGroup = FilterGroup.Tag(dynamicTags)
-    val filterGroups = listOf(FilterGroup.Topic, FilterGroup.Status, tagGroup)
+    return remember(selections) {
+        val filterGroups = listOf(FilterGroup.Topic, FilterGroup.Status)
+        val chips = filterGroups.map { group ->
 
-    val chips = filterGroups.map { group ->
-        val currentSelection = selections.getOrDefault(group, emptyList())
+            val currentSelection = selections[group].orEmpty()
 
-        val label = when (group) {
-            is FilterGroup.Topic -> "主题"
-            is FilterGroup.Status -> "状态"
-            is FilterGroup.Tag -> "标签"
+            val (label, values) = when (group) {
+                is FilterGroup.Topic -> "主题" to group.values
+                is FilterGroup.Status -> "状态" to group.values
+                else -> "" to emptyList()
+            }
+            FilterChipState(
+                label = label,
+                values = values,
+                selected = currentSelection,
+                kind = group
+            )
         }
-
-        val values = when (group) {
-            is FilterGroup.Topic -> group.values
-            is FilterGroup.Status -> group.values
-            is FilterGroup.Tag -> dynamicTags
-        }
-
-        FilterChipState(
-            label = label,
-            values = values,
-            selected = currentSelection,
-            kind = group
-        )
+        FilterState(chips = chips)
     }
-
-    return FilterState(chips = chips)
 }
 
 @Immutable
@@ -107,7 +100,7 @@ fun FilterChip(
             expanded = showDropdown,
             onDismissRequest = { showDropdown = false }
         ) {
-            for (value in state.values) {
+            state.values.forEach { value ->
                 val isSelected = value in state.selected
                 DropdownMenuItem(
                     text = {
