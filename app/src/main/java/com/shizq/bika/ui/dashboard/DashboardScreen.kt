@@ -20,8 +20,10 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
 import androidx.compose.material.icons.filled.Email
@@ -59,6 +61,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -77,11 +80,9 @@ import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
-import com.shizq.bika.ui.mycomments.MyCommentsActivity
-import com.shizq.bika.ui.notifications.NotificationsActivity
-import com.shizq.bika.ui.user.UserActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -158,24 +159,33 @@ fun DashboardContent(
                             onCheckInClick()
                         }
                     },
-                    navigationToHistory = {
+                    onEditProfileClick = {
+
+                    },
+                    onHistoryClick = {
                         scope.launch {
                             drawerState.close()
                             navigationToHistory()
                         }
                     },
-                    navigateToFavourite = {
+                    onFavouriteClick = {
                         scope.launch {
                             drawerState.close()
-                            navigateToFavourite(it)
+                            navigateToFavourite(DiscoveryAction.ToFavourite)
                         }
                     },
-                    navigationToSettings = {
+                    onNotificationsClick = {
+
+                    },
+                    onCommentsClick = {
+
+                    },
+                    onSettingsClick = {
                         scope.launch {
                             drawerState.close()
                             navigationToSettings()
                         }
-                    }
+                    },
                 )
             }
         },
@@ -187,7 +197,7 @@ fun DashboardContent(
                     scrollBehavior = scrollBehavior,
                     onDrawerOpen = { scope.launch { drawerState.open() } },
                     onSearchClicked = onSearchClicked,
-                    onChannelPreferenceClicked= onChannelPreferenceClicked,
+                    onChannelPreferenceClicked = onChannelPreferenceClicked,
                 )
             },
             modifier = Modifier
@@ -303,7 +313,8 @@ private fun navigation(
 
         "随机本子" -> navigateToSearch(DiscoveryAction.ToRandom)
 
-        else -> navigateToSearch(DiscoveryAction.Channel (channel.displayName,)
+        else -> navigateToSearch(
+            DiscoveryAction.Channel(channel.displayName)
         )
     }
 }
@@ -313,95 +324,91 @@ fun DashboardDrawerContent(
     userProfile: UserProfileUiState,
     modifier: Modifier = Modifier,
     onCheckInClick: () -> Unit = {},
-    navigationToHistory: () -> Unit = {},
-    navigateToFavourite: (DiscoveryAction) -> Unit = {},
-    navigationToSettings: () -> Unit = {},
+    onEditProfileClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {},
+    onFavouriteClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
+    onCommentsClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
 ) {
-    val context = LocalContext.current
     when (userProfile) {
         is UserProfileUiState.Error -> {
-
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("加载用户信息失败")
+            }
         }
 
-        UserProfileUiState.Loading -> {}
+        UserProfileUiState.Loading -> {
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+
         is UserProfileUiState.Success -> {
-            Column(modifier = modifier) {
+            Column(modifier = modifier.fillMaxSize()) {
                 UserProfileCard(
                     state = userProfile,
                     onCheckInClick = onCheckInClick,
-                    onEditProfile = {
-                        val intent = Intent(context, UserActivity::class.java)
-                        context.startActivity(intent)
-                    }
+                    onEditProfile = onEditProfileClick
                 )
                 HorizontalDivider()
-
-                // --- Menu Items ---
-                Column(modifier = Modifier.padding(vertical = 8.dp)) {
-                    NavigationDrawerItem(
-                        label = { Text("首页") },
-                        selected = false,
-                        onClick = { /* Stay here */ },
-                        icon = { Icon(painterResource(R.drawable.ic_home), null) },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                Column(
+                    modifier = Modifier
+                        .padding(vertical = 8.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    DrawerMenuItem(
+                        label = "历史记录",
+                        iconRes = R.drawable.ic_history,
+                        onClick = onHistoryClick
                     )
-                    NavigationDrawerItem(
-                        label = { Text("历史记录") },
-                        selected = false,
-                        onClick = navigationToHistory,
-                        icon = {
-                            Icon(
-                                painterResource(R.drawable.ic_history),
-                                null
-                            )
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    DrawerMenuItem(
+                        label = "我的收藏",
+                        iconVector = Icons.Filled.Favorite,
+                        onClick = onFavouriteClick
                     )
-                    NavigationDrawerItem(
-                        label = { Text("我的收藏") },
-                        selected = false,
-                        onClick = {
-                            navigateToFavourite(DiscoveryAction.ToFavourite)
-                        },
-                        icon = { Icon(Icons.Filled.Favorite, "Favorite") },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    DrawerMenuItem(
+                        label = "我的消息",
+                        iconVector = Icons.Filled.Email,
+                        onClick = onNotificationsClick
                     )
-                    NavigationDrawerItem(
-                        label = { Text("我的消息") },
-                        selected = false,
-                        onClick = {
-                            val intent = Intent(context, NotificationsActivity::class.java)
-                            context.startActivity(intent)
-                        },
-                        icon = { Icon(Icons.Filled.Email, "Email") },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    DrawerMenuItem(
+                        label = "我的评论",
+                        iconVector = Icons.AutoMirrored.Filled.Comment,
+                        onClick = onCommentsClick
                     )
-                    NavigationDrawerItem(
-                        label = { Text("我的评论") },
-                        selected = false,
-                        onClick = {
-                            val intent = Intent(context, MyCommentsActivity::class.java)
-                            context.startActivity(intent)
-                        },
-                        icon = {
-                            Icon(
-                                Icons.AutoMirrored.Filled.Comment,
-                                "Comment"
-                            )
-                        },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-                    )
-                    NavigationDrawerItem(
-                        label = { Text("设置") },
-                        selected = false,
-                        onClick = navigationToSettings,
-                        icon = { Icon(Icons.Filled.Settings, "Settings") },
-                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    DrawerMenuItem(
+                        label = "设置",
+                        iconVector = Icons.Filled.Settings,
+                        onClick = onSettingsClick
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun DrawerMenuItem(
+    label: String,
+    onClick: () -> Unit,
+    selected: Boolean = false,
+    iconRes: Int? = null,
+    iconVector: ImageVector? = null
+) {
+    NavigationDrawerItem(
+        label = { Text(label) },
+        selected = selected,
+        onClick = onClick,
+        icon = {
+            if (iconRes != null) {
+                Icon(painterResource(iconRes), contentDescription = label)
+            } else if (iconVector != null) {
+                Icon(iconVector, contentDescription = label)
+            }
+        },
+        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+    )
 }
 
 @Composable
