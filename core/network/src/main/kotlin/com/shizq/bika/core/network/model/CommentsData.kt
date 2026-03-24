@@ -41,7 +41,7 @@ data class CommentData(
     val content: String,
 
     @SerialName("_user")
-    val user: UserData,
+    val user: UserData = UserData(),
 
     @SerialName("totalComments")
     val totalComments: Int = 0,

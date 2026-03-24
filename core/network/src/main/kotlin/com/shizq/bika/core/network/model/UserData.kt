@@ -8,26 +8,26 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class UserData(
     @SerialName("_id")
-    val id: String,
+    val id: String = "",
 
     @SerialName("name")
-    val name: String,
+    val name: String = "",
 
     @SerialName("gender")
     @Serializable(with = GenderSerializer::class)
-    val gender: Gender,
+    val gender: Gender = Gender.BOT,
 
     @SerialName("title")
-    val title: String,
+    val title: String = "",
 
     @SerialName("slogan")
     val slogan: String? = null,
 
     @SerialName("level")
-    val level: Int,
+    val level: Int = 0,
 
     @SerialName("exp")
-    val exp: Long,
+    val exp: Long = 0,
 
     @SerialName("avatar")
     val avatar: Media? = null,
@@ -36,14 +36,14 @@ data class UserData(
     val comicsUploaded: Int? = null,
 
     @SerialName("role")
-    val role: String,
+    val role: String = "",
 
     @SerialName("verified")
-    val verified: Boolean,
+    val verified: Boolean = false,
 
     @SerialName("character")
     val character: String? = null,
 
     @SerialName("characters")
-    val characters: List<String>
+    val characters: List<String> = emptyList()
 )
