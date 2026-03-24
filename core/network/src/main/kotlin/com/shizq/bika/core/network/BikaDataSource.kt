@@ -7,6 +7,7 @@ import com.shizq.bika.core.network.model.CollectionsData
 import com.shizq.bika.core.network.model.ComicData
 import com.shizq.bika.core.network.model.ComicRandomData
 import com.shizq.bika.core.network.model.ComicResource
+import com.shizq.bika.core.network.model.CommentDoc
 import com.shizq.bika.core.network.model.CommentsData
 import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.GameData
@@ -224,5 +225,11 @@ class BikaDataSource @Inject constructor(
 
     suspend fun getGameDetail(id: String): GameDetailsDataa {
         return client.get("games/$id").body()
+    }
+
+    suspend fun mineComment(page: Int): CommentDoc {
+        return client.get("users/my-comments") {
+            parameter("page", page)
+        }.body()
     }
 }
