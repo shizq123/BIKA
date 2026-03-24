@@ -77,15 +77,15 @@
             </RelativeLayout>
 
             <!--评论列表-->
-            <me.jingbin.library.ByRecyclerView
-                android:id="@+id/comments_rv"
-                android:layout_above="@id/comments_reply_layout"
-                android:layout_below="@id/comments_page_layout"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:paddingStart="6dp"
-                android:paddingEnd="6dp"
-                tools:listitem="@layout/item_comments" />
+            <!--            <me.jingbin.library.ByRecyclerView-->
+            <!--                android:id="@+id/comments_rv"-->
+            <!--                android:layout_above="@id/comments_reply_layout"-->
+            <!--                android:layout_below="@id/comments_page_layout"-->
+            <!--                android:layout_width="match_parent"-->
+            <!--                android:layout_height="match_parent"-->
+            <!--                android:paddingStart="6dp"-->
+            <!--                android:paddingEnd="6dp"-->
+            <!--                tools:listitem="@layout/item_comments" />-->
 
         </RelativeLayout>
 

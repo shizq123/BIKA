@@ -2,17 +2,10 @@ package com.shizq.bika.ui.user
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
-import com.google.gson.Gson
-import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ProfileBean
-import com.shizq.bika.network.RetrofitUtil
-import com.shizq.bika.network.base.BaseHeaders
-import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody
 
-class UserViewModel(application: Application) : BaseViewModel(application) {
+class UserViewModel(application: Application) {
     val liveData_avatar: MutableLiveData<BaseResponse<Any>> by lazy {
         MutableLiveData<BaseResponse<Any>>()
     }
@@ -26,47 +19,47 @@ class UserViewModel(application: Application) : BaseViewModel(application) {
     }
 
     fun putAvatar(base64Image: String) {
-        val map = mutableMapOf(
-            "avatar" to base64Image
-        )
-        val body = RequestBody.create(
-            "application/json; charset=UTF-8".toMediaTypeOrNull(),
-            Gson().toJson(map)
-        )
-        val headers = BaseHeaders("users/avatar", "PUT").getHeaderMapAndToken()
-        RetrofitUtil.service.avatarPUT(body, headers)
-            .doOnSubscribe(this)
-            .subscribe(object : BaseObserver<Any>() {
-                override fun onSuccess(baseResponse: BaseResponse<Any>) {
-                    liveData_avatar.postValue(baseResponse)
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<Any>) {
-                    liveData_avatar.postValue(baseResponse)
-                }
-            })
+//        val map = mutableMapOf(
+//            "avatar" to base64Image
+//        )
+//        val body = RequestBody.create(
+//            "application/json; charset=UTF-8".toMediaTypeOrNull(),
+//            Gson().toJson(map)
+//        )
+//        val headers = BaseHeaders("users/avatar", "PUT").getHeaderMapAndToken()
+//        RetrofitUtil.service.avatarPUT(body, headers)
+//            .doOnSubscribe(this)
+//            .subscribe(object : BaseObserver<Any>() {
+//                override fun onSuccess(baseResponse: BaseResponse<Any>) {
+//                    liveData_avatar.postValue(baseResponse)
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<Any>) {
+//                    liveData_avatar.postValue(baseResponse)
+//                }
+//            })
     }
 
     fun putProfile(slogan: String) {
-        val map = mutableMapOf(
-            "slogan" to slogan
-        )
-        val body = RequestBody.create(
-            "application/json; charset=UTF-8".toMediaTypeOrNull(),
-            Gson().toJson(map)
-        )
-        val headers = BaseHeaders("users/profile", "PUT").getHeaderMapAndToken()
-        RetrofitUtil.service.profilePUT(body, headers)
-            .doOnSubscribe(this)
-            .subscribe(object : BaseObserver<Any>() {
-                override fun onSuccess(baseResponse: BaseResponse<Any>) {
-                    liveDataSlogan.postValue(baseResponse)
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<Any>) {
-                    liveDataSlogan.postValue(baseResponse)
-                }
-            })
+//        val map = mutableMapOf(
+//            "slogan" to slogan
+//        )
+//        val body = RequestBody.create(
+//            "application/json; charset=UTF-8".toMediaTypeOrNull(),
+//            Gson().toJson(map)
+//        )
+//        val headers = BaseHeaders("users/profile", "PUT").getHeaderMapAndToken()
+//        RetrofitUtil.service.profilePUT(body, headers)
+//            .doOnSubscribe(this)
+//            .subscribe(object : BaseObserver<Any>() {
+//                override fun onSuccess(baseResponse: BaseResponse<Any>) {
+//                    liveDataSlogan.postValue(baseResponse)
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<Any>) {
+//                    liveDataSlogan.postValue(baseResponse)
+//                }
+//            })
     }
 
 }

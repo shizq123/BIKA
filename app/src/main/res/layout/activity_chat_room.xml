@@ -123,11 +123,11 @@
                     android:singleLine="true" />
             </RelativeLayout>
 
-            <me.jingbin.library.ByRecyclerView
-                android:id="@+id/chat_rv"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layout_above="@id/chat_send_content_reply_layout" />
+            <!--            <me.jingbin.library.ByRecyclerView-->
+            <!--                android:id="@+id/chat_rv"-->
+            <!--                android:layout_width="match_parent"-->
+            <!--                android:layout_height="match_parent"-->
+            <!--                android:layout_above="@id/chat_send_content_reply_layout" />-->
 
             <ImageView
                 android:id="@+id/chat_rv_bottom_btn"

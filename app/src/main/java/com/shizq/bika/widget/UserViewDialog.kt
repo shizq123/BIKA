@@ -12,22 +12,14 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.MutableLiveData
-import com.bumptech.glide.Glide
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.shizq.bika.R
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.CommentsBean
 import com.shizq.bika.bean.NotificationsBean
 import com.shizq.bika.bean.ProfileBean
-import com.shizq.bika.network.RetrofitUtil
-import com.shizq.bika.network.base.BaseHeaders
-import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
 import com.shizq.bika.ui.image.ImageActivity
-import com.shizq.bika.utils.GlideUrlNewKey
-import com.shizq.bika.utils.StatusBarUtil
-import io.reactivex.rxjava3.android.schedulers.AndroidSchedulers
-import io.reactivex.rxjava3.schedulers.Schedulers
 
 class UserViewDialog(val context: AppCompatActivity) {
     private var dia: AlertDialog? = null
@@ -83,7 +75,7 @@ class UserViewDialog(val context: AppCompatActivity) {
     private fun initListener() {
         mPopupWindow.setOnDismissListener {
             //恢复状态栏
-            StatusBarUtil.show(context)
+//            StatusBarUtil.show(context)
         }
         popupView.setOnClickListener {
             mPopupWindow.dismiss()
@@ -205,21 +197,21 @@ class UserViewDialog(val context: AppCompatActivity) {
             dialog_slogan.text = slogan
         }
         //头像
-        Glide.with(context)
-            .load(
-                if (path() != "") {
-                    GlideUrlNewKey(fileServer(), path())
-                } else {
-                    R.drawable.placeholder_avatar_2
-                }
-            )
-            .placeholder(R.drawable.placeholder_transparent_low)
-            .into(dialog_image)
+//        Glide.with(context)
+//            .load(
+//                if (path() != "") {
+//                    GlideUrlNewKey(fileServer(), path())
+//                } else {
+//                    R.drawable.placeholder_avatar_2
+//                }
+//            )
+//            .placeholder(R.drawable.placeholder_transparent_low)
+//            .into(dialog_image)
 
         //头像框
-        Glide.with(context)
-            .load(if (character.isNullOrEmpty()) "" else character)
-            .into(dialog_character)
+//        Glide.with(context)
+//            .load(if (character.isNullOrEmpty()) "" else character)
+//            .into(dialog_character)
 
         dia = MaterialAlertDialogBuilder(context).setView(dialog_view).show()
 
@@ -250,23 +242,23 @@ class UserViewDialog(val context: AppCompatActivity) {
     }
 
     private fun getProfile(userId: String) {
-        RetrofitUtil.service.userProfileGet(
-            userId,
-            BaseHeaders("users/$userId/profile", "GET").getHeaderMapAndToken()
-        )
-            .compose { upstream ->
-                upstream.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
-            }
-            .subscribe(object : BaseObserver<ProfileBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<ProfileBean>) {
-                    liveData_profile.postValue(baseResponse)
-
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<ProfileBean>) {
-                    liveData_profile.postValue(baseResponse)
-                }
-
-            })
+//        RetrofitUtil.service.userProfileGet(
+//            userId,
+//            BaseHeaders("users/$userId/profile", "GET").getHeaderMapAndToken()
+//        )
+//            .compose { upstream ->
+//                upstream.subscribeOn(Schedulers.io()).observeOn(AndroidSchedulers.mainThread())
+//            }
+//            .subscribe(object : BaseObserver<ProfileBean>() {
+//                override fun onSuccess(baseResponse: BaseResponse<ProfileBean>) {
+//                    liveData_profile.postValue(baseResponse)
+//
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<ProfileBean>) {
+//                    liveData_profile.postValue(baseResponse)
+//                }
+//
+//            })
     }
 }

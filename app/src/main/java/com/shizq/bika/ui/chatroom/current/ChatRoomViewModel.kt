@@ -3,7 +3,6 @@ package com.shizq.bika.ui.chatroom.current
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
-import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.UserMention
 import com.shizq.bika.network.base.BaseHeaders
@@ -16,7 +15,7 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import java.io.File
 import java.util.UUID
 
-class ChatRoomViewModel(application: Application) : BaseViewModel(application) {
+class ChatRoomViewModel(application: Application) {
     var roomId = ""
 
     var replyMessage: String = ""

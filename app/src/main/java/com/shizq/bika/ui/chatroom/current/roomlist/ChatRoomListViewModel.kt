@@ -2,16 +2,13 @@ package com.shizq.bika.ui.chatroom.current.roomlist
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
-import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatRoomListBean
 import com.shizq.bika.bean.ChatRoomSignInBean
 import com.shizq.bika.network.Result
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
-class ChatRoomListViewModel(application: Application) : BaseViewModel(application) {
+class ChatRoomListViewModel(application: Application) {
     val liveDataSignIn: MutableLiveData<ChatRoomSignInBean> by lazy {
         MutableLiveData<ChatRoomSignInBean>()
     }
@@ -65,11 +62,11 @@ class ChatRoomListViewModel(application: Application) : BaseViewModel(applicatio
 //                }
 //
 //            })
-        viewModelScope.launch {
-            repository.getSignInFlow().collect {
-                _signInFlow.value = it
-            }
-        }
+//        viewModelScope.launch {
+//            repository.getSignInFlow().collect {
+//                _signInFlow.value = it
+//            }
+//        }
     }
 
     fun chatRoomList() {
@@ -106,11 +103,11 @@ class ChatRoomListViewModel(application: Application) : BaseViewModel(applicatio
 //
 //            })
 
-        viewModelScope.launch {
-            repository.getRoomListFlow().collect {
-                _roomListFlow.value = it
-            }
-        }
+//        viewModelScope.launch {
+//            repository.getRoomListFlow().collect {
+//                _roomListFlow.value = it
+//            }
+//        }
 
     }
 }

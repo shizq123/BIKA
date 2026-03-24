@@ -2,16 +2,13 @@ package com.shizq.bika.ui.chatroom.current.blacklist
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
-import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ChatRoomBlackListBean
 import com.shizq.bika.bean.ChatRoomBlackListDeleteBean
 import com.shizq.bika.network.Result
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
 
-class  ChatBlacklistViewModel(application: Application) : BaseViewModel(application) {
+class ChatBlacklistViewModel(application: Application) {
     var offset = -1
     private val repository = ChatBlacklistRepository()
     private val _blackListFlow = MutableStateFlow<Result<ChatRoomBlackListBean>?>(null)
@@ -61,11 +58,11 @@ class  ChatBlacklistViewModel(application: Application) : BaseViewModel(applicat
 //
 //            })
 
-        viewModelScope.launch {
-            repository.getBlackListFlow(offset).collect {
-                _blackListFlow.value = it
-            }
-        }
+//        viewModelScope.launch {
+//            repository.getBlackListFlow(offset).collect {
+//                _blackListFlow.value = it
+//            }
+//        }
     }
 
     fun deleteChatBlackList(id:String) {
@@ -101,11 +98,11 @@ class  ChatBlacklistViewModel(application: Application) : BaseViewModel(applicat
 //                }
 //
 //            })
-        viewModelScope.launch {
-            repository.deleteBlackListFlow(id).collect {
-                _blackListDeleteFlow.value = it
-            }
-        }
+//        viewModelScope.launch {
+//            repository.deleteBlackListFlow(id).collect {
+//                _blackListDeleteFlow.value = it
+//            }
+//        }
 
     }
 }

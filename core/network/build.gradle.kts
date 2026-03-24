@@ -28,7 +28,4 @@ dependencies {
     implementation(libs.ktor.serialization.kotlinx.json)
 
     implementation(libs.kotlinx.serialization.json)
-
-    implementation(libs.commons.codec)
-    implementation(libs.okhttp.dnsoverhttps)
 }

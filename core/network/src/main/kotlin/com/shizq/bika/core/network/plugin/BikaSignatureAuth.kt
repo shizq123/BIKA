@@ -10,8 +10,8 @@ import io.ktor.http.contentType
 import io.ktor.http.withCharset
 import io.ktor.utils.io.KtorDsl
 import io.ktor.utils.io.charsets.Charsets
-import org.apache.commons.codec.digest.HmacAlgorithms
-import org.apache.commons.codec.digest.HmacUtils
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -55,8 +55,7 @@ val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
 
             val rawData = (urlPath + time + nonce + method + config.apiKey).lowercase()
 
-            val signature =
-                HmacUtils(HmacAlgorithms.HMAC_SHA_256, config.secretKey).hmacHex(rawData)
+            val signature = rawData.hmacSha256Hex(config.secretKey)
 
             request.contentType(ContentType.Application.Json.withCharset(Charsets.UTF_8))
             request.headers.apply {
@@ -90,3 +89,12 @@ val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
             proceed(request)
         }
     }
+
+private fun String.hmacSha256Hex(secretKey: String): String {
+    val algorithm = "HmacSHA256"
+    val keySpec = SecretKeySpec(secretKey.toByteArray(Charsets.UTF_8), algorithm)
+    val mac = Mac.getInstance(algorithm)
+    mac.init(keySpec)
+
+    return mac.doFinal(this.toByteArray(Charsets.UTF_8)).toHexString()
+}

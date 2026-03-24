@@ -2,24 +2,15 @@ package com.shizq.bika.ui.comment
 
 import android.app.Application
 import androidx.lifecycle.MutableLiveData
-import androidx.lifecycle.viewModelScope
-import com.shizq.bika.base.BaseViewModel
 import com.shizq.bika.bean.ActionBean
 import com.shizq.bika.bean.CommentsBean
 import com.shizq.bika.bean.ReportBean
 import com.shizq.bika.network.Result
-import com.shizq.bika.network.RetrofitUtil
-import com.shizq.bika.network.base.BaseHeaders
-import com.shizq.bika.network.base.BaseObserver
 import com.shizq.bika.network.base.BaseResponse
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import okhttp3.MediaType
-import okhttp3.MediaType.Companion.toMediaTypeOrNull
-import okhttp3.RequestBody
 
-class CommentsViewModel(application: Application) : BaseViewModel(application) {
+class CommentsViewModel(application: Application) {
     var data: CommentsBean.Comments.Doc?=null
     var id =""//漫画或游戏的id
     var comicsOrGames  = ""//类型是漫画还是游戏
@@ -93,11 +84,11 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
 
     fun requestComment() {
         commentsPage++
-        viewModelScope.launch {
-            repository.getCommentsFlow(comicsOrGames,id,commentsPage).collect {
-                _comments.value = it
-            }
-        }
+//        viewModelScope.launch {
+//            repository.getCommentsFlow(comicsOrGames,id,commentsPage).collect {
+//                _comments.value = it
+//            }
+//        }
 //        RetrofitUtil.service.comicsCommentsGet(
 //            comics_games.toString(),
 //            id.toString(),
@@ -144,11 +135,11 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
     fun requestSubComment() {
         subCommentsPage++
 
-        viewModelScope.launch {
-            repository.getSubCommentsFlow(commentId,commentsPage).collect {
-                _subComments.value = it
-            }
-        }
+//        viewModelScope.launch {
+//            repository.getSubCommentsFlow(commentId,commentsPage).collect {
+//                _subComments.value = it
+//            }
+//        }
 
 //        RetrofitUtil.service.commentsChildrensGet(
 //            commentId.toString(),
@@ -176,109 +167,109 @@ class CommentsViewModel(application: Application) : BaseViewModel(application) {
     //post子评论回复https://picaapi.picacomic.com/comments/6388cc18d1001bff8cf4e925
 
     fun seedComments(comments: String) {
-        RetrofitUtil.service.seedCommentsPost(
-            comicsOrGames.toString(),
-            id.toString(),
-            RequestBody.create(
-                "application/json; charset=UTF-8".toMediaTypeOrNull(),
-                "{\"content\":\"$comments\"}"
-            ),
-            BaseHeaders("$comicsOrGames/$id/comments", "POST").getHeaderMapAndToken()
-        )
-            .doOnSubscribe(this@CommentsViewModel)
-            .subscribe(object : BaseObserver<Any>() {
-                override fun onSuccess(baseResponse: BaseResponse<Any>) {
-                    liveData_seed_comments.postValue(baseResponse)
-
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<Any>) {
-                    liveData_seed_comments.postValue(baseResponse)
-
-                }
-            })
+//        RetrofitUtil.service.seedCommentsPost(
+//            comicsOrGames.toString(),
+//            id.toString(),
+//            RequestBody.create(
+//                "application/json; charset=UTF-8".toMediaTypeOrNull(),
+//                "{\"content\":\"$comments\"}"
+//            ),
+//            BaseHeaders("$comicsOrGames/$id/comments", "POST").getHeaderMapAndToken()
+//        )
+//            .doOnSubscribe(this@CommentsViewModel)
+//            .subscribe(object : BaseObserver<Any>() {
+//                override fun onSuccess(baseResponse: BaseResponse<Any>) {
+//                    liveData_seed_comments.postValue(baseResponse)
+//
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<Any>) {
+//                    liveData_seed_comments.postValue(baseResponse)
+//
+//                }
+//            })
 
     }
 
     fun seedSubComments(comments: String) {
-        RetrofitUtil.service.seedSubCommentsPost(
-            commentId.toString(),
-            RequestBody.create(
-                "application/json; charset=UTF-8".toMediaTypeOrNull(),
-                "{\"content\":\"$comments\"}"
-            ),
-            BaseHeaders("comments/$commentId", "POST").getHeaderMapAndToken()
-        )
-            .doOnSubscribe(this@CommentsViewModel)
-            .subscribe(object : BaseObserver<Any>() {
-                override fun onSuccess(baseResponse: BaseResponse<Any>) {
-                    liveData_seed_sub_comments.postValue(baseResponse)
-
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<Any>) {
-                    liveData_seed_sub_comments.postValue(baseResponse)
-
-                }
-            })
+//        RetrofitUtil.service.seedSubCommentsPost(
+//            commentId.toString(),
+//            RequestBody.create(
+//                "application/json; charset=UTF-8".toMediaTypeOrNull(),
+//                "{\"content\":\"$comments\"}"
+//            ),
+//            BaseHeaders("comments/$commentId", "POST").getHeaderMapAndToken()
+//        )
+//            .doOnSubscribe(this@CommentsViewModel)
+//            .subscribe(object : BaseObserver<Any>() {
+//                override fun onSuccess(baseResponse: BaseResponse<Any>) {
+//                    liveData_seed_sub_comments.postValue(baseResponse)
+//
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<Any>) {
+//                    liveData_seed_sub_comments.postValue(baseResponse)
+//
+//                }
+//            })
 
     }
     fun commentsLike() {
-        RetrofitUtil.service.commentsLikePost(
-            likeCommentsId.toString(),
-            BaseHeaders("comments/$likeCommentsId/like", "POST").getHeaderMapAndToken()
-        )
-            .doOnSubscribe(this@CommentsViewModel)
-            .subscribe(object : BaseObserver<ActionBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<ActionBean>) {
-                    liveData_comments_like.postValue(baseResponse)
-
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<ActionBean>) {
-                    liveData_comments_like.postValue(baseResponse)
-
-                }
-            })
+//        RetrofitUtil.service.commentsLikePost(
+//            likeCommentsId.toString(),
+//            BaseHeaders("comments/$likeCommentsId/like", "POST").getHeaderMapAndToken()
+//        )
+//            .doOnSubscribe(this@CommentsViewModel)
+//            .subscribe(object : BaseObserver<ActionBean>() {
+//                override fun onSuccess(baseResponse: BaseResponse<ActionBean>) {
+//                    liveData_comments_like.postValue(baseResponse)
+//
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<ActionBean>) {
+//                    liveData_comments_like.postValue(baseResponse)
+//
+//                }
+//            })
 
     }
 
     fun subCommentsLike() {
-        RetrofitUtil.service.commentsLikePost(
-            likeSubCommentsId.toString(),
-            BaseHeaders("comments/$likeSubCommentsId/like", "POST").getHeaderMapAndToken()
-        )
-            .doOnSubscribe(this@CommentsViewModel)
-            .subscribe(object : BaseObserver<ActionBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<ActionBean>) {
-                    liveData_sub_comments_like.postValue(baseResponse)
-
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<ActionBean>) {
-                    liveData_sub_comments_like.postValue(baseResponse)
-
-                }
-            })
+//        RetrofitUtil.service.commentsLikePost(
+//            likeSubCommentsId.toString(),
+//            BaseHeaders("comments/$likeSubCommentsId/like", "POST").getHeaderMapAndToken()
+//        )
+//            .doOnSubscribe(this@CommentsViewModel)
+//            .subscribe(object : BaseObserver<ActionBean>() {
+//                override fun onSuccess(baseResponse: BaseResponse<ActionBean>) {
+//                    liveData_sub_comments_like.postValue(baseResponse)
+//
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<ActionBean>) {
+//                    liveData_sub_comments_like.postValue(baseResponse)
+//
+//                }
+//            })
 
     }
 
     fun commentsReport(commentId:String) {
-        RetrofitUtil.service.commentsReportPost(
-            commentId,
-            BaseHeaders("comments/$commentId/report", "POST").getHeaderMapAndToken()
-        )
-            .doOnSubscribe(this@CommentsViewModel)
-            .subscribe(object : BaseObserver<ReportBean>() {
-                override fun onSuccess(baseResponse: BaseResponse<ReportBean>) {
-                    liveDataCommentReport.postValue(baseResponse)
-
-                }
-
-                override fun onCodeError(baseResponse: BaseResponse<ReportBean>) {
-                    liveDataCommentReport.postValue(baseResponse)
-
-                }
-            })
+//        RetrofitUtil.service.commentsReportPost(
+//            commentId,
+//            BaseHeaders("comments/$commentId/report", "POST").getHeaderMapAndToken()
+//        )
+//            .doOnSubscribe(this@CommentsViewModel)
+//            .subscribe(object : BaseObserver<ReportBean>() {
+//                override fun onSuccess(baseResponse: BaseResponse<ReportBean>) {
+//                    liveDataCommentReport.postValue(baseResponse)
+//
+//                }
+//
+//                override fun onCodeError(baseResponse: BaseResponse<ReportBean>) {
+//                    liveDataCommentReport.postValue(baseResponse)
+//
+//                }
+//            })
     }
 }

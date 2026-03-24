@@ -20,11 +20,11 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content" />
 
-        <me.jingbin.library.ByRecyclerView
-            android:id="@+id/chatroom_rv"
-            app:layout_behavior="@string/appbar_scrolling_view_behavior"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+        <!--        <me.jingbin.library.ByRecyclerView-->
+        <!--            android:id="@+id/chatroom_rv"-->
+        <!--            app:layout_behavior="@string/appbar_scrolling_view_behavior"-->
+        <!--            android:layout_width="match_parent"-->
+        <!--            android:layout_height="match_parent"/>-->
 
         <LinearLayout
             android:id="@+id/chatroom_load_layout"

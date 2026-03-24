@@ -18,7 +18,6 @@ import com.shizq.bika.bean.ProfileBean
 import com.shizq.bika.bean.ReportBean
 import com.shizq.bika.bean.SignInBean
 import com.shizq.bika.network.base.BaseResponse
-import io.reactivex.rxjava3.core.Observable
 import okhttp3.RequestBody
 
 interface ApiService {
@@ -28,21 +27,21 @@ interface ApiService {
     fun forgotPasswordPost(
         /*@Body*/ requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<SignInBean>>
+    ): BaseResponse<SignInBean>
 
     //忘记密码 获得密码
 //    @POST("auth/reset-password")
     fun resetPasswordPost(
         /*@Body*/ requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<SignInBean>>
+    ): BaseResponse<SignInBean>
 
     //修改密码
 //    @PUT("users/password")
     fun changePasswordPUT(
         /*@Body*/ requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<Any>>
+    ): BaseResponse<Any>
 
     //评论列表
 //    @GET("{comics_games}/{id}/comments")
@@ -60,7 +59,7 @@ interface ApiService {
         /*@Path("id")*/ id: String,
         /*@Body*/ requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<Any>>
+    ): BaseResponse<Any>
 
     //子评论列表
 //    @GET("comments/{commentsId}/childrens")
@@ -76,21 +75,21 @@ interface ApiService {
         /*@Path("id")*/ id: String,
         /*@Body*/ requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<Any>>
+    ): BaseResponse<Any>
 
     //评论 like 喜欢
 //    @POST("comments/{id}/like")
     fun commentsLikePost(
         /*@Path("id")*/ id: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<ActionBean>>
+    ): BaseResponse<ActionBean>
 
     //评论 举报
 //    @POST("comments/{id}/report")
     fun commentsReportPost(
         /*@Path("id")*/ id: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<ReportBean>>
+    ): BaseResponse<ReportBean>
 
     //s=dd新到旧,da旧到新,ld最多爱心,vd最多指名
 //    @GET("users/favourite")
@@ -105,56 +104,56 @@ interface ApiService {
     fun userProfileGet(
         /*@Path("userId")*/ userId: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<ProfileBean>>
+    ): BaseResponse<ProfileBean>
 
     //游戏列表
 //    @GET("games")
     fun gamesGet(
         /*@Query("page")*/ page: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<GamesBean>>
+    ): BaseResponse<GamesBean>
 
     //游戏详情
 //    @GET("games/{gameId}")
     fun gameInfoGet(
         /*@Path("gameId")*/ gameId: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<GameInfoBean>>
+    ): BaseResponse<GameInfoBean>
 
     //游戏喜欢
 //    @POST("games/{gameId}/like")
     fun gameLikePost(
         /*@Path("gameId")*/ gameId: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<ActionBean>>
+    ): BaseResponse<ActionBean>
 
     //我的评论
 //    @GET("users/my-comments")
     fun myCommentsGet(
         /*@Query("page")*/ page: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<MyCommentsBean>>
+    ): BaseResponse<MyCommentsBean>
 
     //消息通知
 //    @GET("users/notifications")
     fun notificationsGet(
         /*@Query("page")*/ page: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<NotificationsBean>>
+    ): BaseResponse<NotificationsBean>
 
     //上传头像 //抓包得出上传的分辨率是200*200 //聊天室抓包，图片其中一边的最大分辨率是800
 //    @PUT("users/avatar")
     fun avatarPUT(
         /*@Body*/  requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<Any>>
+    ): BaseResponse<Any>
 
     //上传自我介绍 签名
 //    @PUT("users/profile")
     fun profilePUT(
         /*@Body*/  requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<BaseResponse<Any>>
+    ): BaseResponse<Any>
 
     //新聊天室 登录
 //    @POST("auth/signin")
@@ -167,14 +166,14 @@ interface ApiService {
 //    @GET("user/profile")
     fun chatProfileGet(
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<ChatRoomProfileBean>
+    ): ChatRoomProfileBean
 
     //新聊天室 查看别人的用户信息
 //    @GET("user/profile/{id}")
     fun chatUserProfileGet(
         /*@Query("id")*/ page: String,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<ChatRoomProfileBean>
+    ): ChatRoomProfileBean
 
     //新聊天室 房间列表
 //    @GET("room/list")
@@ -187,7 +186,7 @@ interface ApiService {
     fun chatBlockUserPost(
         /*@Body*/ requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<ChatRoomBlockUserBean>
+    ): ChatRoomBlockUserBean
 
     //新聊天室 封锁列表 黑名单列表 https://live-server.bidobido.xyz/blacklist/list?offset=0
 //    @GET("blacklist/list")
@@ -208,12 +207,12 @@ interface ApiService {
     fun chatSendMessagePost(
         /*@Body*/ requestBody: RequestBody,
         /*@HeaderMap*/ headers: Map<String, String>
-    ): Observable<ChatMessageBean>
+    ): ChatMessageBean
 
     //新聊天室 发送图片
 //    @POST("room/send-image")
     fun chatSendImagePost(
         /*@HeaderMap*/ headers: Map<String, String>,
         /*@Body*/ requestBody: RequestBody
-    ): Observable<ChatMessageBean>
+    ): ChatMessageBean
 }

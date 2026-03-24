@@ -95,12 +95,6 @@ dependencies {
     implementation(libs.androidx.preference.ktx)
     implementation(libs.androidx.core.splashscreen)
 
-    implementation(libs.byrecyclerview)
-
-    implementation(libs.glide)
-
-    implementation(libs.rxandroid)
-
     implementation(libs.pictureselector)
     implementation(libs.ucrop)
 
@@ -109,8 +103,6 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
-
-    implementation(libs.commons.codec)
 
     implementation(libs.androidx.paging.runtime)
     implementation(libs.androidx.paging.compose)
