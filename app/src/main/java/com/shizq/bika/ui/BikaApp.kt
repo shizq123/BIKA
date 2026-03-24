@@ -22,7 +22,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.scene.DialogSceneStrategy
-import androidx.navigation3.scene.SinglePaneSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.navigation.Navigator
 import com.shizq.bika.navigation.channelSettingsEntry
@@ -33,6 +32,7 @@ import com.shizq.bika.navigation.gameEntry
 import com.shizq.bika.navigation.historyEntry
 import com.shizq.bika.navigation.leaderboardEntry
 import com.shizq.bika.navigation.loginEntry
+import com.shizq.bika.navigation.mineCommentEntry
 import com.shizq.bika.navigation.readerNavKeyEntry
 import com.shizq.bika.navigation.registerEntry
 import com.shizq.bika.navigation.searchEntry
@@ -83,6 +83,7 @@ fun BikaApp(
                 settingsEntry(navigator)
                 gameEntry(navigator)
                 gameDetailEntry(navigator)
+                mineCommentEntry(navigator)
 
                 channelSettingsEntry(navigator)
             }

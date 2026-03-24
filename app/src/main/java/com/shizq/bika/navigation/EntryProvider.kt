@@ -14,6 +14,7 @@ import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
+import com.shizq.bika.ui.comment.mine.MineCommentScreen
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
@@ -94,8 +95,9 @@ fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
             navigationToHistory = { navigator.navigate(HistoryNavKey) },
             navigationToSettings = { navigator.navigate(SettingsNavKey) },
             navigateToGame = { navigator.navigate(GameNavKey) },
-            onSearchClicked = { navigator.navigate(SearchNavKey) },
-            onChannelPreferenceClicked = { navigator.navigate(ChannelSettingsNavKey) }
+            onSearchClick = { navigator.navigate(SearchNavKey) },
+            onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
+            onCommentsClick = { navigator.navigate(MineCommentNavKey) },
         )
     }
 }
@@ -205,6 +207,12 @@ fun EntryProviderScope<NavKey>.gameDetailEntry(navigator: Navigator) {
                 factory.create(key.id)
             },
         )
+    }
+}
+
+fun EntryProviderScope<NavKey>.mineCommentEntry(navigator: Navigator) {
+    entry<MineCommentNavKey> { key ->
+        MineCommentScreen(onBackClick = navigator::goBack)
     }
 }
 

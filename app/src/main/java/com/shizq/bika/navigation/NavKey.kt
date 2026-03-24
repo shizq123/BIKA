@@ -40,7 +40,7 @@ sealed interface DiscoveryAction {
     data class Knight(override val name: String, val id: String) : DiscoveryAction
 
     @Serializable
-    data class AdvancedSearch(override val name: String, ) : DiscoveryAction
+    data class AdvancedSearch(override val name: String) : DiscoveryAction
 
     @Serializable
     data class Channel(override val name: String) : DiscoveryAction
@@ -83,3 +83,6 @@ internal data class SearchKey(
 ) : NavKey {
 //    override val name: String = STRING_LITERAL_SEARCH
 }
+
+@Serializable
+object MineCommentNavKey : NavKey

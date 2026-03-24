@@ -93,8 +93,9 @@ fun DashboardScreen(
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
     navigateToGame: () -> Unit,
-    onSearchClicked: () -> Unit,
-    onChannelPreferenceClicked: () -> Unit,
+    onSearchClick: () -> Unit,
+    onChannelPreferenceClick: () -> Unit,
+    onCommentsClick: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
@@ -111,8 +112,9 @@ fun DashboardScreen(
         navigationToHistory = navigationToHistory,
         navigationToSettings = navigationToSettings,
         navigateToGame = navigateToGame,
-        onSearchClicked = onSearchClicked,
-        onChannelPreferenceClicked = onChannelPreferenceClicked,
+        onSearchClick = onSearchClick,
+        onChannelPreferenceClick = onChannelPreferenceClick,
+        onCommentsClick = onCommentsClick,
     )
 }
 
@@ -127,8 +129,9 @@ fun DashboardContent(
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
     navigateToGame: () -> Unit,
-    onSearchClicked: () -> Unit,
-    onChannelPreferenceClicked: () -> Unit,
+    onSearchClick: () -> Unit,
+    onChannelPreferenceClick: () -> Unit,
+    onCommentsClick: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -178,7 +181,10 @@ fun DashboardContent(
 
                     },
                     onCommentsClick = {
-
+                        scope.launch {
+                            drawerState.close()
+                            onCommentsClick()
+                        }
                     },
                     onSettingsClick = {
                         scope.launch {
@@ -196,8 +202,8 @@ fun DashboardContent(
                 DashboardAppBar(
                     scrollBehavior = scrollBehavior,
                     onDrawerOpen = { scope.launch { drawerState.open() } },
-                    onSearchClicked = onSearchClicked,
-                    onChannelPreferenceClicked = onChannelPreferenceClicked,
+                    onSearchClicked = onSearchClick,
+                    onChannelPreferenceClicked = onChannelPreferenceClick,
                 )
             },
             modifier = Modifier
