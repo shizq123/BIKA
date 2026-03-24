@@ -212,7 +212,10 @@ fun EntryProviderScope<NavKey>.gameDetailEntry(navigator: Navigator) {
 
 fun EntryProviderScope<NavKey>.mineCommentEntry(navigator: Navigator) {
     entry<MineCommentNavKey> { key ->
-        MineCommentScreen(onBackClick = navigator::goBack)
+        MineCommentScreen(
+            onCardClick = navigator::navigateToUnitedDetail,
+            onBackClick = navigator::goBack
+        )
     }
 }
 
