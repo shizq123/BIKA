@@ -35,14 +35,11 @@ android {
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
-                "retrofit2.pro"
             )
         }
     }
 
     buildFeatures {
-        viewBinding = true
-        dataBinding = true
         buildConfig = true
     }
 }

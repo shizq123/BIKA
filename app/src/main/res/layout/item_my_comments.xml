@@ -2,15 +2,6 @@
 <layout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
 
-    <data>
-
-        <import type="android.view.View" />
-
-        <variable
-            name="m"
-            type="com.shizq.bika.bean.MyCommentsBean.Comments.Doc" />
-    </data>
-
     <RelativeLayout
         android:id="@+id/comments_layout"
         android:layout_width="match_parent"
@@ -63,15 +54,13 @@
                 <TextView
                     android:id="@+id/item_my_comments_like_text"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="@{String.valueOf(m.likesCount)}" />
+                    android:layout_height="wrap_content" />
 
                 <ImageView
                     android:id="@+id/item_my_comments_like_image"
                     android:layout_width="18dp"
                     android:layout_height="18dp"
-                    android:layout_marginStart="4dp"
-                    android:src="@{m.liked?@drawable/ic_favorite_24:@drawable/ic_favorite_border_24}" />
+                    android:layout_marginStart="4dp" />
             </LinearLayout>
 
 
@@ -143,7 +132,7 @@
             android:layout_marginTop="4dp"
             android:layout_marginEnd="6dp"
             android:layout_toEndOf="@+id/item_my_comments_image_layout"
-            android:text="@{m.content}"
+
             android:textSize="14sp" />
 
         <!--    评论子内容-->
@@ -156,7 +145,7 @@
             android:layout_marginTop="4dp"
             android:layout_marginEnd="8dp"
             android:layout_toEndOf="@+id/item_my_comments_image_layout"
-            android:visibility="@{m.commentsCount==0?View.GONE:View.VISIBLE}"
+
             app:cardBackgroundColor="?attr/colorOnSurfaceInverse"
             app:cardCornerRadius="6dp">
 
@@ -171,7 +160,6 @@
                     android:id="@+id/item_my_comments_sub_text"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="@{@string/text_commentsCount_start+m.commentsCount+@string/text_commentsCount_end}"
                     android:textColor="?attr/colorOutline"
                     android:textSize="14sp" />
 
@@ -199,7 +187,6 @@
                 android:id="@+id/item_my_comments_type"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@{m._game == null?@string/text_CommentsType_comic:@string/text_CommentsType_game}"
                 android:textColor="?attr/colorOutline"
                 android:textSize="14sp" />
 
@@ -209,7 +196,6 @@
                 android:layout_height="wrap_content"
                 android:ellipsize="end"
                 android:maxLines="1"
-                android:text="@{m._game == null?m._comic.title:m._game.title}"
                 android:textColor="@color/pink"
                 android:textSize="16sp"
                 android:textStyle="bold" />
