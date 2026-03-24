@@ -67,7 +67,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
@@ -83,7 +82,6 @@ import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import com.shizq.bika.ui.mycomments.MyCommentsActivity
 import com.shizq.bika.ui.notifications.NotificationsActivity
 import com.shizq.bika.ui.user.UserActivity
-import com.shizq.bika.utils.SPUtil
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -281,15 +279,15 @@ private fun navigation(
     navigateToSearch: (DiscoveryAction) -> Unit,
     navigateToGame: () -> Unit,
 ) {
-    if (channel.link != null) {
-        val token = SPUtil.get("token", "")
-        val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
-        val fullUrl = "${channel.link}/?token=$token&secret=$secret"
-
-        val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
-        context.startActivity(intent)
-        return
-    }
+//    if (channel.link != null) {
+//        val token = SPUtil.get("token", "")
+//        val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
+//        val fullUrl = "${channel.link}/?token=$token&secret=$secret"
+//
+//        val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
+//        context.startActivity(intent)
+//        return
+//    }
 
     when (channel.displayName) {
         "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)

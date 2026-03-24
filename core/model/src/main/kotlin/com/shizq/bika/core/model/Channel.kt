@@ -79,5 +79,4 @@ data class Channel(
     val displayName: String,
     val resName: String,
     val isActive: Boolean = true,
-    val link: String? = null,
 )
