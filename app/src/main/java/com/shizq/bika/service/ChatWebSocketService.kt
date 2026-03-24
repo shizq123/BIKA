@@ -5,12 +5,11 @@ import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
 import androidx.lifecycle.MutableLiveData
-import com.google.gson.Gson
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.websocket.ChatWebSocketManager
 import com.shizq.bika.network.websocket.IReceiveMessage
-import com.shizq.bika.utils.SPUtil
+
 
 //新聊天室Service
 class ChatWebSocketService : Service() {
@@ -45,7 +44,7 @@ class ChatWebSocketService : Service() {
     fun webSocket(roomId:String) {
         val url = RetrofitUtil.LIVE_SERVER +
                 "/?token=" +
-                SPUtil.get("chat_token", "") as String +
+//                SPUtil.get("chat_token", "") as String +
                 "&room=" + roomId
         webSocketManager.init(url, object :
             IReceiveMessage {
@@ -60,21 +59,21 @@ class ChatWebSocketService : Service() {
             }
 
             override fun onMessage(text: String) {
-                liveData_state.postValue("success")
-
-                val bean = Gson().fromJson(text, ChatMessageBean::class.java)
-                if (bean.data != null) {
-                    if (bean.type == "TEXT_MESSAGE" || bean.type == "IMAGE_MESSAGE") {
-                        //防止重复显示 屏蔽掉自己发送的消息
-                        if (bean.data.profile.name !=
-                            SPUtil.get("user_name", "") as String
-                        ) {
-                            liveData_message.postValue(bean)
-                        }
-                    } else {
-                        liveData_message.postValue(bean)
-                    }
-                }
+//                liveData_state.postValue("success")
+//
+//                val bean = Gson().fromJson(text, ChatMessageBean::class.java)
+//                if (bean.data != null) {
+//                    if (bean.type == "TEXT_MESSAGE" || bean.type == "IMAGE_MESSAGE") {
+//                        //防止重复显示 屏蔽掉自己发送的消息
+//                        if (bean.data.profile.name !=
+//                            SPUtil.get("user_name", "") as String
+//                        ) {
+//                            liveData_message.postValue(bean)
+//                        }
+//                    } else {
+//                        liveData_message.postValue(bean)
+//                    }
+//                }
             }
         })
     }

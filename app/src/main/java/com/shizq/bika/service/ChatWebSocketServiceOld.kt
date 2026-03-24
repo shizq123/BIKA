@@ -4,14 +4,14 @@ import android.app.Service
 import android.content.Intent
 import android.os.Binder
 import android.os.IBinder
-import android.util.Log
 import androidx.lifecycle.MutableLiveData
 import com.google.gson.Gson
 import com.google.gson.JsonParser
 import com.shizq.bika.bean.ChatMessageOldBean
 import com.shizq.bika.network.websocket.IReceiveMessage
 import com.shizq.bika.network.websocket.WebSocketManager
-import com.shizq.bika.utils.SPUtil
+
+//
 
 //旧聊天室service
 class ChatWebSocketServiceOld : Service() {
@@ -149,75 +149,75 @@ class ChatWebSocketServiceOld : Service() {
         base64Image: String = "",
         base64Audio: String = ""
     ) {
-        val fileServer = SPUtil.get("user_fileServer", "") as String
-        val path = SPUtil.get("user_path", "") as String
-        val character = SPUtil.get("user_character", "") as String
+//        val fileServer = SPUtil.get("user_fileServer", "") as String
+//        val path = SPUtil.get("user_path", "") as String
+//        val character = SPUtil.get("user_character", "") as String
 
-        val map = mutableMapOf<String, Any>()
-        map["at"] = if (base64Audio == "") atname else ""
-        map["audio"] = base64Audio
-        if (path != "") {
-            map["avatar"] = "${fileServer.replace("/static/", "")}/static/$path"
-        }
-        map["block_user_id"] = ""
-        if (character != "") {
-            map["character"] = character
-        }
+//        val map = mutableMapOf<String, Any>()
+//        map["at"] = if (base64Audio == "") atname else ""
+//        map["audio"] = base64Audio
+//        if (path != "") {
+//            map["avatar"] = "${fileServer.replace("/static/", "")}/static/$path"
+//        }
+//        map["block_user_id"] = ""
+//        if (character != "") {
+//            map["character"] = character
+//        }
 
-        map["email"] = SPUtil.get("username", "") as String
-        map["gender"] = SPUtil.get("user_gender", "bot") as String
-        map["image"] = base64Image
-        map["level"] = SPUtil.get("user_level", 1) as Int
-        map["message"] = text
-        map["name"] = SPUtil.get("user_name", "") as String
-        map["platform"] = "android"
-        map["reply"] = if (base64Audio == "") reply else ""
-        map["reply_name"] = if (base64Audio == "") reply_name else ""
-        map["title"] = SPUtil.get("user_title", "") as String
-        map["type"] = if (base64Image != "") 4 else if (base64Audio != "") 5 else 3
-        map["unique_id"] = ""
-        map["user_id"] = SPUtil.get("user_id", "") as String
-        map["verified"] = SPUtil.get("user_verified", false) as Boolean
+//        map["email"] = SPUtil.get("username", "") as String
+//        map["gender"] = SPUtil.get("user_gender", "bot") as String
+//        map["image"] = base64Image
+//        map["level"] = SPUtil.get("user_level", 1) as Int
+//        map["message"] = text
+//        map["name"] = SPUtil.get("user_name", "") as String
+//        map["platform"] = "android"
+//        map["reply"] = if (base64Audio == "") reply else ""
+//        map["reply_name"] = if (base64Audio == "") reply_name else ""
+//        map["title"] = SPUtil.get("user_title", "") as String
+//        map["type"] = if (base64Image != "") 4 else if (base64Audio != "") 5 else 3
+//        map["unique_id"] = ""
+//        map["user_id"] = SPUtil.get("user_id", "") as String
+//        map["verified"] = SPUtil.get("user_verified", false) as Boolean
 
-        val json = Gson().toJson(map)
-        val array = ArrayList<String>()
-        array.add(if (base64Image != "") "send_image" else if (base64Audio != "") "send_audio" else "send_message")
-        array.add(json)
-        liveData_message.postValue(Gson().fromJson(json, ChatMessageOldBean::class.java))
+//        val json = Gson().toJson(map)
+//        val array = ArrayList<String>()
+//        array.add(if (base64Image != "") "send_image" else if (base64Audio != "") "send_audio" else "send_message")
+//        array.add(json)
+//        liveData_message.postValue(Gson().fromJson(json, ChatMessageOldBean::class.java))
 
-        Log.d("------", Gson().toJson(array))
-        webSocketManager.sendMessage("42" + Gson().toJson(array))
+//        Log.d("------", Gson().toJson(array))
+//        webSocketManager.sendMessage("42" + Gson().toJson(array))
     }
 
     var init = {
-        val fileServer = SPUtil.get("user_fileServer", "") as String
-        val path = SPUtil.get("user_path", "") as String
-        val character = SPUtil.get("user_character", "") as String
+//        val fileServer = SPUtil.get("user_fileServer", "") as String
+//        val path = SPUtil.get("user_path", "") as String
+//        val character = SPUtil.get("user_character", "") as String
 
         val map = mutableMapOf<String, Any>()
 
-        if (fileServer != "" && path != "") {
-            val avatarMap = mutableMapOf<String, String>()
-            avatarMap["fileServer"] = fileServer
-            avatarMap["originalName"] = "avatar.jpg"
-            avatarMap["path"] = path
-            map["avatar"] = avatarMap
-        }
-        map["birthday"] = SPUtil.get("user_birthday", "") as String
-        if (character != "") {
-            map["character"] = character
-        }
-        map["characters"] = ArrayList<Any>()
-        map["email"] = SPUtil.get("username", "") as String
-        map["exp"] = SPUtil.get("user_exp", 0) as Int
-        map["gender"] = SPUtil.get("user_gender", "bot") as String
-        map["isPunched"] = SPUtil.get("setting_punch", false)
-        map["level"] = SPUtil.get("user_level", 1) as Int
-        map["name"] = SPUtil.get("user_name", "") as String
-        map["slogan"] = SPUtil.get("user_slogan", "") as String
-        map["title"] = SPUtil.get("user_title", "") as String
-        map["_id"] = SPUtil.get("user_id", "") as String
-        map["verified"] = SPUtil.get("user_verified", false) as Boolean
+//        if (fileServer != "" && path != "") {
+//            val avatarMap = mutableMapOf<String, String>()
+//            avatarMap["fileServer"] = fileServer
+//            avatarMap["originalName"] = "avatar.jpg"
+//            avatarMap["path"] = path
+//            map["avatar"] = avatarMap
+//        }
+//        map["birthday"] = SPUtil.get("user_birthday", "") as String
+//        if (character != "") {
+//            map["character"] = character
+//        }
+//        map["characters"] = ArrayList<Any>()
+//        map["email"] = SPUtil.get("username", "") as String
+//        map["exp"] = SPUtil.get("user_exp", 0) as Int
+//        map["gender"] = SPUtil.get("user_gender", "bot") as String
+//        map["isPunched"] = SPUtil.get("setting_punch", false)
+//        map["level"] = SPUtil.get("user_level", 1) as Int
+//        map["name"] = SPUtil.get("user_name", "") as String
+//        map["slogan"] = SPUtil.get("user_slogan", "") as String
+//        map["title"] = SPUtil.get("user_title", "") as String
+//        map["_id"] = SPUtil.get("user_id", "") as String
+//        map["verified"] = SPUtil.get("user_verified", false) as Boolean
         map
     }
 }

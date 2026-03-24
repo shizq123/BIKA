@@ -6,7 +6,7 @@ import com.google.gson.Gson
 import com.shizq.bika.bean.ChatMessageBean
 import com.shizq.bika.bean.UserMention
 import com.shizq.bika.network.base.BaseHeaders
-import com.shizq.bika.utils.SPUtil
+
 import okhttp3.Headers
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
@@ -180,49 +180,50 @@ class ChatRoomViewModel(application: Application) {
         referenceId: String,
         userMentions: List<UserMention> = listOf()
     ): String {
-        val fileServer = SPUtil.get("user_fileServer", "") as String
-        val path = SPUtil.get("user_path", "") as String
-        val avatarUrl =
-            if (fileServer == "") "" else "${fileServer.replace("/static/", "")}/static/$path"
-
-        val messageMap = if (imagePath == "") {
-            mutableMapOf(
-                "message" to message
-            )
-        } else {
-            mutableMapOf(
-                "caption" to message,
-                "medias" to listOf(imagePath)
-            )
-        }
-
-        val profile = mutableMapOf(
-            "name" to SPUtil.get("user_name", "") as String,
-            "level" to SPUtil.get("user_level", 1) as Int,
-            "characters" to listOf<String>(),
-            "avatarUrl" to avatarUrl,
-        )
-        val data = mutableMapOf(
-            "message" to messageMap,
-            "profile" to profile,
-            "userMentions" to userMentions
-        )
-
-        val json = if (imagePath == "") {
-            mutableMapOf(
-                "referenceId" to referenceId,
-                "type" to "TEXT_MESSAGE",
-                "isBlocked" to false,
-                "data" to data
-            )
-        } else {
-            mutableMapOf(
-                "referenceId" to referenceId,
-                "type" to "IMAGE_MESSAGE",
-                "isBlocked" to false,
-                "data" to data
-            )
-        }
-        return Gson().toJson(json)
+//        val fileServer = SPUtil.get("user_fileServer", "") as String
+//        val path = SPUtil.get("user_path", "") as String
+//        val avatarUrl =
+//            if (fileServer == "") "" else "${fileServer.replace("/static/", "")}/static/$path"
+//
+//        val messageMap = if (imagePath == "") {
+//            mutableMapOf(
+//                "message" to message
+//            )
+//        } else {
+//            mutableMapOf(
+//                "caption" to message,
+//                "medias" to listOf(imagePath)
+//            )
+//        }
+//
+//        val profile = mutableMapOf(
+//            "name" to SPUtil.get("user_name", "") as String,
+//            "level" to SPUtil.get("user_level", 1) as Int,
+//            "characters" to listOf<String>(),
+//            "avatarUrl" to avatarUrl,
+//        )
+//        val data = mutableMapOf(
+//            "message" to messageMap,
+//            "profile" to profile,
+//            "userMentions" to userMentions
+//        )
+//
+//        val json = if (imagePath == "") {
+//            mutableMapOf(
+//                "referenceId" to referenceId,
+//                "type" to "TEXT_MESSAGE",
+//                "isBlocked" to false,
+//                "data" to data
+//            )
+//        } else {
+//            mutableMapOf(
+//                "referenceId" to referenceId,
+//                "type" to "IMAGE_MESSAGE",
+//                "isBlocked" to false,
+//                "data" to data
+//            )
+//        }
+//        return Gson().toJson(json)
+        return ""
     }
 }

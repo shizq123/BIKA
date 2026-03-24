@@ -6,13 +6,11 @@ import com.shizq.bika.bean.ChatRoomSignInBean
 import com.shizq.bika.network.Result
 import com.shizq.bika.network.RetrofitUtil
 import com.shizq.bika.network.base.BaseHeaders
-import com.shizq.bika.utils.SPUtil
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
 
@@ -22,8 +20,8 @@ class ChatRoomListRepository {
         val body = RequestBody.create(
             "application/json; charset=UTF-8".toMediaTypeOrNull(),
             JsonObject().apply {
-                addProperty("email", SPUtil.get("username", "") as String)
-                addProperty("password", SPUtil.get("password", "") as String)
+//                addProperty("email", SPUtil.get("username", "") as String)
+//                addProperty("password", SPUtil.get("password", "") as String)
             }.asJsonObject.toString()
         )
         val response = RetrofitUtil.service_live.chatSignInPost(

@@ -9,7 +9,6 @@ import coil3.PlatformContext
 import coil3.SingletonImageLoader
 import com.shizq.bika.sync.initializers.Sync
 import com.shizq.bika.util.ProfileVerifierLogger
-import com.shizq.bika.utils.SPUtil
 import dagger.hilt.android.HiltAndroidApp
 import jakarta.inject.Inject
 
@@ -25,7 +24,6 @@ class BikaApplication : Application(), SingletonImageLoader.Factory {
 
         setStrictModePolicy()
 
-        SPUtil.init(this)
         Sync.initialize(this)
         profileVerifierLogger()
     }

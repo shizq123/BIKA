@@ -2,7 +2,9 @@ package com.shizq.bika.utils
 
 import android.annotation.SuppressLint
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Calendar
+import java.util.Date
+import java.util.TimeZone
 
 
 @SuppressLint("SimpleDateFormat")
@@ -80,9 +82,9 @@ class TimeUtil {
     }
 
     fun registerDays(day: Int): Boolean {
-        val createdAt = SPUtil.get("user_created_at", "") as String
+//        val createdAt = SPUtil.get("user_created_at", "") as String
         val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-        val time = simpleDateFormat.parse(createdAt)!!.time
+        val time = simpleDateFormat.parse("")!!.time
         val currentTime = System.currentTimeMillis()
         return (currentTime - time) / (1000 * 60 * 60 * 24) >= day
     }
