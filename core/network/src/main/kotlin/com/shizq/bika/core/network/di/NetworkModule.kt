@@ -62,7 +62,10 @@ internal object NetworkModule {
         install(ApiEnvelopePlugin)
         install(ContentNegotiation) {
             json(
-                Json { ignoreUnknownKeys = true }
+                Json {
+                    ignoreUnknownKeys = true
+                    coerceInputValues = true
+                }
             )
         }
         Logging {
