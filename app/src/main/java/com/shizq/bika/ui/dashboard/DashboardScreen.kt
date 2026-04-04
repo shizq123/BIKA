@@ -224,17 +224,10 @@ fun DashboardContent(
                     key = { it.resName }
                 ) { item ->
                     val context = LocalContext.current
-                    val resources = LocalResources.current
 
                     if (item.isActive) {
-                        val resId = resources.getIdentifier(
-                            item.resName,
-                            "drawable",
-                            context.packageName
-                        )
-
                         ChannelGridItem(
-                            iconRes = resId,
+                            iconRes = item.iconResId,
                             label = item.displayName,
                             modifier = Modifier.animateItem(),
                         ) {
