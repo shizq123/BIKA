@@ -34,7 +34,7 @@ import com.shizq.bika.ui.signup.RegistrationScreen
 fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
     entry<LoginNavKey> {
         LoginScreen(
-            onLoginSuccess = { navigator.navigate(DashboardNavKey) },
+            onLoginSuccess = { navigator.replaceRoot(DashboardNavKey) },
             onSignUpClick = { navigator.navigate(RegisterNavKey) },
             onForgotPasswordClick = {}
         )

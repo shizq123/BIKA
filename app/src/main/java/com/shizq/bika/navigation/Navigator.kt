@@ -66,6 +66,16 @@ class Navigator(val state: NavigationState) {
     }
 
     /**
+     * 替换整个导航栈，将新 key 设置为当前子栈的唯一页面。
+     */
+    fun replaceRoot(key: NavKey) {
+        state.currentSubStack.apply {
+            clear() // 抹掉登录页及其它所有页面
+            add(key) // 加入新的页面（如 Dashboard）
+        }
+    }
+
+    /**
      * Clearing all but the root key in the current sub stack.
      */
     private fun clearSubStack() {
