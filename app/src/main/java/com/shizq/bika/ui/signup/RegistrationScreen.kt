@@ -23,7 +23,7 @@ import com.shizq.bika.core.ui.wizard.WizardStep
 @Composable
 fun RegistrationScreen(
     viewModel: RegistrationViewModel = hiltViewModel(),
-    onBackClicked: () -> Unit
+    onBackClick: () -> Unit
 ) {
     val registrationUiState by viewModel.registrationState.collectAsStateWithLifecycle()
 
@@ -32,7 +32,7 @@ fun RegistrationScreen(
         basicInfoState = viewModel.basicInfoState,
         securityQuestionsState = viewModel.securityQuestionsState,
         personalInfoState = viewModel.personalInfoState,
-        onBackClicked = onBackClicked,
+        onBackClick = onBackClick,
         onCompleterClicked = viewModel::registerUser
     )
 }
@@ -44,7 +44,7 @@ fun RegistrationContent(
     basicInfoState: BasicInfoState,
     securityQuestionsState: SecurityQuestionsState,
     personalInfoState: PersonalInfoState,
-    onBackClicked: () -> Unit,
+    onBackClick: () -> Unit,
     onCompleterClicked: () -> Unit
 ) {
     val context = LocalContext.current
@@ -58,7 +58,7 @@ fun RegistrationContent(
                 context, registrationUiState.message, Toast.LENGTH_SHORT
             ).show()
 
-            RegistrationUiState.Success -> onBackClicked()
+            RegistrationUiState.Success -> onBackClick()
         }
     }
 
@@ -105,7 +105,7 @@ fun RegistrationContent(
             CenterAlignedTopAppBar(
                 title = { Text("注册") },
                 navigationIcon = {
-                    IconButton(onClick = onBackClicked) {
+                    IconButton(onClick = onBackClick) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, null)
                     }
                 }
