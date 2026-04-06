@@ -24,8 +24,6 @@ import com.shizq.bika.MainActivityUiState.Loading
 import com.shizq.bika.MainActivityUiState.Success
 import com.shizq.bika.core.designsystem.theme.BikaTheme
 import com.shizq.bika.core.ui.composition.LocalWindow
-import com.shizq.bika.navigation.DashboardNavKey
-import com.shizq.bika.navigation.LoginNavKey
 import com.shizq.bika.ui.BikaApp
 import com.shizq.bika.ui.rememberAppState
 import com.shizq.bika.util.isSystemInDarkTheme
@@ -108,9 +106,8 @@ class MainActivity : ComponentActivity() {
                         }
 
                         is Success -> {
-                            val startDestination =
-                                if (state.isLoggedIn) DashboardNavKey else LoginNavKey
-                            val appState = rememberAppState(startDestination)
+                            val appState = rememberAppState(state.startDestination)
+
                             BikaApp(appState)
                         }
                     }

@@ -2,14 +2,18 @@ package com.shizq.bika
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.navigation3.runtime.NavKey
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.DarkThemeConfig
+import com.shizq.bika.navigation.DashboardNavKey
+import com.shizq.bika.navigation.LoginNavKey
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @HiltViewModel
@@ -17,12 +21,17 @@ class MainActivityViewModel @Inject constructor(
     userCredentialsDataSource: UserCredentialsDataSource,
     userPreferencesDataSource: UserPreferencesDataSource,
 ) : ViewModel() {
-    val uiState: StateFlow<MainActivityUiState> =
-        userCredentialsDataSource.userData
-            .combine(userPreferencesDataSource.userData) { credentials, preferences ->
+    private val loginStateFlow = userCredentialsDataSource.userData
+        .map { !it.username.isNullOrBlank() && !it.password.isNullOrBlank() }
+
+    private val themeConfigFlow = userPreferencesDataSource.userData
+        .map { it.darkThemeConfig }
+
+    val uiState: StateFlow<MainActivityUiState> = loginStateFlow
+        .combine(themeConfigFlow) { isLoggedIn, darkThemeConfig ->
                 MainActivityUiState.Success(
-                    isLoggedIn = !credentials.username.isNullOrBlank() && !credentials.password.isNullOrBlank(),
-                    darkThemeConfig = preferences.darkThemeConfig
+                    startDestination = if (isLoggedIn) DashboardNavKey else LoginNavKey,
+                    darkThemeConfig = darkThemeConfig
                 )
             }.stateIn(
                 scope = viewModelScope,
@@ -34,7 +43,7 @@ class MainActivityViewModel @Inject constructor(
 sealed interface MainActivityUiState {
     data object Loading : MainActivityUiState
 
-    data class Success(val isLoggedIn: Boolean, val darkThemeConfig: DarkThemeConfig) :
+    data class Success(val startDestination: NavKey, val darkThemeConfig: DarkThemeConfig) :
         MainActivityUiState {
         override fun shouldUseDarkTheme(isSystemDarkTheme: Boolean): Boolean =
             when (darkThemeConfig) {
