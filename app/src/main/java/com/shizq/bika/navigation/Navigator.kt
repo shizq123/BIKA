@@ -4,83 +4,72 @@ import androidx.navigation3.runtime.NavKey
 
 /**
  * Handles navigation events (forward and back) by updating the navigation state.
- *
- * @param state - The navigation state that will be updated in response to navigation events.
  */
 class Navigator(val state: NavigationState) {
 
     /**
-     * Navigate to a navigation key
-     *
-     * @param key - the navigation key to navigate to.
+     * Navigate to a route. Handles navigation within both Authentication and Connected graphs,
+     * as well as transitions between them.
      */
-    fun navigate(key: NavKey) {
-        when (key) {
-            state.currentTopLevelKey -> clearSubStack()
-            in state.topLevelKeys -> goToTopLevel(key)
-            else -> goToKey(key)
+    fun navigate(route: NavKey) {
+        when (route) {
+            is Root -> {
+                if (state.currentRootDestination == AuthenticationRoute) {
+                    state.rootBackStack.removeLastOrNull()
+                    state.rootBackStack.add(ConnectedRoute)
+                } else if (route is Authentication || route == AuthenticationRoute) {
+                    state.rootBackStack.removeLastOrNull()
+                    state.rootBackStack.add(AuthenticationRoute)
+
+                    state.authenticationBackStack.clear()
+                    state.authenticationBackStack.add(AuthenticationRoute.LoginRoute)
+
+                    state.topLevelRoute = state.topLevelStartRoute
+                    state.backStacks.forEach { (key, stack) ->
+                        stack.clear()
+                        stack.add(key)
+                    }
+                }
+            }
+
+            // Navigation within Authentication graph
+            is Authentication -> {
+                state.authenticationBackStack.add(route)
+            }
+
+            // Navigation within Connected graph (or transitioning to it from Authentication)
+            is Connected -> {
+                if (route in state.backStacks.keys) {
+                    // This is a top level route, just switch to it
+                    state.topLevelRoute = route
+                } else {
+                    state.backStacks[state.topLevelRoute]?.add(route)
+                }
+            }
         }
     }
 
     /**
-     * Go back to the previous navigation key.
+     * Go back. Handles back navigation within both Authentication and Connected graphs.
      */
     fun goBack() {
-        when (state.currentKey) {
-            state.startKey -> error("You cannot go back from the start route")
-            state.currentTopLevelKey -> {
-                // We're at the base of the current sub stack, go back to the previous top level
-                // stack.
-                state.topLevelStack.removeLastOrNull()
+        when (state.currentRootDestination) {
+            AuthenticationRoute -> {
+                state.authenticationBackStack.removeLastOrNull()
             }
 
-            else -> state.currentSubStack.removeLastOrNull()
-        }
-    }
+            ConnectedRoute -> {
+                val currentStack = state.backStacks[state.topLevelRoute]
+                    ?: error("Stack for ${state.topLevelRoute} not found")
+                val currentRoute = currentStack.last()
 
-    /**
-     * Go to a non top level key.
-     */
-    private fun goToKey(key: NavKey) {
-        state.currentSubStack.apply {
-            // Remove it if it's already in the stack so it's added at the end.
-            remove(key)
-            add(key)
-        }
-    }
-
-    /**
-     * Go to a top level stack.
-     */
-    private fun goToTopLevel(key: NavKey) {
-        state.topLevelStack.apply {
-            if (key == state.startKey) {
-                // This is the start key. Clear the stack so it's added as the only key.
-                clear()
-            } else {
-                // Remove it if it's already in the stack so it's added at the end.
-                remove(key)
+                // If we're at the base of the current route, go back to the start route stack.
+                if (currentRoute == state.topLevelRoute) {
+                    state.topLevelRoute = state.topLevelStartRoute
+                } else {
+                    currentStack.removeLastOrNull()
+                }
             }
-            add(key)
-        }
-    }
-
-    /**
-     * 替换整个导航栈，将新 key 设置为当前子栈的唯一页面。
-     */
-    fun replaceRoot(key: NavKey) {
-        state.currentSubStack.apply {
-            clear() // 抹掉登录页及其它所有页面
-            add(key) // 加入新的页面（如 Dashboard）
-        }
-    }
-
-    /**
-     * Clearing all but the root key in the current sub stack.
-     */
-    private fun clearSubStack() {
-        state.currentSubStack.run {
-            if (size > 1) subList(1, size).clear()
         }
     }
 }

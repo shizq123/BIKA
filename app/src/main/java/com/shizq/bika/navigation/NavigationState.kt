@@ -1,86 +1,136 @@
 package com.shizq.bika.navigation
 
-import androidx.annotation.VisibleForTesting
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSerializable
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import androidx.compose.runtime.toMutableStateList
-import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
-
+import androidx.navigation3.runtime.serialization.NavKeySerializer
+import androidx.savedstate.compose.serialization.serializers.MutableStateSerializer
 /**
  * Create a navigation state that persists config changes and process death.
+ *
+ * @param topLevelStartRoute - The top level route to start on. This should also be in `topLevelRoutes`.
+ * @param topLevelRoutes - The top level routes in the app.
  */
 @Composable
 fun rememberNavigationState(
-    startKey: NavKey,
-    topLevelKeys: Set<NavKey>,
+    rootStartRoute: NavKey,
+    authenticationStartRoute: NavKey,
+    topLevelStartRoute: NavKey,
+    topLevelRoutes: Set<NavKey>
 ): NavigationState {
-    val topLevelStack = rememberNavBackStack(startKey)
-    val subStacks = topLevelKeys.associateWith { key -> rememberNavBackStack(key) }
 
-    return remember(startKey, topLevelKeys) {
+    val rootBackStack = rememberNavBackStack(rootStartRoute)
+
+    val authenticationBackStack = rememberNavBackStack(authenticationStartRoute)
+
+    val topLevelRoute = rememberSerializable(
+        topLevelStartRoute, topLevelRoutes,
+        serializer = MutableStateSerializer(NavKeySerializer())
+    ) {
+        mutableStateOf(topLevelStartRoute)
+    }
+
+    // Create a back stack for each top level route.
+    val backStacks = topLevelRoutes.associateWith { key -> rememberNavBackStack(key) }
+
+    return remember(topLevelStartRoute, topLevelRoutes) {
         NavigationState(
-            startKey = startKey,
-            topLevelStack = topLevelStack,
-            subStacks = subStacks,
+            rootStartRoute = rootStartRoute,
+            rootBackStack = rootBackStack,
+            authenticationBackStack = authenticationBackStack,
+            topLevelStartRoute = topLevelStartRoute,
+            topLevelRoute = topLevelRoute,
+            backStacks = backStacks
         )
     }
 }
 
 /**
- * State holder for navigation state.
+ * State holder for navigation state. This class does not modify its own state. It is designed
+ * to be modified using the `Navigator` class.
  *
- * @param startKey - the starting navigation key. The user will exit the app through this key.
- * @param topLevelStack - the top level back stack. It holds only top level keys.
- * @param subStacks - the back stacks for each top level key
+ * @param topLevelStartRoute - the start route. The user will exit the app through this route.
+ * @param topLevelRoute - the state object that backs the top level route.
+ * @param backStacks - the back stacks for each top level route.
  */
 class NavigationState(
-    val startKey: NavKey,
-    val topLevelStack: NavBackStack<NavKey>,
-    val subStacks: Map<NavKey, NavBackStack<NavKey>>,
+    val rootStartRoute: NavKey,
+    val rootBackStack: NavBackStack<NavKey>,
+    val authenticationBackStack: NavBackStack<NavKey>,
+    val topLevelStartRoute: NavKey,
+    topLevelRoute: MutableState<NavKey>,
+    val backStacks: Map<NavKey, NavBackStack<NavKey>>
 ) {
-    val currentTopLevelKey: NavKey by derivedStateOf { topLevelStack.last() }
 
-    val topLevelKeys
-        get() = subStacks.keys
+    /**
+     * The top level route.
+     */
+    var topLevelRoute: NavKey by topLevelRoute
 
-    @get:VisibleForTesting
-    val currentSubStack: NavBackStack<NavKey>
-        get() = subStacks[currentTopLevelKey]
-            ?: error("Sub stack for $currentTopLevelKey does not exist")
+    /**
+     * The current root destination (nav graph level, e.g., WelcomeNavGraph or HomeNavGraph).
+     */
+    val currentRootDestination: NavKey
+        get() = rootBackStack.lastOrNull() ?: rootStartRoute
 
-    @get:VisibleForTesting
-    val currentKey: NavKey by derivedStateOf { currentSubStack.last() }
-}
+    /**
+     * Convert the navigation state into `NavEntry`s that have been decorated with a
+     * `SaveableStateHolder`.
+     *
+     * @param entryProvider - the entry provider used to convert the keys in the
+     * back stacks to `NavEntry`s.
+     */
+    @Composable
+    fun toEntries(
+        entryProvider: (NavKey) -> NavEntry<NavKey>
+    ): SnapshotStateList<NavEntry<NavKey>> {
+        // For each back stack, create a `SaveableStateHolder` decorator and use it to decorate
+        // the entries from that stack. When backStacks changes, `rememberDecoratedNavEntries` will
+        // be recomposed and a new list of decorated entries is returned.
+        val decoratedEntries = backStacks.mapValues { (_, stack) ->
+            val decorators = listOf(
+                rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
+            )
+            rememberDecoratedNavEntries(
+                backStack = stack,
+                entryDecorators = decorators,
+                entryProvider = entryProvider
+            )
+        }
 
-/**
- * Convert NavigationState into NavEntries.
- */
-@Composable
-fun NavigationState.toEntries(
-    entryProvider: (NavKey) -> NavEntry<NavKey>,
-): SnapshotStateList<NavEntry<NavKey>> {
-    val decoratedEntries = subStacks.mapValues { (_, stack) ->
-        val decorators = listOf(
-            rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
-            rememberViewModelStoreNavEntryDecorator<NavKey>(),
-        )
-        rememberDecoratedNavEntries(
-            backStack = stack,
-            entryDecorators = decorators,
-            entryProvider = entryProvider,
-        )
+        // Only return the entries for the stacks that are currently in use.
+        return getTopLevelRoutesInUse()
+            .flatMap { decoratedEntries[it] ?: emptyList() }
+            .toMutableStateList()
     }
 
-    return topLevelStack
-        .flatMap { decoratedEntries[it] ?: emptyList() }
-        .toMutableStateList()
+    /**
+     * Get the top level routes that are currently in use. The start route is always the first route
+     * in the list. This means the user will always exit the app through the starting route
+     * ("exit through home" pattern). The list will contain a maximum of one other route. This is a
+     * design decision. In your app, you may wish to allow more than two top level routes to be
+     * active.
+     *
+     * Note that even if a top level route is not in use its state is still retained.
+     *
+     * @return the current top level routes that are in use.
+     */
+    private fun getTopLevelRoutesInUse(): List<NavKey> =
+        if (topLevelRoute == topLevelStartRoute) {
+            listOf(topLevelStartRoute)
+        } else {
+            listOf(topLevelStartRoute, topLevelRoute)
+        }
 }
