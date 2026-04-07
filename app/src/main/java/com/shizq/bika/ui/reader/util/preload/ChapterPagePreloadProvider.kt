@@ -15,7 +15,7 @@ class ChapterPagePreloadProvider(private val context: Context) : PreloadModelPro
             .diskCacheKey(item.url)
             .memoryCacheKey(item.url)
             .diskCachePolicy(CachePolicy.ENABLED)
-            .memoryCachePolicy(CachePolicy.ENABLED)
+            .memoryCachePolicy(CachePolicy.DISABLED)
             .allowHardware(true)
             .build()
     }
