@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.settings
 
-import android.app.Activity
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,9 +38,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.model.DarkThemeConfig
 import com.shizq.bika.core.model.NetworkLine
 
-
 @Composable
 fun SettingsScreen(
+    navigationToLogin: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
 ) {
@@ -49,7 +48,6 @@ fun SettingsScreen(
 
     val cacheSize by viewModel.cacheSize.collectAsStateWithLifecycle()
 
-    val context = LocalContext.current
     SettingsContent(
         settingsUiState = settingsUiState,
         cacheSize = cacheSize,
@@ -59,7 +57,7 @@ fun SettingsScreen(
         onUpdateNetworkLine = viewModel::updateSelectedNetworkLine,
         onLogoutClicked = {
             viewModel.logout()
-            (context as? Activity)?.finish()
+            navigationToLogin()
         },
         onBackClick = onBackClick,
     )
