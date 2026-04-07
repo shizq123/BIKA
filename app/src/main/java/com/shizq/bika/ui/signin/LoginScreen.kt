@@ -58,24 +58,24 @@ import com.shizq.bika.core.ui.CircularProgressIndicator
 @Composable
 fun LoginScreen(
     viewModel: LoginViewModel = hiltViewModel(),
-    onLoginSuccess: () -> Unit,
-    onSignUpClick: () -> Unit,
-    onForgotPasswordClick: () -> Unit,
+    onNavigateToDashboard: () -> Unit,
+    onNavigateToSignUp: () -> Unit,
+    onNavigateToForgotPassword: () -> Unit,
 ) {
     val loginState by viewModel.state.collectAsStateWithLifecycle()
 
     LaunchedEffect(loginState.isSuccess) {
         if (loginState.isSuccess) {
-            onLoginSuccess()
+            onNavigateToDashboard()
         }
     }
     val context = LocalContext.current
     LoginContent(
         loginState = loginState,
         onRememberMeChange = { viewModel.dispatch(LoginAction.ToggleRememberMe(it)) },
-        onSignUpClick = onSignUpClick,
-        onForgotPasswordClick = {
-            onForgotPasswordClick()
+        onNavigateToSignUp = onNavigateToSignUp,
+        onNavigateToForgotPassword = {
+            onNavigateToForgotPassword()
             Toast.makeText(context, "功能暂不可用", Toast.LENGTH_SHORT).show()
         },
         dispatch = viewModel::dispatch,
@@ -88,8 +88,8 @@ fun LoginContent(
     loginState: LoginUiState,
     modifier: Modifier = Modifier,
     onRememberMeChange: (Boolean) -> Unit = {},
-    onSignUpClick: () -> Unit = {},
-    onForgotPasswordClick: () -> Unit = {},
+    onNavigateToSignUp: () -> Unit = {},
+    onNavigateToForgotPassword: () -> Unit = {},
     dispatch: (LoginAction) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
@@ -179,7 +179,7 @@ fun LoginContent(
                     Spacer(modifier = Modifier.weight(1f))
 
                     TextButton(
-                        onClick = { onForgotPasswordClick() },
+                        onClick = { onNavigateToForgotPassword() },
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Text(
@@ -230,7 +230,7 @@ fun LoginContent(
                     )
 
                     TextButton(
-                        onClick = onSignUpClick,
+                        onClick = onNavigateToSignUp,
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
                     ) {
                         Text(
@@ -382,8 +382,8 @@ fun PasswordTextField(
 @Composable
 private fun LoginScreenPreview() {
     LoginScreen(
-        onLoginSuccess = { },
-        onSignUpClick = { },
-        onForgotPasswordClick = {}
+        onNavigateToDashboard = { },
+        onNavigateToSignUp = { },
+        onNavigateToForgotPassword = {}
     )
 }
