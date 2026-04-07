@@ -1,6 +1,9 @@
 package com.shizq.bika.ui.reader.layout
 
 import android.content.res.Configuration
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -19,6 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -31,52 +36,13 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
-import coil3.compose.SubcomposeAsyncImage
+import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.paging.ChapterPage
-
-@Composable
-fun Image(
-    url: String,
-    index: Int,
-    modifier: Modifier = Modifier
-) {
-    val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
-    var imageAspectRatio by remember { mutableFloatStateOf(0.75f) }
-
-    val scaleMode = if (isLandscape) ContentScale.Fit else ContentScale.FillWidth
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .aspectRatio(imageAspectRatio)
-    ) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalPlatformContext.current)
-                .data(url)
-                .diskCacheKey(url)
-                .diskCachePolicy(CachePolicy.ENABLED)
-                .listener(
-                    onSuccess = { _, result ->
-                        val w = result.image.width
-                        val h = result.image.height
-                        if (w > 0 && h > 0) {
-                            imageAspectRatio = w.toFloat() / h.toFloat()
-                        }
-                    }
-                )
-                .build(),
-            contentDescription = (index + 1).toString(),
-            contentScale = scaleMode,
-            modifier = Modifier.fillMaxSize(),
-        )
-    }
-}
 
 @Composable
 fun ComicPageItem(
@@ -86,53 +52,80 @@ fun ComicPageItem(
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-
     val scaleMode = if (isLandscape) ContentScale.Fit else ContentScale.FillWidth
+    var imageAspectRatio by remember { mutableFloatStateOf(0.75f) }
 
-    SubcomposeAsyncImage(
+    val painter = rememberAsyncImagePainter(
         model = ImageRequest.Builder(LocalPlatformContext.current)
             .data(page.url)
-            .crossfade(true)
+            .crossfade(false)
+            .diskCacheKey(page.url)
             .diskCachePolicy(CachePolicy.ENABLED)
-            .build(),
-        contentDescription = "Page ${index + 1}",
-        contentScale = scaleMode,
-        modifier = modifier.fillMaxWidth(),
-        loading = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .background(Color.Gray.copy(alpha = 0.1f)),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator(modifier = Modifier.size(80.dp))
-            }
-        },
-        error = {
-            val painter = this.painter
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .build()
+    )
 
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .aspectRatio(0.75f)
-                    .background(Color.LightGray)
-                    .clickable {
-                        painter.restart()
-                    },
-                contentAlignment = Alignment.Center
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry")
-                    Text(
-                        text = "加载失败\n点击重试",
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+    val state by painter.state.collectAsState()
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(imageAspectRatio)
+            .animateContentSize(animationSpec = tween(durationMillis = 200)),
+    ) {
+        Image(
+            painter = painter,
+            contentDescription = "Page ${index + 1}",
+            contentScale = scaleMode,
+            modifier = Modifier.fillMaxSize()
+        )
+        when (state) {
+            is AsyncImagePainter.State.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Gray.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(48.dp))
                 }
             }
+
+            is AsyncImagePainter.State.Error -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.LightGray)
+                        .clickable { painter.restart() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry")
+                        Text(
+                            text = "加载失败\n点击重试",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            }
+
+            is AsyncImagePainter.State.Success -> {
+                val intrinsicSize = (state as AsyncImagePainter.State.Success).painter.intrinsicSize
+
+                LaunchedEffect(intrinsicSize) {
+                    if (intrinsicSize.width > 0 && intrinsicSize.height > 0) {
+                        val newRatio = intrinsicSize.width / intrinsicSize.height
+                        if (imageAspectRatio != newRatio) {
+                            imageAspectRatio = newRatio
+                        }
+                    }
+                }
+            }
+
+            else -> {}
         }
-    )
+    }
 }
 
 @Preview(
@@ -145,7 +138,6 @@ private fun PreviewComicPageItem() {
     MaterialTheme {
         Column(modifier = Modifier.padding(16.dp)) {
             Text("模拟加载中/失败状态：", modifier = Modifier.padding(bottom = 8.dp))
-
             ComicPageItem(
                 page = ChapterPage(id = "1", url = "http://fake.url"),
                 index = 4
@@ -170,7 +162,6 @@ private fun PreviewComicList() {
                         modifier = Modifier.padding(16.dp)
                     )
                 }
-
                 items(3) { index ->
                     ComicPageItem(
                         page = ChapterPage(id = "$index", url = "http://fake.url"),

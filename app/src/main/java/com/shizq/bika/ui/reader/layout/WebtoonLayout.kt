@@ -33,7 +33,7 @@ class WebtoonLayout(
                 key = chapterPages.itemKey { it.id },
             ) { index ->
                 chapterPages[index]?.let {
-                    Image(it.url, index)
+                    ComicPageItem(it, index)
                 }
             }
         }

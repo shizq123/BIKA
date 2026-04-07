@@ -59,7 +59,7 @@ class PagerLayout(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            pages[index]?.let { Image(it.url, index) }
+            pages[index]?.let { ComicPageItem(it, index) }
         }
     }
 }
