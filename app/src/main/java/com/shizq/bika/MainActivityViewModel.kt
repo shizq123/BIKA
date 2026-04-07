@@ -6,8 +6,8 @@ import androidx.navigation3.runtime.NavKey
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.DarkThemeConfig
-import com.shizq.bika.navigation.DashboardNavKey
-import com.shizq.bika.navigation.LoginNavKey
+import com.shizq.bika.navigation.AuthenticationRoute
+import com.shizq.bika.navigation.ConnectedRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +30,7 @@ class MainActivityViewModel @Inject constructor(
     val uiState: StateFlow<MainActivityUiState> = loginStateFlow
         .combine(themeConfigFlow) { isLoggedIn, darkThemeConfig ->
                 MainActivityUiState.Success(
-                    startDestination = if (isLoggedIn) DashboardNavKey else LoginNavKey,
+                    startDestination = if (isLoggedIn) ConnectedRoute else AuthenticationRoute,
                     darkThemeConfig = darkThemeConfig
                 )
             }.stateIn(

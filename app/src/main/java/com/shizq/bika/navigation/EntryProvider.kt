@@ -6,9 +6,11 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.remember
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
+import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
@@ -31,18 +33,119 @@ import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 
-fun EntryProviderScope<NavKey>.loginEntry(navigator: Navigator) {
-    entry<LoginNavKey> {
-        LoginScreen(
-            onLoginSuccess = { navigator.replaceRoot(DashboardNavKey) },
-            onSignUpClick = { navigator.navigate(RegisterNavKey) },
-            onForgotPasswordClick = {}
+fun EntryProviderScope<NavKey>.rootSection(
+    navigator: Navigator,
+) {
+    entry<AuthenticationRoute> {
+        NavDisplay(
+            backStack = navigator.state.authenticationBackStack,
+            entryProvider = entryProvider {
+                authenticationSection(
+                    navigationToDashboard = { navigator.navigate(ConnectedRoute) },
+                    navigateToRegister = {
+                        navigator.navigate(AuthenticationRoute.RegisterRoute)
+                    },
+                    onBackClick = navigator::goBack,
+                )
+            }
+        )
+    }
+
+    entry<ConnectedRoute> {
+        val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
+        NavDisplay(
+            entries = navigator.state.toEntries(
+                entryProvider = entryProvider {
+                    featureSection(navigator)
+                }
+            ),
+            onBack = navigator::goBack,
+            sceneStrategies = listOf(dialogStrategy)
         )
     }
 }
 
-fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
-    entry<SearchNavKey>(
+fun EntryProviderScope<NavKey>.authenticationSection(
+    navigationToDashboard: () -> Unit,
+    navigateToRegister: () -> Unit,
+    onBackClick: () -> Unit,
+) {
+    entry<AuthenticationRoute.LoginRoute> {
+        LoginScreen(
+            onNavigateToDashboard = navigationToDashboard,
+            onNavigateToSignUp = navigateToRegister,
+            onNavigateToForgotPassword = {}
+        )
+    }
+    entry<AuthenticationRoute.RegisterRoute> {
+        RegistrationScreen(
+            onBackClick = onBackClick
+        )
+    }
+}
+
+fun EntryProviderScope<NavKey>.featureSection(
+    navigator: Navigator,
+) {
+    entry<ConnectedRoute.DashboardRoute> {
+        DashboardScreen(
+            navigationToLeaderboard = { navigator.navigate(ConnectedRoute.LeaderboardRoute) },
+            navigateToFavourite = { action ->
+                navigator.navigate(ConnectedRoute.FeedRoute(action))
+            },
+            navigationToHistory = { navigator.navigate(ConnectedRoute.HistoryRoute) },
+            navigationToSettings = { navigator.navigate(ConnectedRoute.SettingsRoute) },
+            navigateToGame = { /*navigator.navigate(GameNavKey)*/ },
+            onSearchClick = { navigator.navigate(ConnectedRoute.SearchRoute) },
+            onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
+            onCommentsClick = { navigator.navigate(ConnectedRoute.MineCommentRoute) },
+        )
+    }
+    entry<ConnectedRoute.FeedRoute> { key ->
+        FeedScreen(
+            title = key.action.name,
+            onBackClick = { navigator.goBack() },
+            onComicClick = navigator::navigateToUnitedDetail,
+            viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
+                key = key.toString(),
+            ) { factory ->
+                factory.create(key.action)
+            },
+        )
+    }
+    entry<ConnectedRoute.HistoryRoute> {
+        HistoryScreen(
+            onComicClick = navigator::navigateToUnitedDetail,
+            onBackClick = navigator::goBack
+        )
+    }
+    entry<ConnectedRoute.LeaderboardRoute> {
+        LeaderboardScreen(
+            navigationToUnitedDetail = { navigator.navigateToUnitedDetail(it) },
+            navigationToKnight = { name, id ->
+                navigator.navigate(ConnectedRoute.FeedRoute(DiscoveryAction.Knight(name, id)))
+            }
+        )
+    }
+    entry<ConnectedRoute.MineCommentRoute> { key ->
+        MineCommentScreen(
+            onCardClick = navigator::navigateToUnitedDetail,
+            onBackClick = navigator::goBack
+        )
+    }
+    entry<ConnectedRoute.ReaderRoute> { key ->
+        val id = key.id
+        ReaderScreen(
+            onBackClick = { navigator.goBack() },
+            viewModel = hiltViewModel<ReaderViewModel, ReaderViewModel.Factory>(
+                key = id,
+            ) { factory ->
+                factory.create(id, key.order)
+            },
+        )
+    }
+
+    entry<ConnectedRoute.SearchRoute>(
         metadata = metadata {
             put(NavDisplay.TransitionKey) {
                 slideInHorizontally(
@@ -70,61 +173,18 @@ fun EntryProviderScope<NavKey>.searchEntry(navigator: Navigator) {
     ) {
         SearchScreen(
             onSearchClick = {
-                navigator.navigate(FeedNavKey(DiscoveryAction.AdvancedSearch(it)))
+                navigator.navigate(ConnectedRoute.FeedRoute(DiscoveryAction.AdvancedSearch(it)))
             },
             onBackClick = navigator::goBack
         )
     }
-}
-
-fun EntryProviderScope<NavKey>.registerEntry(navigator: Navigator) {
-    entry<RegisterNavKey> {
-        RegistrationScreen(
-            onBackClicked = navigator::goBack
+    entry<ConnectedRoute.SettingsRoute> {
+        SettingsScreen(
+            navigationToLogin = { navigator.navigate(AuthenticationRoute) },
+            onBackClick = navigator::goBack
         )
     }
-}
-
-fun EntryProviderScope<NavKey>.dashboardEntry(navigator: Navigator) {
-    entry<DashboardNavKey> {
-        DashboardScreen(
-            navigationToLeaderboard = { navigator.navigate(LeaderboardNavKey) },
-            navigateToFavourite = { action ->
-                navigator.navigate(FeedNavKey(action))
-            },
-            navigationToHistory = { navigator.navigate(HistoryNavKey) },
-            navigationToSettings = { navigator.navigate(SettingsNavKey) },
-            navigateToGame = { navigator.navigate(GameNavKey) },
-            onSearchClick = { navigator.navigate(SearchNavKey) },
-            onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
-            onCommentsClick = { navigator.navigate(MineCommentNavKey) },
-        )
-    }
-}
-
-fun EntryProviderScope<NavKey>.channelSettingsEntry(navigator: Navigator) {
-    entry<ChannelSettingsNavKey>(
-        metadata = DialogSceneStrategy.dialog(),
-    ) {
-        ChannelSettingsDialog(
-            onDismiss = navigator::goBack,
-        )
-    }
-}
-
-fun EntryProviderScope<NavKey>.leaderboardEntry(navigator: Navigator) {
-    entry<LeaderboardNavKey> {
-        LeaderboardScreen(
-            navigationToUnitedDetail = { navigator.navigateToUnitedDetail(it) },
-            navigationToKnight = { name, id ->
-                navigator.navigate(FeedNavKey(DiscoveryAction.Knight(name, id)))
-            }
-        )
-    }
-}
-
-fun EntryProviderScope<NavKey>.unitedDetailNavKeyEntry(navigator: Navigator) {
-    entry<UnitedDetailNavKey> { key ->
+    entry<ConnectedRoute.UnitedDetailRoute> { key ->
         val id = key.id
         ComicDetailScreen(
             viewModel = hiltViewModel<ComicInfoViewModel, ComicInfoViewModel.Factory>(
@@ -133,57 +193,21 @@ fun EntryProviderScope<NavKey>.unitedDetailNavKeyEntry(navigator: Navigator) {
                 factory.create(id)
             },
             onBackClick = { navigator.goBack() },
-            navigationToReader = { id, index -> navigator.navigate(ReaderNavKey(id, index)) },
+            navigationToReader = { id, index ->
+                navigator.navigate(ConnectedRoute.ReaderRoute(id, index))
+            },
             onForYouClick = { navigator.navigateToUnitedDetail(it) },
             navigationToFeed = { action ->
-                navigator.navigate(FeedNavKey(action))
+                navigator.navigate(ConnectedRoute.FeedRoute(action))
             }
         )
     }
-}
 
-fun EntryProviderScope<NavKey>.readerNavKeyEntry(navigator: Navigator) {
-    entry<ReaderNavKey> { key ->
-        val id = key.id
-        ReaderScreen(
-            onBackClick = { navigator.goBack() },
-            viewModel = hiltViewModel<ReaderViewModel, ReaderViewModel.Factory>(
-                key = id,
-            ) { factory ->
-                factory.create(id, key.order)
-            },
-        )
-    }
-}
-
-fun EntryProviderScope<NavKey>.feedEntry(navigator: Navigator) {
-    entry<FeedNavKey> { key ->
-        FeedScreen(
-            title = key.action.name,
-            onBackClick = { navigator.goBack() },
-            onComicClick = navigator::navigateToUnitedDetail,
-            viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
-                key = key.toString(),
-            ) { factory ->
-                factory.create(key.action)
-            },
-        )
-    }
-}
-
-fun EntryProviderScope<NavKey>.historyEntry(navigator: Navigator) {
-    entry<HistoryNavKey> {
-        HistoryScreen(
-            onComicClick = navigator::navigateToUnitedDetail,
-            onBackClick = navigator::goBack
-        )
-    }
-}
-
-fun EntryProviderScope<NavKey>.settingsEntry(navigator: Navigator) {
-    entry<SettingsNavKey> {
-        SettingsScreen(
-            onBackClick = navigator::goBack
+    entry<ChannelSettingsNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) {
+        ChannelSettingsDialog(
+            onDismiss = navigator::goBack,
         )
     }
 }
@@ -210,15 +234,6 @@ fun EntryProviderScope<NavKey>.gameDetailEntry(navigator: Navigator) {
     }
 }
 
-fun EntryProviderScope<NavKey>.mineCommentEntry(navigator: Navigator) {
-    entry<MineCommentNavKey> { key ->
-        MineCommentScreen(
-            onCardClick = navigator::navigateToUnitedDetail,
-            onBackClick = navigator::goBack
-        )
-    }
-}
-
 fun Navigator.navigateToUnitedDetail(id: String) {
-    navigate(UnitedDetailNavKey(id))
+    navigate(ConnectedRoute.UnitedDetailRoute(id))
 }

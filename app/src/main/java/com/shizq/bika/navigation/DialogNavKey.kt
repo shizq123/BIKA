@@ -1,9 +1,8 @@
 package com.shizq.bika.navigation
 
-import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
-interface DialogNavKey : NavKey
+interface DialogNavKey : Connected
 
 @Serializable
-object ChannelSettingsNavKey : DialogNavKey
+data object ChannelSettingsNavKey : DialogNavKey

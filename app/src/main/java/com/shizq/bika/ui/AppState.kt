@@ -6,17 +6,27 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation3.runtime.NavKey
 import com.shizq.bika.core.ui.TrackDisposableJank
+import com.shizq.bika.navigation.AuthenticationRoute
+import com.shizq.bika.navigation.ConnectedRoute
 import com.shizq.bika.navigation.NavigationState
-import com.shizq.bika.navigation.TOP_LEVEL_ROUTES
 import com.shizq.bika.navigation.rememberNavigationState
 import kotlinx.coroutines.CoroutineScope
+
+private val TOP_LEVEL_ROUTES = setOf<NavKey>(
+    ConnectedRoute.DashboardRoute
+)
 
 @Composable
 fun rememberAppState(
     startDestination: NavKey,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ): AppState {
-    val navigationState = rememberNavigationState(startDestination, TOP_LEVEL_ROUTES)
+    val navigationState = rememberNavigationState(
+        rootStartRoute = startDestination,
+        authenticationStartRoute = AuthenticationRoute.LoginRoute,
+        topLevelStartRoute = ConnectedRoute.DashboardRoute,
+        topLevelRoutes = TOP_LEVEL_ROUTES
+    )
 
     NavigationTrackingSideEffect(navigationState)
 
@@ -42,8 +52,11 @@ class AppState(
  */
 @Composable
 private fun NavigationTrackingSideEffect(navigationState: NavigationState) {
-    TrackDisposableJank(navigationState.currentKey) { metricsHolder ->
-        metricsHolder.state?.putState("Navigation", navigationState.currentKey.toString())
+    TrackDisposableJank(navigationState.currentRootDestination) { metricsHolder ->
+        metricsHolder.state?.putState(
+            "Navigation",
+            navigationState.currentRootDestination.toString()
+        )
         onDispose {}
     }
 }

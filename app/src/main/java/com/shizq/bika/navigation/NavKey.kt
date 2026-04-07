@@ -3,14 +3,50 @@ package com.shizq.bika.navigation
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
-@Serializable
-object DashboardNavKey : NavKey
+sealed interface Root : NavKey
+
+sealed interface Authentication : NavKey
 
 @Serializable
-object LoginNavKey : NavKey
+data object AuthenticationRoute : Root {
+    @Serializable
+    data object LoginRoute : Authentication
+
+    @Serializable
+    data object RegisterRoute : Authentication
+}
+
+sealed interface Connected : NavKey
 
 @Serializable
-object RegisterNavKey : NavKey
+data object ConnectedRoute : Root {
+    @Serializable
+    data object DashboardRoute : Connected
+
+    @Serializable
+    data class FeedRoute(val action: DiscoveryAction) : Connected
+
+    @Serializable
+    data object HistoryRoute : Connected
+
+    @Serializable
+    data object LeaderboardRoute : Connected
+
+    @Serializable
+    data object MineCommentRoute : Connected
+
+    @Serializable
+    data class ReaderRoute(val id: String, val order: Int) : Connected
+
+    @Serializable
+    data object SearchRoute : Connected
+
+    @Serializable
+    data object SettingsRoute : Connected
+
+    @Serializable
+    data class UnitedDetailRoute(val id: String) : Connected
+}
 
 @Serializable
 sealed interface DiscoveryAction {
@@ -45,28 +81,6 @@ sealed interface DiscoveryAction {
     @Serializable
     data class Channel(override val name: String) : DiscoveryAction
 }
-
-@Serializable
-data class FeedNavKey(val action: DiscoveryAction) : NavKey
-
-@Serializable
-object LeaderboardNavKey : NavKey
-
-@Serializable
-object SearchNavKey : NavKey
-
-@Serializable
-data class UnitedDetailNavKey(val id: String) : NavKey
-
-@Serializable
-data class ReaderNavKey(val id: String, val order: Int) : NavKey
-
-@Serializable
-object HistoryNavKey : NavKey
-
-@Serializable
-object SettingsNavKey : NavKey
-
 @Serializable
 object GameNavKey : NavKey
 
@@ -83,6 +97,3 @@ internal data class SearchKey(
 ) : NavKey {
 //    override val name: String = STRING_LITERAL_SEARCH
 }
-
-@Serializable
-object MineCommentNavKey : NavKey
