@@ -54,9 +54,14 @@ fun RegistrationContent(
             RegistrationUiState.None -> {
             }
 
-            is RegistrationUiState.Error -> Toast.makeText(
-                context, registrationUiState.message, Toast.LENGTH_SHORT
-            ).show()
+            is RegistrationUiState.Error -> {
+                val tip = when (val message = registrationUiState.message) {
+                    "email is already exist" -> "用户名已存在"
+                    "name is already exist" -> "昵称已存在"
+                    else -> "注册失败：$message"
+                }
+                Toast.makeText(context, tip, Toast.LENGTH_SHORT
+            ).show()}
 
             RegistrationUiState.Success -> onBackClick()
         }

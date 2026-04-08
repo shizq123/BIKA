@@ -22,11 +22,10 @@ class MainActivityViewModel @Inject constructor(
     userPreferencesDataSource: UserPreferencesDataSource,
 ) : ViewModel() {
     private val loginStateFlow = userCredentialsDataSource.userData
-        .map { !it.username.isNullOrBlank() && !it.password.isNullOrBlank() }
+        .map { !it.token.isNullOrBlank() }
 
     private val themeConfigFlow = userPreferencesDataSource.userData
         .map { it.darkThemeConfig }
-
     val uiState: StateFlow<MainActivityUiState> = loginStateFlow
         .combine(themeConfigFlow) { isLoggedIn, darkThemeConfig ->
                 MainActivityUiState.Success(

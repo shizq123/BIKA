@@ -3,13 +3,11 @@ package com.shizq.bika.ui.signin
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
-import com.shizq.bika.core.network.BikaDataSource
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.first
 
 class LoginStateMachine @Inject constructor(
-    private val userCredentialsDataSource: UserCredentialsDataSource,
-    private val api: BikaDataSource,
+    private val userCredentialsDataSource: UserCredentialsDataSource
 ) : FlowReduxStateMachineFactory<LoginUiState, LoginAction>() {
     init {
         initializeWith { LoginUiState() }
@@ -26,37 +24,44 @@ class LoginStateMachine @Inject constructor(
                     }
                 }
                 on<LoginAction.AccountChanged> {
-                    mutate { copy(username = it.account) }
+                    mutate {
+                        copy(
+                            isLoading = false,
+                            username = it.account,
+                            usernameIsEmpty = !it.account.isNotEmpty(),
+                            errorMessage = null
+                        )
+                    }
                 }
                 on<LoginAction.PasswordChanged> {
-                    mutate { copy(password = it.password) }
-                }
-                on<LoginAction.ToggleRememberMe> {
-                    mutate { copy(rememberMe = it.checked) }
-                }
-                on<LoginAction.LoginClicked> {
-                    if (snapshot.username.isBlank()) {
-                        return@on mutate { copy(errorMessage = "请输入账号") }
-                    }
-
-                    if (snapshot.password.isBlank()) {
-                        return@on mutate { copy(errorMessage = "请输入密码") }
-                    }
-
-                    try {
-                        val loginData = api.login(snapshot.username, snapshot.password)
-                        if (snapshot.rememberMe) {
-                            userCredentialsDataSource.setUsername(snapshot.username)
-                            userCredentialsDataSource.setPassword(snapshot.password)
-                            userCredentialsDataSource.setToken(loginData.token)
-                        }
-                        mutate { copy(isLoading = false, isSuccess = true) }
-                    } catch (e: Exception) {
-                        mutate { copy(isLoading = false, errorMessage = e.message ?: "登录失败") }
+                    mutate {
+                        copy(
+                            isLoading = false,
+                            password = it.password,
+                            passwordIsEmpty = !it.password.isNotEmpty(),
+                            errorMessage = null
+                        )
                     }
                 }
-                condition({ it.isLoading }) {
-
+                on<LoginAction.ToggleRememberPassword> {
+                    mutate { copy(rememberPassword = it.checked) }
+                }
+                on<LoginAction.LoginStart> {
+                    mutate { copy(isLoading = true) }
+                }
+                on<LoginAction.LoginSuccess> {
+                    mutate { copy(isLoading = false, isSuccess = true) }
+                }
+                on<LoginAction.LoginFailed> {
+                    mutate {
+                        copy(
+                            isLoading = false,
+                            errorMessage = it.msg ?: "登录失败"
+                        )
+                    }
+                }
+                on<LoginAction.ClearError> {
+                    mutate { copy(isSuccess = false, errorMessage = null) }
                 }
             }
         }

@@ -46,9 +46,8 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun logout() {
-        scope.launch {
+        viewModelScope.launch {
             userCredentialsDataSource.setToken(null)
-            userCredentialsDataSource.setPassword(null)
         }
     }
     fun updateDarkThemeConfig(config: DarkThemeConfig) {

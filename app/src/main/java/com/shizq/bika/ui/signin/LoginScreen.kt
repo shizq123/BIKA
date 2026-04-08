@@ -63,22 +63,31 @@ fun LoginScreen(
     onNavigateToForgotPassword: () -> Unit,
 ) {
     val loginState by viewModel.state.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
-    LaunchedEffect(loginState.isSuccess) {
+    LaunchedEffect(loginState) {
         if (loginState.isSuccess) {
+            viewModel.dispatch(LoginAction.ClearError)
             onNavigateToDashboard()
+            Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
+        }
+
+        if (!loginState.errorMessage.isNullOrBlank()) {
+            Toast.makeText(context, loginState.errorMessage, Toast.LENGTH_SHORT).show()
+            viewModel.dispatch(LoginAction.ClearError)
         }
     }
-    val context = LocalContext.current
     LoginContent(
         loginState = loginState,
-        onRememberMeChange = { viewModel.dispatch(LoginAction.ToggleRememberMe(it)) },
+        onRememberPasswordChange = { viewModel.dispatch(LoginAction.ToggleRememberPassword(it)) },
         onNavigateToSignUp = onNavigateToSignUp,
         onNavigateToForgotPassword = {
             onNavigateToForgotPassword()
             Toast.makeText(context, "功能暂不可用", Toast.LENGTH_SHORT).show()
         },
         dispatch = viewModel::dispatch,
+        onLoginClick = viewModel::onLoginClick,
+
     )
 }
 
@@ -87,14 +96,18 @@ fun LoginScreen(
 fun LoginContent(
     loginState: LoginUiState,
     modifier: Modifier = Modifier,
-    onRememberMeChange: (Boolean) -> Unit = {},
+    onRememberPasswordChange: (Boolean) -> Unit = {},
     onNavigateToSignUp: () -> Unit = {},
     onNavigateToForgotPassword: () -> Unit = {},
+    onLoginClick: (username: String, password: String, rememberPassword: Boolean) -> Unit,
     dispatch: (LoginAction) -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
-
     val passwordFocusRequester = remember { FocusRequester() }
+
+    val loginButtonEnabled = loginState.username.isNotBlank()
+            && loginState.password.isNotBlank()
+            && !loginState.isLoading
 
     Scaffold(
         modifier = modifier
@@ -116,7 +129,7 @@ fun LoginContent(
                     horizontalAlignment = Alignment.Start
                 ) {
                     Text(
-                        text = "欢迎回来",
+                        text = "BIKA",
                         style = MaterialTheme.typography.headlineLarge.copy(
                             fontWeight = FontWeight.Bold
                         ),
@@ -138,6 +151,7 @@ fun LoginContent(
                     email = loginState.username,
                     onEmailChange = { dispatch(LoginAction.AccountChanged(it)) },
                     onNext = { passwordFocusRequester.requestFocus() },
+                    isError = loginState.usernameIsEmpty,
                     modifier = Modifier
                         .semantics {
                             contentType = ContentType.Username
@@ -150,6 +164,7 @@ fun LoginContent(
                 PasswordTextField(
                     password = loginState.password,
                     onPasswordChange = { dispatch(LoginAction.PasswordChanged(it)) },
+                    isError = loginState.passwordIsEmpty,
                     modifier = Modifier
                         .semantics {
                             contentType = ContentType.Password
@@ -167,11 +182,11 @@ fun LoginContent(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Checkbox(
-                        checked = loginState.rememberMe,
-                        onCheckedChange = onRememberMeChange
+                        checked = loginState.rememberPassword,
+                        onCheckedChange = onRememberPasswordChange
                     )
                     Text(
-                        text = "记住我",
+                        text = "记住密码",
                         modifier = Modifier.padding(start = 4.dp),
                         style = MaterialTheme.typography.bodyMedium
                     )
@@ -192,12 +207,14 @@ fun LoginContent(
                 Spacer(modifier = Modifier.height(32.dp))
                 Button(
                     onClick = {
+                        onLoginClick(loginState.username,loginState.password,loginState.rememberPassword)
                         dispatch(LoginAction.LoginClicked)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    shape = MaterialTheme.shapes.large
+                    shape = MaterialTheme.shapes.large,
+                    enabled = loginButtonEnabled
                 ) {
                     if (loginState.isLoading) {
                         CircularProgressIndicator(
@@ -263,7 +280,7 @@ fun EmailTextField(
         modifier = modifier.fillMaxWidth(),
         label = {
             Text(
-                text = "邮箱地址",
+                text = "用户名或邮箱",
                 style = MaterialTheme.typography.bodyMedium
             )
         },
@@ -284,7 +301,7 @@ fun EmailTextField(
         supportingText = {
             if (isError) {
                 Text(
-                    "请输入有效的邮箱地址",
+                    "用户名不能为空",
                     color = MaterialTheme.colorScheme.error
                 )
             }

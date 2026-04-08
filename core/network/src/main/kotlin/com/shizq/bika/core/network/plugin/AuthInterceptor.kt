@@ -3,6 +3,7 @@ package com.shizq.bika.core.network.plugin
 import android.util.Log
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.model.Result
 import dagger.Lazy
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -30,7 +31,8 @@ class TokenAuthenticator @Inject constructor(
 
             val username = userData.username
             val password = userData.password
-            if (username.isNullOrEmpty() || password.isNullOrEmpty()) {
+            val token = userData.token
+            if (username.isNullOrEmpty() || password.isNullOrEmpty() || token.isNullOrEmpty()) {
                 Log.e(TAG, "authenticate: Cannot refresh token, no credentials saved.")
                 return@runBlocking null
             }
@@ -48,13 +50,16 @@ class TokenAuthenticator @Inject constructor(
 
                 Log.i(TAG, "authenticate: Attempting to re-login for user: '$username'")
                 try {
-                    val loginData = apiProvider.get().login(username, password)
-                    val newToken = loginData.token
-
-                    userCredentialsDataSource.setToken(newToken)
-                    Log.i(TAG, "authenticate: Token refresh successful. New token saved.")
-
-                    return@withLock buildRequestWithNewToken(response.request, newToken)
+                    when (val result = apiProvider.get().login(username, password)) {
+                        is Result.Success -> {
+                            userCredentialsDataSource.setToken(result.data.token)
+                            return@withLock buildRequestWithNewToken(response.request, result.data.token)
+                        }
+                        else -> {
+                            userCredentialsDataSource.setToken(null)
+                            return@withLock null
+                        }
+                    }
                 } catch (e: Exception) {
                     Log.e(TAG, "authenticate: Token refresh failed.", e)
                     userCredentialsDataSource.setToken(null)
