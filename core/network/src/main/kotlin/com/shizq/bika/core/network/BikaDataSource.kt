@@ -37,7 +37,7 @@ import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addAll
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.putJsonArray
-import com.shizq.bika.core.network.model.Result
+import com.shizq.bika.core.result.Result
 import io.ktor.client.statement.readRawBytes
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.intOrNull
@@ -68,25 +68,27 @@ class BikaDataSource @Inject constructor(
             when (code) {
                 200 -> {
                     val dataObj =
-                        jsonObj["data"]?.jsonObject ?: return Result.ErrorMessage("数据异常")
+                        jsonObj["data"]?.jsonObject ?: return Result.Error(Exception("数据异常"))
                     val token = dataObj["token"]?.jsonPrimitive?.content
-                        ?: return Result.ErrorMessage("Token为空")
+                        ?: return Result.Error(Exception("Token为空"))
                     Result.Success(LoginData(token))
                 }
 
                 else -> {
                     val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
-                    Result.ErrorMessage(
-                        when (msg) {
-                            "invalid email or password" -> "用户名或密码错误"
-                            else -> "登录失败"
-                        }
+                    Result.Error(
+                        Exception(
+                            when (msg) {
+                                "invalid email or password" -> "用户名或密码错误"
+                                else -> "登录失败"
+                            }
+                        )
                     )
                 }
             }
         } catch (e: Exception) {
             // 网络错误、解析错误
-            Result.ErrorMessage( "网络异常，请重试")
+            Result.Error(Exception("网络异常，请重试"))
         }
     }
 

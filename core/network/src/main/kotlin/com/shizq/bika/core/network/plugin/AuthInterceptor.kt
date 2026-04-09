@@ -3,7 +3,7 @@ package com.shizq.bika.core.network.plugin
 import android.util.Log
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.network.model.Result
+import com.shizq.bika.core.result.Result
 import dagger.Lazy
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -55,8 +55,11 @@ class TokenAuthenticator @Inject constructor(
                             userCredentialsDataSource.setToken(result.data.token)
                             return@withLock buildRequestWithNewToken(response.request, result.data.token)
                         }
-                        else -> {
+                        is Result.Error -> {
                             userCredentialsDataSource.setToken(null)
+                            return@withLock null
+                        }
+                        is Result.Loading -> {
                             return@withLock null
                         }
                     }
