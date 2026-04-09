@@ -22,21 +22,21 @@ class MainActivityViewModel @Inject constructor(
     userPreferencesDataSource: UserPreferencesDataSource,
 ) : ViewModel() {
     private val loginStateFlow = userCredentialsDataSource.userData
-        .map { !it.username.isNullOrBlank() && !it.password.isNullOrBlank() }
+        .map { !it.token.isNullOrBlank() }
 
     private val themeConfigFlow = userPreferencesDataSource.userData
         .map { it.darkThemeConfig }
     val uiState: StateFlow<MainActivityUiState> = loginStateFlow
         .combine(themeConfigFlow) { isLoggedIn, darkThemeConfig ->
-            MainActivityUiState.Success(
-                startDestination = if (isLoggedIn) ConnectedRoute else AuthenticationRoute,
-                darkThemeConfig = darkThemeConfig
+                MainActivityUiState.Success(
+                    startDestination = if (isLoggedIn) ConnectedRoute else AuthenticationRoute,
+                    darkThemeConfig = darkThemeConfig
+                )
+            }.stateIn(
+                scope = viewModelScope,
+                initialValue = MainActivityUiState.Loading,
+                started = SharingStarted.WhileSubscribed(5_000),
             )
-        }.stateIn(
-            scope = viewModelScope,
-            initialValue = MainActivityUiState.Loading,
-            started = SharingStarted.WhileSubscribed(5_000),
-        )
 }
 
 sealed interface MainActivityUiState {
