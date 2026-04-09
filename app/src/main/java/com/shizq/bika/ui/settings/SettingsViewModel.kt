@@ -46,7 +46,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun logout() {
-        viewModelScope.launch {
+        scope.launch {
             userCredentialsDataSource.setToken(null)
         }
     }
