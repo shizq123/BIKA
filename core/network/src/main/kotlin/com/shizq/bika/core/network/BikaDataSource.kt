@@ -28,21 +28,17 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
-import io.ktor.http.ContentType
-import io.ktor.http.contentType
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addAll
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.putJsonArray
-import com.shizq.bika.core.network.model.Result
-import io.ktor.client.statement.readRawBytes
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.putJsonArray
 
 @Singleton
 class BikaDataSource @Inject constructor(
@@ -54,39 +50,26 @@ class BikaDataSource @Inject constructor(
         }.body()
     }
 
-    suspend fun login(username: String, password: String): Result<LoginData> {
-        return try {
-            val response = client.post("auth/sign-in") {
-                contentType(ContentType.Application.Json)
-                setBody("""{"email":"$username","password":"$password"}""")
+    suspend fun login(username: String, password: String): LoginData {
+        val response = client.post("auth/sign-in") {
+            attributes.put(ExpectRawResponse, Unit)
+            val jsonBody = buildJsonObject {
+                put("email", JsonPrimitive(username))
+                put("password", JsonPrimitive(password))
             }
+            setBody(jsonBody)
+        }
 
-            val json = response.readRawBytes().decodeToString()
-            val jsonObj = Json.decodeFromString(JsonObject.serializer(), json)
-            val code = jsonObj["code"]?.jsonPrimitive?.intOrNull
+        val jsonObj = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+        val code = jsonObj["code"]?.jsonPrimitive?.int
 
-            when (code) {
-                200 -> {
-                    val dataObj =
-                        jsonObj["data"]?.jsonObject ?: return Result.ErrorMessage("数据异常")
-                    val token = dataObj["token"]?.jsonPrimitive?.content
-                        ?: return Result.ErrorMessage("Token为空")
-                    Result.Success(LoginData(token))
-                }
-
-                else -> {
-                    val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
-                    Result.ErrorMessage(
-                        when (msg) {
-                            "invalid email or password" -> "用户名或密码错误"
-                            else -> "登录失败"
-                        }
-                    )
-                }
-            }
-        } catch (e: Exception) {
-            // 网络错误、解析错误
-            Result.ErrorMessage( "网络异常，请重试")
+        return if (code == 200) {
+            val dataObj = jsonObj["data"]?.jsonObject ?: throw Exception("数据异常")
+            val token = dataObj["token"]?.jsonPrimitive?.content ?: throw Exception("Token为空")
+            LoginData(token = token, message = null)
+        } else {
+            val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
+            LoginData(token = null, message = msg)
         }
     }
 

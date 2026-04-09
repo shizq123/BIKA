@@ -3,7 +3,6 @@ package com.shizq.bika.core.network.plugin
 import android.util.Log
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.network.model.Result
 import dagger.Lazy
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -50,15 +49,13 @@ class TokenAuthenticator @Inject constructor(
 
                 Log.i(TAG, "authenticate: Attempting to re-login for user: '$username'")
                 try {
-                    when (val result = apiProvider.get().login(username, password)) {
-                        is Result.Success -> {
-                            userCredentialsDataSource.setToken(result.data.token)
-                            return@withLock buildRequestWithNewToken(response.request, result.data.token)
-                        }
-                        else -> {
-                            userCredentialsDataSource.setToken(null)
-                            return@withLock null
-                        }
+                    val result = apiProvider.get().login(username, password)
+                    userCredentialsDataSource.setToken(result.token)
+
+                    if (result.token == null) {
+                        null
+                    } else {
+                        buildRequestWithNewToken(response.request, result.token)
                     }
                 } catch (e: Exception) {
                     Log.e(TAG, "authenticate: Token refresh failed.", e)

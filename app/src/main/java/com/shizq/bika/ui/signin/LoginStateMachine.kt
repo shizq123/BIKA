@@ -28,7 +28,7 @@ class LoginStateMachine @Inject constructor(
                         copy(
                             isLoading = false,
                             username = it.account,
-                            usernameIsEmpty = !it.account.isNotEmpty(),
+                            usernameIsEmpty = it.account.isBlank(),
                             errorMessage = null
                         )
                     }
@@ -38,7 +38,7 @@ class LoginStateMachine @Inject constructor(
                         copy(
                             isLoading = false,
                             password = it.password,
-                            passwordIsEmpty = !it.password.isNotEmpty(),
+                            passwordIsEmpty = it.password.isEmpty(),
                             errorMessage = null
                         )
                     }
@@ -47,7 +47,7 @@ class LoginStateMachine @Inject constructor(
                     mutate { copy(rememberPassword = it.checked) }
                 }
                 on<LoginAction.LoginStart> {
-                    mutate { copy(isLoading = true) }
+                    mutate { copy(isLoading = true, errorMessage = null) }
                 }
                 on<LoginAction.LoginSuccess> {
                     mutate { copy(isLoading = false, isSuccess = true) }

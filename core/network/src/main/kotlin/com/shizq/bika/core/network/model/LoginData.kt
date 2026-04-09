@@ -4,7 +4,8 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class LoginData(
-    val token: String
+    val token: String?,
+    val message: String?
 )
 
 @Serializable
