@@ -41,7 +41,6 @@ import androidx.compose.ui.autofill.ContentType
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.semantics.contentType
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -65,18 +64,21 @@ fun LoginScreen(
     val loginState by viewModel.state.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    LaunchedEffect(loginState) {
+    LaunchedEffect(loginState.isSuccess) {
         if (loginState.isSuccess) {
-            viewModel.dispatch(LoginAction.ClearError)
-            onNavigateToDashboard()
             Toast.makeText(context, "登录成功", Toast.LENGTH_SHORT).show()
+            onNavigateToDashboard()
+            viewModel.dispatch(LoginAction.ClearError)
         }
+    }
 
+    LaunchedEffect(loginState.errorMessage) {
         if (!loginState.errorMessage.isNullOrBlank()) {
             Toast.makeText(context, loginState.errorMessage, Toast.LENGTH_SHORT).show()
             viewModel.dispatch(LoginAction.ClearError)
         }
     }
+
     LoginContent(
         loginState = loginState,
         onRememberPasswordChange = { viewModel.dispatch(LoginAction.ToggleRememberPassword(it)) },
@@ -86,8 +88,6 @@ fun LoginScreen(
             Toast.makeText(context, "功能暂不可用", Toast.LENGTH_SHORT).show()
         },
         dispatch = viewModel::dispatch,
-        onLoginClick = viewModel::onLoginClick,
-
     )
 }
 
@@ -99,15 +99,13 @@ fun LoginContent(
     onRememberPasswordChange: (Boolean) -> Unit = {},
     onNavigateToSignUp: () -> Unit = {},
     onNavigateToForgotPassword: () -> Unit = {},
-    onLoginClick: (username: String, password: String, rememberPassword: Boolean) -> Unit,
     dispatch: (LoginAction) -> Unit,
 ) {
-    val focusManager = LocalFocusManager.current
     val passwordFocusRequester = remember { FocusRequester() }
 
     val loginButtonEnabled = loginState.username.isNotBlank()
             && loginState.password.isNotBlank()
-            && !loginState.isLoading
+            && !loginState.isAuthenticating
 
     Scaffold(
         modifier = modifier
@@ -171,7 +169,9 @@ fun LoginContent(
                         }
                         .focusRequester(passwordFocusRequester),
                     onDone = {
-                        focusManager.clearFocus()
+                        if (loginButtonEnabled) {
+                            dispatch(LoginAction.SubmitLogin)
+                        }
                     }
                 )
 
@@ -194,7 +194,7 @@ fun LoginContent(
                     Spacer(modifier = Modifier.weight(1f))
 
                     TextButton(
-                        onClick = { onNavigateToForgotPassword() },
+                        onClick = onNavigateToForgotPassword,
                         contentPadding = PaddingValues(0.dp)
                     ) {
                         Text(
@@ -207,8 +207,7 @@ fun LoginContent(
                 Spacer(modifier = Modifier.height(32.dp))
                 Button(
                     onClick = {
-                        onLoginClick(loginState.username,loginState.password,loginState.rememberPassword)
-                        dispatch(LoginAction.LoginClicked)
+                        dispatch(LoginAction.SubmitLogin)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -216,7 +215,7 @@ fun LoginContent(
                     shape = MaterialTheme.shapes.large,
                     enabled = loginButtonEnabled
                 ) {
-                    if (loginState.isLoading) {
+                    if (loginState.isAuthenticating) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(24.dp),
                             strokeWidth = 2.dp,
