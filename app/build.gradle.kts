@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.bika.hilt)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.ksp)
+    alias(libs.plugins.baselineprofile)
 }
 
 android {
@@ -36,6 +37,7 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+            baselineProfile.automaticGenerationDuringBuild = true
         }
         debug {
             signingConfig = signingConfigs.getByName("keyStore")
@@ -117,4 +119,13 @@ dependencies {
     implementation(kotlin("test-junit"))
 
     implementation("me.saket.telephoto:zoomable:0.18.0")
+}
+
+baselineProfile {
+    // Don't build on every iteration of a full assemble.
+    // Instead enable generation directly for the release build variant.
+    automaticGenerationDuringBuild = false
+
+    // Make use of Dex Layout Optimizations via Startup Profiles
+    dexLayoutOptimization = true
 }
