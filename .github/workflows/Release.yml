@@ -73,4 +73,4 @@ jobs:
           draft: true
           prerelease: false
           files: |
-            app/build/outputs/apk/release/Bika_${{ github.ref_name }}.apk
+            app/build/outputs/apk/release/BIKA_${{ github.ref_name }}.apk
