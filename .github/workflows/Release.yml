@@ -21,7 +21,7 @@ jobs:
           ls /dev/kvm
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Copy CI gradle.properties
         run: mkdir -p ~/.gradle ; cp .github/ci-gradle.properties ~/.gradle/gradle.properties
@@ -46,24 +46,19 @@ jobs:
       - name: Accept licenses
         run: yes | sdkmanager --licenses || true
 
-      - name: Enable KVM group perms
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
-          ls /dev/kvm
-
-      - name: Generate baseline profile
-        run: |
-          ./gradlew :app:generateReleaseBaselineProfile \
-            -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile \
-            -Pandroid.testoptions.manageddevices.emulator.gpu=swiftshader_indirect \
-            -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true \
-            -Pandroid.experimental.androidTest.numManagedDeviceShards=1 \
-            -Pandroid.experimental.testOptions.managedDevices.maxConcurrentDevices=1
+      - name: Setup GMD
+        run: ./gradlew :benchmarks:pixel6Api33Setup
+          --info
+          -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
+          -Pandroid.testoptions.manageddevices.emulator.gpu="swiftshader_indirect"
 
       - name: Build release variant including baseline profile generation
         run: ./gradlew :app:assembleRelease
+          -Pandroid.testInstrumentationRunnerArguments.androidx.benchmark.enabledRules=BaselineProfile
+          -Pandroid.testoptions.manageddevices.emulator.gpu="swiftshader_indirect"
+          -Pandroid.experimental.testOptions.managedDevices.emulator.showKernelLogging=true
+          -Pandroid.experimental.androidTest.numManagedDeviceShards=1
+          -Pandroid.experimental.testOptions.managedDevices.maxConcurrentDevices=1
 
       - name: Create GitHub Release and upload APK
         uses: softprops/action-gh-release@v2
