@@ -65,8 +65,10 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalResources
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -149,9 +151,11 @@ fun DashboardContent(
         }
     }
     ModalNavigationDrawer(
+        modifier = Modifier.semantics { testTagsAsResourceId = true },
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
+                modifier = Modifier.testTag("dashboard:drawer"),
                 drawerState = drawerState
             ) {
                 DashboardDrawerContent(
@@ -217,7 +221,8 @@ fun DashboardContent(
                 state = state,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding),
+                    .padding(innerPadding)
+                    .testTag("dashboard:grid"),
             ) {
                 items(
                     channelSettingsUiState,
@@ -229,7 +234,9 @@ fun DashboardContent(
                         ChannelGridItem(
                             iconRes = item.iconResId,
                             label = item.displayName,
-                            modifier = Modifier.animateItem(),
+                            modifier = Modifier
+                                .animateItem()
+                                .testTag("dashboard:channel:${item.displayName}"),
                         ) {
                             navigation(
                                 context = context,
@@ -256,21 +263,22 @@ private fun DashboardAppBar(
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
-        modifier = modifier,
+        modifier = modifier.testTag("dashboard:appbar"),
         title = { Text("哔咔") },
         navigationIcon = {
-            IconButton(onClick = onDrawerOpen) {
+            IconButton(onClick = onDrawerOpen, modifier = Modifier.testTag("dashboard:menu")) {
                 Icon(Icons.Default.Menu, contentDescription = "打开菜单")
             }
         },
         actions = {
-            IconButton(onClick = onChannelPreferenceClicked) {
+            IconButton(
+                onClick = onChannelPreferenceClicked,
+                modifier = Modifier.testTag("dashboard:filter")
+            ) {
                 Icon(Icons.Filled.FilterList, contentDescription = "Channel Filter")
             }
 
-            IconButton(
-                onClick = onSearchClicked
-            ) {
+            IconButton(onClick = onSearchClicked, modifier = Modifier.testTag("dashboard:search")) {
                 Icon(
                     Icons.Default.Search,
                     contentDescription = "Search"
@@ -359,27 +367,32 @@ fun DashboardDrawerContent(
                     DrawerMenuItem(
                         label = "历史记录",
                         iconRes = R.drawable.ic_history,
-                        onClick = onHistoryClick
+                        onClick = onHistoryClick,
+                        modifier = Modifier.testTag("dashboard:drawer:history")
                     )
                     DrawerMenuItem(
                         label = "我的收藏",
                         iconVector = Icons.Filled.Favorite,
-                        onClick = onFavouriteClick
+                        onClick = onFavouriteClick,
+                        modifier = Modifier.testTag("dashboard:drawer:favourite")
                     )
                     DrawerMenuItem(
                         label = "我的消息",
                         iconVector = Icons.Filled.Email,
-                        onClick = onNotificationsClick
+                        onClick = onNotificationsClick,
+                        modifier = Modifier.testTag("dashboard:drawer:notifications")
                     )
                     DrawerMenuItem(
                         label = "我的评论",
                         iconVector = Icons.AutoMirrored.Filled.Comment,
-                        onClick = onCommentsClick
+                        onClick = onCommentsClick,
+                        modifier = Modifier.testTag("dashboard:drawer:comments")
                     )
                     DrawerMenuItem(
                         label = "设置",
                         iconVector = Icons.Filled.Settings,
-                        onClick = onSettingsClick
+                        onClick = onSettingsClick,
+                        modifier = Modifier.testTag("dashboard:drawer:settings")
                     )
                 }
             }
@@ -390,10 +403,11 @@ fun DashboardDrawerContent(
 @Composable
 private fun DrawerMenuItem(
     label: String,
-    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
     selected: Boolean = false,
     iconRes: Int? = null,
-    iconVector: ImageVector? = null
+    iconVector: ImageVector? = null,
+    onClick: () -> Unit,
 ) {
     NavigationDrawerItem(
         label = { Text(label) },
@@ -406,7 +420,7 @@ private fun DrawerMenuItem(
                 Icon(iconVector, contentDescription = label)
             }
         },
-        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+        modifier = modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
     )
 }
 
@@ -421,6 +435,7 @@ fun UserProfileCard(
     Column(
         modifier = modifier
             .padding(16.dp)
+            .testTag("dashboard:userProfile")
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(contentAlignment = Alignment.Center) {
@@ -489,7 +504,8 @@ fun UserProfileCard(
                     colors = ButtonDefaults.buttonColors(
                         disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                         disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    ),
+                    modifier = Modifier.testTag("dashboard:checkIn"),
                 ) {
                     Text(text = if (user.hasCheckedIn) "已打卡" else "打卡")
                 }
