@@ -63,6 +63,10 @@ gradlePlugin {
             id = libs.plugins.bika.android.room.get().pluginId
             implementationClass = "AndroidRoomConventionPlugin"
         }
+        register("androidTest") {
+            id = libs.plugins.bika.android.test.get().pluginId
+            implementationClass = "AndroidTestConventionPlugin"
+        }
         register("root") {
             id = libs.plugins.bika.root.get().pluginId
             implementationClass = "RootPlugin"

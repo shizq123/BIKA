@@ -36,7 +36,7 @@ rootProject.name = "BIKA"
 
 enableFeaturePreview("TYPESAFE_PROJECT_ACCESSORS")
 include(":app")
-
+include(":benchmarks")
 include(":core:common")
 include(":core:data")
 include(":core:database")
