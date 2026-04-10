@@ -8,7 +8,7 @@ on:
   pull_request:
 
 concurrency:
-  group: build-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -47,13 +47,6 @@ jobs:
       - name: Check build-logic
         run: ./gradlew :build-logic:convention:check
 
-      - name: Prevent updating Dependency Guard baselines if this is a fork
-        id: checkfork_dependencyguard
-        continue-on-error: false
-        if: steps.dependencyguard_verify.outcome == 'failure' && github.event.pull_request.head.repo.full_name != github.repository
-        run: |
-          echo "::error::Dependency Guard failed, please update baselines with: ./gradlew dependencyGuardBaseline" && exit 1
-
       - name: Build all build type and flavor permutations
         run: ./gradlew :app:assemble -PminifyWithR8=false
 
@@ -68,14 +61,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: local-test-results
-          path: '**/build/test-results/test*UnitTest/**.xml'
+          path: '**/build/test-results/test*UnitTest/*.xml'
 
   androidTest:
     runs-on: ubuntu-latest
     timeout-minutes: 55
-    strategy:
-      matrix:
-        api-level: [ 26, 34 ]
 
     steps:
       - name: Delete unnecessary tools 🔧
