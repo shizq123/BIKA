@@ -10,12 +10,9 @@ data class LoginUiState(
     val errorMessage: String? = null,
     val isSuccess: Boolean = false,
     val isAuthenticating: Boolean = false,
-) {
-    val usernameIsEmpty: Boolean
-        get() = username.isEmpty()
-    val passwordIsEmpty: Boolean
-        get() = password.isEmpty()
-}
+    val usernameIsEmpty: Boolean = false,
+    val passwordIsEmpty: Boolean = false
+)
 
 sealed interface LoginAction {
     data class AccountChanged(val account: String) : LoginAction

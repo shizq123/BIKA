@@ -25,6 +25,7 @@ class LoginStateMachineFactory @Inject constructor(
                     mutate {
                         copy(
                             username = it.account,
+                            usernameIsEmpty = !it.account.isNotEmpty(),
                             errorMessage = null
                         )
                     }
@@ -34,6 +35,7 @@ class LoginStateMachineFactory @Inject constructor(
                     mutate {
                         copy(
                             password = it.password,
+                            passwordIsEmpty = !it.password.isNotEmpty(),
                             errorMessage = null
                         )
                     }
