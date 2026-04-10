@@ -44,7 +44,15 @@ class LoginStateMachineFactory @Inject constructor(
                 }
 
                 on<LoginAction.ClearError> {
-                    mutate { copy(errorMessage = null) }
+                    val rememberPassword = snapshot.rememberPassword
+                    val password = snapshot.password
+                    mutate {
+                        copy(
+                            isSuccess = false,
+                            password = if (rememberPassword) password else "",
+                            errorMessage = null
+                        )
+                    }
                 }
                 on<LoginAction.ResetSuccessState> {
                     mutate { copy(isSuccess = false) }

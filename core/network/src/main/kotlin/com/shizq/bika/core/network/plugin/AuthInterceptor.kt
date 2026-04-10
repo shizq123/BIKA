@@ -50,8 +50,8 @@ class TokenAuthenticator @Inject constructor(
                     )
                 }"
             )
-            if (username.isNullOrBlank() || password.isNullOrBlank()) {
-                Log.e(TAG, "authenticate: username/password is empty, cannot re-login.")
+            if (username.isNullOrBlank() || password.isNullOrBlank() || oldToken.isNullOrBlank()) {
+                Log.e(TAG, "authenticate: username/password/token is empty, cannot re-login.")
                 return@runBlocking null
             }
             Log.d(TAG, "authenticate: waiting for mutex...")
