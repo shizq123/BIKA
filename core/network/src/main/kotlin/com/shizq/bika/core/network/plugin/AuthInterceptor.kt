@@ -44,13 +44,9 @@ class TokenAuthenticator @Inject constructor(
             val password = userData.password
             Log.d(
                 TAG,
-                "authenticate: loaded credentials. username=${safeUsername(username)}, oldToken=${
-                    maskToken(
-                        oldToken
-                    )
-                }"
+                "authenticate: loaded credentials. username=${safeUsername(username)}, oldToken=${maskToken(oldToken)}"
             )
-            if (username.isNullOrBlank() || password.isNullOrBlank() || oldToken.isNullOrBlank()) {
+            if (oldToken == null || username.isNullOrBlank() || password.isNullOrBlank()  ) {
                 Log.e(TAG, "authenticate: username/password/token is empty, cannot re-login.")
                 return@runBlocking null
             }
@@ -60,11 +56,7 @@ class TokenAuthenticator @Inject constructor(
                 val latestToken = userCredentialsDataSource.userData.first().token
                 Log.d(
                     TAG,
-                    "authenticate: latest token from storage=${maskToken(latestToken)}, oldToken=${
-                        maskToken(
-                            oldToken
-                        )
-                    }"
+                    "authenticate: latest token from storage=${maskToken(latestToken)}, oldToken=${maskToken(oldToken)}"
                 )
                 if (!latestToken.isNullOrBlank() && latestToken != oldToken) {
                     Log.i(
