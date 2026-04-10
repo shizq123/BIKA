@@ -15,7 +15,7 @@ import jakarta.inject.Singleton
 internal object DatabaseModule {
     @Provides
     @Singleton
-    fun providesNiaDatabase(
+    fun providesBikaDatabase(
         @ApplicationContext context: Context,
     ): BikaDatabase = Room.databaseBuilder(
         context,
