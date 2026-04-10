@@ -147,7 +147,7 @@ fun LoginContent(
                 // 账号输入框
                 EmailTextField(
                     email = loginState.username,
-                    onEmailChange = { dispatch(LoginAction.AccountChanged(it)) },
+                    onEmailChange = { dispatch(LoginAction.UsernameChanged(it)) },
                     onNext = { passwordFocusRequester.requestFocus() },
                     isError = loginState.usernameIsEmpty,
                     modifier = Modifier
