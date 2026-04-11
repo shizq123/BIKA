@@ -1,21 +1,12 @@
 package com.shizq.bika.core.network.utils
 
+import com.shizq.bika.core.network.model.Gender
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.descriptors.PrimitiveKind
 import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.Decoder
 import kotlinx.serialization.encoding.Encoder
-
-/**
- * 用户性别
- */
-enum class Gender(val value: String) {
-    MALE("绅士"),
-    FEMALE("淑女"),
-    BOT("机器人"),
-    UNKNOWN("未知")
-}
 
 object GenderSerializer : KSerializer<Gender> {
     override val descriptor: SerialDescriptor =
