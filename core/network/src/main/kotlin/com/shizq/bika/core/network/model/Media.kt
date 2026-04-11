@@ -8,8 +8,6 @@ data class Media(
     val path: String = "",
     val fileServer: String = "",
 ) {
-    val imageUrl: String
-        get() = "https://s3.picacomic.com/static/${path}"
     val originalImageUrl: String
         get() = "${fileServer}/static/${path}"
 }
