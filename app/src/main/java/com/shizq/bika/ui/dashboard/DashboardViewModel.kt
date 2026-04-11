@@ -4,17 +4,13 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.coroutine.FlowRestarter
-import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -48,7 +44,7 @@ class DashboardViewModel @Inject constructor(
                     UserProfileUiState.Success(
                         User(
                             name = user.name,
-                            avatarUrl = user.imageUrl,
+                            avatarUrl = user.avatar.originalImageUrl,
                             characters = user.characters,
                             level = user.level,
                             exp = user.exp,

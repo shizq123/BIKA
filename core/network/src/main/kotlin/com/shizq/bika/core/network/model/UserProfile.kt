@@ -1,6 +1,5 @@
 package com.shizq.bika.core.network.model
 
-import com.shizq.bika.core.network.utils.Gender
 import com.shizq.bika.core.network.utils.GenderSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
