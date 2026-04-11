@@ -1,5 +1,7 @@
 package com.shizq.bika.core.network.model
 
+import com.shizq.bika.core.network.utils.Gender
+import com.shizq.bika.core.network.utils.GenderSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -15,7 +17,8 @@ data class UserProfile(
 
     val name: String,         // 昵称
     val email: String,        // 邮箱
-    val gender: String,       // "m" or "f"
+    @Serializable(with = GenderSerializer::class)
+    val gender: Gender,       // "m" or "f"
     val title: String,        // 头衔: "萌新"
     val level: Int,           // 等级
     val exp: Int,             // 经验值
@@ -33,11 +36,6 @@ data class UserProfile(
 
     val character: String? = null, //这是显示的挂件/立绘URL
     val avatar: Media
-) {
-    val imageUrl: String
-        get() = "https://s3.picacomic.com/static/${avatar.path}"
-    val imageUrl2: String
-        get() = "${avatar.fileServer}/static/${avatar.path}"
-}
+)
 
 
