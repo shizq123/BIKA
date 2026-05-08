@@ -75,4 +75,10 @@ class UserPreferencesDataSource @Inject constructor(
             it.copy(dns = it.dns + dns)
         }
     }
+
+    suspend fun setFontScale(scale: Float) {
+        userPreferences.updateData {
+            it.copy(fontScale = scale)
+        }
+    }
 }

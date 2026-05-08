@@ -1,6 +1,7 @@
 package com.shizq.bika.core.database.di
 
 import com.shizq.bika.core.database.BikaDatabase
+import com.shizq.bika.core.database.dao.DownloadTaskDao
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.dao.RecentSearchQueryDao
 import com.shizq.bika.core.database.dao.TagDao
@@ -26,4 +27,9 @@ internal object DaosModule {
     fun providesTagDao(
         database: BikaDatabase,
     ): TagDao = database.tagDao()
+
+    @Provides
+    fun providesDownloadTaskDao(
+        database: BikaDatabase,
+    ): DownloadTaskDao = database.downloadTaskDao()
 }

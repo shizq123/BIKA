@@ -43,7 +43,10 @@ import com.shizq.bika.ui.comicinfo.page.CommentsPage
 import com.shizq.bika.ui.comicinfo.page.EpisodeItem
 import com.shizq.bika.ui.comicinfo.page.EpisodesPage
 import com.shizq.bika.ui.comicinfo.page.PageTab
+import com.shizq.bika.sync.workers.DownloadWorker
 import kotlinx.coroutines.launch
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 
 @Composable
 fun ComicDetailScreen(
@@ -139,6 +142,7 @@ fun ComicDetailContent(
                         verticalAlignment = Alignment.Top,
                         key = { it }
                     ) { page ->
+                        val context = LocalContext.current
                         when (page) {
                             0 -> ComicDetailPage(
                                 detail = detail,
@@ -147,15 +151,41 @@ fun ComicDetailContent(
                                 onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
                                 navigationToReader = { navigationToReader(detail.id, 1) },
                                 navigationToComicInfo = { navigationToComicInfo(it) },
-                                navigationToFeed = navigationToFeed
-                            )
-
-                            1 -> EpisodesPage(
-                                episodes = episodes,
-                                navigateToReader = {
-                                    navigationToReader(detail.id, it)
+                                navigationToFeed = navigationToFeed,
+                                onDownloadClick = {
+                                    DownloadWorker.startDownload(
+                                        context = context,
+                                        comicId = detail.id,
+                                        comicTitle = detail.title,
+                                        coverUrl = detail.cover,
+                                        episodeId = "single_episode",
+                                        episodeTitle = "全一话",
+                                        episodeOrder = 1
+                                    )
+                                    Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
                                 }
                             )
+
+                            1 -> {
+                                EpisodesPage(
+                                    episodes = episodes,
+                                    navigateToReader = {
+                                        navigationToReader(detail.id, it)
+                                    },
+                                    onDownloadClick = { episode ->
+                                        DownloadWorker.startDownload(
+                                            context = context,
+                                            comicId = detail.id,
+                                            comicTitle = detail.title,
+                                            coverUrl = detail.cover,
+                                            episodeId = episode.id,
+                                            episodeTitle = episode.title,
+                                            episodeOrder = episode.order
+                                        )
+                                        Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
+                                    }
+                                )
+                            }
 
                             2 -> CommentsPage(
                                 pinnedComments = pinnedComments,

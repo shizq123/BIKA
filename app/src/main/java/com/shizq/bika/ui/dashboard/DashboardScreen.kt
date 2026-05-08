@@ -26,6 +26,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
@@ -98,6 +99,7 @@ fun DashboardScreen(
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
+    onDownloadsClick: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
@@ -117,6 +119,7 @@ fun DashboardScreen(
         onSearchClick = onSearchClick,
         onChannelPreferenceClick = onChannelPreferenceClick,
         onCommentsClick = onCommentsClick,
+        onDownloadsClick = onDownloadsClick,
     )
 }
 
@@ -134,6 +137,7 @@ fun DashboardContent(
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
+    onDownloadsClick: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -188,6 +192,12 @@ fun DashboardContent(
                         scope.launch {
                             drawerState.close()
                             onCommentsClick()
+                        }
+                    },
+                    onDownloadsClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onDownloadsClick()
                         }
                     },
                     onSettingsClick = {
@@ -336,6 +346,7 @@ fun DashboardDrawerContent(
     onFavouriteClick: () -> Unit = {},
     onNotificationsClick: () -> Unit = {},
     onCommentsClick: () -> Unit = {},
+    onDownloadsClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
 ) {
     when (userProfile) {
@@ -387,6 +398,12 @@ fun DashboardDrawerContent(
                         iconVector = Icons.AutoMirrored.Filled.Comment,
                         onClick = onCommentsClick,
                         modifier = Modifier.testTag("dashboard:drawer:comments")
+                    )
+                    DrawerMenuItem(
+                        label = "我的下载",
+                        iconVector = Icons.Filled.Download,
+                        onClick = onDownloadsClick,
+                        modifier = Modifier.testTag("dashboard:drawer:downloads")
                     )
                     DrawerMenuItem(
                         label = "设置",

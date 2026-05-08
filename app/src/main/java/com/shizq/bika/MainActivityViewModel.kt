@@ -26,24 +26,34 @@ class MainActivityViewModel @Inject constructor(
 
     private val themeConfigFlow = userPreferencesDataSource.userData
         .map { it.darkThemeConfig }
-    val uiState: StateFlow<MainActivityUiState> = loginStateFlow
-        .combine(themeConfigFlow) { isLoggedIn, darkThemeConfig ->
-                MainActivityUiState.Success(
-                    startDestination = if (isLoggedIn) ConnectedRoute else AuthenticationRoute,
-                    darkThemeConfig = darkThemeConfig
-                )
-            }.stateIn(
-                scope = viewModelScope,
-                initialValue = MainActivityUiState.Loading,
-                started = SharingStarted.WhileSubscribed(5_000),
-            )
+    private val fontScaleFlow = userPreferencesDataSource.userData
+        .map { it.fontScale }
+
+    val uiState: StateFlow<MainActivityUiState> = combine(
+        loginStateFlow,
+        themeConfigFlow,
+        fontScaleFlow
+    ) { isLoggedIn, darkThemeConfig, fontScale ->
+        MainActivityUiState.Success(
+            startDestination = if (isLoggedIn) ConnectedRoute else AuthenticationRoute,
+            darkThemeConfig = darkThemeConfig,
+            fontScale = fontScale
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        initialValue = MainActivityUiState.Loading,
+        started = SharingStarted.WhileSubscribed(5_000),
+    )
 }
 
 sealed interface MainActivityUiState {
     data object Loading : MainActivityUiState
 
-    data class Success(val startDestination: NavKey, val darkThemeConfig: DarkThemeConfig) :
-        MainActivityUiState {
+    data class Success(
+        val startDestination: NavKey, 
+        val darkThemeConfig: DarkThemeConfig,
+        val fontScale: Float
+    ) : MainActivityUiState {
         override fun shouldUseDarkTheme(isSystemDarkTheme: Boolean): Boolean =
             when (darkThemeConfig) {
                 DarkThemeConfig.FOLLOW_SYSTEM -> isSystemDarkTheme
