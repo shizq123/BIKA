@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network.model
 
+import com.shizq.bika.core.network.utils.GenderSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -47,7 +48,3 @@ data class UserProfile(
     val imageUrl2: String
         get() = "${avatar.fileServer}/static/${avatar.path}"
 }
-    val avatar: Media
-)
-
-
