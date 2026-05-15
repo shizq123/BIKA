@@ -14,6 +14,8 @@ dependencies {
     api(projects.core.database)
     api(projects.core.datastore)
     api(projects.core.network)
+    implementation(libs.okhttp)
+    implementation("com.squareup.okio:okio:3.9.0")
 
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.serialization.json)

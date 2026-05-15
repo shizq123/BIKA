@@ -45,6 +45,9 @@ data object ConnectedRoute : Root {
     data object SettingsRoute : Connected
 
     @Serializable
+    data object DownloadListRoute : Connected
+
+    @Serializable
     data class UnitedDetailRoute(val id: String) : Connected
 }
 

@@ -32,6 +32,7 @@ import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
+import com.shizq.bika.ui.download.DownloadListScreen
 
 fun EntryProviderScope<NavKey>.rootSection(
     navigator: Navigator,
@@ -99,6 +100,7 @@ fun EntryProviderScope<NavKey>.featureSection(
             onSearchClick = { navigator.navigate(ConnectedRoute.SearchRoute) },
             onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
             onCommentsClick = { navigator.navigate(ConnectedRoute.MineCommentRoute) },
+            onDownloadsClick = { navigator.navigate(ConnectedRoute.DownloadListRoute) },
         )
     }
     entry<ConnectedRoute.FeedRoute> { key ->
@@ -182,6 +184,15 @@ fun EntryProviderScope<NavKey>.featureSection(
         SettingsScreen(
             navigationToLogin = { navigator.navigate(AuthenticationRoute) },
             onBackClick = navigator::goBack
+        )
+    }
+    entry<ConnectedRoute.DownloadListRoute> {
+        DownloadListScreen(
+            onBackClick = navigator::goBack,
+            onComicClick = { comicId, order ->
+                // 跳转到阅读器
+                navigator.navigate(ConnectedRoute.ReaderRoute(comicId, order))
+            }
         )
     }
     entry<ConnectedRoute.UnitedDetailRoute> { key ->

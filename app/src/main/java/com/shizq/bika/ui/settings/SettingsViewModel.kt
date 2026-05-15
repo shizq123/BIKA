@@ -30,7 +30,7 @@ class SettingsViewModel @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource
 ) : ViewModel() {
     val settingsUiState = userPreferencesDataSource.userData.map {
-        SettingsUiState.Success(it.darkThemeConfig, it.selectedNetworkLine, it.autoCheckIn)
+        SettingsUiState.Success(it.darkThemeConfig, it.selectedNetworkLine, it.autoCheckIn, it.fontScale)
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -65,6 +65,12 @@ class SettingsViewModel @Inject constructor(
     fun updateAutoCheckIn(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesDataSource.setAutoCheckIn(enabled)
+        }
+    }
+
+    fun updateFontScale(scale: Float) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setFontScale(scale)
         }
     }
 
@@ -108,6 +114,7 @@ sealed interface SettingsUiState {
     data class Success(
         val darkThemeConfig: DarkThemeConfig,
         val selectedNetworkLine: NetworkLine,
-        val autoCheckIn: Boolean
+        val autoCheckIn: Boolean,
+        val fontScale: Float
     ) : SettingsUiState
 }

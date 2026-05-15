@@ -25,12 +25,19 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.network.model.Episode
 import kotlinx.coroutines.flow.flowOf
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.Alignment
 
 @Composable
 fun EpisodesPage(
     episodes: LazyPagingItems<Episode>,
     modifier: Modifier = Modifier,
-    navigateToReader: (index: Int) -> Unit = { _ -> }
+    navigateToReader: (index: Int) -> Unit = { _ -> },
+    onDownloadClick: (Episode) -> Unit = {}
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         LazyVerticalGrid(
@@ -49,6 +56,9 @@ fun EpisodesPage(
                         onClick = {
                             navigateToReader(episode.order)
                         },
+                        onDownload = {
+                            onDownloadClick(episode)
+                        }
                     )
                 }
             }
@@ -60,20 +70,34 @@ fun EpisodesPage(
 fun EpisodeItem(
     text: String,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onDownload: () -> Unit = {}
 ) {
-    TextButton(
+    androidx.compose.material3.OutlinedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
-        contentPadding = PaddingValues(horizontal = 8.dp),
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
     ) {
-        Text(
-            text = text,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = text,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f)
+            )
+            IconButton(onClick = onDownload) {
+                Icon(
+                    imageVector = Icons.Default.Download,
+                    contentDescription = "Download",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     }
 }
 

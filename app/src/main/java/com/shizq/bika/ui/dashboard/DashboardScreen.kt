@@ -3,27 +3,53 @@ package com.shizq.bika.ui.dashboard
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
+import androidx.compose.material3.NavigationDrawerItem
+import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -31,19 +57,33 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.error
+import coil3.request.placeholder
+import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import kotlinx.coroutines.delay
@@ -59,6 +99,7 @@ fun DashboardScreen(
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
+    onDownloadsClick: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
@@ -78,6 +119,7 @@ fun DashboardScreen(
         onSearchClick = onSearchClick,
         onChannelPreferenceClick = onChannelPreferenceClick,
         onCommentsClick = onCommentsClick,
+        onDownloadsClick = onDownloadsClick,
     )
 }
 
@@ -95,6 +137,7 @@ fun DashboardContent(
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
+    onDownloadsClick: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -116,9 +159,7 @@ fun DashboardContent(
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
-                modifier = Modifier
-                    .width(200.dp)
-                    .testTag("dashboard:drawer"),
+                modifier = Modifier.testTag("dashboard:drawer"),
                 drawerState = drawerState
             ) {
                 DashboardDrawerContent(
@@ -151,6 +192,12 @@ fun DashboardContent(
                         scope.launch {
                             drawerState.close()
                             onCommentsClick()
+                        }
+                    },
+                    onDownloadsClick = {
+                        scope.launch {
+                            drawerState.close()
+                            onDownloadsClick()
                         }
                     },
                     onSettingsClick = {
@@ -286,5 +333,233 @@ private fun navigation(
         else -> navigateToSearch(
             DiscoveryAction.Channel(channel.displayName)
         )
+    }
+}
+
+@Composable
+fun DashboardDrawerContent(
+    userProfile: UserProfileUiState,
+    modifier: Modifier = Modifier,
+    onCheckInClick: () -> Unit = {},
+    onEditProfileClick: () -> Unit = {},
+    onHistoryClick: () -> Unit = {},
+    onFavouriteClick: () -> Unit = {},
+    onNotificationsClick: () -> Unit = {},
+    onCommentsClick: () -> Unit = {},
+    onDownloadsClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {},
+) {
+    when (userProfile) {
+        is UserProfileUiState.Error -> {
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Text("加载用户信息失败")
+            }
+        }
+
+        UserProfileUiState.Loading -> {
+            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator()
+            }
+        }
+
+        is UserProfileUiState.Success -> {
+            Column(modifier = modifier.fillMaxSize()) {
+                UserProfileCard(
+                    state = userProfile,
+                    onCheckInClick = onCheckInClick,
+                    onEditProfile = onEditProfileClick
+                )
+                HorizontalDivider()
+                Column(
+                    modifier = Modifier
+                        .padding(vertical = 8.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    DrawerMenuItem(
+                        label = "历史记录",
+                        iconRes = R.drawable.ic_history,
+                        onClick = onHistoryClick,
+                        modifier = Modifier.testTag("dashboard:drawer:history")
+                    )
+                    DrawerMenuItem(
+                        label = "我的收藏",
+                        iconVector = Icons.Filled.Favorite,
+                        onClick = onFavouriteClick,
+                        modifier = Modifier.testTag("dashboard:drawer:favourite")
+                    )
+                    DrawerMenuItem(
+                        label = "我的消息",
+                        iconVector = Icons.Filled.Email,
+                        onClick = onNotificationsClick,
+                        modifier = Modifier.testTag("dashboard:drawer:notifications")
+                    )
+                    DrawerMenuItem(
+                        label = "我的评论",
+                        iconVector = Icons.AutoMirrored.Filled.Comment,
+                        onClick = onCommentsClick,
+                        modifier = Modifier.testTag("dashboard:drawer:comments")
+                    )
+                    DrawerMenuItem(
+                        label = "我的下载",
+                        iconVector = Icons.Filled.Download,
+                        onClick = onDownloadsClick,
+                        modifier = Modifier.testTag("dashboard:drawer:downloads")
+                    )
+                    DrawerMenuItem(
+                        label = "设置",
+                        iconVector = Icons.Filled.Settings,
+                        onClick = onSettingsClick,
+                        modifier = Modifier.testTag("dashboard:drawer:settings")
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DrawerMenuItem(
+    label: String,
+    modifier: Modifier = Modifier,
+    selected: Boolean = false,
+    iconRes: Int? = null,
+    iconVector: ImageVector? = null,
+    onClick: () -> Unit,
+) {
+    NavigationDrawerItem(
+        label = { Text(label) },
+        selected = selected,
+        onClick = onClick,
+        icon = {
+            if (iconRes != null) {
+                Icon(painterResource(iconRes), contentDescription = label)
+            } else if (iconVector != null) {
+                Icon(iconVector, contentDescription = label)
+            }
+        },
+        modifier = modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+    )
+}
+
+@Composable
+fun UserProfileCard(
+    state: UserProfileUiState.Success,
+    modifier: Modifier = Modifier,
+    onCheckInClick: () -> Unit,
+    onEditProfile: () -> Unit,
+) {
+    val user = state.user
+    Column(
+        modifier = modifier
+            .padding(16.dp)
+            .testTag("dashboard:userProfile")
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(contentAlignment = Alignment.Center) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(user.avatarUrl)
+                        .placeholder(R.drawable.placeholder_avatar_2)
+                        .error(R.drawable.placeholder_avatar_2)
+                        .build(),
+                    contentDescription = "Avatar",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(CircleShape)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = user.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = user.levelDisplay,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = user.title,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.primary,
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 4.dp, vertical = 2.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.End
+            ) {
+                TextButton(
+                    onClick = onEditProfile
+                ) {
+                    Text(text = "修改资料")
+                }
+
+                Spacer(modifier = Modifier.width(8.dp))
+
+                Button(
+                    onClick = onCheckInClick,
+                    enabled = !user.hasCheckedIn,
+                    colors = ButtonDefaults.buttonColors(
+                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                    ),
+                    modifier = Modifier.testTag("dashboard:checkIn"),
+                ) {
+                    Text(text = if (user.hasCheckedIn) "已打卡" else "打卡")
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(12.dp))
+
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            val genderText = remember(user.gender) {
+                when (user.gender) {
+                    "m" -> "绅士"
+                    "f" -> "淑女"
+                    else -> "机器人"
+                }
+            }
+
+            Surface(
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                shape = RoundedCornerShape(4.dp)
+            ) {
+                Text(
+                    text = genderText,
+                    style = MaterialTheme.typography.labelSmall,
+                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Text(
+                text = user.slogan.ifEmpty { "这个人很懒，什么都没写" },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }

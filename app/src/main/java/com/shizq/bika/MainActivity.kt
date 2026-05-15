@@ -13,6 +13,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.util.trace
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.Lifecycle
@@ -96,8 +98,12 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+            val fontScale = (uiState as? Success)?.fontScale ?: 1.0f
+            val density = LocalDensity.current
+
             CompositionLocalProvider(
-                LocalWindow provides window
+                LocalWindow provides window,
+                LocalDensity provides Density(density.density, fontScale = fontScale)
             ) {
                 BikaTheme(darkTheme = themeSettings.darkTheme) {
                     when (val state = uiState) {

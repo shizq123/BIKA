@@ -1,6 +1,6 @@
 package com.shizq.bika.ui.comicinfo.page
 
-import android.icu.text.DecimalFormat
+import java.text.DecimalFormat
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -83,6 +84,7 @@ fun ComicDetailPage(
     navigationToReader: () -> Unit = {},
     navigationToComicInfo: (String) -> Unit = {},
     navigationToFeed: (DiscoveryAction) -> Unit,
+    onDownloadClick: () -> Unit = {},
 ) {
     Box(
         modifier = modifier
@@ -123,7 +125,7 @@ fun ComicDetailPage(
                 },
                 onAuthorClick = {
                     navigationToFeed(
-                        DiscoveryAction.AdvancedSearch(detail.author,)
+                        DiscoveryAction.AdvancedSearch(detail.author)
                     )
                 }
             )
@@ -177,9 +179,11 @@ fun ComicDetailPage(
         }
         MangaBottomBar(
             isFavorited = detail.isFavourited,
+            showDownload = detail.epsCount == 1,
             modifier = Modifier.align(Alignment.BottomCenter),
             onFavoriteClick = onFavoriteClick,
             onReadClick = navigationToReader,
+            onDownloadClick = onDownloadClick
         )
     }
 }
@@ -460,8 +464,10 @@ fun ContentSummaryPreview() {
 fun MangaBottomBar(
     isFavorited: Boolean,
     modifier: Modifier = Modifier,
+    showDownload: Boolean = false,
     onFavoriteClick: () -> Unit = {},
     onReadClick: () -> Unit = {},
+    onDownloadClick: () -> Unit = {},
 ) {
     Surface(
         tonalElevation = 4.dp,
@@ -499,6 +505,23 @@ fun MangaBottomBar(
                 Icon(imageVector = icon, contentDescription = text)
                 Spacer(Modifier.width(4.dp))
                 Text(text)
+            }
+
+            if (showDownload) {
+                FilledTonalButton(
+                    onClick = onDownloadClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight(),
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    )
+                ) {
+                    Icon(imageVector = Icons.Filled.Download, contentDescription = "下载")
+                    Spacer(Modifier.width(4.dp))
+                    Text("下载")
+                }
             }
 
             Button(
