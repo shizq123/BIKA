@@ -12,6 +12,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.DarkMode
+import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material3.AlertDialog
@@ -55,6 +56,7 @@ fun SettingsScreen(
         onUpdateDarkThemeConfig = viewModel::updateDarkThemeConfig,
         onToggleAutoCheckIn = viewModel::updateAutoCheckIn,
         onUpdateNetworkLine = viewModel::updateSelectedNetworkLine,
+        onUpdateFontScale = viewModel::updateFontScale,
         onLogoutClicked = {
             viewModel.logout()
             navigationToLogin()
@@ -72,6 +74,7 @@ fun SettingsContent(
     onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit = {},
     onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
     onUpdateNetworkLine: (line: NetworkLine) -> Unit = {},
+    onUpdateFontScale: (scale: Float) -> Unit = {},
     onLogoutClicked: () -> Unit = {},
     onBackClick: () -> Unit = {},
 ) {
@@ -156,6 +159,22 @@ fun SettingsContent(
                                 selectedValue = settingsUiState.darkThemeConfig,
                                 optionToText = { it.title },
                                 onOptionSelected = onUpdateDarkThemeConfig
+                            )
+                            ListPreference(
+                                title = "文字大小",
+                                iconVector = Icons.Default.FormatSize,
+                                options = listOf(0.85f, 1.0f, 1.15f, 1.3f),
+                                selectedValue = settingsUiState.fontScale,
+                                optionToText = { 
+                                    when (it) {
+                                        0.85f -> "小"
+                                        1.0f -> "标准"
+                                        1.15f -> "大"
+                                        1.3f -> "特大"
+                                        else -> "标准"
+                                    }
+                                },
+                                onOptionSelected = onUpdateFontScale
                             )
                         }
                     }

@@ -18,4 +18,5 @@ data class UserPreferences(
     val selectedNetworkLine: NetworkLine = NetworkLine.LINE_1,
     val autoCheckIn: Boolean = true,
     val dns: Set<String> = setOf("104.21.20.188"),
+    val fontScale: Float = 1.0f,
 )
