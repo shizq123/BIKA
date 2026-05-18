@@ -13,19 +13,10 @@ data class ProfileData(
 data class UserProfile(
     @SerialName("_id")
     val id: String = "",
-
-    val name: String,         // 昵称
-    val email: String,        // 邮箱
-    @Serializable(with = GenderSerializer::class)
-    val gender: Gender,       // "m" or "f"
-    val title: String,        // 头衔: "萌新"
-    val level: Int,           // 等级
-    val exp: Int,             // 经验值
-    val verified: Boolean,    // 是否认证
-    val isPunched: Boolean,   // 是否打卡
     val name: String = "",         // 昵称
     val email: String = "",        // 邮箱
-    val gender: String = "",       // "m" or "f"
+    @Serializable(with = GenderSerializer::class)
+    val gender: Gender,
     val title: String = "",        // 头衔: "萌新"
     val level: Int = 0,            // 等级
     val exp: Int = 0,              // 经验值
