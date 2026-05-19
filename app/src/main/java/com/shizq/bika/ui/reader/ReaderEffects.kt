@@ -30,7 +30,7 @@ fun ReaderSideEffects(
     config: ReaderConfig,
     uiControl: UiControlState,
     controller: ReaderController,
-    chapterPages: LazyPagingItems<ChapterPage>,
+    pageItems: LazyPagingItems<ChapterPage>,
     scrollStateProvider: ScrollStateProvider,
     preloadCount: Int,
     dispatch: (ReaderAction) -> Unit,
@@ -56,7 +56,7 @@ fun ReaderSideEffects(
         ChapterPagePreloadProvider(context)
     }
     PagingPreload(
-        pagingItems = chapterPages,
+        pagingItems = pageItems,
         scrollStateProvider = scrollStateProvider,
         modelProvider = preloadModelProvider,
         preloadCount = preloadCount,

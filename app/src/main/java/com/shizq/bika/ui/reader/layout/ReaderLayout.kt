@@ -35,7 +35,7 @@ import me.saket.telephoto.zoomable.zoomable
 interface ReaderLayout {
     @Composable
     fun Content(
-        chapterPages: LazyPagingItems<ChapterPage>,
+        pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     )
 }
@@ -44,7 +44,7 @@ interface ReaderLayout {
 fun ReaderLayout(
     readerContext: ReaderContext,
     gestureState: GestureState,
-    chapterPages: LazyPagingItems<ChapterPage>,
+    pageItems: LazyPagingItems<ChapterPage>,
     toggleMenuVisibility: () -> Unit,
     onHideMenu: () -> Unit
 ) {
@@ -91,7 +91,7 @@ fun ReaderLayout(
             label = "LayoutTransition"
         ) { targetLayout ->
             targetLayout.Content(
-                chapterPages = chapterPages,
+                pageItems = pageItems,
                 modifier = Modifier
                     .fillMaxSize()
                     .nestedScroll(nestedScrollConnection)

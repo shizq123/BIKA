@@ -44,7 +44,7 @@ data class ReaderConfig(
 @Composable
 fun rememberReaderContext(
     readingMode: ReadingMode,
-    chapterPages: LazyPagingItems<ChapterPage>,
+    pageItems: LazyPagingItems<ChapterPage>,
     config: ReaderConfig = ReaderConfig.Default,
     initialPageIndex: Int
 ): ReaderContext {
@@ -71,7 +71,7 @@ fun rememberReaderContext(
 
         ViewerType.Pager -> {
             val pagerState =
-                rememberPagerState(initialPage = initialPageIndex) { chapterPages.itemCount }
+                rememberPagerState(initialPage = initialPageIndex) { pageItems.itemCount }
 
             val layout = remember(pagerState, readingMode.direction, readingMode.isRtl) {
                 PagerLayout(

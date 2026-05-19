@@ -37,7 +37,6 @@ import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderContext
-import com.shizq.bika.ui.reader.layout.ReaderController
 import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.SideSheetLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
@@ -87,16 +86,17 @@ private fun ReaderContent(
 
             val readerContext = rememberReaderContext(
                 readingMode = config.readingMode,
-                chapterPages = pageItems,
+                pageItems = pageItems,
                 config = config,
                 initialPageIndex = chapterState.initialPage,
             )
+            val currentPage by readerContext.controller.visibleItemIndex.collectAsState(0)
 
             ReaderSideEffects(
                 config = config,
                 uiControl = uiControlState,
                 controller = readerContext.controller,
-                chapterPages = pageItems,
+                pageItems = pageItems,
                 scrollStateProvider = readerContext.scrollStateProvider,
                 preloadCount = config.preloadCount,
                 dispatch = dispatch,
@@ -117,7 +117,7 @@ private fun ReaderContent(
                 },
                 bottomBar = {
                     ReaderBottomBarHost(
-                        controller = readerContext.controller,
+                        currentPage = currentPage,
                         readingMode = config.readingMode,
                         totalPages = chapterState.totalPages,
                         onSeekToPage = { targetPage ->
@@ -132,7 +132,7 @@ private fun ReaderContent(
                 floatingMessage = {
                     if (chapterState.totalPages > 0) {
                         ReaderPageIndicatorBadge(
-                            controller = readerContext.controller,
+                            currentPage = currentPage,
                             totalPages = chapterState.totalPages,
                         )
                     }
@@ -180,7 +180,7 @@ private fun ReaderContentArea(
     ReaderLayout(
         readerContext = readerContext,
         gestureState = gestureState,
-        chapterPages = pageItems,
+        pageItems = pageItems,
         toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
         onHideMenu = {
             if (uiControlState.showSystemBars) {
@@ -261,16 +261,15 @@ private fun ReaderSheetHost(
 
 @Composable
 private fun ReaderPageIndicatorBadge(
-    controller: ReaderController,
+    currentPage: Int,
     totalPages: Int,
 ) {
-    val currentPage by controller.visibleItemIndex.collectAsState(0)
     PageIndicatorBadge(current = currentPage + 1, total = totalPages)
 }
 
 @Composable
 private fun ReaderBottomBarHost(
-    controller: ReaderController,
+    currentPage: Int,
     totalPages: Int,
     readingMode: ReadingMode,
     onSeekToPage: (Int) -> Unit,
@@ -279,7 +278,6 @@ private fun ReaderBottomBarHost(
     onOpenReadingMode: () -> Unit,
     onOpenOrientation: () -> Unit,
 ) {
-    val currentPage by controller.visibleItemIndex.collectAsState(0)
     ReaderBottomBar(
         currentPage = currentPage,
         totalPages = totalPages,

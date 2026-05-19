@@ -15,7 +15,9 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.Direction
+
 import com.shizq.bika.paging.ChapterPage
+
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 class PagerLayout(
@@ -26,18 +28,18 @@ class PagerLayout(
 
     @Composable
     override fun Content(
-        chapterPages: LazyPagingItems<ChapterPage>,
+        pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
         val pageContent: @Composable (Int) -> Unit = { pageIndex ->
-            PageItem(chapterPages, pageIndex)
+            PageItem(pageItems, pageIndex)
         }
 
         if (direction == Direction.Vertical) {
             VerticalPager(
                 state = pagerState,
                 modifier = modifier,
-                key = chapterPages.itemKey { it.id },
+                key = pageItems.itemKey { it.id },
                 pageContent = { pageContent(it) }
             )
         } else {
@@ -46,7 +48,7 @@ class PagerLayout(
                 HorizontalPager(
                     state = pagerState,
                     modifier = modifier,
-                    key = chapterPages.itemKey { it.id },
+                    key = pageItems.itemKey { it.id },
                     pageContent = { pageContent(it) }
                 )
             }
@@ -74,7 +76,8 @@ class PagerController(
     }.distinctUntilChanged()
 
     override suspend fun scrollNextPage() {
-        val targetPage = (pagerState.currentPage + 1).coerceAtMost(pagerState.pageCount - 1)
+        val targetPage =
+            (pagerState.currentPage + 1).coerceAtMost(lastPageIndex(pagerState.pageCount))
         if (targetPage != pagerState.currentPage) {
             pagerState.animateScrollToPage(targetPage)
         }
@@ -88,7 +91,7 @@ class PagerController(
     }
 
     override suspend fun scrollToPage(index: Int) {
-        val targetPage = index.coerceIn(0, (pagerState.pageCount - 1).coerceAtLeast(0))
+        val targetPage = index.coerceToPageIndex(pagerState.pageCount)
         pagerState.scrollToPage(targetPage)
     }
 }

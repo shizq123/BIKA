@@ -20,7 +20,7 @@ class WebtoonLayout(
 ) : ReaderLayout {
     @Composable
     override fun Content(
-        chapterPages: LazyPagingItems<ChapterPage>,
+        pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
         LazyColumn(
@@ -29,10 +29,10 @@ class WebtoonLayout(
             verticalArrangement = if (hasPageGap) Arrangement.spacedBy(8.dp) else Arrangement.Top
         ) {
             items(
-                count = chapterPages.itemCount,
-                key = chapterPages.itemKey { it.id },
+                count = pageItems.itemCount,
+                key = pageItems.itemKey { it.id },
             ) { index ->
-                chapterPages[index]?.let {
+                pageItems[index]?.let {
                     ComicPageItem(it, index)
                 }
             }
@@ -67,8 +67,7 @@ class WebtoonController(
     }
 
     override suspend fun scrollToPage(index: Int) {
-        val targetIndex =
-            index.coerceIn(0, (listState.layoutInfo.totalItemsCount - 1).coerceAtLeast(0))
+        val targetIndex = index.coerceToPageIndex(listState.layoutInfo.totalItemsCount)
         listState.scrollToItem(targetIndex)
     }
 
@@ -88,7 +87,7 @@ class WebtoonController(
         val firstVisibleItem = visibleItems.first()
 
         // 判定是否到底：最后一项可见且底部在视口内
-        val isLastItemVisible = lastVisibleItem.index == layoutInfo.totalItemsCount - 1
+        val isLastItemVisible = lastVisibleItem.index == lastPageIndex(layoutInfo.totalItemsCount)
         if (isLastItemVisible) {
             val isBottomEdgeVisible =
                 (lastVisibleItem.offset + lastVisibleItem.size) <= layoutInfo.viewportEndOffset
