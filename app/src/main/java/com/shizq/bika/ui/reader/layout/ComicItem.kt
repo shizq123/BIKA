@@ -51,19 +51,24 @@ fun ComicPageItem(
     modifier: Modifier = Modifier
 ) {
     val configuration = LocalConfiguration.current
-    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
-    val scaleMode = if (isLandscape) ContentScale.Fit else ContentScale.FillWidth
-    var imageAspectRatio by remember { mutableFloatStateOf(0.75f) }
-
-    val painter = rememberAsyncImagePainter(
-        model = ImageRequest.Builder(LocalPlatformContext.current)
+    val platformContext = LocalPlatformContext.current
+    val contentScale = if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        ContentScale.Fit
+    } else {
+        ContentScale.FillWidth
+    }
+    var imageAspectRatio by remember(page.id) { mutableFloatStateOf(0.75f) }
+    val imageRequest = remember(platformContext, page.url) {
+        ImageRequest.Builder(platformContext)
             .data(page.url)
             .crossfade(false)
             .diskCacheKey(page.url)
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .build()
-    )
+    }
+
+    val painter = rememberAsyncImagePainter(model = imageRequest)
 
     val state by painter.state.collectAsState()
     Box(
@@ -75,7 +80,7 @@ fun ComicPageItem(
         Image(
             painter = painter,
             contentDescription = "Page ${index + 1}",
-            contentScale = scaleMode,
+            contentScale = contentScale,
             modifier = Modifier.fillMaxSize()
         )
         when (state) {
@@ -111,10 +116,10 @@ fun ComicPageItem(
             }
 
             is AsyncImagePainter.State.Success -> {
-                val intrinsicSize = (state as AsyncImagePainter.State.Success).painter.intrinsicSize
+                val intrinsicSize = state.painter?.intrinsicSize
 
                 LaunchedEffect(intrinsicSize) {
-                    if (intrinsicSize.width > 0 && intrinsicSize.height > 0) {
+                    if (intrinsicSize != null && intrinsicSize.width > 0 && intrinsicSize.height > 0) {
                         val newRatio = intrinsicSize.width / intrinsicSize.height
                         if (imageAspectRatio != newRatio) {
                             imageAspectRatio = newRatio

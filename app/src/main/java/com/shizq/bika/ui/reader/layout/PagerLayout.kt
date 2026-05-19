@@ -74,14 +74,21 @@ class PagerController(
     }.distinctUntilChanged()
 
     override suspend fun scrollNextPage() {
-        pagerState.animateScrollToPage(pagerState.currentPage + 1)
+        val targetPage = (pagerState.currentPage + 1).coerceAtMost(pagerState.pageCount - 1)
+        if (targetPage != pagerState.currentPage) {
+            pagerState.animateScrollToPage(targetPage)
+        }
     }
 
     override suspend fun scrollPrevPage() {
-        pagerState.animateScrollToPage(pagerState.currentPage - 1)
+        val targetPage = (pagerState.currentPage - 1).coerceAtLeast(0)
+        if (targetPage != pagerState.currentPage) {
+            pagerState.animateScrollToPage(targetPage)
+        }
     }
 
     override suspend fun scrollToPage(index: Int) {
-        pagerState.scrollToPage(index)
+        val targetPage = index.coerceIn(0, (pagerState.pageCount - 1).coerceAtLeast(0))
+        pagerState.scrollToPage(targetPage)
     }
 }
