@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.comicinfo.page
 
-import java.text.DecimalFormat
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -25,11 +24,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -72,6 +71,7 @@ import com.shizq.bika.R
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
+import java.text.DecimalFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -476,7 +476,7 @@ fun MangaBottomBar(
     ) {
         Row(
             modifier = Modifier
-                .padding(16.dp)
+                .padding(bottom = 16.dp)
                 .height(48.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
@@ -503,7 +503,6 @@ fun MangaBottomBar(
                 )
             ) {
                 Icon(imageVector = icon, contentDescription = text)
-                Spacer(Modifier.width(4.dp))
                 Text(text)
             }
 
@@ -519,7 +518,6 @@ fun MangaBottomBar(
                     )
                 ) {
                     Icon(imageVector = Icons.Filled.Download, contentDescription = "下载")
-                    Spacer(Modifier.width(4.dp))
                     Text("下载")
                 }
             }
@@ -527,7 +525,7 @@ fun MangaBottomBar(
             Button(
                 onClick = onReadClick,
                 modifier = Modifier
-                    .weight(1.5f)
+                    .weight(1.2f)
                     .fillMaxHeight(),
                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
             ) {
