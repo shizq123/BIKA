@@ -1,16 +1,7 @@
 package com.shizq.bika.ui.reader
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,28 +15,18 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.ui.FullScreenLoading
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterPage
-import com.shizq.bika.ui.reader.bar.ReaderBottomBar
 import com.shizq.bika.ui.reader.bar.TopBar
-import com.shizq.bika.ui.reader.components.ChapterList
-import com.shizq.bika.ui.reader.components.ReadingModeSelectBottomSheet
-import com.shizq.bika.ui.reader.components.ReadingSettingsBottomSheet
-import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderContext
-import com.shizq.bika.ui.reader.layout.ReaderLayout
-import com.shizq.bika.ui.reader.layout.SideSheetLayout
+import com.shizq.bika.ui.reader.layout.ReaderLayoutHost
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.state.ChapterState
 import com.shizq.bika.ui.reader.state.ReaderAction
-import com.shizq.bika.ui.reader.state.ReaderAction.HideSheet
-import com.shizq.bika.ui.reader.state.ReaderAction.JumpToChapter
-import com.shizq.bika.ui.reader.state.ReaderAction.SetOrientation
-import com.shizq.bika.ui.reader.state.ReaderAction.SetReadingMode
+import com.shizq.bika.ui.reader.state.ReaderAction.SetBarsVisibility
 import com.shizq.bika.ui.reader.state.ReaderAction.ShowSheet
 import com.shizq.bika.ui.reader.state.ReaderAction.ToggleBarsVisibility
 import com.shizq.bika.ui.reader.state.ReaderSheet
@@ -89,6 +70,7 @@ private fun ReaderContent(
                 pageItems = pageItems,
                 config = config,
                 initialPageIndex = chapterState.initialPage,
+                resetKey = chapterState.order to config.readingMode,
             )
             val currentPage by readerContext.controller.visibleItemIndex.collectAsState(0)
 
@@ -98,7 +80,6 @@ private fun ReaderContent(
                 controller = readerContext.controller,
                 pageItems = pageItems,
                 scrollStateProvider = readerContext.scrollStateProvider,
-                preloadCount = config.preloadCount,
                 dispatch = dispatch,
             )
             ReaderSheetHost(
@@ -177,86 +158,17 @@ private fun ReaderContentArea(
     dispatch: (ReaderAction) -> Unit,
 ) {
     val gestureState = rememberGestureState(config.tapZoneLayout)
-    ReaderLayout(
+    ReaderLayoutHost(
         readerContext = readerContext,
         gestureState = gestureState,
         pageItems = pageItems,
         toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
         onHideMenu = {
             if (uiControlState.showSystemBars) {
-                dispatch(ToggleBarsVisibility)
+                dispatch(SetBarsVisibility(false))
             }
         },
     )
-}
-
-@Composable
-private fun ReaderChapterSideSheet(
-    chapterItems: LazyPagingItems<Chapter>,
-    chapterState: ChapterState,
-    uiControlState: UiControlState,
-    dispatch: (ReaderAction) -> Unit,
-) {
-    val isVisible = uiControlState.readerSheet is ReaderSheet.ChapterList
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = slideInHorizontally(animationSpec = tween(), initialOffsetX = { -it }),
-        exit = slideOutHorizontally(animationSpec = tween(), targetOffsetX = { -it }),
-    ) {
-        SideSheetLayout(
-            title = { Text("目录") },
-            onDismissRequest = { dispatch(HideSheet) },
-            closeButton = {
-                IconButton(onClick = { dispatch(HideSheet) }) {
-                    Icon(Icons.Rounded.Close, contentDescription = "关闭目录")
-                }
-            },
-        ) {
-            ChapterList(
-                chapters = chapterItems,
-                currentChapterId = chapterState.order,
-                onChapterClick = { newChapter -> dispatch(JumpToChapter(newChapter)) },
-                modifier = Modifier.padding(top = 8.dp),
-            )
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ReaderSheetHost(
-    sheet: ReaderSheet,
-    config: ReaderConfig,
-    dispatch: (ReaderAction) -> Unit,
-) {
-    val onClose = { dispatch(HideSheet) }
-    when (sheet) {
-        ReaderSheet.ReadingMode -> {
-            ReadingModeSelectBottomSheet(
-                activeMode = config.readingMode,
-                onReadingModeChanged = { dispatch(SetReadingMode(it)) },
-                onDismissRequest = onClose,
-            )
-        }
-
-        ReaderSheet.Orientation -> {
-            ScreenOrientationSelectBottomSheet(
-                orientation = config.screenOrientation,
-                onOrientationChange = { dispatch(SetOrientation(it)) },
-                onDismissRequest = onClose,
-            )
-        }
-
-        ReaderSheet.Settings -> {
-            ReadingSettingsBottomSheet(
-                config = config,
-                dispatch = dispatch,
-                onDismissRequest = onClose,
-            )
-        }
-
-        else -> Unit
-    }
 }
 
 @Composable
@@ -265,29 +177,6 @@ private fun ReaderPageIndicatorBadge(
     totalPages: Int,
 ) {
     PageIndicatorBadge(current = currentPage + 1, total = totalPages)
-}
-
-@Composable
-private fun ReaderBottomBarHost(
-    currentPage: Int,
-    totalPages: Int,
-    readingMode: ReadingMode,
-    onSeekToPage: (Int) -> Unit,
-    onToggleChapterList: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenReadingMode: () -> Unit,
-    onOpenOrientation: () -> Unit,
-) {
-    ReaderBottomBar(
-        currentPage = currentPage,
-        totalPages = totalPages,
-        readingMode = readingMode,
-        onSeekToPage = onSeekToPage,
-        onToggleChapterList = onToggleChapterList,
-        onOpenSettings = onOpenSettings,
-        onOpenReadingMode = onOpenReadingMode,
-        onOpenOrientation = onOpenOrientation,
-    )
 }
 
 @Composable

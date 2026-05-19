@@ -15,16 +15,14 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.Direction
-
 import com.shizq.bika.paging.ChapterPage
-
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 class PagerLayout(
     private val pagerState: PagerState,
     private val direction: Direction,
     private val isRtl: Boolean
-) : ReaderLayout {
+) : ReaderPageLayout {
 
     @Composable
     override fun Content(
@@ -76,6 +74,8 @@ class PagerController(
     }.distinctUntilChanged()
 
     override suspend fun scrollNextPage() {
+        if (!hasPages(pagerState.pageCount)) return
+
         val targetPage =
             (pagerState.currentPage + 1).coerceAtMost(lastPageIndex(pagerState.pageCount))
         if (targetPage != pagerState.currentPage) {
@@ -84,6 +84,8 @@ class PagerController(
     }
 
     override suspend fun scrollPrevPage() {
+        if (!hasPages(pagerState.pageCount)) return
+
         val targetPage = (pagerState.currentPage - 1).coerceAtLeast(0)
         if (targetPage != pagerState.currentPage) {
             pagerState.animateScrollToPage(targetPage)
@@ -91,6 +93,8 @@ class PagerController(
     }
 
     override suspend fun scrollToPage(index: Int) {
+        if (!hasPages(pagerState.pageCount)) return
+
         val targetPage = index.coerceToPageIndex(pagerState.pageCount)
         pagerState.scrollToPage(targetPage)
     }

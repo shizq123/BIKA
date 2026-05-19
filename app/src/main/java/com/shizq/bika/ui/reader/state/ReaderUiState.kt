@@ -53,6 +53,7 @@ sealed interface ReaderAction {
     data class SyncReadingProgress(val pageIndex: Int) : ReaderAction
 
     data object ToggleBarsVisibility : ReaderAction
+    data class SetBarsVisibility(val visible: Boolean) : ReaderAction
     data class ShowSheet(val sheet: ReaderSheet) : ReaderAction
     data object HideSheet : ReaderAction
 

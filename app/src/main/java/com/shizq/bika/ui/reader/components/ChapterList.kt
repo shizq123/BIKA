@@ -29,7 +29,7 @@ import com.shizq.bika.paging.Chapter
 @Composable
 fun ChapterList(
     chapters: LazyPagingItems<Chapter>,
-    currentChapterId: Int,
+    currentChapterOrder: Int,
     onChapterClick: (Chapter) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -52,7 +52,7 @@ fun ChapterList(
             key = chapters.itemKey { it.id }
         ) { index ->
             chapters[index]?.let { chapter ->
-                val isCurrent = chapter.order == currentChapterId
+                val isCurrent = chapter.order == currentChapterOrder
                 ChapterListItem(
                     chapter = chapter,
                     isCurrent = isCurrent,

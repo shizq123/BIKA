@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 class WebtoonLayout(
     private val listState: LazyListState,
     private val hasPageGap: Boolean
-) : ReaderLayout {
+) : ReaderPageLayout {
     @Composable
     override fun Content(
         pageItems: LazyPagingItems<ChapterPage>,
@@ -67,7 +67,10 @@ class WebtoonController(
     }
 
     override suspend fun scrollToPage(index: Int) {
-        val targetIndex = index.coerceToPageIndex(listState.layoutInfo.totalItemsCount)
+        val totalItems = listState.layoutInfo.totalItemsCount
+        if (!hasPages(totalItems)) return
+
+        val targetIndex = index.coerceToPageIndex(totalItems)
         listState.scrollToItem(targetIndex)
     }
 

@@ -32,7 +32,7 @@ import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 
-interface ReaderLayout {
+interface ReaderPageLayout {
     @Composable
     fun Content(
         pageItems: LazyPagingItems<ChapterPage>,
@@ -41,7 +41,7 @@ interface ReaderLayout {
 }
 
 @Composable
-fun ReaderLayout(
+fun ReaderLayoutHost(
     readerContext: ReaderContext,
     gestureState: GestureState,
     pageItems: LazyPagingItems<ChapterPage>,

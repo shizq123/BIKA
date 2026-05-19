@@ -4,6 +4,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.model.ReadingMode
@@ -17,7 +18,7 @@ import com.shizq.bika.ui.reader.util.preload.ScrollStateProvider
 
 @Stable
 data class ReaderContext(
-    val layout: ReaderLayout,
+    val layout: ReaderPageLayout,
     val controller: ReaderController,
     val scrollStateProvider: ScrollStateProvider,
     val config: ReaderConfig = ReaderConfig.Default
@@ -46,9 +47,10 @@ fun rememberReaderContext(
     readingMode: ReadingMode,
     pageItems: LazyPagingItems<ChapterPage>,
     config: ReaderConfig = ReaderConfig.Default,
-    initialPageIndex: Int
-): ReaderContext {
-    return when (readingMode.viewerType) {
+    initialPageIndex: Int,
+    resetKey: Any,
+): ReaderContext = key(resetKey) {
+    when (readingMode.viewerType) {
         ViewerType.Scrolling -> {
             val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPageIndex)
 

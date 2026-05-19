@@ -124,6 +124,11 @@ class ReaderStateMachine @Inject constructor(
                         copy(uiControl = uiControl.copy(showSystemBars = !uiControl.showSystemBars))
                     }
                 }
+                on<ReaderAction.SetBarsVisibility> {
+                    mutate {
+                        copy(uiControl = uiControl.copy(showSystemBars = it.visible))
+                    }
+                }
                 on<ReaderAction.ShowSheet> {
                     mutate {
                         copy(uiControl = uiControl.copy(readerSheet = it.sheet))

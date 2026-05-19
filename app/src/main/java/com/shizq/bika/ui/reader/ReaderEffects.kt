@@ -32,7 +32,6 @@ fun ReaderSideEffects(
     controller: ReaderController,
     pageItems: LazyPagingItems<ChapterPage>,
     scrollStateProvider: ScrollStateProvider,
-    preloadCount: Int,
     dispatch: (ReaderAction) -> Unit,
 ) {
     val context = LocalContext.current
@@ -59,7 +58,7 @@ fun ReaderSideEffects(
         pagingItems = pageItems,
         scrollStateProvider = scrollStateProvider,
         modelProvider = preloadModelProvider,
-        preloadCount = preloadCount,
+        preloadCount = config.preloadCount,
     )
 }
 
