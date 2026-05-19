@@ -1,16 +1,12 @@
 package com.shizq.bika.ui.reader.layout
 
 import android.view.KeyEvent
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -82,15 +78,9 @@ fun ReaderLayoutHost(
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val viewSize = IntSize(constraints.maxWidth, constraints.maxHeight)
-        AnimatedContent(
-            targetState = readerContext.layout,
-            transitionSpec = {
-                fadeIn(animationSpec = tween(300)) togetherWith
-                        fadeOut(animationSpec = tween(300))
-            },
-            label = "LayoutTransition"
-        ) { targetLayout ->
-            targetLayout.Content(
+        val layout = readerContext.layout
+        key(layout::class) {
+            layout.Content(
                 pageItems = pageItems,
                 modifier = Modifier
                     .fillMaxSize()
@@ -112,8 +102,7 @@ fun ReaderLayoutHost(
                                 }
 
                                 ReaderAction.ToggleMenu -> toggleMenuVisibility()
-                                ReaderAction.None -> { /* Do nothing */
-                                }
+                                ReaderAction.None -> Unit
                             }
                         }
                     )
