@@ -69,6 +69,61 @@ jobs:
           echo "" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      - name: Archive Old Assets and Clear in Latest Release
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Checking for existing assets in 'latest' release..."
+          if gh release view latest >/dev/null 2>&1; then
+            assets=$(gh release view latest --json assets --jq '.assets[].name' 2>/dev/null || echo "")
+            if [ -n "$assets" ]; then
+              # 创建临时暂存目录
+              mkdir -p /tmp/old_assets
+              for asset in $assets; do
+                echo "Processing asset for archive: $asset"
+                
+                # 使用 bash 正则匹配并提取版本号（例如从 BIKA_v1.10.6.1.apk 提取出 v1.10.6.1）
+                if [[ "$asset" =~ BIKA_(v[0-9\.]+)\.apk ]]; then
+                  tag_name="${BASH_REMATCH[1]}"
+                  echo "Parsed version tag: $tag_name"
+                  
+                  # 1. 从 latest 下载旧资产到本地暂存
+                  echo "Downloading $asset from 'latest' release..."
+                  gh release download latest -p "$asset" -D /tmp/old_assets || true
+                  
+                  # 2. 从 latest 彻底删除该资产
+                  echo "Deleting $asset from 'latest' release..."
+                  gh release delete-asset latest "$asset" -y || true
+                  
+                  # 3. 归档到对应版本号的独立 Tag Release 中
+                  if [ -f "/tmp/old_assets/$asset" ]; then
+                    echo "Checking if archive release '$tag_name' exists..."
+                    if gh release view "$tag_name" >/dev/null 2>&1; then
+                      echo "Archive release '$tag_name' exists. Uploading $asset..."
+                      gh release upload "$tag_name" "/tmp/old_assets/$asset" --clobber || true
+                    else
+                      echo "Archive release '$tag_name' does not exist. Creating new release and uploading $asset..."
+                      gh release create "$tag_name" "/tmp/old_assets/$asset" \
+                        --title "Release $tag_name" \
+                        --notes "由 GitHub Actions 自动归档的历史构建版本 ($tag_name)。" || true
+                    fi
+                  else
+                    echo "Error: Failed to download $asset to local workspace."
+                  fi
+                else
+                  # 如果不匹配版本格式，说明是其他非规范资产，直接从 latest 移除以清理
+                  echo "Asset $asset does not match standard version pattern. Deleting directly..."
+                  gh release delete-asset latest "$asset" -y || true
+                fi
+              done
+            else
+              echo "No existing assets found in 'latest' release."
+            fi
+          else
+            echo "'latest' release does not exist yet. Skipping archive and cleanup."
+          fi
+
       - name: Create Continuous Release
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
