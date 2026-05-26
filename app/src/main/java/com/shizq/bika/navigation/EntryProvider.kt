@@ -85,6 +85,31 @@ fun EntryProviderScope<NavKey>.authenticationSection(
     }
 }
 
+private fun slideTransitionMetadata() = metadata {
+    put(NavDisplay.TransitionKey) {
+        slideInHorizontally(
+            initialOffsetX = { it },
+            animationSpec = tween(300)
+        ) togetherWith ExitTransition.KeepUntilTransitionsFinished
+    }
+
+    put(NavDisplay.PopTransitionKey) {
+        EnterTransition.None togetherWith
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(300)
+                )
+    }
+
+    put(NavDisplay.PredictivePopTransitionKey) {
+        EnterTransition.None togetherWith
+                slideOutHorizontally(
+                    targetOffsetX = { it },
+                    animationSpec = tween(300)
+                )
+    }
+}
+
 fun EntryProviderScope<NavKey>.featureSection(
     navigator: Navigator,
 ) {
@@ -103,7 +128,9 @@ fun EntryProviderScope<NavKey>.featureSection(
             onDownloadsClick = { navigator.navigate(ConnectedRoute.DownloadListRoute) },
         )
     }
-    entry<ConnectedRoute.FeedRoute> { key ->
+    entry<ConnectedRoute.FeedRoute>(
+        metadata = slideTransitionMetadata()
+    ) { key ->
         FeedScreen(
             title = key.action.name,
             onBackClick = { navigator.goBack() },
@@ -115,13 +142,17 @@ fun EntryProviderScope<NavKey>.featureSection(
             },
         )
     }
-    entry<ConnectedRoute.HistoryRoute> {
+    entry<ConnectedRoute.HistoryRoute>(
+        metadata = slideTransitionMetadata()
+    ) {
         HistoryScreen(
             onComicClick = navigator::navigateToUnitedDetail,
             onBackClick = navigator::goBack
         )
     }
-    entry<ConnectedRoute.LeaderboardRoute> {
+    entry<ConnectedRoute.LeaderboardRoute>(
+        metadata = slideTransitionMetadata()
+    ) {
         LeaderboardScreen(
             navigationToUnitedDetail = { navigator.navigateToUnitedDetail(it) },
             navigationToKnight = { name, id ->
@@ -129,13 +160,17 @@ fun EntryProviderScope<NavKey>.featureSection(
             }
         )
     }
-    entry<ConnectedRoute.MineCommentRoute> { key ->
+    entry<ConnectedRoute.MineCommentRoute>(
+        metadata = slideTransitionMetadata()
+    ) { key ->
         MineCommentScreen(
             onCardClick = navigator::navigateToUnitedDetail,
             onBackClick = navigator::goBack
         )
     }
-    entry<ConnectedRoute.ReaderRoute> { key ->
+    entry<ConnectedRoute.ReaderRoute>(
+        metadata = slideTransitionMetadata()
+    ) { key ->
         val id = key.id
         ReaderScreen(
             onBackClick = { navigator.goBack() },
@@ -148,30 +183,7 @@ fun EntryProviderScope<NavKey>.featureSection(
     }
 
     entry<ConnectedRoute.SearchRoute>(
-        metadata = metadata {
-            put(NavDisplay.TransitionKey) {
-                slideInHorizontally(
-                    initialOffsetX = { it },
-                    animationSpec = tween(300)
-                ) togetherWith ExitTransition.KeepUntilTransitionsFinished
-            }
-
-            put(NavDisplay.PopTransitionKey) {
-                EnterTransition.None togetherWith
-                        slideOutHorizontally(
-                            targetOffsetX = { it },
-                            animationSpec = tween(300)
-                        )
-            }
-
-            put(NavDisplay.PredictivePopTransitionKey) {
-                EnterTransition.None togetherWith
-                        slideOutHorizontally(
-                            targetOffsetX = { it },
-                            animationSpec = tween(300)
-                        )
-            }
-        }
+        metadata = slideTransitionMetadata()
     ) {
         SearchScreen(
             onSearchClick = {
@@ -180,13 +192,17 @@ fun EntryProviderScope<NavKey>.featureSection(
             onBackClick = navigator::goBack
         )
     }
-    entry<ConnectedRoute.SettingsRoute> {
+    entry<ConnectedRoute.SettingsRoute>(
+        metadata = slideTransitionMetadata()
+    ) {
         SettingsScreen(
             navigationToLogin = { navigator.navigate(AuthenticationRoute) },
             onBackClick = navigator::goBack
         )
     }
-    entry<ConnectedRoute.DownloadListRoute> {
+    entry<ConnectedRoute.DownloadListRoute>(
+        metadata = slideTransitionMetadata()
+    ) {
         DownloadListScreen(
             onBackClick = navigator::goBack,
             onComicClick = { comicId, order ->
@@ -195,7 +211,9 @@ fun EntryProviderScope<NavKey>.featureSection(
             }
         )
     }
-    entry<ConnectedRoute.UnitedDetailRoute> { key ->
+    entry<ConnectedRoute.UnitedDetailRoute>(
+        metadata = slideTransitionMetadata()
+    ) { key ->
         val id = key.id
         ComicDetailScreen(
             viewModel = hiltViewModel<ComicInfoViewModel, ComicInfoViewModel.Factory>(

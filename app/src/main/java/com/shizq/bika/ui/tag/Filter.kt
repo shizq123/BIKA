@@ -30,15 +30,15 @@ fun rememberFilterState(
     selections: Map<FilterGroup, List<String>>
 ): FilterState {
     return remember(selections) {
-        val filterGroups = listOf(FilterGroup.Topic, FilterGroup.Status)
+        val filterGroups = listOf(FilterGroup.Topic, FilterGroup.ExcludeTopic, FilterGroup.Status)
         val chips = filterGroups.map { group ->
 
             val currentSelection = selections[group].orEmpty()
 
             val (label, values) = when (group) {
                 is FilterGroup.Topic -> "主题" to group.values
+                is FilterGroup.ExcludeTopic -> "排除主题" to group.values
                 is FilterGroup.Status -> "状态" to group.values
-                else -> "" to emptyList()
             }
             FilterChipState(
                 label = label,
@@ -123,7 +123,11 @@ fun FilterChip(
 
 private fun renderChipLabel(state: FilterChipState): String {
     return if (state.hasSelection) {
-        state.selected.joinToString(",")
+        if (state.kind is FilterGroup.ExcludeTopic) {
+            "排除: " + state.selected.joinToString(",")
+        } else {
+            state.selected.joinToString(",")
+        }
     } else {
         state.label
     }

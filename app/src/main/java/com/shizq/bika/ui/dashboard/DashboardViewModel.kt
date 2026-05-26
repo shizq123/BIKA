@@ -21,12 +21,25 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 
+import com.shizq.bika.core.coroutine.restartable
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
+
+sealed interface CheckInEvent {
+    data class Success(val message: String) : CheckInEvent
+    data class Error(val error: String) : CheckInEvent
+}
+
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val network: BikaDataSource,
 ) : ViewModel() {
     private val dashboardRestarter = FlowRestarter()
+
+    private val _checkInEvent = MutableSharedFlow<CheckInEvent>()
+    val checkInEvent = _checkInEvent.asSharedFlow()
+
     val userChannelPreferences = userPreferencesDataSource.userData
         .map { preferences ->
             preferences.channels.filter { it.isActive }
@@ -39,6 +52,7 @@ class DashboardViewModel @Inject constructor(
     val userProfileUiState = flow {
         emit(network.fetchUserProfile())
     }.asResult()
+        .restartable(dashboardRestarter)
         .map { result ->
             when (result) {
                 Result.Loading -> UserProfileUiState.Loading
@@ -73,15 +87,19 @@ class DashboardViewModel @Inject constructor(
 
     // performAutoCheckIn
     // performInitialLogin
-    fun onCheckIn() {
+    fun onCheckIn(isAuto: Boolean = false) {
         viewModelScope.launch {
 //            if (!userPreferencesDataSource.userData.first().autoCheckIn) {
 //                return@launch
 //            }
             try {
                 network.punchIn()
+                val msg = if (isAuto) "自动签到成功！已成功打哔咔。" else "打卡成功！已成功打哔咔。"
+                _checkInEvent.emit(CheckInEvent.Success(msg))
+                restart()
             } catch (e: Exception) {
                 Log.e("DashboardViewModel", "签到失败", e)
+                _checkInEvent.emit(CheckInEvent.Error("打卡失败：${e.localizedMessage ?: "未知错误"}"))
             }
         }
     }

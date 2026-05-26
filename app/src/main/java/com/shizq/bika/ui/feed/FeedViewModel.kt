@@ -100,6 +100,11 @@ class FeedViewModel @AssistedInject constructor(
                     selectedValues.any { it in comic.categories }
                 }
 
+                is FilterGroup.ExcludeTopic -> {
+                    // 排除勾选的主题分类：漫画所有的 categories 里必须没有任何一个被包含在 selectedValues 中
+                    selectedValues.none { it in comic.categories }
+                }
+
                 is FilterGroup.Status -> {
                     val isFinishedSelected = "完结" in selectedValues
                     val isOngoingSelected = "连载" in selectedValues
@@ -113,8 +118,6 @@ class FeedViewModel @AssistedInject constructor(
                         true
                     }
                 }
-                // 兜底逻辑
-                else -> true
             }
             // AND 逻辑：只要有任意一组条件不满足，这本漫画就被过滤掉
             if (!matchesGroup) {

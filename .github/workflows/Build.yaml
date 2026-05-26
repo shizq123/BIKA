@@ -26,6 +26,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          fetch-depth: 5
 
       - name: Copy CI gradle.properties
         run: mkdir -p ~/.gradle ; cp .github/ci-gradle.properties ~/.gradle/gradle.properties
@@ -55,3 +57,41 @@ jobs:
         with:
           name: APKs
           path: '**/build/outputs/apk/**/*.apk'
+
+      - name: Generate Git Changelog
+        id: changelog
+        run: |
+          echo "git_changelog<<EOF" >> $GITHUB_OUTPUT
+          git log -5 --pretty=format:"* %s (%h) - %an" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          echo "latest_commit<<EOF" >> $GITHUB_OUTPUT
+          git log -1 --pretty=format:"%B" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Continuous Release
+        if: github.ref == 'refs/heads/master' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: Continuous Build (Latest)
+          body: |
+            自动打包成功！这是最新的自动构建版本。
+            
+            ### 📝 最新更新内容 (Git Commit Info)
+            ${{ steps.changelog.outputs.latest_commit }}
+            
+            ---
+            ### 📜 近期提交历史 (Changelog)
+            ${{ steps.changelog.outputs.git_changelog }}
+            
+            ---
+            **构建分支**: `master`
+            **提交哈希**: `${{ github.sha }}`
+            **构建时间**: ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+          prerelease: true
+          make_latest: true
+          files: |
+            app/build/outputs/apk/**/*.apk

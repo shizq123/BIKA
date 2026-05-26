@@ -89,6 +89,9 @@ import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+
 @Composable
 fun DashboardScreen(
     navigationToLeaderboard: () -> Unit,
@@ -104,9 +107,45 @@ fun DashboardScreen(
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
-    LaunchedEffect(Unit) {
-        viewModel.onCheckIn()
+    
+    var checkInDialogMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(viewModel.checkInEvent) {
+        viewModel.checkInEvent.collect { event ->
+            when (event) {
+                is CheckInEvent.Success -> {
+                    checkInDialogMessage = event.message
+                }
+                is CheckInEvent.Error -> {
+                    checkInDialogMessage = event.error
+                }
+            }
+        }
     }
+
+    // 自动打卡触发器：用户信息加载成功后，如果发现未打卡，才在后台安全触发自动打卡
+    LaunchedEffect(userProfileUiState) {
+        val state = userProfileUiState
+        if (state is UserProfileUiState.Success) {
+            if (!state.user.hasCheckedIn) {
+                viewModel.onCheckIn(isAuto = true)
+            }
+        }
+    }
+
+    if (checkInDialogMessage != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { checkInDialogMessage = null },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { checkInDialogMessage = null }) {
+                    Text("确定")
+                }
+            },
+            title = { Text("打哔咔提示") },
+            text = { Text(checkInDialogMessage!!) }
+        )
+    }
+
     DashboardContent(
         userProfileUiState = userProfileUiState,
         onCheckInClick = viewModel::onCheckIn,
