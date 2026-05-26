@@ -228,6 +228,7 @@ fun DashboardScreen(
     DashboardContent(
         userProfileUiState = userProfileUiState,
         onCheckInClick = viewModel::onCheckIn,
+        onUpdateSlogan = viewModel::updateProfileSlogan,
         channelSettingsUiState = channelSettingsUiState,
         navigationToLeaderboard = navigationToLeaderboard,
         navigateToFavourite = navigateToFavourite,
@@ -246,6 +247,7 @@ fun DashboardScreen(
 fun DashboardContent(
     userProfileUiState: UserProfileUiState,
     onCheckInClick: () -> Unit,
+    onUpdateSlogan: (String) -> Unit,
     channelSettingsUiState: List<Channel>,
     navigationToLeaderboard: () -> Unit,
     navigateToFavourite: (DiscoveryAction) -> Unit,
@@ -259,6 +261,47 @@ fun DashboardContent(
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+    var inputSlogan by remember { mutableStateOf("") }
+
+    LaunchedEffect(userProfileUiState, showEditProfileDialog) {
+        if (userProfileUiState is UserProfileUiState.Success && showEditProfileDialog) {
+            inputSlogan = userProfileUiState.user.slogan
+        }
+    }
+
+    if (showEditProfileDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showEditProfileDialog = false },
+            title = { Text("修改自我介绍") },
+            text = {
+                androidx.compose.material3.OutlinedTextField(
+                    value = inputSlogan,
+                    onValueChange = { inputSlogan = it },
+                    label = { Text("自我介绍") },
+                    placeholder = { Text("输入您的个性签名") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onUpdateSlogan(inputSlogan)
+                        showEditProfileDialog = false
+                    }
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showEditProfileDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch {
             drawerState.close()
@@ -289,7 +332,10 @@ fun DashboardContent(
                         }
                     },
                     onEditProfileClick = {
-
+                        scope.launch {
+                            drawerState.close()
+                            showEditProfileDialog = true
+                        }
                     },
                     onHistoryClick = {
                         scope.launch {

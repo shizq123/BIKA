@@ -26,6 +26,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import jakarta.inject.Inject
@@ -75,6 +76,15 @@ class BikaDataSource @Inject constructor(
 
     suspend fun punchIn() {
         client.post("users/punch-in").bodyAsText()
+    }
+
+    suspend fun updateUserProfileSlogan(slogan: String) {
+        client.put("users/profile") {
+            val jsonBody = buildJsonObject {
+                put("slogan", JsonPrimitive(slogan))
+            }
+            setBody(jsonBody)
+        }
     }
 
     suspend fun fetchUserProfile(): ProfileData {
