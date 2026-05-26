@@ -85,7 +85,7 @@ import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.navigation.DiscoveryAction
-import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -530,8 +530,7 @@ private fun navigation(
         "游戏推荐" -> navigateToGame()
 //            "哔咔小程序" -> start(AppsActivity::class.java)
         "留言板" -> {
-            val intent = Intent(context, ChatRoomListActivity::class.java)
-            context.startActivity(intent)
+            android.widget.Toast.makeText(context, "该功能已下线", android.widget.Toast.LENGTH_SHORT).show()
         }
 
         "最近更新" -> navigateToSearch(DiscoveryAction.ToRecent)

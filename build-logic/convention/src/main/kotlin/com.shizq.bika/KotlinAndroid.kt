@@ -87,5 +87,6 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
         freeCompilerArgs.add("-Xexplicit-backing-fields")
         freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
         freeCompilerArgs.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi")
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
 }

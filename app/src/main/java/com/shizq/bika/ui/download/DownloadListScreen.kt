@@ -51,6 +51,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.activity.compose.BackHandler
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -79,6 +80,10 @@ fun DownloadListScreen(
     val context = LocalContext.current
     var currentComicId by remember { mutableStateOf<String?>(null) }
 
+    BackHandler(enabled = currentComicId != null) {
+        currentComicId = null
+    }
+
     // Group tasks by comicId
     val groupedComics = remember(tasks) {
         tasks.groupBy { it.comicId }.map { (comicId, comicTasks) ->
@@ -95,6 +100,7 @@ fun DownloadListScreen(
     val selectedComic = remember(tasks, currentComicId) {
         if (currentComicId != null) {
             tasks.filter { it.comicId == currentComicId }
+                .sortedBy { it.episodeOrder }
         } else {
             emptyList()
         }

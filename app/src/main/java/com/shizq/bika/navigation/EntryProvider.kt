@@ -128,6 +128,8 @@ fun EntryProviderScope<NavKey>.featureSection(
             onDownloadsClick = { navigator.navigate(ConnectedRoute.DownloadListRoute) },
         )
     }
+
+
     entry<ConnectedRoute.FeedRoute>(
         metadata = slideTransitionMetadata()
     ) { key ->

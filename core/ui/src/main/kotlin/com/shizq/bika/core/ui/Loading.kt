@@ -1,10 +1,5 @@
 package com.shizq.bika.core.ui
 
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -15,7 +10,12 @@ import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -78,38 +78,37 @@ fun CircularProgressIndicator(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary,
     strokeWidth: Dp = 4.dp,
-    trackColor: Color = Color.Transparent, // 默认无底轨以凸显转动
+    trackColor: Color = Color.Transparent,
     strokeCap: StrokeCap = StrokeCap.Round,
 ) {
-    val transition = rememberInfiniteTransition(label = "loading")
-    
-    // 旋转动画：1.2秒转一圈
-    val rotation by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing)
-        ),
-        label = "rotation"
-    )
-    
-    // 弧度伸缩动画：1.2秒一个周期
-    val rawSweep by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1200, easing = LinearEasing)
-        ),
-        label = "rawSweep"
-    )
-    
-    // 计算当前弧度（在 30 度到 270 度之间来回拉伸和收缩）
+    // 使用 withFrameNanos 驱动动画，完全绕过系统"动画程序时长缩放比例"设置
+    // 即使系统动画缩放为 0x，动画依然正常运行
+    var rotation by remember { mutableFloatStateOf(0f) }
+    var rawSweep by remember { mutableFloatStateOf(0f) }
+
+    LaunchedEffect(Unit) {
+        var lastFrameNanos = -1L
+        while (true) {
+            withFrameNanos { frameNanos ->
+                if (lastFrameNanos > 0) {
+                    val elapsedMs = (frameNanos - lastFrameNanos) / 1_000_000f
+                    // 旋转：1333ms 一圈（Material Design 标准速度）
+                    rotation = (rotation + elapsedMs * 360f / 1333f) % 360f
+                    // 伸缩：600ms 一周期（与旋转错相，产生明显运动感）
+                    rawSweep = (rawSweep + elapsedMs / 600f) % 1f
+                }
+                lastFrameNanos = frameNanos
+            }
+        }
+    }
+
+    // 计算当前弧度（在 30° 到 270° 之间来回拉伸和收缩）
     val sweepAngle = if (rawSweep < 0.5f) {
         30f + (rawSweep / 0.5f) * 240f
     } else {
         270f - ((rawSweep - 0.5f) / 0.5f) * 240f
     }
-    
+
     // 前半段起点固定，后半段起点向前移动以产生回弹效果
     val startAngleOffset = if (rawSweep < 0.5f) {
         0f
@@ -118,11 +117,11 @@ fun CircularProgressIndicator(
     }
 
     Canvas(
-        modifier = modifier.size(40.dp)
+        modifier = Modifier.size(40.dp).then(modifier)
     ) {
         val strokeWidthPx = strokeWidth.toPx()
         val arcSize = size.minDimension - strokeWidthPx
-        
+
         // 绘制背景轨道（如果有指定）
         if (trackColor != Color.Transparent) {
             drawCircle(
@@ -132,7 +131,7 @@ fun CircularProgressIndicator(
                 style = Stroke(width = strokeWidthPx)
             )
         }
-        
+
         // 绘制旋转且自动拉伸的圆弧
         drawArc(
             color = color,
@@ -153,5 +152,3 @@ private fun LoadingPreview() {
         Loading()
     }
 }
-
-

@@ -593,7 +593,7 @@ fun MangaBottomBar(
                             MaterialTheme.colorScheme.onSecondaryContainer
                         }
                         FilledTonalButton(
-                            onClick = {},
+                            onClick = onFavoriteClick,
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -614,7 +614,7 @@ fun MangaBottomBar(
                     BottomBarButtonType.DOWNLOAD -> {
                         if (showDownload) {
                             FilledTonalButton(
-                                onClick = {},
+                                onClick = onDownloadClick,
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
@@ -635,7 +635,7 @@ fun MangaBottomBar(
                     }
                     BottomBarButtonType.READ -> {
                         Button(
-                            onClick = {},
+                            onClick = onReadClick,
                             modifier = Modifier
                                 .weight(1.5f)
                                 .fillMaxHeight()
