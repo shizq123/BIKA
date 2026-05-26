@@ -40,18 +40,16 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          build-scan-publish: true
-          build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
-          build-scan-terms-of-use-agree: "yes"
+          build-scan-publish: false
 
-      - name: Build all build type and flavor permutations
-        run: ./gradlew :app:assemble -PminifyWithR8=false
+      - name: Build Release APK
+        run: ./gradlew :app:assembleRelease -PminifyWithR8=false
 
       - name: Upload build outputs (APKs)
         uses: actions/upload-artifact@v7
         with:
           name: APKs
-          path: '**/build/outputs/apk/**/*.apk'
+          path: 'app/build/outputs/apk/release/*.apk'
 
       - name: Generate Git Changelog
         id: changelog
@@ -144,4 +142,4 @@ jobs:
           prerelease: true
           make_latest: true
           files: |
-            app/build/outputs/apk/**/*.apk
+            app/build/outputs/apk/release/*.apk
