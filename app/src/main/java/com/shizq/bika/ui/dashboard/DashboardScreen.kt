@@ -107,8 +107,14 @@ fun DashboardScreen(
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val context = LocalContext.current
     
     var checkInDialogMessage by remember { mutableStateOf<String?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.checkUpdate(com.shizq.bika.BuildConfig.VERSION_NAME)
+    }
 
     LaunchedEffect(viewModel.checkInEvent) {
         viewModel.checkInEvent.collect { event ->
@@ -144,6 +150,79 @@ fun DashboardScreen(
             title = { Text("打哔咔提示") },
             text = { Text(checkInDialogMessage!!) }
         )
+    }
+
+    // ================== 版本更新 UI 渲染控制 ==================
+    when (val state = updateState) {
+        is DashboardViewModel.UpdateUiState.HasUpdate -> {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { viewModel.resetUpdateState() },
+                confirmButton = {
+                    androidx.compose.material3.Button(onClick = {
+                        viewModel.downloadAndInstall(context, state.downloadUrl)
+                    }) {
+                        Text("立即更新")
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { viewModel.resetUpdateState() }) {
+                        Text("稍后")
+                    }
+                },
+                title = { Text("发现新版本 v${state.remoteVersion}") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("检测到有最新版可以更新，是否立即升级？")
+                        if (state.changelog.isNotEmpty()) {
+                            Text(
+                                text = "更新日志：\n${state.changelog}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+        is DashboardViewModel.UpdateUiState.Downloading -> {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = {},
+                confirmButton = {},
+                title = { Text("正在下载更新...") },
+                text = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { state.progress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "已下载: ${(state.progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            )
+        }
+
+        is DashboardViewModel.UpdateUiState.Error -> {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { viewModel.resetUpdateState() },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = { viewModel.resetUpdateState() }) {
+                        Text("确定")
+                    }
+                },
+                title = { Text("更新失败") },
+                text = { Text(state.message) }
+            )
+        }
+
+        else -> {}
     }
 
     DashboardContent(
