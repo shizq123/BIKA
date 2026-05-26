@@ -242,13 +242,19 @@ class DashboardViewModel @Inject constructor(
         return false
     }
 
-    fun updateProfileSlogan(slogan: String) {
+    fun updateProfileSlogan(
+        slogan: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
         viewModelScope.launch {
             try {
                 network.updateUserProfileSlogan(slogan)
                 restart()
+                onSuccess()
             } catch (e: Exception) {
                 Log.e("DashboardViewModel", "更新自我介绍失败", e)
+                onError(e.localizedMessage ?: "更新失败")
             }
         }
     }

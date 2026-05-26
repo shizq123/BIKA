@@ -247,7 +247,7 @@ fun DashboardScreen(
 fun DashboardContent(
     userProfileUiState: UserProfileUiState,
     onCheckInClick: () -> Unit,
-    onUpdateSlogan: (String) -> Unit,
+    onUpdateSlogan: (String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
     channelSettingsUiState: List<Channel>,
     navigationToLeaderboard: () -> Unit,
     navigateToFavourite: (DiscoveryAction) -> Unit,
@@ -263,39 +263,83 @@ fun DashboardContent(
     val scope = rememberCoroutineScope()
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var inputSlogan by remember { mutableStateOf("") }
+    var isSaving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(userProfileUiState, showEditProfileDialog) {
-        if (userProfileUiState is UserProfileUiState.Success && showEditProfileDialog) {
-            inputSlogan = userProfileUiState.user.slogan
+    LaunchedEffect(showEditProfileDialog) {
+        if (showEditProfileDialog) {
+            isSaving = false
+            errorMessage = null
+            if (userProfileUiState is UserProfileUiState.Success) {
+                inputSlogan = userProfileUiState.user.slogan
+            }
         }
     }
 
     if (showEditProfileDialog) {
         androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showEditProfileDialog = false },
+            onDismissRequest = { if (!isSaving) showEditProfileDialog = false },
             title = { Text("修改自我介绍") },
             text = {
-                androidx.compose.material3.OutlinedTextField(
-                    value = inputSlogan,
-                    onValueChange = { inputSlogan = it },
-                    label = { Text("自我介绍") },
-                    placeholder = { Text("输入您的个性签名") },
-                    singleLine = true,
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = inputSlogan,
+                        onValueChange = { inputSlogan = it },
+                        label = { Text("自我介绍") },
+                        placeholder = { Text("输入您的个性签名") },
+                        singleLine = true,
+                        enabled = !isSaving,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (errorMessage != null) {
+                        Text(
+                            text = errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (isSaving) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
             },
             confirmButton = {
                 TextButton(
+                    enabled = !isSaving,
                     onClick = {
-                        onUpdateSlogan(inputSlogan)
-                        showEditProfileDialog = false
+                        isSaving = true
+                        errorMessage = null
+                        onUpdateSlogan(
+                            inputSlogan,
+                            {
+                                isSaving = false
+                                showEditProfileDialog = false
+                            },
+                            { err ->
+                                isSaving = false
+                                errorMessage = err
+                            }
+                        )
                     }
                 ) {
                     Text("保存")
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showEditProfileDialog = false }) {
+                TextButton(
+                    enabled = !isSaving,
+                    onClick = { showEditProfileDialog = false }
+                ) {
                     Text("取消")
                 }
             }

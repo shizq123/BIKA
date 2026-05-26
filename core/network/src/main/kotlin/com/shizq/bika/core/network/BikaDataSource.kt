@@ -84,7 +84,7 @@ class BikaDataSource @Inject constructor(
                 put("slogan", JsonPrimitive(slogan))
             }
             setBody(jsonBody)
-        }
+        }.bodyAsText()
     }
 
     suspend fun fetchUserProfile(): ProfileData {
