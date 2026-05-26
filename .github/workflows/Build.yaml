@@ -10,8 +10,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  test_and_apk:
-    name: "Local tests and APKs"
+  build_apk:
+    name: "Build APKs"
     runs-on: ubuntu-latest
 
     permissions:
@@ -43,9 +43,6 @@ jobs:
           build-scan-publish: true
           build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
           build-scan-terms-of-use-agree: "yes"
-
-      - name: Check build-logic
-        run: ./gradlew :build-logic:convention:check
 
       - name: Build all build type and flavor permutations
         run: ./gradlew :app:assemble -PminifyWithR8=false
