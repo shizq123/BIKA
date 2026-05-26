@@ -75,6 +75,7 @@ fun ComicDetailScreen(
         dispatch = viewModel::dispatch,
         replyList = replyList,
         navigationToFeed = navigationToFeed,
+        viewModel = viewModel,
     )
 }
 
@@ -92,6 +93,7 @@ fun ComicDetailContent(
     dispatch: (UnitedDetailsAction) -> Unit = {},
     replyList: LazyPagingItems<Comment>,
     navigationToFeed: (DiscoveryAction) -> Unit,
+    viewModel: ComicInfoViewModel,
 ) {
     when (unitedState) {
         is UnitedDetailsUiState.Initialize -> LoadingState()
@@ -152,17 +154,52 @@ fun ComicDetailContent(
                                 navigationToReader = { navigationToReader(detail.id, 1) },
                                 navigationToComicInfo = { navigationToComicInfo(it) },
                                 navigationToFeed = navigationToFeed,
-                                onDownloadClick = {
-                                    DownloadWorker.startDownload(
-                                        context = context,
-                                        comicId = detail.id,
-                                        comicTitle = detail.title,
-                                        coverUrl = detail.cover,
-                                        episodeId = "single_episode",
-                                        episodeTitle = "全一话",
-                                        episodeOrder = 1
-                                    )
-                                    Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
+                                 onDownloadClick = {
+                                    if (detail.epsCount <= 1) {
+                                        DownloadWorker.startDownload(
+                                            context = context,
+                                            comicId = detail.id,
+                                            comicTitle = detail.title,
+                                            coverUrl = detail.cover,
+                                            episodeId = "single_episode",
+                                            episodeTitle = "全一话",
+                                            episodeOrder = 1
+                                        )
+                                        Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        scope.launch {
+                                            try {
+                                                Toast.makeText(context, "正在获取章节列表，准备全部下载...", Toast.LENGTH_SHORT).show()
+                                                var pageIndex = 1
+                                                var hasNext = true
+                                                var totalQueued = 0
+                                                while (hasNext) {
+                                                    val res = viewModel.network.getComicEpisodes(detail.id, pageIndex)
+                                                    val epsList = res.eps.docs
+                                                    epsList.forEach { episode: Episode ->
+                                                        DownloadWorker.startDownload(
+                                                            context = context,
+                                                            comicId = detail.id,
+                                                            comicTitle = detail.title,
+                                                            coverUrl = detail.cover,
+                                                            episodeId = episode.id,
+                                                            episodeTitle = episode.title,
+                                                            episodeOrder = episode.order
+                                                        )
+                                                        totalQueued++
+                                                    }
+                                                    if (pageIndex < res.eps.pages) {
+                                                        pageIndex++
+                                                    } else {
+                                                        hasNext = false
+                                                    }
+                                                }
+                                                Toast.makeText(context, "已成功将所有 ${totalQueued} 个章节加入下载队列", Toast.LENGTH_LONG).show()
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "获取章节失败，请重试: ${e.message}", Toast.LENGTH_LONG).show()
+                                            }
+                                        }
+                                    }
                                 }
                             )
 

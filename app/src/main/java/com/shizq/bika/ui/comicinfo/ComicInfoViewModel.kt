@@ -29,7 +29,7 @@ private const val TAG = "ComicInfoViewModel"
 
 @HiltViewModel(assistedFactory = ComicInfoViewModel.Factory::class)
 class ComicInfoViewModel @AssistedInject constructor(
-    private val network: BikaDataSource,
+    val network: BikaDataSource,
     private val commentPagingSourceFactory: CommentPagingSource.Factory,
     private val replyPagingSourceFactory: ReplyPagingSource.Factory,
     stateMachineFactory: UnitedDetailsStateMachine.Factory,

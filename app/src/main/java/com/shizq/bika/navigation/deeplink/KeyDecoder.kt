@@ -1,6 +1,5 @@
 package com.shizq.bika.navigation.deeplink
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.descriptors.SerialDescriptor
 import kotlinx.serialization.encoding.AbstractDecoder
 import kotlinx.serialization.encoding.CompositeDecoder
@@ -12,7 +11,6 @@ import kotlinx.serialization.modules.SerializersModule
  *
  * **IMPORTANT** This decoder assumes that all argument types are Primitives.
  */
-@OptIn(ExperimentalSerializationApi::class)
 internal class KeyDecoder(
     private val arguments: Map<String, Any>,
 ) : AbstractDecoder() {

@@ -52,25 +52,29 @@ class BikaDataSource @Inject constructor(
     }
 
     suspend fun login(username: String, password: String): LoginData {
-        val response = client.post("auth/sign-in") {
-            attributes.put(ExpectRawResponse, Unit)
-            val jsonBody = buildJsonObject {
-                put("email", JsonPrimitive(username))
-                put("password", JsonPrimitive(password))
+        return try {
+            val response = client.post("auth/sign-in") {
+                attributes.put(ExpectRawResponse, Unit)
+                val jsonBody = buildJsonObject {
+                    put("email", JsonPrimitive(username))
+                    put("password", JsonPrimitive(password))
+                }
+                setBody(jsonBody)
             }
-            setBody(jsonBody)
-        }
 
-        val jsonObj = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        val code = jsonObj["code"]?.jsonPrimitive?.int
+            val jsonObj = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val code = jsonObj["code"]?.jsonPrimitive?.int
 
-        return if (code == 200) {
-            val dataObj = jsonObj["data"]?.jsonObject ?: throw Exception("数据异常")
-            val token = dataObj["token"]?.jsonPrimitive?.content ?: throw Exception("Token为空")
-            LoginData(token = token, message = null)
-        } else {
-            val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
-            LoginData(token = null, message = msg)
+            if (code == 200) {
+                val dataObj = jsonObj["data"]?.jsonObject ?: throw Exception("数据异常")
+                val token = dataObj["token"]?.jsonPrimitive?.content ?: throw Exception("Token为空")
+                LoginData(token = token, message = null)
+            } else {
+                val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
+                LoginData(token = null, message = msg)
+            }
+        } catch (e: Exception) {
+            LoginData(token = null, message = e.message ?: "登录失败")
         }
     }
 
