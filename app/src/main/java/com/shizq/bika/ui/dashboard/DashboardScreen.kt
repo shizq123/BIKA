@@ -197,7 +197,7 @@ fun DashboardScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         androidx.compose.material3.LinearProgressIndicator(
-                            progress = { state.progress },
+                            progress = state.progress,
                             modifier = Modifier.fillMaxWidth()
                         )
                         Text(
