@@ -33,6 +33,7 @@ import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 import com.shizq.bika.ui.download.DownloadListScreen
+import com.shizq.bika.ui.notifications.NotificationsScreen
 
 fun EntryProviderScope<NavKey>.rootSection(
     navigator: Navigator,
@@ -126,6 +127,7 @@ fun EntryProviderScope<NavKey>.featureSection(
             onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
             onCommentsClick = { navigator.navigate(ConnectedRoute.MineCommentRoute) },
             onDownloadsClick = { navigator.navigate(ConnectedRoute.DownloadListRoute) },
+            onNotificationsClick = { navigator.navigate(ConnectedRoute.NotificationsRoute) },
         )
     }
 
@@ -231,6 +233,14 @@ fun EntryProviderScope<NavKey>.featureSection(
             navigationToFeed = { action ->
                 navigator.navigate(ConnectedRoute.FeedRoute(action))
             }
+        )
+    }
+    entry<ConnectedRoute.NotificationsRoute>(
+        metadata = slideTransitionMetadata()
+    ) {
+        NotificationsScreen(
+            onComicClick = navigator::navigateToUnitedDetail,
+            onBackClick = navigator::goBack
         )
     }
 

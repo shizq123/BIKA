@@ -17,6 +17,7 @@ import com.shizq.bika.core.network.model.KnightLeaderboardData
 import com.shizq.bika.core.network.model.LeaderboardData
 import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
+import com.shizq.bika.core.network.model.NotificationsData
 import com.shizq.bika.core.network.model.ProfileData
 import com.shizq.bika.core.network.model.RecommendationData
 import com.shizq.bika.core.network.model.Type
@@ -275,6 +276,12 @@ class BikaDataSource @Inject constructor(
 
     suspend fun mineComment(page: Int): CommentDoc {
         return client.get("users/my-comments") {
+            parameter("page", page)
+        }.body()
+    }
+
+    suspend fun getNotifications(page: Int): NotificationsData {
+        return client.get("users/notifications") {
             parameter("page", page)
         }.body()
     }

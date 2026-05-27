@@ -50,7 +50,8 @@ data object ConnectedRoute : Root {
     @Serializable
     data class UnitedDetailRoute(val id: String) : Connected
 
-
+    @Serializable
+    data object NotificationsRoute : Connected
 
     @Serializable
     data object GuestbookRoute : Connected

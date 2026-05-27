@@ -108,6 +108,7 @@ fun DashboardScreen(
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
     onDownloadsClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
@@ -245,6 +246,7 @@ fun DashboardScreen(
         onChannelPreferenceClick = onChannelPreferenceClick,
         onCommentsClick = onCommentsClick,
         onDownloadsClick = onDownloadsClick,
+        onNotificationsClick = onNotificationsClick,
     )
 }
 
@@ -265,6 +267,7 @@ fun DashboardContent(
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
     onDownloadsClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -580,7 +583,10 @@ fun DashboardContent(
                         }
                     },
                     onNotificationsClick = {
-
+                        scope.launch {
+                            drawerState.close()
+                            onNotificationsClick()
+                        }
                     },
                     onCommentsClick = {
                         scope.launch {

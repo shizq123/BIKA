@@ -1,34 +1,25 @@
 package com.shizq.bika.ui.notifications
 
-import android.app.Application
-import androidx.lifecycle.MutableLiveData
-import com.shizq.bika.bean.NotificationsBean
-import com.shizq.bika.network.base.BaseResponse
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import androidx.paging.Pager
+import androidx.paging.PagingConfig
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
+import com.shizq.bika.core.network.model.NotificationDoc
+import com.shizq.bika.paging.NotificationsPagingSource
+import dagger.hilt.android.lifecycle.HiltViewModel
+import jakarta.inject.Inject
+import kotlinx.coroutines.flow.Flow
 
-class NotificationsViewModel(application: Application) {
-    var page = 0
-
-    val liveData: MutableLiveData<BaseResponse<NotificationsBean>> by lazy {
-        MutableLiveData<BaseResponse<NotificationsBean>>()
-    }
-
-    fun getNotifications() {
-//        page++
-//        RetrofitUtil.service.notificationsGet(
-//            page.toString(),
-//            BaseHeaders("users/notifications?page=$page", "GET").getHeaderMapAndToken()
-//        )
-//            .doOnSubscribe(this)
-//            .subscribe(object : BaseObserver<NotificationsBean>() {
-//                override fun onSuccess(baseResponse: BaseResponse<NotificationsBean>) {
-//                    liveData.postValue(baseResponse)
-//                }
-//
-//                override fun onCodeError(baseResponse: BaseResponse<NotificationsBean>) {
-//                    page--
-//                    liveData.postValue(baseResponse)
-//                }
-//
-//            })
-    }
+@HiltViewModel
+class NotificationsViewModel @Inject constructor(
+    private val notificationsPagingSource: NotificationsPagingSource,
+) : ViewModel() {
+    val notificationsFlow: Flow<PagingData<NotificationDoc>> = Pager(
+        config = PagingConfig(20),
+    ) {
+        notificationsPagingSource
+    }.flow
+        .cachedIn(viewModelScope)
 }

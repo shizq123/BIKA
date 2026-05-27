@@ -49,32 +49,7 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name=".ui.notifications.NotificationsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.mycomments.MyCommentsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.comiclist.ComicListActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.comment.CommentsActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.games.GamesActivity"
-            android:exported="false" />
-        <activity
-            android:name=".ui.games.GameInfoActivity"
-            android:exported="false" />
 
-        <activity
-            android:name=".ui.user.UserActivity"
-            android:exported="false" />
-
-        <activity
-            android:name=".ui.image.ImageActivity"
-            android:exported="false" />
 
 
 
