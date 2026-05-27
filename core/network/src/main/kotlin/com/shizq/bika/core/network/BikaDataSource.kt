@@ -91,6 +91,17 @@ class BikaDataSource @Inject constructor(
         }.bodyAsText()
     }
 
+    suspend fun changePassword(oldPassword: String, newPassword: String) {
+        client.put("users/password") {
+            val jsonBody = buildJsonObject {
+                put("old_password", JsonPrimitive(oldPassword))
+                put("password", JsonPrimitive(newPassword))
+            }
+            setBody(jsonBody)
+        }.bodyAsText()
+    }
+
+
     suspend fun fetchUserProfile(): ProfileData {
         return client.get("users/profile").body()
     }

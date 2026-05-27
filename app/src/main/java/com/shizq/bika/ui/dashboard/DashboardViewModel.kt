@@ -258,4 +258,21 @@ class DashboardViewModel @Inject constructor(
             }
         }
     }
+
+    fun changePassword(
+        oldPw: String,
+        newPw: String,
+        onSuccess: () -> Unit,
+        onError: (String) -> Unit
+    ) {
+        viewModelScope.launch {
+            try {
+                network.changePassword(oldPw, newPw)
+                onSuccess()
+            } catch (e: Exception) {
+                Log.e("DashboardViewModel", "修改密码失败", e)
+                onError(e.localizedMessage ?: "修改密码失败")
+            }
+        }
+    }
 }

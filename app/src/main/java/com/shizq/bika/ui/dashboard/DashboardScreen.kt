@@ -33,7 +33,12 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.Button
+
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -229,6 +234,7 @@ fun DashboardScreen(
         userProfileUiState = userProfileUiState,
         onCheckInClick = viewModel::onCheckIn,
         onUpdateSlogan = viewModel::updateProfileSlogan,
+        onChangePassword = viewModel::changePassword,
         channelSettingsUiState = channelSettingsUiState,
         navigationToLeaderboard = navigationToLeaderboard,
         navigateToFavourite = navigateToFavourite,
@@ -248,6 +254,7 @@ fun DashboardContent(
     userProfileUiState: UserProfileUiState,
     onCheckInClick: () -> Unit,
     onUpdateSlogan: (String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
+    onChangePassword: (String, String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
     channelSettingsUiState: List<Channel>,
     navigationToLeaderboard: () -> Unit,
     navigateToFavourite: (DiscoveryAction) -> Unit,
@@ -261,10 +268,21 @@ fun DashboardContent(
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var inputSlogan by remember { mutableStateOf("") }
     var isSaving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var inputOldPassword by remember { mutableStateOf("") }
+    var inputNewPassword by remember { mutableStateOf("") }
+    var inputConfirmPassword by remember { mutableStateOf("") }
+    var isPasswordSaving by remember { mutableStateOf(false) }
+    var passwordErrorMessage by remember { mutableStateOf<String?>(null) }
+    var oldPasswordVisible by remember { mutableStateOf(false) }
+    var newPasswordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
     LaunchedEffect(showEditProfileDialog) {
         if (showEditProfileDialog) {
@@ -276,10 +294,23 @@ fun DashboardContent(
         }
     }
 
+    LaunchedEffect(showChangePasswordDialog) {
+        if (showChangePasswordDialog) {
+            inputOldPassword = ""
+            inputNewPassword = ""
+            inputConfirmPassword = ""
+            isPasswordSaving = false
+            passwordErrorMessage = null
+            oldPasswordVisible = false
+            newPasswordVisible = false
+            confirmPasswordVisible = false
+        }
+    }
+
     if (showEditProfileDialog) {
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { if (!isSaving) showEditProfileDialog = false },
-            title = { Text("修改自我介绍") },
+            title = { Text("修改资料") },
             text = {
                 Column(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -310,6 +341,24 @@ fun DashboardContent(
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    TextButton(
+                        onClick = {
+                            showEditProfileDialog = false
+                            showChangePasswordDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("修改密码")
                     }
                 }
             },
@@ -345,6 +394,143 @@ fun DashboardContent(
             }
         )
     }
+
+    if (showChangePasswordDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { if (!isPasswordSaving) showChangePasswordDialog = false },
+            title = { Text("修改密码") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = inputOldPassword,
+                        onValueChange = { inputOldPassword = it },
+                        label = { Text("旧密码") },
+                        placeholder = { Text("请输入旧密码") },
+                        singleLine = true,
+                        enabled = !isPasswordSaving,
+                        visualTransformation = if (oldPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { oldPasswordVisible = !oldPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (oldPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (oldPasswordVisible) "隐藏旧密码" else "显示旧密码"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    androidx.compose.material3.OutlinedTextField(
+                        value = inputNewPassword,
+                        onValueChange = { inputNewPassword = it },
+                        label = { Text("新密码") },
+                        placeholder = { Text("请输入新密码（至少8位）") },
+                        singleLine = true,
+                        enabled = !isPasswordSaving,
+                        visualTransformation = if (newPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (newPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (newPasswordVisible) "隐藏新密码" else "显示新密码"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    androidx.compose.material3.OutlinedTextField(
+                        value = inputConfirmPassword,
+                        onValueChange = { inputConfirmPassword = it },
+                        label = { Text("确认新密码") },
+                        placeholder = { Text("请再次输入新密码") },
+                        singleLine = true,
+                        enabled = !isPasswordSaving,
+                        visualTransformation = if (confirmPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (confirmPasswordVisible) "隐藏确认密码" else "显示确认密码"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (passwordErrorMessage != null) {
+                        Text(
+                            text = passwordErrorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (isPasswordSaving) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isPasswordSaving,
+                    onClick = {
+                        if (inputOldPassword.isEmpty()) {
+                            passwordErrorMessage = "请输入旧密码"
+                            return@TextButton
+                        }
+                        if (inputNewPassword.isEmpty()) {
+                            passwordErrorMessage = "请输入新密码"
+                            return@TextButton
+                        }
+                        if (inputNewPassword.length < 8) {
+                            passwordErrorMessage = "新密码长度至少需要8个字符"
+                            return@TextButton
+                        }
+                        if (inputNewPassword != inputConfirmPassword) {
+                            passwordErrorMessage = "两次输入的新密码不一致"
+                            return@TextButton
+                        }
+
+                        isPasswordSaving = true
+                        passwordErrorMessage = null
+                        onChangePassword(
+                            inputOldPassword,
+                            inputNewPassword,
+                            {
+                                isPasswordSaving = false
+                                showChangePasswordDialog = false
+                                android.widget.Toast.makeText(context, "密码修改成功", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            { err ->
+                                isPasswordSaving = false
+                                passwordErrorMessage = err
+                            }
+                        )
+                    }
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isPasswordSaving,
+                    onClick = { showChangePasswordDialog = false }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
 
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch {
