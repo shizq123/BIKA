@@ -64,7 +64,7 @@ class SettingsViewModel @Inject constructor(
                     .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
                     .build()
                 val request = okhttp3.Request.Builder()
-                    .url("https://api.github.com/repos/shizq123/BIKA/releases/latest")
+                    .url("https://api.github.com/repos/STlxx-lin/BIKA/releases/tags/latest")
                     .header("User-Agent", "BIKA-Android")
                     .build()
                 okHttpClient.newCall(request).execute().use { response ->
@@ -73,18 +73,30 @@ class SettingsViewModel @Inject constructor(
                     val json = Json.parseToJsonElement(bodyString).jsonObject
                     val tagName = json["tag_name"]?.jsonPrimitive?.content ?: throw Exception("未找到 tag_name")
                     val releaseNotes = json["body"]?.jsonPrimitive?.content ?: ""
-                    val htmlUrl = json["html_url"]?.jsonPrimitive?.content ?: "https://github.com/shizq123/BIKA/releases"
+                    val htmlUrl = json["html_url"]?.jsonPrimitive?.content ?: "https://github.com/STlxx-lin/BIKA/releases"
 
                     val assets = json["assets"]?.jsonArray
-                    val apkUrl = assets?.firstOrNull {
-                        it.jsonObject["name"]?.jsonPrimitive?.content?.endsWith(".apk") == true
-                    }?.jsonObject["browser_download_url"]?.jsonPrimitive?.content ?: htmlUrl
+                    var apkUrl = htmlUrl
+                    var remoteVersion = ""
+                    if (assets != null) {
+                        for (i in 0 until assets.size) {
+                            val assetObj = assets[i].jsonObject
+                            val name = assetObj["name"]?.jsonPrimitive?.content ?: ""
+                            if (name.endsWith(".apk") && name.contains("_v")) {
+                                remoteVersion = name.substringAfter("_v").substringBefore(".apk")
+                                apkUrl = assetObj["browser_download_url"]?.jsonPrimitive?.content ?: htmlUrl
+                                break
+                            }
+                        }
+                    }
 
-                    val latestVersion = tagName.trimStart('v')
+                    if (remoteVersion.isEmpty()) {
+                        remoteVersion = tagName.trimStart('v')
+                    }
                     val currentVersion = com.shizq.bika.BuildConfig.VERSION_NAME
 
-                    if (isNewerVersion(latestVersion, currentVersion)) {
-                        _updateUiState.value = UpdateUiState.HasUpdate(tagName, releaseNotes, apkUrl)
+                    if (isNewerVersion(remoteVersion, currentVersion)) {
+                        _updateUiState.value = UpdateUiState.HasUpdate(remoteVersion, releaseNotes, apkUrl)
                     } else {
                         _updateUiState.value = UpdateUiState.NoUpdate
                     }
