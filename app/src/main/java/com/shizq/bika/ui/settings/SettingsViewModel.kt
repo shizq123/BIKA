@@ -40,7 +40,9 @@ class SettingsViewModel @Inject constructor(
             selectedNetworkLine = it.selectedNetworkLine,
             autoCheckIn = it.autoCheckIn,
             fontScale = it.fontScale,
-            isLoggingEnabled = it.isLoggingEnabled
+            isLoggingEnabled = it.isLoggingEnabled,
+            downloadOverWifiOnly = it.downloadOverWifiOnly,
+            maxConcurrentDownloads = it.maxConcurrentDownloads
         )
     }.stateIn(
         viewModelScope,
@@ -165,6 +167,18 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateDownloadOverWifiOnly(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setDownloadOverWifiOnly(enabled)
+        }
+    }
+
+    fun updateMaxConcurrentDownloads(count: Int) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setMaxConcurrentDownloads(count)
+        }
+    }
+
     fun clearLogs() {
         com.shizq.bika.core.common.BikaLog.clearLogs()
     }
@@ -229,7 +243,9 @@ sealed interface SettingsUiState {
         val selectedNetworkLine: NetworkLine,
         val autoCheckIn: Boolean,
         val fontScale: Float,
-        val isLoggingEnabled: Boolean
+        val isLoggingEnabled: Boolean,
+        val downloadOverWifiOnly: Boolean,
+        val maxConcurrentDownloads: Int
     ) : SettingsUiState
 }
 

@@ -126,7 +126,7 @@ fun ComicCard(
                             val epsCount = detailedReadingHistory.history.epsCount
                             if (epsCount > lastProgress.chapterNumber) {
                                 Badge(text = "有更新", containerColor = androidx.compose.ui.graphics.Color(0xFFFF9800))
-                            } else if (lastProgress.chapterNumber >= epsCount) {
+                            } else if (lastProgress.chapterNumber >= epsCount && lastProgress.currentPage >= lastProgress.pageCount && lastProgress.pageCount > 0) {
                                 Badge(text = "已读完", containerColor = androidx.compose.ui.graphics.Color(0xFF4CAF50))
                             } else {
                                 Badge(text = "已阅读", containerColor = MaterialTheme.colorScheme.secondary)

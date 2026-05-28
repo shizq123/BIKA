@@ -87,4 +87,16 @@ class UserPreferencesDataSource @Inject constructor(
             it.copy(isLoggingEnabled = enabled)
         }
     }
+
+    suspend fun setDownloadOverWifiOnly(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(downloadOverWifiOnly = enabled)
+        }
+    }
+
+    suspend fun setMaxConcurrentDownloads(count: Int) {
+        userPreferences.updateData {
+            it.copy(maxConcurrentDownloads = count)
+        }
+    }
 }

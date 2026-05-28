@@ -16,7 +16,7 @@ suspend fun List<ComicSimple>.injectLocalStatus(historyDao: ReadingHistoryDao): 
                 val epsCount = detailedHistory.history.epsCount
                 if (epsCount > lastProgress.chapterId) {
                     "有更新"
-                } else if (lastProgress.chapterId >= epsCount) {
+                } else if (lastProgress.chapterId >= epsCount && lastProgress.currentPage >= lastProgress.pageCount && lastProgress.pageCount > 0) {
                     "已读完"
                 } else {
                     "已阅读"

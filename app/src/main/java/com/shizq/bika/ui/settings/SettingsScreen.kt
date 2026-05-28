@@ -26,6 +26,7 @@ import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.AlertDialog
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -158,6 +159,8 @@ fun SettingsScreen(
         onUpdateNetworkLine = viewModel::updateSelectedNetworkLine,
         onUpdateFontScale = viewModel::updateFontScale,
         onToggleIsLoggingEnabled = viewModel::updateIsLoggingEnabled,
+        onToggleDownloadOverWifiOnly = viewModel::updateDownloadOverWifiOnly,
+        onUpdateMaxConcurrentDownloads = viewModel::updateMaxConcurrentDownloads,
         onViewLogs = {
             logsContent = viewModel.getLogsContent()
             showLogsDialog = true
@@ -205,6 +208,8 @@ fun SettingsContent(
     onUpdateNetworkLine: (line: NetworkLine) -> Unit = {},
     onUpdateFontScale: (scale: Float) -> Unit = {},
     onToggleIsLoggingEnabled: (enabled: Boolean) -> Unit = {},
+    onToggleDownloadOverWifiOnly: (enabled: Boolean) -> Unit = {},
+    onUpdateMaxConcurrentDownloads: (count: Int) -> Unit = {},
     onViewLogs: () -> Unit = {},
     onExportLogs: () -> Unit = {},
     onLogoutClicked: () -> Unit = {},
@@ -334,6 +339,26 @@ fun SettingsContent(
                             Preference(
                                 title = "Wiki",
                                 onClick = { uriHandler.openUri("http://picawiki.xyz/") }
+                            )
+                        }
+                    }
+
+                    item {
+                        PreferenceGroup(title = { Text("下载配置") }) {
+                            SwitchPreference(
+                                title = "仅 Wi-Fi 下载",
+                                summary = if (settingsUiState.downloadOverWifiOnly) "仅在连接 Wi-Fi 时执行下载任务" else "允许在移动数据下下载（可能产生流量费用）",
+                                iconVector = Icons.Default.Wifi,
+                                checked = settingsUiState.downloadOverWifiOnly,
+                                onCheckedChange = onToggleDownloadOverWifiOnly
+                            )
+                            ListPreference(
+                                title = "最大并发下载数",
+                                iconVector = Icons.AutoMirrored.Filled.List,
+                                options = listOf(1, 2, 3, 5),
+                                selectedValue = settingsUiState.maxConcurrentDownloads,
+                                optionToText = { "$it 个章节" },
+                                onOptionSelected = onUpdateMaxConcurrentDownloads
                             )
                         }
                     }

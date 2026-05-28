@@ -20,4 +20,6 @@ data class UserPreferences(
     val dns: Set<String> = setOf("104.21.20.188"),
     val fontScale: Float = 1.0f,
     val isLoggingEnabled: Boolean = false,
+    val downloadOverWifiOnly: Boolean = false,
+    val maxConcurrentDownloads: Int = 3,
 )

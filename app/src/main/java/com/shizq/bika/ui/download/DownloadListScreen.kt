@@ -354,6 +354,9 @@ fun ComicDownloadGroupItem(
             0
         }
     }
+    val failedCount = remember(group.tasks) {
+        group.tasks.count { it.status == DownloadStatus.FAILED }
+    }
 
     Card(
         modifier = Modifier
@@ -411,6 +414,13 @@ fun ComicDownloadGroupItem(
                             text = "正在下载 ($averageProgress%)",
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    }
+                    if (failedCount > 0) {
+                        StatusChip(
+                            text = "下载失败 $failedCount",
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
                 }
