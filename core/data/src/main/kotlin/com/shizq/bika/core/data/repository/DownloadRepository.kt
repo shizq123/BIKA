@@ -150,7 +150,7 @@ class DownloadRepository @Inject constructor(
     private fun downloadFile(url: String, dest: File) {
         val request = Request.Builder().url(url).build()
         okHttpClient.newCall(request).execute().use { response ->
-            val body = response.body ?: error("Empty response body for $url")
+            val body = response.body
             dest.sink().buffer().use { sink ->
                 sink.writeAll(body.source())
             }

@@ -109,12 +109,12 @@ class UnitedDetailsStateMachine @AssistedInject constructor(
                             ACTION_UN_FAVORITE -> false
                             else -> currentDetail.isFavourited
                         }
-                        mutate {
-                            copy(detail = currentDetail.copy(isFavourited = isFavourited))
-                        }
                         withContext(Dispatchers.IO) {
                             historyDao.updateIsFavourited(snapshot.id, isFavourited)
                             Log.d(TAG, "Sync isFavourited for '${snapshot.id}' to local database: $isFavourited")
+                        }
+                        mutate {
+                            copy(detail = currentDetail.copy(isFavourited = isFavourited))
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "ToggleFavorite: ", e)
