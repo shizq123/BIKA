@@ -80,11 +80,13 @@ fun DownloadListScreen(
     viewModel: DownloadListViewModel = hiltViewModel()
 ) {
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
+    val chapterProgressMap by viewModel.chapterProgressMap.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var currentComicId by remember { mutableStateOf<String?>(null) }
 
     BackHandler(enabled = currentComicId != null) {
         currentComicId = null
+        viewModel.selectComic(null)
     }
 
     // Group tasks by comicId
@@ -106,6 +108,16 @@ fun DownloadListScreen(
                 .sortedBy { it.episodeOrder }
         } else {
             emptyList()
+        }
+    }
+
+    // 将下载任务与阅读进度合并，实时联动
+    val selectedComicWithProgress = remember(selectedComic, chapterProgressMap) {
+        selectedComic.map { task ->
+            DownloadTaskWithProgress(
+                task = task,
+                readProgress = chapterProgressMap[task.episodeOrder]
+            )
         }
     }
 
@@ -197,7 +209,10 @@ fun DownloadListScreen(
                 items(groupedComics, key = { it.comicId }) { group ->
                     ComicDownloadGroupItem(
                         group = group,
-                        onClick = { currentComicId = group.comicId }
+                        onClick = {
+                            currentComicId = group.comicId
+                            viewModel.selectComic(group.comicId)
+                        }
                     )
                 }
             }
@@ -307,10 +322,11 @@ fun DownloadListScreen(
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(selectedComic, key = { it.id }) { task ->
+                    items(selectedComicWithProgress, key = { it.task.id }) { taskWithProgress ->
                         DownloadTaskItem(
-                            task = task,
+                            taskWithProgress = taskWithProgress,
                             onClick = {
+                                val task = taskWithProgress.task
                                 if (task.status == DownloadStatus.COMPLETED) {
                                     onComicClick(task.comicId, task.episodeOrder)
                                 } else if (task.status == DownloadStatus.FAILED) {
@@ -325,7 +341,7 @@ fun DownloadListScreen(
                                     )
                                 }
                             },
-                            onDelete = { viewModel.deleteDownload(it) }
+                            onDelete = { viewModel.deleteDownload(it.task) }
                         )
                     }
                 }
@@ -438,10 +454,11 @@ fun ComicDownloadGroupItem(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun DownloadTaskItem(
-    task: DownloadTaskEntity,
+    taskWithProgress: DownloadTaskWithProgress,
     onClick: () -> Unit,
-    onDelete: (DownloadTaskEntity) -> Unit
+    onDelete: (DownloadTaskWithProgress) -> Unit
 ) {
+    val task = taskWithProgress.task
     var showDeleteDialog by remember { mutableStateOf(false) }
 
     if (showDeleteDialog) {
@@ -451,7 +468,7 @@ fun DownloadTaskItem(
             text = { Text("确定要删除《${task.comicTitle}》 ${task.episodeTitle} 的下载文件吗？") },
             confirmButton = {
                 TextButton(onClick = {
-                    onDelete(task)
+                    onDelete(taskWithProgress)
                     showDeleteDialog = false
                 }) {
                     Text("删除", color = MaterialTheme.colorScheme.error)
@@ -506,7 +523,7 @@ fun DownloadTaskItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-                
+
                 // Show page details
                 Text(
                     text = "共 ${task.totalPages} 页 (已下载 ${task.downloadedPages} 页)",
@@ -533,10 +550,30 @@ fun DownloadTaskItem(
                     }
                     DownloadStatus.COMPLETED -> {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                StatusChip("已完成", MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.onPrimaryContainer)
-                                if (task.isViewed) {
-                                    StatusChip("已查看", MaterialTheme.colorScheme.tertiaryContainer, MaterialTheme.colorScheme.onTertiaryContainer)
+                            // 下载状态 + 阅读记录徽章行
+                            androidx.compose.foundation.layout.FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                StatusChip(
+                                    "已完成",
+                                    MaterialTheme.colorScheme.primaryContainer,
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                                when {
+                                    taskWithProgress.isFinished -> StatusChip(
+                                        "已读完",
+                                        Color(0xFF4CAF50),
+                                        Color.White
+                                    )
+                                    taskWithProgress.isRead -> {
+                                        val progress = taskWithProgress.readProgress!!
+                                        StatusChip(
+                                            "阅读中 ${progress.currentPage}/${progress.pageCount}页",
+                                            Color(0xFFFF9800),
+                                            Color.White
+                                        )
+                                    }
                                 }
                             }
                             // Show completion time!
