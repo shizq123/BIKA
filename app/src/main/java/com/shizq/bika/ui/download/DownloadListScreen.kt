@@ -81,6 +81,7 @@ fun DownloadListScreen(
 ) {
     val tasks by viewModel.tasks.collectAsStateWithLifecycle()
     val chapterProgressMap by viewModel.chapterProgressMap.collectAsStateWithLifecycle()
+    val allComicReadSummary by viewModel.allComicReadSummary.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var currentComicId by remember { mutableStateOf<String?>(null) }
 
@@ -209,6 +210,7 @@ fun DownloadListScreen(
                 items(groupedComics, key = { it.comicId }) { group ->
                     ComicDownloadGroupItem(
                         group = group,
+                        readSummary = allComicReadSummary[group.comicId],
                         onClick = {
                             currentComicId = group.comicId
                             viewModel.selectComic(group.comicId)
@@ -353,6 +355,7 @@ fun DownloadListScreen(
 @Composable
 fun ComicDownloadGroupItem(
     group: ComicDownloadGroup,
+    readSummary: ComicReadSummary? = null,
     onClick: () -> Unit
 ) {
     val completedCount = remember(group.tasks) {
@@ -416,9 +419,9 @@ fun ComicDownloadGroupItem(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     StatusChip(
                         text = "已完成 $completedCount",
@@ -438,6 +441,23 @@ fun ComicDownloadGroupItem(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )
+                    }
+                    // 阅读状态徽章
+                    readSummary?.let { summary ->
+                        if (summary.finishedCount > 0) {
+                            StatusChip(
+                                text = "已读完 ${summary.finishedCount}",
+                                containerColor = Color(0xFF4CAF50),
+                                contentColor = Color.White
+                            )
+                        }
+                        if (summary.readingCount > 0) {
+                            StatusChip(
+                                text = "阅读中 ${summary.readingCount}",
+                                containerColor = Color(0xFFFF9800),
+                                contentColor = Color.White
+                            )
+                        }
                     }
                 }
             }

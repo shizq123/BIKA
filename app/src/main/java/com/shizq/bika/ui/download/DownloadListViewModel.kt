@@ -12,7 +12,6 @@ import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
@@ -33,6 +32,16 @@ data class DownloadTaskWithProgress(
         get() = readProgress?.let { it.currentPage >= it.pageCount && it.pageCount > 0 } ?: false
 }
 
+/**
+ * 单本漫画的阅读状态统计（供第一层卡片显示）
+ */
+data class ComicReadSummary(
+    /** 已读完的章节数 */
+    val finishedCount: Int,
+    /** 阅读中（有进度但未读完）的章节数 */
+    val readingCount: Int,
+)
+
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class DownloadListViewModel @Inject constructor(
@@ -45,10 +54,23 @@ class DownloadListViewModel @Inject constructor(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
-     * 下载任务 + 阅读记录联合 StateFlow。
-     * 当进入某本漫画的详情页时（comicId 不为空），实时合并该漫画的章节阅读进度。
-     * 当在漫画列表层（comicId 为空）时，仅返回空 Map，减少不必要的数据库开销。
+     * 全局所有漫画的阅读统计 Map（comicId → ComicReadSummary），
+     * 供第一层漫画分组卡片实时显示已读完/阅读中章节数。
      */
+    val allComicReadSummary: StateFlow<Map<String, ComicReadSummary>> =
+        readingHistoryDao.getAllChapterProgress()
+            .map { allProgress ->
+                // 按 historyId（comicId）分组
+                allProgress.groupBy { it.historyId }.mapValues { (_, progressList) ->
+                    val finished = progressList.count { it.pageCount > 0 && it.currentPage >= it.pageCount }
+                    val reading = progressList.count { it.pageCount > 0 && it.currentPage < it.pageCount }
+                    ComicReadSummary(finishedCount = finished, readingCount = reading)
+                }
+            }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    // ---- 第二层：选中漫画的章节阅读进度 ----
+
     private val _selectedComicId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
 
     /** 当前选中漫画的章节阅读进度 Map（chapterId -> ChapterProgressEntity） */

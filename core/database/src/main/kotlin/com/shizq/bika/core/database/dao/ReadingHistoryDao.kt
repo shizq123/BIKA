@@ -100,4 +100,11 @@ interface ReadingHistoryDao {
      */
     @Query("SELECT * FROM chapterProgress WHERE historyId = :comicId")
     fun getChapterProgressByComic(comicId: String): Flow<List<ChapterProgressEntity>>
+
+    /**
+     * 获取所有漫画所有已阅读章节的进度，供第一层漫画列表显示阅读状态统计。
+     * 返回 Flow 实时更新。
+     */
+    @Query("SELECT * FROM chapterProgress")
+    fun getAllChapterProgress(): Flow<List<ChapterProgressEntity>>
 }
