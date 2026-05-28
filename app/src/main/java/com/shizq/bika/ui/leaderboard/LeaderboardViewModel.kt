@@ -9,8 +9,10 @@ import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.util.injectLocalStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
+import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
@@ -20,6 +22,7 @@ import kotlinx.coroutines.flow.stateIn
 @HiltViewModel
 class LeaderboardViewModel @Inject constructor(
     private val api: BikaDataSource,
+    private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
     val scrollStates = List(4) { LazyListState() }
     val leaderboardUiState = combine(
@@ -67,7 +70,8 @@ class LeaderboardViewModel @Inject constructor(
     private fun getLeaderboard(timeType: String) = flow {
         val response = api.getLeaderboard(timeType)
         val comics = response.comics
-        emit(comics)
+        val injectedComics = comics.injectLocalStatus(historyDao)
+        emit(injectedComics)
     }
 
     private data class AllLeaderboards(

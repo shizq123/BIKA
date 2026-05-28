@@ -22,6 +22,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.util.injectLocalStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -37,6 +39,7 @@ class FeedViewModel @AssistedInject constructor(
     private val favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
     private val advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
     private val recentUpdatesPagingSourceProvider: Provider<RecentUpdatesPagingSource>,
+    private val historyDao: ReadingHistoryDao,
     @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
     val currentSortOrder: StateFlow<Sort>
@@ -143,11 +146,13 @@ class FeedViewModel @AssistedInject constructor(
             is DiscoveryAction.ToFavourite -> favouriteComicsPagingSourceFactory.create(sort)
 
             DiscoveryAction.ToCollections -> SinglePagePagingSource {
-                api.getCollections().collections.firstOrNull()?.comics ?: emptyList()
+                val list = api.getCollections().collections.firstOrNull()?.comics ?: emptyList()
+                list.injectLocalStatus(historyDao)
             }
 
             DiscoveryAction.ToRandom -> SinglePagePagingSource {
-                api.getRandomComics().comics
+                val list = api.getRandomComics().comics
+                list.injectLocalStatus(historyDao)
             }
 
             DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get()

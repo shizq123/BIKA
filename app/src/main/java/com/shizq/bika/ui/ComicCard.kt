@@ -68,7 +68,9 @@ fun ComicCard(
             ),
     ) {
         Row(
-            modifier = Modifier.defaultMinSize(minHeight = 135.dp),
+            modifier = Modifier
+                .height(androidx.compose.foundation.layout.IntrinsicSize.Max)
+                .defaultMinSize(minHeight = 135.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(contentAlignment = Alignment.TopStart) {

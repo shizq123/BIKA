@@ -61,6 +61,9 @@ import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.database.model.DownloadTaskEntity
 import com.shizq.bika.sync.workers.DownloadWorker
 import com.shizq.bika.utils.TimeUtil
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.unit.sp
 
 data class ComicDownloadGroup(
     val comicId: String,
@@ -139,6 +142,38 @@ fun DownloadListScreen(
                     }
                 }
             )
+        },
+        bottomBar = {
+            if (currentComicId != null) {
+                val firstCompletedTask = remember(selectedComic) {
+                    selectedComic.filter { it.status == DownloadStatus.COMPLETED }
+                        .minByOrNull { it.episodeOrder }
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = {
+                            firstCompletedTask?.let {
+                                onComicClick(it.comicId, it.episodeOrder)
+                            }
+                        },
+                        enabled = firstCompletedTask != null,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp)
+                    ) {
+                        Text(
+                            text = if (firstCompletedTask != null) "开始阅读" else "下载完成后即可阅读",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            }
         }
     ) { paddingValues ->
         if (tasks.isEmpty()) {
@@ -228,6 +263,45 @@ fun DownloadListScreen(
                     }
                 }
                 
+                val failedTasks = remember(selectedComic) {
+                    selectedComic.filter { it.status == DownloadStatus.FAILED }
+                }
+                val hasFailedTasks = failedTasks.isNotEmpty()
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Button(
+                        onClick = {
+                            failedTasks.forEach { task ->
+                                DownloadWorker.startDownload(
+                                    context = context,
+                                    comicId = task.comicId,
+                                    comicTitle = task.comicTitle,
+                                    coverUrl = task.coverUrl,
+                                    episodeId = task.episodeId,
+                                    episodeTitle = task.episodeTitle,
+                                    episodeOrder = task.episodeOrder
+                                )
+                            }
+                        },
+                        enabled = hasFailedTasks,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = if (hasFailedTasks) "重新下载" else "重新下载",
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(16.dp),
