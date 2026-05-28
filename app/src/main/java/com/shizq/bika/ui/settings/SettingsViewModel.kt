@@ -75,7 +75,7 @@ class SettingsViewModel @Inject constructor(
                     .build()
                 okHttpClient.newCall(request).execute().use { response ->
                     if (!response.isSuccessful) throw Exception("HTTP 错误码: ${response.code}")
-                    val bodyString = response.body.string() ?: throw Exception("响应内容为空")
+                    val bodyString = response.body.string()
                     val json = Json.parseToJsonElement(bodyString).jsonObject
                     val tagName = json["tag_name"]?.jsonPrimitive?.content ?: throw Exception("未找到 tag_name")
                     val releaseNotes = json["body"]?.jsonPrimitive?.content ?: ""
