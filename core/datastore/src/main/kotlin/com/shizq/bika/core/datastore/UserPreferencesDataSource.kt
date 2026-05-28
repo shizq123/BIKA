@@ -81,4 +81,10 @@ class UserPreferencesDataSource @Inject constructor(
             it.copy(fontScale = scale)
         }
     }
+
+    suspend fun setIsLoggingEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(isLoggingEnabled = enabled)
+        }
+    }
 }

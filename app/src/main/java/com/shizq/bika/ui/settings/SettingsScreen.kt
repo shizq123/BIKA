@@ -3,9 +3,12 @@ package com.shizq.bika.ui.settings
 import android.content.Intent
 import android.provider.Settings
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.rememberScrollState
@@ -123,6 +126,26 @@ fun SettingsScreen(
         )
     }
 
+    var showLogsDialog by remember { mutableStateOf(false) }
+    var logsContent by remember { mutableStateOf("") }
+
+    if (showLogsDialog) {
+        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
+        LogViewerDialog(
+            logs = logsContent,
+            onCopy = {
+                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(logsContent))
+                android.widget.Toast.makeText(context, "已复制到剪贴板", android.widget.Toast.LENGTH_SHORT).show()
+            },
+            onClear = {
+                viewModel.clearLogs()
+                logsContent = ""
+                android.widget.Toast.makeText(context, "日志已清空", android.widget.Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { showLogsDialog = false }
+        )
+    }
+
     SettingsContent(
         settingsUiState = settingsUiState,
         cacheSize = cacheSize,
@@ -131,6 +154,34 @@ fun SettingsScreen(
         onToggleAutoCheckIn = viewModel::updateAutoCheckIn,
         onUpdateNetworkLine = viewModel::updateSelectedNetworkLine,
         onUpdateFontScale = viewModel::updateFontScale,
+        onToggleIsLoggingEnabled = viewModel::updateIsLoggingEnabled,
+        onViewLogs = {
+            logsContent = viewModel.getLogsContent()
+            showLogsDialog = true
+        },
+        onExportLogs = {
+            val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()
+            if (logFile != null && logFile.exists() && logFile.length() > 0) {
+                try {
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        context,
+                        "${context.packageName}.fileprovider",
+                        logFile
+                    )
+                    val shareIntent = Intent().apply {
+                        action = Intent.ACTION_SEND
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        type = "text/plain"
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(Intent.createChooser(shareIntent, "导出日志"))
+                } catch (e: Exception) {
+                    android.widget.Toast.makeText(context, "导出失败: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
+                }
+            } else {
+                android.widget.Toast.makeText(context, "日志为空，请先开启日志开关并操作产生日志", android.widget.Toast.LENGTH_SHORT).show()
+            }
+        },
         onLogoutClicked = {
             viewModel.logout()
             navigationToLogin()
@@ -150,6 +201,9 @@ fun SettingsContent(
     onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
     onUpdateNetworkLine: (line: NetworkLine) -> Unit = {},
     onUpdateFontScale: (scale: Float) -> Unit = {},
+    onToggleIsLoggingEnabled: (enabled: Boolean) -> Unit = {},
+    onViewLogs: () -> Unit = {},
+    onExportLogs: () -> Unit = {},
     onLogoutClicked: () -> Unit = {},
     onBackClick: () -> Unit = {},
     onCheckForUpdates: () -> Unit = {},
@@ -282,6 +336,30 @@ fun SettingsContent(
                     }
 
                     item {
+                        if (settingsUiState is SettingsUiState.Success) {
+                            PreferenceGroup(title = { Text("调试与日志") }) {
+                                SwitchPreference(
+                                    title = "调试日志开关",
+                                    summary = if (settingsUiState.isLoggingEnabled) "已开启本地日志追加" else "本地日志已关闭",
+                                    iconVector = Icons.Default.Code,
+                                    checked = settingsUiState.isLoggingEnabled,
+                                    onCheckedChange = onToggleIsLoggingEnabled
+                                )
+                                Preference(
+                                    title = "查看系统日志",
+                                    summary = "查看本地已收集的系统运行日志",
+                                    onClick = onViewLogs
+                                )
+                                Preference(
+                                    title = "导出系统日志",
+                                    summary = "分享或导出本地系统日志文件",
+                                    onClick = onExportLogs
+                                )
+                            }
+                        }
+                    }
+
+                    item {
                         PreferenceGroup(title = { Text("应用") }) {
                             Preference(
                                 title = "检查更新",
@@ -314,4 +392,60 @@ fun SettingsContent(
                 }
         }
     }
+}
+
+@Composable
+fun LogViewerDialog(
+    logs: String,
+    onCopy: () -> Unit,
+    onClear: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = "系统日志")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = onCopy) {
+                        Text("复制")
+                    }
+                    TextButton(onClick = onClear) {
+                        Text("清空")
+                    }
+                }
+            }
+        },
+        text = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+            ) {
+                val scrollState = rememberScrollState()
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(scrollState)
+                ) {
+                    Text(
+                        text = logs.ifBlank { "暂无本地日志，请开启日志开关并操作产生日志后再来查看。" },
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("关闭")
+            }
+        }
+    )
 }

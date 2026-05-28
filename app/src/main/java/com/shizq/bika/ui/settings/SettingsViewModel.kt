@@ -35,7 +35,13 @@ class SettingsViewModel @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource
 ) : ViewModel() {
     val settingsUiState = userPreferencesDataSource.userData.map {
-        SettingsUiState.Success(it.darkThemeConfig, it.selectedNetworkLine, it.autoCheckIn, it.fontScale)
+        SettingsUiState.Success(
+            darkThemeConfig = it.darkThemeConfig,
+            selectedNetworkLine = it.selectedNetworkLine,
+            autoCheckIn = it.autoCheckIn,
+            fontScale = it.fontScale,
+            isLoggingEnabled = it.isLoggingEnabled
+        )
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -153,6 +159,34 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateIsLoggingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setIsLoggingEnabled(enabled)
+        }
+    }
+
+    fun clearLogs() {
+        com.shizq.bika.core.common.BikaLog.clearLogs()
+    }
+
+    fun getLogsContent(): String {
+        return try {
+            val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()
+            if (logFile != null && logFile.exists()) {
+                val lines = logFile.readLines()
+                if (lines.size > 2000) {
+                    "【日志已截断，仅展示最后 2000 行】\n\n" + lines.takeLast(2000).joinToString("\n")
+                } else {
+                    lines.joinToString("\n")
+                }
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            "读取日志失败: ${e.localizedMessage}"
+        }
+    }
+
     /**
      * 在后台线程更新缓存大小，并更新 StateFlow
      */
@@ -194,7 +228,8 @@ sealed interface SettingsUiState {
         val darkThemeConfig: DarkThemeConfig,
         val selectedNetworkLine: NetworkLine,
         val autoCheckIn: Boolean,
-        val fontScale: Float
+        val fontScale: Float,
+        val isLoggingEnabled: Boolean
     ) : SettingsUiState
 }
 
