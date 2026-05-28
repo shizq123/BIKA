@@ -19,5 +19,20 @@ data class ReadingHistoryEntity(
     val coverUrl: String,
 
     // 最后交互时间（用于在历史记录列表中排序）
-    val lastInteractionAt: Instant
+    val lastInteractionAt: Instant,
+
+    // 分类列表
+    val categories: List<String> = emptyList(),
+
+    // 总页数
+    val pagesCount: Int = 0,
+
+    // 章节总数
+    val epsCount: Int = 0,
+
+    // 是否已完结
+    val finished: Boolean = false,
+
+    // 总点赞数
+    val totalLikes: Int = 0
 )

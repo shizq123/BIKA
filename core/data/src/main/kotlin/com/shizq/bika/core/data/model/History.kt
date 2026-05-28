@@ -27,7 +27,12 @@ data class ReadingHistory(
     val title: String,
     val author: String,
     val coverUrl: String,
-    val lastInteractionAt: Instant
+    val lastInteractionAt: Instant,
+    val categories: List<String> = emptyList(),
+    val pagesCount: Int = 0,
+    val epsCount: Int = 0,
+    val finished: Boolean = false,
+    val totalLikes: Int = 0
 )
 
 data class ChapterProgress(
@@ -43,7 +48,12 @@ fun ReadingHistoryEntity.asExternalModel(): ReadingHistory {
         title = this.title,
         author = this.author,
         coverUrl = this.coverUrl,
-        lastInteractionAt = this.lastInteractionAt
+        lastInteractionAt = this.lastInteractionAt,
+        categories = this.categories,
+        pagesCount = this.pagesCount,
+        epsCount = this.epsCount,
+        finished = this.finished,
+        totalLikes = this.totalLikes
     )
 }
 

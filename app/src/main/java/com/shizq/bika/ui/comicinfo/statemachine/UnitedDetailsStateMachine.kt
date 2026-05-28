@@ -61,26 +61,23 @@ class UnitedDetailsStateMachine @AssistedInject constructor(
                         val detail = snapshot.detail
                         val title = detail.title
 
-                        val rowsUpdated = historyDao.updateLastReadAt(id, now)
-                        if (rowsUpdated > 0) {
-                            Log.d(
-                                TAG,
-                                "History exists. Updated timestamp for '$title'."
-                            )
-                        } else {
-                            val newRecord = ReadingHistoryEntity(
-                                id = id,
-                                title = title,
-                                author = detail.author,
-                                coverUrl = detail.cover,
-                                lastInteractionAt = now
-                            )
-                            historyDao.upsertHistory(newRecord)
-                            Log.d(
-                                TAG,
-                                "No history found. Creating new record for '$title'."
-                            )
-                        }
+                        val newRecord = ReadingHistoryEntity(
+                            id = id,
+                            title = title,
+                            author = detail.author,
+                            coverUrl = detail.cover,
+                            lastInteractionAt = now,
+                            categories = detail.categories,
+                            pagesCount = detail.pagesCount,
+                            epsCount = detail.epsCount,
+                            finished = detail.finished,
+                            totalLikes = detail.totalLikes
+                        )
+                        historyDao.upsertHistory(newRecord)
+                        Log.d(
+                            TAG,
+                            "Upsert history for '$title' with full comic details."
+                        )
                     }
                 }
                 on<UnitedDetailsAction.ToggleLike> {
