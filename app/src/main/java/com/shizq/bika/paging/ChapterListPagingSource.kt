@@ -22,7 +22,7 @@ class ChapterListPagingSource @AssistedInject constructor(
             LoadResult.Page(
                 data = data.docs.map { doc ->
                     Chapter(doc.id, doc.order, doc.title, doc.updatedAt)
-                },
+                }.sortedBy { it.order },
                 prevKey = null,
                 nextKey = if (currentPage < data.pages) currentPage + 1 else null
             )
