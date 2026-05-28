@@ -89,6 +89,7 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
             if (hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-core") || 
                 hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-android")) {
                 list.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
+                list.add("-opt-in=kotlinx.coroutines.FlowPreview")
             }
             
             if (pluginManager.hasPlugin("org.jetbrains.kotlin.plugin.serialization") ||

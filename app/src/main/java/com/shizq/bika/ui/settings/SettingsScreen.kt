@@ -130,11 +130,12 @@ fun SettingsScreen(
     var logsContent by remember { mutableStateOf("") }
 
     if (showLogsDialog) {
-        val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
         LogViewerDialog(
             logs = logsContent,
             onCopy = {
-                clipboardManager.setText(androidx.compose.ui.text.AnnotatedString(logsContent))
+                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                val clip = android.content.ClipData.newPlainText("logs", logsContent)
+                clipboard.setPrimaryClip(clip)
                 android.widget.Toast.makeText(context, "已复制到剪贴板", android.widget.Toast.LENGTH_SHORT).show()
             },
             onClear = {
@@ -336,26 +337,26 @@ fun SettingsContent(
                     }
 
                     item {
-                        if (settingsUiState is SettingsUiState.Success) {
-                            PreferenceGroup(title = { Text("调试与日志") }) {
-                                SwitchPreference(
-                                    title = "调试日志开关",
-                                    summary = if (settingsUiState.isLoggingEnabled) "已开启本地日志追加" else "本地日志已关闭",
-                                    iconVector = Icons.Default.Code,
-                                    checked = settingsUiState.isLoggingEnabled,
-                                    onCheckedChange = onToggleIsLoggingEnabled
-                                )
-                                Preference(
-                                    title = "查看系统日志",
-                                    summary = "查看本地已收集的系统运行日志",
-                                    onClick = onViewLogs
-                                )
-                                Preference(
-                                    title = "导出系统日志",
-                                    summary = "分享或导出本地系统日志文件",
-                                    onClick = onExportLogs
-                                )
-                            }
+                        PreferenceGroup(title = { Text("调试与日志") }) {
+                            SwitchPreference(
+                                title = "调试日志开关",
+                                summary = if (settingsUiState.isLoggingEnabled) "已开启本地日志追加" else "本地日志已关闭",
+                                iconVector = Icons.Default.Code,
+                                checked = settingsUiState.isLoggingEnabled,
+                                onCheckedChange = onToggleIsLoggingEnabled
+                            )
+                            Preference(
+                                title = "查看系统日志",
+                                summary = "查看本地已收集的系统运行日志",
+                                iconVector = Icons.Default.Description,
+                                onClick = onViewLogs
+                            )
+                            Preference(
+                                title = "导出系统日志",
+                                summary = "分享或导出本地系统日志文件",
+                                iconVector = Icons.Default.Share,
+                                onClick = onExportLogs
+                            )
                         }
                     }
 

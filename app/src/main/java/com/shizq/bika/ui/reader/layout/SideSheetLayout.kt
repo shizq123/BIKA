@@ -45,7 +45,7 @@ fun SideSheetLayout(
     BoxWithConstraints(
         Modifier
             .fillMaxSize()
-            .windowInsetsPadding(BottomSheetDefaults.windowInsets)
+            .windowInsetsPadding(BottomSheetDefaults.modalWindowInsets)
             .clickable(
                 onClick = onDismissRequest,
                 interactionSource = remember { MutableInteractionSource() },

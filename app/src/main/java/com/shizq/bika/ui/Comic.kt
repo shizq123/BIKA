@@ -27,7 +27,7 @@ import androidx.compose.material.icons.outlined.Book
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.FilterChip
@@ -378,7 +378,7 @@ fun ComicUIPreview() {
             Text("列表项样式:", modifier = Modifier.padding(16.dp))
             ComicCard(comic = mockComic, onClick = {})
 
-            Divider(modifier = Modifier.padding(vertical = 16.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 16.dp))
 
             // 预览详情页 (这里用 Box 模拟容器)
             Text("详情页样式 (向下滚动查看):", modifier = Modifier.padding(16.dp))
