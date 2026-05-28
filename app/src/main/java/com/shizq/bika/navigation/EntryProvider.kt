@@ -179,7 +179,7 @@ fun EntryProviderScope<NavKey>.featureSection(
         ReaderScreen(
             onBackClick = { navigator.goBack() },
             viewModel = hiltViewModel<ReaderViewModel, ReaderViewModel.Factory>(
-                key = id,
+                key = key.toString(),
             ) { factory ->
                 factory.create(id, key.order)
             },
