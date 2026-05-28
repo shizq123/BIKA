@@ -28,7 +28,7 @@ public final class WebSocketManager {
     //心跳包发送时间计时
     private long sendTime = 0L;
     // 发送心跳包
-    private Handler mHandler = new Handler();
+    private Handler mHandler = new Handler(android.os.Looper.getMainLooper());
     // 每隔40秒发送一次心跳包，检测连接没有断开
     private static final long HEART_BEAT_RATE = 25 * 1000;
 
