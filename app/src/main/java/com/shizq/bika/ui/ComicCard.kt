@@ -32,6 +32,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -70,18 +71,34 @@ fun ComicCard(
             modifier = Modifier.defaultMinSize(minHeight = 135.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(detailedReadingHistory.history.coverUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "${detailedReadingHistory.history.title} Cover",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .width(100.dp)
-                    .aspectRatio(3f / 4f)
-                    .clip(RoundedCornerShape(8.dp))
-            )
+            Box(contentAlignment = Alignment.TopStart) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(detailedReadingHistory.history.coverUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "${detailedReadingHistory.history.title} Cover",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .width(100.dp)
+                        .aspectRatio(3f / 4f)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+
+                if (detailedReadingHistory.history.isFavourited) {
+                    Text(
+                        text = "已收藏",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiary,
+                        modifier = Modifier
+                            .padding(top = 4.dp, start = 4.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f))
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -96,41 +113,45 @@ fun ComicCard(
                 Column(modifier = Modifier.weight(1f)) {
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    // 状态徽章墙 (标题上方)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(bottom = 6.dp)
                     ) {
-                        if (detailedReadingHistory.history.finished) {
-                            Text(
-                                text = "已完结",
-                                fontSize = 10.sp,
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(4.dp))
-                                    .background(MaterialTheme.colorScheme.primary)
-                                    .padding(horizontal = 4.dp, vertical = 1.dp)
-                            )
+                        val lastProgress = detailedReadingHistory.lastReadChapterProgress
+                        if (lastProgress != null) {
+                            val epsCount = detailedReadingHistory.history.epsCount
+                            if (epsCount > lastProgress.chapterNumber) {
+                                Badge(text = "有更新", containerColor = androidx.compose.ui.graphics.Color(0xFFFF9800))
+                            } else if (lastProgress.chapterNumber >= epsCount) {
+                                Badge(text = "已读完", containerColor = androidx.compose.ui.graphics.Color(0xFF4CAF50))
+                            } else {
+                                Badge(text = "已阅读", containerColor = MaterialTheme.colorScheme.secondary)
+                            }
                         }
 
-                        Text(
-                            text = buildString {
-                                if (detailedReadingHistory.history.pagesCount > 0) {
-                                    append("[${detailedReadingHistory.history.pagesCount}P] ")
-                                }
-                                append(detailedReadingHistory.history.title)
-                            },
-                            style = MaterialTheme.typography.titleMedium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            color = if (detailedReadingHistory.history.finished) {
-                                MaterialTheme.colorScheme.primary
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
+                        if (detailedReadingHistory.history.finished) {
+                            Badge(text = "已完结", containerColor = MaterialTheme.colorScheme.primary)
+                        }
                     }
+
+                    Text(
+                        text = buildString {
+                            if (detailedReadingHistory.history.pagesCount > 0) {
+                                append("[${detailedReadingHistory.history.pagesCount}P] ")
+                            }
+                            append(detailedReadingHistory.history.title)
+                        },
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = if (detailedReadingHistory.history.finished) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
+                    )
 
                     Spacer(modifier = Modifier.height(4.dp))
 
@@ -294,4 +315,21 @@ private fun formatRelativeTime(instant: Instant): String {
             }
         }
     }
+}
+
+@Composable
+private fun Badge(
+    text: String,
+    containerColor: androidx.compose.ui.graphics.Color
+) {
+    Text(
+        text = text,
+        fontSize = 9.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onPrimary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(containerColor)
+            .padding(horizontal = 4.dp, vertical = 1.dp)
+    )
 }

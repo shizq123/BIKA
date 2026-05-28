@@ -23,7 +23,7 @@ import com.shizq.bika.core.database.util.StringListConverter
         TagEntity::class,
         DownloadTaskEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(InstantConverter::class, StringListConverter::class)

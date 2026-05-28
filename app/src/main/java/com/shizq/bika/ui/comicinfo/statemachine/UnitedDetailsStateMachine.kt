@@ -71,7 +71,8 @@ class UnitedDetailsStateMachine @AssistedInject constructor(
                             pagesCount = detail.pagesCount,
                             epsCount = detail.epsCount,
                             finished = detail.finished,
-                            totalLikes = detail.totalLikes
+                            totalLikes = detail.totalLikes,
+                            isFavourited = detail.isFavourited
                         )
                         historyDao.upsertHistory(newRecord)
                         Log.d(
@@ -110,6 +111,10 @@ class UnitedDetailsStateMachine @AssistedInject constructor(
                         }
                         mutate {
                             copy(detail = currentDetail.copy(isFavourited = isFavourited))
+                        }
+                        withContext(Dispatchers.IO) {
+                            historyDao.updateIsFavourited(snapshot.id, isFavourited)
+                            Log.d(TAG, "Sync isFavourited for '${snapshot.id}' to local database: $isFavourited")
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "ToggleFavorite: ", e)

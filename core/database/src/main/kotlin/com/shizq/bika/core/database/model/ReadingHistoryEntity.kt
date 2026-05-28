@@ -34,5 +34,8 @@ data class ReadingHistoryEntity(
     val finished: Boolean = false,
 
     // 总点赞数
-    val totalLikes: Int = 0
+    val totalLikes: Int = 0,
+
+    // 是否被收藏了
+    val isFavourited: Boolean = false
 )

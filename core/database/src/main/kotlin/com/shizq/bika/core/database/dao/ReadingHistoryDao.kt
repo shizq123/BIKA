@@ -90,4 +90,7 @@ interface ReadingHistoryDao {
 
     @Query("UPDATE readingHistory SET lastInteractionAt = :newTimestamp WHERE id = :id")
     suspend fun updateLastReadAt(id: String, newTimestamp: Instant): Int
+
+    @Query("UPDATE readingHistory SET isFavourited = :isFavourited WHERE id = :id")
+    suspend fun updateIsFavourited(id: String, isFavourited: Boolean): Int
 }

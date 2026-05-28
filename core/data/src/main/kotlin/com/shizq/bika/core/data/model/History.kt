@@ -32,7 +32,8 @@ data class ReadingHistory(
     val pagesCount: Int = 0,
     val epsCount: Int = 0,
     val finished: Boolean = false,
-    val totalLikes: Int = 0
+    val totalLikes: Int = 0,
+    val isFavourited: Boolean = false
 )
 
 data class ChapterProgress(
@@ -53,7 +54,8 @@ fun ReadingHistoryEntity.asExternalModel(): ReadingHistory {
         pagesCount = this.pagesCount,
         epsCount = this.epsCount,
         finished = this.finished,
-        totalLikes = this.totalLikes
+        totalLikes = this.totalLikes,
+        isFavourited = this.isFavourited
     )
 }
 
