@@ -122,6 +122,15 @@ jobs:
             echo "'latest' release does not exist yet. Skipping archive and cleanup."
           fi
 
+      - name: Delete Old Latest Release and Tag
+        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 删除旧的 latest release（含 tag），让 softprops 全新创建，
+          # 确保 created_at 时间戳 = 本次构建时间，始终排在 Releases 列表第一位。
+          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+
       - name: Create Continuous Release
         if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
