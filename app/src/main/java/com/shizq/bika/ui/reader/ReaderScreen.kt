@@ -111,7 +111,8 @@ private fun ReaderContent(
                 readingMode = config.readingMode,
                 chapterPages = imageList,
                 config = config,
-                initialPageIndex = chapterState.initialPage
+                initialPageIndex = chapterState.initialPage,
+                chapterOrder = chapterState.order,
             )
             val controller = readerContext.controller
 
@@ -170,7 +171,8 @@ private fun ReaderContent(
                     .collect { page ->
                         if (page >= total - 1) {
                             delay(300)
-                            dispatch(JumpToChapter(next))
+                            // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
+                            dispatch(JumpToChapter(next, startFromBeginning = true))
                         }
                     }
             }

@@ -49,7 +49,7 @@ sealed interface SeekState {
 }
 
 sealed interface ReaderAction {
-    data class JumpToChapter(val chapter: Chapter) : ReaderAction
+    data class JumpToChapter(val chapter: Chapter, val startFromBeginning: Boolean = false) : ReaderAction
     data class SyncReadingProgress(val pageIndex: Int) : ReaderAction
 
     data object ToggleBarsVisibility : ReaderAction

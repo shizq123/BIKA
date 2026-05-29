@@ -10,7 +10,8 @@ import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.util.injectLocalStatus
+import com.shizq.bika.core.database.model.DetailedHistory
+import com.shizq.bika.util.injectLocalStatusFrom
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
@@ -25,7 +26,9 @@ class LeaderboardViewModel @Inject constructor(
     private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
     val scrollStates = List(4) { LazyListState() }
-    val leaderboardUiState = combine(
+
+    // 网络数据：一次性加载（排行榜数据本身不需要轮询）
+    private val rawLeaderboardFlow = combine(
         getLeaderboard(TIME_H24),
         getLeaderboard(TIME_D7),
         getLeaderboard(TIME_D30),
@@ -36,6 +39,19 @@ class LeaderboardViewModel @Inject constructor(
             weeklyComics = weekly,
             monthlyComics = monthly,
             knightUsers = knights
+        )
+    }
+
+    val leaderboardUiState = combine(
+        rawLeaderboardFlow,
+        // DB Flow：收藏/阅读进度任何变化都会触发此流发射新值，驱动 UI 实时更新
+        historyDao.getDetailedHistories(),
+    ) { allData, histories ->
+        AllLeaderboards(
+            dailyComics = allData.dailyComics.injectLocalStatusFrom(histories),
+            weeklyComics = allData.weeklyComics.injectLocalStatusFrom(histories),
+            monthlyComics = allData.monthlyComics.injectLocalStatusFrom(histories),
+            knightUsers = allData.knightUsers,
         )
     }
         .asResult()
@@ -61,6 +77,7 @@ class LeaderboardViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = LeaderboardUiState.Loading
         )
+
     private fun getKnightLeaderboardFlow() = flow {
         val response = api.getKnightLeaderboard()
         val users = response.users.map { it.asExternalModel() }
@@ -69,9 +86,8 @@ class LeaderboardViewModel @Inject constructor(
 
     private fun getLeaderboard(timeType: String) = flow {
         val response = api.getLeaderboard(timeType)
-        val comics = response.comics
-        val injectedComics = comics.injectLocalStatus(historyDao)
-        emit(injectedComics)
+        // 这里只发射原始网络数据，本地状态由上层 combine + DB Flow 注入
+        emit(response.comics)
     }
 
     private data class AllLeaderboards(

@@ -5,15 +5,12 @@ import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.util.injectLocalStatus
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 
 class ChannelPagingSource @AssistedInject constructor(
     private val api: BikaDataSource,
-    private val historyDao: ReadingHistoryDao,
     @Assisted private val channel: String,
     @Assisted private val sort: Sort,
 ) : PagingSource<Int, ComicSimple>() {
@@ -28,10 +25,9 @@ class ChannelPagingSource @AssistedInject constructor(
             )
 
             val comicsPage = response.comics
-            val injectedComics = comicsPage.docs.injectLocalStatus(historyDao)
 
             LoadResult.Page(
-                data = injectedComics,
+                data = comicsPage.docs,
                 prevKey = null,
                 nextKey = if (page >= comicsPage.pages) null else page + 1
             )

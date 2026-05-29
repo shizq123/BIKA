@@ -46,7 +46,9 @@ class ReaderStateMachine @Inject constructor(
                     val newOrder = chapter.chapter.order
                     savedStateHandle["order"] = newOrder
 
-                    val startPage = getStartPage(snapshot.id, newOrder)
+                    // startFromBeginning=true：自动跳转到下一章，始终从第 0 页开始。
+                    // startFromBeginning=false（默认）：手动跳章，恢复该章节上次阅读位置。
+                    val startPage = if (chapter.startFromBeginning) 0 else getStartPage(snapshot.id, newOrder)
                     mutate {
                         val newChapterState = ChapterState(
                             order = newOrder,
