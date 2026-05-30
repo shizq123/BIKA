@@ -22,4 +22,13 @@ data class UserPreferences(
     val isLoggingEnabled: Boolean = false,
     val downloadOverWifiOnly: Boolean = false,
     val maxConcurrentDownloads: Int = 3,
+    // ---- 缓存的用户信息（无网时回退使用）----
+    val cachedUserName: String = "",
+    val cachedUserAvatarUrl: String = "",
+    val cachedUserLevel: Int = 0,
+    val cachedUserExp: Int = 0,
+    val cachedUserTitle: String = "",
+    val cachedUserGender: String = "",
+    val cachedUserSlogan: String = "",
+    val cachedUserCharacters: List<String> = emptyList(),
 )

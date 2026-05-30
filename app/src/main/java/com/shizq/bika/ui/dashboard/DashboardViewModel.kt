@@ -59,9 +59,41 @@ class DashboardViewModel @Inject constructor(
         .map { result ->
             when (result) {
                 Result.Loading -> UserProfileUiState.Loading
-                is Result.Error -> UserProfileUiState.Error(result.exception.message ?: "")
+                is Result.Error -> {
+                    // 网络失败：读取本地缓存的用户资料作为回退
+                    val prefs = userPreferencesDataSource.userData.first()
+                    if (prefs.cachedUserName.isNotEmpty()) {
+                        UserProfileUiState.Success(
+                            User(
+                                name = prefs.cachedUserName,
+                                avatarUrl = prefs.cachedUserAvatarUrl,
+                                characters = prefs.cachedUserCharacters,
+                                level = prefs.cachedUserLevel,
+                                exp = prefs.cachedUserExp,
+                                title = prefs.cachedUserTitle,
+                                gender = prefs.cachedUserGender,
+                                slogan = prefs.cachedUserSlogan,
+                                hasCheckedIn = false,
+                            ),
+                            isOfflineCache = true
+                        )
+                    } else {
+                        UserProfileUiState.Error(result.exception.message ?: "")
+                    }
+                }
                 is Result.Success -> {
                     val user = result.data.user
+                    // 网络成功：同步更新本地缓存
+                    userPreferencesDataSource.saveUserProfileCache(
+                        name = user.name,
+                        avatarUrl = user.imageUrl,
+                        level = user.level,
+                        exp = user.exp,
+                        title = user.title,
+                        gender = user.gender,
+                        slogan = user.slogan,
+                        characters = user.characters,
+                    )
                     UserProfileUiState.Success(
                         User(
                             name = user.name,

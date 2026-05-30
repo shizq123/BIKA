@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material3.Button
@@ -93,6 +94,7 @@ fun ComicDetailPage(
     detail: ComicDetail,
     modifier: Modifier = Modifier,
     recommendations: List<ComicSummary>,
+    isDownloaded: Boolean = false,
     onFavoriteClick: () -> Unit = {},
     onLikedClick: () -> Unit = {},
     navigationToReader: () -> Unit = {},
@@ -194,6 +196,7 @@ fun ComicDetailPage(
         MangaBottomBar(
             isFavorited = detail.isFavourited,
             showDownload = true,
+            isDownloaded = isDownloaded,
             modifier = Modifier.align(Alignment.BottomCenter),
             onFavoriteClick = onFavoriteClick,
             onReadClick = navigationToReader,
@@ -480,6 +483,7 @@ fun MangaBottomBar(
     isFavorited: Boolean,
     modifier: Modifier = Modifier,
     showDownload: Boolean = false,
+    isDownloaded: Boolean = false,
     onFavoriteClick: () -> Unit = {},
     onReadClick: () -> Unit = {},
     onDownloadClick: () -> Unit = {},
@@ -613,23 +617,37 @@ fun MangaBottomBar(
                     }
                     BottomBarButtonType.DOWNLOAD -> {
                         if (showDownload) {
+                            val buttonText = if (isDownloaded) "已下载" else "下载"
+                            val containerColor = if (isDownloaded) {
+                                MaterialTheme.colorScheme.primaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.secondaryContainer
+                            }
+                            val contentColor = if (isDownloaded) {
+                                MaterialTheme.colorScheme.onPrimaryContainer
+                            } else {
+                                MaterialTheme.colorScheme.onSecondaryContainer
+                            }
                             FilledTonalButton(
-                                onClick = onDownloadClick,
+                                onClick = { if (!isDownloaded) onDownloadClick() },
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
                                     .combinedClickable(
-                                        onClick = onDownloadClick,
+                                        onClick = { if (!isDownloaded) onDownloadClick() },
                                         onLongClick = { showReorderDialog = true }
                                     ),
                                 colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    containerColor = containerColor,
+                                    contentColor = contentColor
                                 )
                             ) {
-                                Icon(imageVector = Icons.Filled.Download, contentDescription = "下载")
+                                Icon(
+                                    imageVector = if (isDownloaded) Icons.Filled.Check else Icons.Filled.Download,
+                                    contentDescription = buttonText
+                                )
                                 Spacer(Modifier.width(4.dp))
-                                Text("下载")
+                                Text(buttonText)
                             }
                         }
                     }

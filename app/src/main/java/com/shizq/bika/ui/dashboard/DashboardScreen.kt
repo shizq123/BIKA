@@ -135,10 +135,10 @@ fun DashboardScreen(
         }
     }
 
-    // 自动打卡触发器：用户信息加载成功后，如果发现未打卡，才在后台安全触发自动打卡
+    // 自动打卡触发器：用户信息加载成功且非离线缓存时，如果发现未打卡，才在后台安全触发自动打卡
     LaunchedEffect(userProfileUiState) {
         val state = userProfileUiState
-        if (state is UserProfileUiState.Success) {
+        if (state is UserProfileUiState.Success && !state.isOfflineCache) {
             if (!state.user.hasCheckedIn) {
                 viewModel.onCheckIn(isAuto = true)
             }
@@ -872,11 +872,27 @@ fun UserProfileCard(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = user.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = user.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    // 无网络时显示离线缓存标识
+                    if (state.isOfflineCache) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "离线",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(

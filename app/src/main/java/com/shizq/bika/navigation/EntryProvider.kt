@@ -181,7 +181,7 @@ fun EntryProviderScope<NavKey>.featureSection(
             viewModel = hiltViewModel<ReaderViewModel, ReaderViewModel.Factory>(
                 key = key.toString(),
             ) { factory ->
-                factory.create(id, key.order)
+                factory.create(id, key.order, key.downloadedOnly)
             },
         )
     }
@@ -210,8 +210,8 @@ fun EntryProviderScope<NavKey>.featureSection(
         DownloadListScreen(
             onBackClick = navigator::goBack,
             onComicClick = { comicId, order ->
-                // 跳转到阅读器
-                navigator.navigate(ConnectedRoute.ReaderRoute(comicId, order))
+                // 跳转到下载阅读器（仅限已下载章节导航）
+                navigator.navigate(ConnectedRoute.ReaderRoute(comicId, order, downloadedOnly = true))
             }
         )
     }

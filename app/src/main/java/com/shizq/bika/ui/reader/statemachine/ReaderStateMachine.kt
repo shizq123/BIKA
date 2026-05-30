@@ -3,6 +3,7 @@ package com.shizq.bika.ui.reader.statemachine
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.shizq.bika.core.data.model.asExternalModel
+import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -22,6 +23,7 @@ class ReaderStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
+    private val downloadRepository: DownloadRepository,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
     init {
         spec {
@@ -84,14 +86,24 @@ class ReaderStateMachine @Inject constructor(
                             val now = Clock.System.now()
                             historyDao.updateLastReadAt(id, now)
 
+                            // 如果翻到最后一页或最后2页，则直接保存当前页为总页数，反馈已经看完
+                            val isFinished = meta.totalImages > 0 && it.pageIndex >= meta.totalImages - 2
+                            val savedPage = if (isFinished) meta.totalImages else it.pageIndex
+
                             val chapterProgress = ChapterProgressEntity(
                                 historyId = id,
                                 chapterId = chapter.order,
-                                currentPage = it.pageIndex,
+                                currentPage = savedPage,
                                 pageCount = meta.totalImages,
                                 lastReadAt = now
                             )
                             historyDao.upsertChapterProgress(chapterProgress)
+
+                            // 如果看完，则同步将该章节的下载任务标记为已查看
+                            if (isFinished) {
+                                val taskId = DownloadRepository.taskId(id, chapter.order)
+                                downloadRepository.markAsViewed(taskId)
+                            }
                         }
                     }
                 }

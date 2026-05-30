@@ -52,10 +52,11 @@ fun LeaderboardScreen(
     val leaderboardState by viewModel.leaderboardUiState.collectAsStateWithLifecycle()
 
     LeaderboardContent(
-        leaderboardState,
+        leaderboardState = leaderboardState,
         scrollStates = viewModel.scrollStates,
         navigationToUnitedDetail = navigationToUnitedDetail,
         navigationToKnight = navigationToKnight,
+        onRetry = viewModel::refresh
     )
 }
 
@@ -66,6 +67,7 @@ fun LeaderboardContent(
     scrollStates: List<LazyListState>,
     navigationToUnitedDetail: (String) -> Unit,
     navigationToKnight: (String, String) -> Unit,
+    onRetry: () -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val pagerState = rememberPagerState(pageCount = { LEADERBOARD_TABS.size })
@@ -99,7 +101,7 @@ fun LeaderboardContent(
                             color = MaterialTheme.colorScheme.error
                         )
                         Button(
-                            onClick = { /* 重试逻辑需在 VM 添加 */ },
+                            onClick = onRetry,
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
                             Icon(Icons.Default.Refresh, null)

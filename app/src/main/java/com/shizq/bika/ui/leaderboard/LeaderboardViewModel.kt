@@ -19,12 +19,16 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import com.shizq.bika.core.coroutine.FlowRestarter
+import com.shizq.bika.core.coroutine.restartable
 
 @HiltViewModel
 class LeaderboardViewModel @Inject constructor(
     private val api: BikaDataSource,
     private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
+    private val leaderboardRestarter = FlowRestarter()
+
     val scrollStates = List(4) { LazyListState() }
 
     // 网络数据：一次性加载（排行榜数据本身不需要轮询）
@@ -55,6 +59,7 @@ class LeaderboardViewModel @Inject constructor(
         )
     }
         .asResult()
+        .restartable(leaderboardRestarter)
         .map { result ->
             when (result) {
                 is Result.Error -> LeaderboardUiState.Error(
@@ -77,6 +82,10 @@ class LeaderboardViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = LeaderboardUiState.Loading
         )
+
+    fun refresh() {
+        leaderboardRestarter.restart()
+    }
 
     private fun getKnightLeaderboardFlow() = flow {
         val response = api.getKnightLeaderboard()

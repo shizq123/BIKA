@@ -35,6 +35,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.model.Episode
+import com.shizq.bika.core.database.model.DownloadTaskEntity
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
@@ -58,6 +59,7 @@ fun ComicDetailScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
+    val downloadTasks by viewModel.downloadTasks.collectAsStateWithLifecycle()
 
     val pinnedComments by viewModel.pinnedComments.collectAsStateWithLifecycle()
     val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
@@ -66,6 +68,7 @@ fun ComicDetailScreen(
     ComicDetailContent(
         unitedState = state,
         episodes = episodes,
+        downloadTasks = downloadTasks,
         onBackClick = onBackClick,
         navigationToReader = navigationToReader,
         navigationToComicInfo = onForYouClick,
@@ -86,6 +89,7 @@ fun ComicDetailContent(
     episodes: LazyPagingItems<Episode>,
     pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
+    downloadTasks: List<DownloadTaskEntity> = emptyList(),
     onBackClick: () -> Unit = {},
     navigationToReader: (id: String, index: Int) -> Unit = { _, _ -> },
     navigationToComicInfo: (String) -> Unit = {},
@@ -146,14 +150,22 @@ fun ComicDetailContent(
                     ) { page ->
                         val context = LocalContext.current
                         when (page) {
-                            0 -> ComicDetailPage(
-                                detail = detail,
-                                recommendations = unitedState.recommendations,
-                                onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
-                                onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
-                                navigationToReader = { navigationToReader(detail.id, 1) },
-                                navigationToComicInfo = { navigationToComicInfo(it) },
-                                navigationToFeed = navigationToFeed,
+                            0 -> {
+                                val isComicDownloaded = if (detail.epsCount <= 1) {
+                                    downloadTasks.any { it.status == com.shizq.bika.core.database.model.DownloadStatus.COMPLETED }
+                                } else {
+                                    val completedCount = downloadTasks.count { it.status == com.shizq.bika.core.database.model.DownloadStatus.COMPLETED }
+                                    completedCount > 0 && completedCount >= detail.epsCount
+                                }
+                                ComicDetailPage(
+                                    detail = detail,
+                                    recommendations = unitedState.recommendations,
+                                    isDownloaded = isComicDownloaded,
+                                    onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
+                                    onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
+                                    navigationToReader = { navigationToReader(detail.id, 1) },
+                                    navigationToComicInfo = { navigationToComicInfo(it) },
+                                    navigationToFeed = navigationToFeed,
                                  onDownloadClick = {
                                     if (detail.epsCount <= 1) {
                                         DownloadWorker.startDownload(
@@ -202,10 +214,12 @@ fun ComicDetailContent(
                                     }
                                 }
                             )
+                        }
 
-                            1 -> {
+                        1 -> {
                                 EpisodesPage(
                                     episodes = episodes,
+                                    downloadTasks = downloadTasks,
                                     navigateToReader = {
                                         navigationToReader(detail.id, it)
                                     },

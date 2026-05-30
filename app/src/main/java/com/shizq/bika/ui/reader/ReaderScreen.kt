@@ -128,14 +128,18 @@ private fun ReaderContent(
             val prevChapter: Chapter? = remember(currentChapterIndex, chapterList.itemCount, chapterState.order) {
                 currentChapterIndex?.let { idx ->
                     if (idx > 0) chapterList.peek(idx - 1) else null
-                } ?: if (chapterState.order > 1) {
+                } ?: if (chapterList.itemCount == 0 && chapterState.order > 1) {
+                    // 章节列表还未加载完成时，用 order 推断前一章（兼容首次进入）
                     Chapter(id = "", order = chapterState.order - 1, title = "", updatedAt = "")
                 } else null
             }
             val nextChapter: Chapter? = remember(currentChapterIndex, chapterList.itemCount, chapterState.order) {
                 currentChapterIndex?.let { idx ->
                     if (idx < chapterList.itemCount - 1) chapterList.peek(idx + 1) else null
-                } ?: Chapter(id = "", order = chapterState.order + 1, title = "", updatedAt = "")
+                } ?: if (chapterList.itemCount == 0) {
+                    // 章节列表还未加载完成时，用 order 推断后一章（兼容首次进入）
+                    Chapter(id = "", order = chapterState.order + 1, title = "", updatedAt = "")
+                } else null
             }
 
             SystemUiController(showSystemUI = overlayState.showSystemBars)
@@ -158,9 +162,8 @@ private fun ReaderContent(
                     }
             }
 
-            // 自动衔接：到达当前章节最后一页时，自动跳转到下一章
+            // 自动衔接：到达当前章节最后一页时，自动跳转到下一章。如果是最后一章，提示后面没有内容了。
             LaunchedEffect(chapterState.order, nextChapter) {
-                val next = nextChapter ?: return@LaunchedEffect
                 // 等待章节加载完成（totalPages > 0）
                 val total = snapshotFlow { chapterState.totalPages }
                     .filter { it > 0 }
@@ -171,8 +174,12 @@ private fun ReaderContent(
                     .collect { page ->
                         if (page >= total - 1) {
                             delay(300)
-                            // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
-                            dispatch(JumpToChapter(next, startFromBeginning = true))
+                            if (nextChapter != null) {
+                                // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
+                                dispatch(JumpToChapter(nextChapter, startFromBeginning = true))
+                            } else {
+                                android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show()
+                            }
                         }
                     }
             }
@@ -205,7 +212,8 @@ private fun ReaderContent(
                         onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
                         onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
                         onPrevChapter = prevChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } },
-                        onNextChapter = nextChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } },
+                        onNextChapter = nextChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } }
+                            ?: { android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show() },
                     )
                 },
                 floatingMessage = {
