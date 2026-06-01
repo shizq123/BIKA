@@ -4,6 +4,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.model.ReadingMode
@@ -46,50 +47,58 @@ fun rememberReaderContext(
     readingMode: ReadingMode,
     chapterPages: LazyPagingItems<ChapterPage>,
     config: ReaderConfig = ReaderConfig.Default,
-    initialPageIndex: Int
+    initialPageIndex: Int,
+    chapterOrder: Int,
 ): ReaderContext {
     return when (readingMode.viewerType) {
         ViewerType.Scrolling -> {
-            val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPageIndex)
+            // 用 key(chapterOrder) 强制在章节切换时重建 listState，
+            // 确保 initialFirstVisibleItemIndex（即上次阅读位置）每次都能生效。
+            key(chapterOrder) {
+                val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPageIndex)
 
-            val layout = remember(listState, readingMode.hasPageGap) {
-                WebtoonLayout(
-                    listState = listState,
-                    hasPageGap = readingMode.hasPageGap
+                val layout = remember(listState, readingMode.hasPageGap) {
+                    WebtoonLayout(
+                        listState = listState,
+                        hasPageGap = readingMode.hasPageGap
+                    )
+                }
+                val controller = remember(listState) { WebtoonController(listState) }
+                val scrollProvider = remember(listState) { LazyListScrollStateProvider(listState) }
+
+                ReaderContext(
+                    layout = layout,
+                    controller = controller,
+                    scrollStateProvider = scrollProvider,
+                    config = config
                 )
             }
-            val controller = remember(listState) { WebtoonController(listState) }
-            val scrollProvider = remember(listState) { LazyListScrollStateProvider(listState) }
-
-            ReaderContext(
-                layout = layout,
-                controller = controller,
-                scrollStateProvider = scrollProvider,
-                config = config
-            )
         }
 
         ViewerType.Pager -> {
-            val pagerState =
-                rememberPagerState(initialPage = initialPageIndex) { chapterPages.itemCount }
+            // 同理，chapter 切换时强制重建 pagerState。
+            key(chapterOrder) {
+                val pagerState =
+                    rememberPagerState(initialPage = initialPageIndex) { chapterPages.itemCount }
 
-            val layout = remember(pagerState, readingMode.direction, readingMode.isRtl) {
-                PagerLayout(
-                    pagerState = pagerState,
-                    direction = readingMode.direction,
-                    isRtl = readingMode.isRtl
+                val layout = remember(pagerState, readingMode.direction, readingMode.isRtl) {
+                    PagerLayout(
+                        pagerState = pagerState,
+                        direction = readingMode.direction,
+                        isRtl = readingMode.isRtl
+                    )
+                }
+
+                val controller = remember(pagerState) { PagerController(pagerState) }
+                val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
+
+                ReaderContext(
+                    layout = layout,
+                    controller = controller,
+                    scrollStateProvider = scrollProvider,
+                    config = config
                 )
             }
-
-            val controller = remember(pagerState) { PagerController(pagerState) }
-            val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
-
-            ReaderContext(
-                layout = layout,
-                controller = controller,
-                scrollStateProvider = scrollProvider,
-                config = config
-            )
         }
     }
 }

@@ -6,9 +6,11 @@ on:
     tags:
       - 'v*'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
-    if: github.repository == 'shizq123/BIKA'
     runs-on: ubuntu-latest
     timeout-minutes: 120
 

@@ -8,6 +8,9 @@ import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import androidx.paging.filter
+import androidx.paging.map
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
@@ -18,6 +21,7 @@ import com.shizq.bika.paging.FavouriteComicsPagingSource
 import com.shizq.bika.paging.RecentUpdatesPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
 import com.shizq.bika.ui.tag.FilterGroup
+import com.shizq.bika.util.injectLocalStatusFrom
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -37,6 +41,7 @@ class FeedViewModel @AssistedInject constructor(
     private val favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
     private val advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
     private val recentUpdatesPagingSourceProvider: Provider<RecentUpdatesPagingSource>,
+    private val historyDao: ReadingHistoryDao,
     @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
     val currentSortOrder: StateFlow<Sort>
@@ -44,6 +49,7 @@ class FeedViewModel @AssistedInject constructor(
     val filterSelections: StateFlow<Map<FilterGroup, List<String>>>
         field = MutableStateFlow(emptyMap())
 
+    // 网络数据（含 PagingSource 首次加载时的一次性本地状态注入）
     private val basePagedComics: Flow<PagingData<ComicSimple>> = currentSortOrder
         .flatMapLatest { sort ->
             Pager(PagingConfig(pageSize = 40)) {
@@ -52,8 +58,17 @@ class FeedViewModel @AssistedInject constructor(
         }
         .cachedIn(viewModelScope)
 
-    val pagedComics: Flow<PagingData<ComicSimple>> = combine(
+    // combine DB Flow：每当收藏/进度变化时，对当前 PagingData 快照重新注入本地状态
+    // 这样无需 invalidate/reload 整个列表，只需 map 重算徽章字段即可。
+    private val statusEnrichedComics: Flow<PagingData<ComicSimple>> = combine(
         basePagedComics,
+        historyDao.getDetailedHistories(),
+    ) { pagingData, histories ->
+        pagingData.map { comic -> comic.injectSingleFrom(histories) }
+    }
+
+    val pagedComics: Flow<PagingData<ComicSimple>> = combine(
+        statusEnrichedComics,
         filterSelections
     ) { pagingData, filters ->
         if (filters.isEmpty() || filters.values.all { it.isEmpty() }) {
@@ -88,6 +103,7 @@ class FeedViewModel @AssistedInject constructor(
     fun updateSortOrder(newSort: Sort) {
         currentSortOrder.update { newSort }
     }
+
     private fun matchesFilters(
         comic: ComicSimple,
         filters: Map<FilterGroup, List<String>>
@@ -98,6 +114,11 @@ class FeedViewModel @AssistedInject constructor(
             val matchesGroup = when (group) {
                 is FilterGroup.Topic -> {
                     selectedValues.any { it in comic.categories }
+                }
+
+                is FilterGroup.ExcludeTopic -> {
+                    // 排除勾选的主题分类：漫画所有的 categories 里必须没有任何一个被包含在 selectedValues 中
+                    selectedValues.none { it in comic.categories }
                 }
 
                 is FilterGroup.Status -> {
@@ -113,8 +134,6 @@ class FeedViewModel @AssistedInject constructor(
                         true
                     }
                 }
-                // 兜底逻辑
-                else -> true
             }
             // AND 逻辑：只要有任意一组条件不满足，这本漫画就被过滤掉
             if (!matchesGroup) {
@@ -125,6 +144,7 @@ class FeedViewModel @AssistedInject constructor(
         // 所有组的条件都通过了，保留这本漫画
         return true
     }
+
     private fun createPagingSource(
         action: DiscoveryAction,
         sort: Sort
@@ -157,4 +177,27 @@ class FeedViewModel @AssistedInject constructor(
             action: DiscoveryAction,
         ): FeedViewModel
     }
+}
+
+/**
+ * 对单个 ComicSimple 从 DetailedHistory 列表快照中注入本地状态。
+ * 供 PagingData.map{} 使用，此处不能是挂起函数。
+ */
+private fun ComicSimple.injectSingleFrom(histories: List<DetailedHistory>): ComicSimple {
+    val detailed = histories.find { it.history.id == id } ?: return this
+    val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
+    val progressText = if (lastProgress != null) {
+        val epsCount = detailed.history.epsCount
+        when {
+            epsCount > lastProgress.chapterId -> "有更新"
+            lastProgress.chapterId >= epsCount
+                    && lastProgress.currentPage >= lastProgress.pageCount
+                    && lastProgress.pageCount > 0 -> "已读完"
+            else -> "已阅读"
+        }
+    } else null
+    return copy(
+        isFavourited = detailed.history.isFavourited,
+        lastReadChapterProgress = progressText
+    )
 }

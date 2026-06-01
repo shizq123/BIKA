@@ -13,6 +13,7 @@ import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.database.model.RecentSearchQueryEntity
 import com.shizq.bika.core.database.model.TagEntity
 import com.shizq.bika.core.database.util.InstantConverter
+import com.shizq.bika.core.database.util.StringListConverter
 
 @Database(
     entities = [
@@ -22,10 +23,10 @@ import com.shizq.bika.core.database.util.InstantConverter
         TagEntity::class,
         DownloadTaskEntity::class,
     ],
-    version = 3,
+    version = 5,
     exportSchema = true,
 )
-@TypeConverters(InstantConverter::class)
+@TypeConverters(InstantConverter::class, StringListConverter::class)
 internal abstract class BikaDatabase : RoomDatabase() {
     abstract fun recentSearchQueryDao(): RecentSearchQueryDao
     abstract fun readingHistoryDao(): ReadingHistoryDao

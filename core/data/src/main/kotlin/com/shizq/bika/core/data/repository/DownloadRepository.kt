@@ -11,6 +11,7 @@ import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -25,6 +26,7 @@ class DownloadRepository @Inject constructor(
     private val downloadTaskDao: DownloadTaskDao,
     private val network: BikaDataSource,
     private val okHttpClient: OkHttpClient,
+    private val userPreferencesDataSource: com.shizq.bika.core.datastore.UserPreferencesDataSource,
 ) {
     companion object {
         private const val TAG = "DownloadRepository"
@@ -73,6 +75,12 @@ class DownloadRepository @Inject constructor(
         downloadTaskDao.upsertTask(task)
 
         try {
+            // 离线下载 WiFi 环境检查
+            val userPrefs = userPreferencesDataSource.userData.first()
+            if (userPrefs.downloadOverWifiOnly && !isWifiConnected(context)) {
+                throw Exception("已开启仅在WiFi下下载偏好，当前处于非WiFi（蜂窝移动）网络环境，已安全拦截下载并挂起任务")
+            }
+
             // 获取该章节的所有页面图片 URL
             var page = 1
             val allPages = mutableListOf<String>()
@@ -150,10 +158,18 @@ class DownloadRepository @Inject constructor(
     private fun downloadFile(url: String, dest: File) {
         val request = Request.Builder().url(url).build()
         okHttpClient.newCall(request).execute().use { response ->
-            val body = response.body ?: error("Empty response body for $url")
+            val body = response.body
             dest.sink().buffer().use { sink ->
                 sink.writeAll(body.source())
             }
         }
+    }
+
+    private fun isWifiConnected(context: Context): Boolean {
+        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
+            ?: return false
+        val activeNetwork = connectivityManager.activeNetwork ?: return false
+        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
+        return capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
     }
 }

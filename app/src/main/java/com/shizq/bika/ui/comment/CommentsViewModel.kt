@@ -5,10 +5,8 @@ import androidx.lifecycle.MutableLiveData
 import com.shizq.bika.bean.ActionBean
 import com.shizq.bika.bean.CommentsBean
 import com.shizq.bika.bean.ReportBean
-import com.shizq.bika.network.Result
 import com.shizq.bika.network.base.BaseResponse
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
+
 
 class CommentsViewModel(application: Application) {
     var data: CommentsBean.Comments.Doc?=null
@@ -25,35 +23,6 @@ class CommentsViewModel(application: Application) {
     var likeCommentsId: String? = null
     var likeSubCommentsId: String? = null
 
-    private val repository = CommentsRepository()
-
-    //评论列表
-    private val _comments = MutableStateFlow<Result<CommentsBean>?>(null)
-    val comments: StateFlow<Result<CommentsBean>?> = _comments
-
-    //子评论列表
-    private val _subComments = MutableStateFlow<Result<CommentsBean>?>(null)
-    val subComments: StateFlow<Result<CommentsBean>?> = _subComments
-
-    //发送评论
-    private val _seedComment = MutableStateFlow<Result<CommentsBean>?>(null)
-    val seedComment: StateFlow<Result<CommentsBean>?> = _seedComment
-
-    //回复评论
-    private val _replyComment = MutableStateFlow<Result<CommentsBean>?>(null)
-    val replyComment: StateFlow<Result<CommentsBean>?> = _replyComment
-
-    //喜欢这条评论
-    private val _likeComment = MutableStateFlow<Result<CommentsBean>?>(null)
-    val likeComment: StateFlow<Result<CommentsBean>?> = _likeComment
-
-    //喜欢这条子评论
-    private val _likeSubComment = MutableStateFlow<Result<CommentsBean>?>(null)
-    val likeSubComment: StateFlow<Result<CommentsBean>?> = _likeSubComment
-
-    //举报评论
-    private val _reportComment = MutableStateFlow<Result<CommentsBean>?>(null)
-    val reportComment: StateFlow<Result<CommentsBean>?> = _reportComment
 
 
 //    val liveData_comments: MutableLiveData<BaseResponse<CommentsBean>> by lazy {

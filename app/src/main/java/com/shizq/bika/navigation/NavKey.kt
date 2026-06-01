@@ -36,7 +36,7 @@ data object ConnectedRoute : Root {
     data object MineCommentRoute : Connected
 
     @Serializable
-    data class ReaderRoute(val id: String, val order: Int) : Connected
+    data class ReaderRoute(val id: String, val order: Int, val downloadedOnly: Boolean = false) : Connected
 
     @Serializable
     data object SearchRoute : Connected
@@ -49,6 +49,12 @@ data object ConnectedRoute : Root {
 
     @Serializable
     data class UnitedDetailRoute(val id: String) : Connected
+
+    @Serializable
+    data object NotificationsRoute : Connected
+
+    @Serializable
+    data object GuestbookRoute : Connected
 }
 
 @Serializable

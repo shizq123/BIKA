@@ -22,6 +22,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
@@ -65,7 +66,10 @@ import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.ui.reader.util.preload.PagingPreload
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -107,9 +111,36 @@ private fun ReaderContent(
                 readingMode = config.readingMode,
                 chapterPages = imageList,
                 config = config,
-                initialPageIndex = chapterState.initialPage
+                initialPageIndex = chapterState.initialPage,
+                chapterOrder = chapterState.order,
             )
             val controller = readerContext.controller
+
+            // 当前页（提升到此层级，用于自动衔接检测）
+            val currentPage by controller.visibleItemIndex.collectAsState(0)
+
+            // 根据当前章节 order 从列表中找出相邻章节
+            val currentChapterIndex = remember(chapterState.order, chapterList.itemCount) {
+                (0 until chapterList.itemCount).firstOrNull {
+                    chapterList.peek(it)?.order == chapterState.order
+                }
+            }
+            val prevChapter: Chapter? = remember(currentChapterIndex, chapterList.itemCount, chapterState.order) {
+                currentChapterIndex?.let { idx ->
+                    if (idx > 0) chapterList.peek(idx - 1) else null
+                } ?: if (chapterList.itemCount == 0 && chapterState.order > 1) {
+                    // 章节列表还未加载完成时，用 order 推断前一章（兼容首次进入）
+                    Chapter(id = "", order = chapterState.order - 1, title = "", updatedAt = "")
+                } else null
+            }
+            val nextChapter: Chapter? = remember(currentChapterIndex, chapterList.itemCount, chapterState.order) {
+                currentChapterIndex?.let { idx ->
+                    if (idx < chapterList.itemCount - 1) chapterList.peek(idx + 1) else null
+                } ?: if (chapterList.itemCount == 0) {
+                    // 章节列表还未加载完成时，用 order 推断后一章（兼容首次进入）
+                    Chapter(id = "", order = chapterState.order + 1, title = "", updatedAt = "")
+                } else null
+            }
 
             SystemUiController(showSystemUI = overlayState.showSystemBars)
             KeepScreenOnEffect()
@@ -131,6 +162,28 @@ private fun ReaderContent(
                     }
             }
 
+            // 自动衔接：到达当前章节最后一页时，自动跳转到下一章。如果是最后一章，提示后面没有内容了。
+            LaunchedEffect(chapterState.order, nextChapter) {
+                // 等待章节加载完成（totalPages > 0）
+                val total = snapshotFlow { chapterState.totalPages }
+                    .filter { it > 0 }
+                    .first()
+                // 监听页面到达末尾（停留 800ms 确认用户确实看到最后一页）
+                controller.visibleItemIndex
+                    .debounce(800)
+                    .collect { page ->
+                        if (page >= total - 1) {
+                            delay(300)
+                            if (nextChapter != null) {
+                                // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
+                                dispatch(JumpToChapter(nextChapter, startFromBeginning = true))
+                            } else {
+                                android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                    }
+            }
+
             val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
             PagingPreload(
                 pagingItems = imageList,
@@ -148,6 +201,7 @@ private fun ReaderContent(
                 bottomBar = {
                     LiveReaderBottomBar(
                         controller = controller,
+                        currentPage = currentPage,
                         totalPages = chapterState.totalPages,
                         readingMode = config.readingMode,
                         onSeekToPage = {
@@ -156,7 +210,10 @@ private fun ReaderContent(
                         onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
                         onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
                         onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
-                        onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) }
+                        onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
+                        onPrevChapter = prevChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } },
+                        onNextChapter = nextChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } }
+                            ?: { android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show() },
                     )
                 },
                 floatingMessage = {
@@ -329,15 +386,17 @@ private fun LivePageIndicatorBadge(controller: ReaderController, total: Int) {
 @Composable
 private fun LiveReaderBottomBar(
     controller: ReaderController,
+    currentPage: Int,
     totalPages: Int,
     readingMode: ReadingMode,
     onSeekToPage: (Int) -> Unit,
     onToggleChapterList: () -> Unit,
     onOpenSettings: () -> Unit,
     onOpenReadingMode: () -> Unit,
-    onOpenOrientation: () -> Unit
+    onOpenOrientation: () -> Unit,
+    onPrevChapter: (() -> Unit)? = null,
+    onNextChapter: (() -> Unit)? = null,
 ) {
-    val currentPage by controller.visibleItemIndex.collectAsState(0)
     ReaderBottomBar(
         currentPage = currentPage,
         totalPages = totalPages,
@@ -346,6 +405,8 @@ private fun LiveReaderBottomBar(
         onToggleChapterList = onToggleChapterList,
         onOpenSettings = onOpenSettings,
         onOpenReadingMode = onOpenReadingMode,
-        onOpenOrientation = onOpenOrientation
+        onOpenOrientation = onOpenOrientation,
+        onPrevChapter = onPrevChapter,
+        onNextChapter = onNextChapter,
     )
 }

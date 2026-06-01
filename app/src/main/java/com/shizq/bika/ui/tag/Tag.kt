@@ -46,5 +46,8 @@ sealed class FilterGroup(open val values: List<String>) {
     )
 
     @Immutable
+    data object ExcludeTopic : FilterGroup(Topic.values)
+
+    @Immutable
     data object Status : FilterGroup(listOf("完结"))
 }

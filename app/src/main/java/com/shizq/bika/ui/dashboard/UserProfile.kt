@@ -3,7 +3,7 @@ package com.shizq.bika.ui.dashboard
 sealed interface UserProfileUiState {
     data object Loading : UserProfileUiState
     data class Error(val message: String) : UserProfileUiState
-    data class Success(val user: User) : UserProfileUiState
+    data class Success(val user: User, val isOfflineCache: Boolean = false) : UserProfileUiState
 }
 
 data class User(

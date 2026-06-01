@@ -23,22 +23,34 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
+import com.shizq.bika.core.database.dao.DownloadTaskDao
+import com.shizq.bika.core.database.model.DownloadTaskEntity
 
 private const val TAG = "ComicInfoViewModel"
 
 @HiltViewModel(assistedFactory = ComicInfoViewModel.Factory::class)
 class ComicInfoViewModel @AssistedInject constructor(
-    private val network: BikaDataSource,
+    val network: BikaDataSource,
     private val commentPagingSourceFactory: CommentPagingSource.Factory,
     private val replyPagingSourceFactory: ReplyPagingSource.Factory,
     stateMachineFactory: UnitedDetailsStateMachine.Factory,
+    private val downloadTaskDao: DownloadTaskDao,
     @Assisted private val id: String,
 ) : ViewModel() {
 
     private val stateMachine = stateMachineFactory.create(id).launchIn(viewModelScope)
 
     val state = stateMachine.state
+
+    val downloadTasks = downloadTaskDao.getTasksByComic(id)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     val episodesFlow: Flow<PagingData<Episode>> = Pager(PagingConfig(40)) {
         EpisodePagingSource(network, id)

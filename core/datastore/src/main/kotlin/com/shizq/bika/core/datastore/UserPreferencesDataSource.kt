@@ -81,4 +81,47 @@ class UserPreferencesDataSource @Inject constructor(
             it.copy(fontScale = scale)
         }
     }
+
+    suspend fun setIsLoggingEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(isLoggingEnabled = enabled)
+        }
+    }
+
+    suspend fun setDownloadOverWifiOnly(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(downloadOverWifiOnly = enabled)
+        }
+    }
+
+    suspend fun setMaxConcurrentDownloads(count: Int) {
+        userPreferences.updateData {
+            it.copy(maxConcurrentDownloads = count)
+        }
+    }
+
+    /** 保存用户资料到本地，供无网时回退展示 */
+    suspend fun saveUserProfileCache(
+        name: String,
+        avatarUrl: String,
+        level: Int,
+        exp: Int,
+        title: String,
+        gender: String,
+        slogan: String,
+        characters: List<String>,
+    ) {
+        userPreferences.updateData {
+            it.copy(
+                cachedUserName = name,
+                cachedUserAvatarUrl = avatarUrl,
+                cachedUserLevel = level,
+                cachedUserExp = exp,
+                cachedUserTitle = title,
+                cachedUserGender = gender,
+                cachedUserSlogan = slogan,
+                cachedUserCharacters = characters,
+            )
+        }
+    }
 }

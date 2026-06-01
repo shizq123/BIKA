@@ -8,6 +8,7 @@ import com.shizq.bika.network.base.BaseHeaders
 import com.shizq.bika.network.base.BaseResponse
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.toRequestBody
 
 class SignInViewModel(application: Application) {
     var forgot_answer: String? = null
@@ -19,10 +20,8 @@ class SignInViewModel(application: Application) {
     val liveData_password = MutableLiveData<BaseResponse<SignInBean>>()
 
     fun getForgot() {
-        val body = RequestBody.create(
-            "application/json; charset=UTF-8".toMediaTypeOrNull(),
-            JsonObject().apply { addProperty("email", forgot_email) }.asJsonObject.toString()
-        )
+        val body = JsonObject().apply { addProperty("email", forgot_email) }.asJsonObject.toString()
+            .toRequestBody("application/json; charset=UTF-8".toMediaTypeOrNull())
         val headers = BaseHeaders("auth/forgot-password", "POST").getHeaders()
 
 //        RetrofitUtil.service.forgotPasswordPost(body, headers)
@@ -39,14 +38,12 @@ class SignInViewModel(application: Application) {
     }
 
     fun resetPassword() {
-        val body = RequestBody.create(
-            "application/json; charset=UTF-8".toMediaTypeOrNull(),
-            JsonObject().apply {
-                addProperty("answer", forgot_answer)
-                addProperty("email", forgot_email)
-                addProperty("questionNo", forgot_questionNo)
-            }.asJsonObject.toString()
-        )
+        val body = JsonObject().apply {
+            addProperty("answer", forgot_answer)
+            addProperty("email", forgot_email)
+            addProperty("questionNo", forgot_questionNo)
+        }.asJsonObject.toString()
+            .toRequestBody("application/json; charset=UTF-8".toMediaTypeOrNull())
         val headers = BaseHeaders("auth/reset-password", "POST").getHeaders()
 
 //        RetrofitUtil.service.resetPasswordPost(body, headers)

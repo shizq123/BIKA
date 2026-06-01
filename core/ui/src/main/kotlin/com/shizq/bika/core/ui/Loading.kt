@@ -1,14 +1,5 @@
 package com.shizq.bika.core.ui
 
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateValue
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.keyframes
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,32 +7,29 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
-import androidx.compose.foundation.progressSemantics
-import androidx.compose.material3.CircularWavyProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.shizq.bika.core.designsystem.theme.BikaTheme
-import kotlin.math.PI
-import kotlin.math.abs
-import kotlin.math.max
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun FullScreenLoading(modifier: Modifier = Modifier) {
     Box(
@@ -53,7 +41,6 @@ fun FullScreenLoading(modifier: Modifier = Modifier) {
     }
 }
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun LoadingState(modifier: Modifier = Modifier) {
     Box(
@@ -61,9 +48,10 @@ fun LoadingState(modifier: Modifier = Modifier) {
             .fillMaxSize()
             .wrapContentSize(Alignment.Center),
     ) {
-        CircularWavyProgressIndicator()
+        CircularProgressIndicator()
     }
 }
+
 @Composable
 fun Loading(
     modifier: Modifier = Modifier,
@@ -90,150 +78,72 @@ fun CircularProgressIndicator(
     modifier: Modifier = Modifier,
     color: Color = MaterialTheme.colorScheme.primary,
     strokeWidth: Dp = 4.dp,
-    trackColor: Color = MaterialTheme.colorScheme.surface,
+    trackColor: Color = Color.Transparent,
     strokeCap: StrokeCap = StrokeCap.Round,
 ) {
-    val transition = rememberInfiniteTransition("loading")
+    // 使用 withFrameNanos 驱动动画，完全绕过系统"动画程序时长缩放比例"设置
+    // 即使系统动画缩放为 0x，动画依然正常运行
+    var rotation by remember { mutableFloatStateOf(0f) }
+    var rawSweep by remember { mutableFloatStateOf(0f) }
 
-    val stroke = with(LocalDensity.current) {
-        Stroke(width = strokeWidth.toPx(), cap = strokeCap)
+    LaunchedEffect(Unit) {
+        var lastFrameNanos = -1L
+        while (true) {
+            withFrameNanos { frameNanos ->
+                if (lastFrameNanos > 0) {
+                    val elapsedMs = (frameNanos - lastFrameNanos) / 1_000_000f
+                    // 旋转：1333ms 一圈（Material Design 标准速度）
+                    rotation = (rotation + elapsedMs * 360f / 1333f) % 360f
+                    // 伸缩：600ms 一周期（与旋转错相，产生明显运动感）
+                    rawSweep = (rawSweep + elapsedMs / 600f) % 1f
+                }
+                lastFrameNanos = frameNanos
+            }
+        }
     }
 
-    val currentRotation = transition.animateValue(
-        0,
-        RotationsPerCycle,
-        Int.VectorConverter,
-        infiniteRepeatable(
-            animation = tween(
-                durationMillis = RotationDuration * RotationsPerCycle,
-                easing = LinearEasing,
-            ),
-        ),
-        "loading_current_rotation",
-    )
-    // How far forward (degrees) the base point should be from the start point
-    val baseRotation = transition.animateFloat(
-        0f,
-        BaseRotationAngle,
-        infiniteRepeatable(
-            animation = tween(
-                durationMillis = RotationDuration,
-                easing = LinearEasing,
-            ),
-        ),
-        "loading_base_rotation_angle",
-    )
-    // How far forward (degrees) both the head and tail should be from the base point
-    val endAngle = transition.animateFloat(
-        0f,
-        JumpRotationAngle,
-        infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = HeadAndTailAnimationDuration + HeadAndTailDelayDuration
-                0f at 0 using CircularEasing
-                JumpRotationAngle at HeadAndTailAnimationDuration
-            },
-        ),
-        "loading_end_rotation_angle",
-    )
-    val startAngle = transition.animateFloat(
-        0f,
-        JumpRotationAngle,
-        infiniteRepeatable(
-            animation = keyframes {
-                durationMillis = HeadAndTailAnimationDuration + HeadAndTailDelayDuration
-                0f at HeadAndTailDelayDuration using CircularEasing
-                JumpRotationAngle at durationMillis
-            },
-        ),
-        "loading_start_angle",
-    )
+    // 计算当前弧度（在 30° 到 270° 之间来回拉伸和收缩）
+    val sweepAngle = if (rawSweep < 0.5f) {
+        30f + (rawSweep / 0.5f) * 240f
+    } else {
+        270f - ((rawSweep - 0.5f) / 0.5f) * 240f
+    }
+
+    // 前半段起点固定，后半段起点向前移动以产生回弹效果
+    val startAngleOffset = if (rawSweep < 0.5f) {
+        0f
+    } else {
+        ((rawSweep - 0.5f) / 0.5f) * 240f
+    }
 
     Canvas(
-        modifier
-            .progressSemantics()
-            .size(CircularIndicatorDiameter),
+        modifier = Modifier.size(40.dp).then(modifier)
     ) {
-        drawCircularIndicatorTrack(trackColor, stroke)
+        val strokeWidthPx = strokeWidth.toPx()
+        val arcSize = size.minDimension - strokeWidthPx
 
-        val currentRotationAngleOffset = (currentRotation.value * RotationAngleOffset) % 360f
+        // 绘制背景轨道（如果有指定）
+        if (trackColor != Color.Transparent) {
+            drawCircle(
+                color = trackColor,
+                radius = arcSize / 2,
+                center = center,
+                style = Stroke(width = strokeWidthPx)
+            )
+        }
 
-        // How long a line to draw using the start angle as a reference point
-        val sweep = abs(endAngle.value - startAngle.value)
-
-        // Offset by the constant offset and the per rotation offset
-        val offset = StartAngleOffset + currentRotationAngleOffset + baseRotation.value
-        drawIndeterminateCircularIndicator(
-            startAngle.value + offset,
-            strokeWidth,
-            sweep,
-            color,
-            stroke,
+        // 绘制旋转且自动拉伸的圆弧
+        drawArc(
+            color = color,
+            startAngle = rotation + startAngleOffset,
+            sweepAngle = sweepAngle,
+            useCenter = false,
+            topLeft = Offset(strokeWidthPx / 2, strokeWidthPx / 2),
+            size = Size(arcSize, arcSize),
+            style = Stroke(width = strokeWidthPx, cap = strokeCap)
         )
     }
 }
-
-private fun DrawScope.drawCircularIndicator(
-    startAngle: Float,
-    sweep: Float,
-    color: Color,
-    stroke: Stroke
-) {
-    // To draw this circle we need a rect with edges that line up with the midpoint of the stroke.
-    // To do this we need to remove half the stroke width from the total diameter for both sides.
-    val diameterOffset = stroke.width / 2
-    val arcDimen = size.width - 2 * diameterOffset
-    drawArc(
-        color = color,
-        startAngle = startAngle,
-        sweepAngle = sweep,
-        useCenter = false,
-        topLeft = Offset(diameterOffset, diameterOffset),
-        size = Size(arcDimen, arcDimen),
-        style = stroke,
-    )
-}
-
-private fun DrawScope.drawCircularIndicatorTrack(color: Color, stroke: Stroke) =
-    drawCircularIndicator(0f, 360f, color, stroke)
-
-private fun DrawScope.drawIndeterminateCircularIndicator(
-    startAngle: Float,
-    strokeWidth: Dp,
-    sweep: Float,
-    color: Color,
-    stroke: Stroke
-) {
-    val strokeCapOffset = if (stroke.cap == StrokeCap.Butt) {
-        0f
-    } else {
-        // Length of arc is angle * radius
-        // Angle (radians) is length / radius
-        // The length should be the same as the stroke width for calculating the min angle
-        (180.0 / PI).toFloat() * (strokeWidth / (CircularIndicatorDiameter / 2)) / 2f
-    }
-
-    // Adding a stroke cap draws half the stroke width behind the start point, so we want to
-    // move it forward by that amount so the arc visually appears in the correct place
-    val adjustedStartAngle = startAngle + strokeCapOffset
-
-    // When the start and end angles are in the same place, we still want to draw a small sweep, so
-    // the stroke caps get added on both ends and we draw the correct minimum length arc
-    val adjustedSweep = max(sweep, 0.1f)
-
-    drawCircularIndicator(adjustedStartAngle, adjustedSweep, color, stroke)
-}
-
-private val CircularIndicatorDiameter = 38.dp
-private const val RotationsPerCycle = 5
-private const val RotationDuration = 1332
-private const val BaseRotationAngle = 286f
-private const val JumpRotationAngle = 290f
-private const val HeadAndTailAnimationDuration = (RotationDuration * 0.5).toInt()
-private const val HeadAndTailDelayDuration = HeadAndTailAnimationDuration
-private val CircularEasing = CubicBezierEasing(0.4f, 0f, 0.2f, 1f)
-private const val StartAngleOffset = -90f
-private const val RotationAngleOffset = (BaseRotationAngle + JumpRotationAngle) % 360f
 
 @Preview
 @Composable
