@@ -256,10 +256,41 @@ private fun matchesEpsRange(epsCount: Int, label: String): Boolean = when (label
     else -> true
 }
 
-private fun matchesPagesRange(pagesCount: Int, label: String): Boolean = when (label) {
-    "少页 (<50页)" -> pagesCount in 1..<50
-    "中等 (50-200页)" -> pagesCount in 50..200
-    "多页 (200-500页)" -> pagesCount in 201..500
-    "超多页 (500页以上)" -> pagesCount > 500
-    else -> true
+private fun matchesPagesRange(pagesCount: Int, label: String): Boolean {
+    if (label.startsWith("指定数量: ")) {
+        val text = label.substringAfter("指定数量: ").replace("页", "").trim()
+        if (text.contains("-")) {
+            val parts = text.split("-")
+            if (parts.size == 2) {
+                val start = parts[0].trim().toIntOrNull()
+                val end = parts[1].trim().toIntOrNull()
+                if (start != null && end != null) {
+                    return pagesCount in start..end
+                }
+            }
+        } else if (text.startsWith(">=")) {
+            val target = text.substring(2).trim().toIntOrNull()
+            if (target != null) return pagesCount >= target
+        } else if (text.startsWith("<=")) {
+            val target = text.substring(2).trim().toIntOrNull()
+            if (target != null) return pagesCount <= target
+        } else if (text.startsWith(">")) {
+            val target = text.substring(1).trim().toIntOrNull()
+            if (target != null) return pagesCount > target
+        } else if (text.startsWith("<")) {
+            val target = text.substring(1).trim().toIntOrNull()
+            if (target != null) return pagesCount < target
+        } else {
+            val target = text.toIntOrNull()
+            if (target != null) return pagesCount == target
+        }
+        return false
+    }
+    return when (label) {
+        "少页 (<50页)" -> pagesCount in 1..<50
+        "中等 (50-200页)" -> pagesCount in 50..200
+        "多页 (200-500页)" -> pagesCount in 201..500
+        "超多页 (500页以上)" -> pagesCount > 500
+        else -> true
+    }
 }

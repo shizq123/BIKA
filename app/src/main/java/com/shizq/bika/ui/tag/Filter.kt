@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
+import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -21,8 +22,11 @@ import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -147,6 +151,96 @@ fun FilterChip(
                             )
                             Spacer(Modifier.width(16.dp))
                             Text(text = value, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+
+                    if (state.kind is FilterGroup.PagesRange) {
+                        var customCountText by remember { mutableStateOf("") }
+                        val currentCustomSelections = state.selected.filter { it.startsWith("指定数量: ") }
+
+                        if (currentCustomSelections.isNotEmpty()) {
+                            Text(
+                                text = "已指定数量",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                            )
+                        }
+                        currentCustomSelections.forEach { customVal ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onSelectionChanged(customVal) }
+                                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = true,
+                                    onCheckedChange = null
+                                )
+                                Spacer(Modifier.width(16.dp))
+                                Text(text = customVal, style = MaterialTheme.typography.bodyLarge)
+                            }
+                        }
+
+                        var minCountText by remember { mutableStateOf("") }
+                        var maxCountText by remember { mutableStateOf("") }
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            OutlinedTextField(
+                                value = minCountText,
+                                onValueChange = { text ->
+                                    if (text.all { it.isDigit() }) {
+                                        minCountText = text
+                                    }
+                                },
+                                label = { Text("最少页数") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("至", style = MaterialTheme.typography.bodyMedium)
+                            Spacer(Modifier.width(8.dp))
+                            OutlinedTextField(
+                                value = maxCountText,
+                                onValueChange = { text ->
+                                    if (text.all { it.isDigit() }) {
+                                        maxCountText = text
+                                    }
+                                },
+                                label = { Text("最多页数") },
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Button(
+                                onClick = {
+                                    val min = minCountText.trim().toIntOrNull()
+                                    val max = maxCountText.trim().toIntOrNull()
+                                    if (min != null || max != null) {
+                                        val label = when {
+                                            min != null && max != null -> "指定数量: $min - $max 页"
+                                            min != null -> "指定数量: >= $min 页"
+                                            else -> "指定数量: <= $max 页"
+                                        }
+                                        if (label !in state.selected) {
+                                            onSelectionChanged(label)
+                                        }
+                                        minCountText = ""
+                                        maxCountText = ""
+                                    }
+                                },
+                                enabled = minCountText.trim().isNotEmpty() || maxCountText.trim().isNotEmpty(),
+                                modifier = Modifier.padding(top = 4.dp)
+                            ) {
+                                Text("添加")
+                            }
                         }
                     }
                 }
