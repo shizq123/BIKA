@@ -7,8 +7,8 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
-import androidx.paging.filter
-import androidx.paging.map
+import androidx.paging.filter as pagingFilter
+import androidx.paging.map as pagingMap
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.model.ComicSimple
@@ -31,6 +31,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import javax.inject.Provider
 
@@ -53,46 +54,34 @@ class FeedViewModel @AssistedInject constructor(
     val totalPages: StateFlow<Int>
         field = MutableStateFlow(1)
 
-    // 网络数据（含 PagingSource 首次加载时的一次性本地状态注入）
-    private val basePagedComics: Flow<PagingData<ComicSimple>> = combine(
+    // 合并 sort、page、filter、DB history 变化，构建统一的分页数据流。
+    // 注意：PagingData 不能在 cachedIn 之后再次被 combine/map，否则会运行时崩溃。
+    // 因此将所有 map/filter 操作放在 cachedIn 之前。
+    val pagedComics: Flow<PagingData<ComicSimple>> = combine(
         currentSortOrder,
-        currentPage
-    ) { sort, page ->
-        sort to page
-    }.flatMapLatest { (sort, page) ->
+        currentPage,
+        filterSelections,
+        historyDao.getDetailedHistories()
+    ) { args: Array<*> ->
+        @Suppress("UNCHECKED_CAST")
+        FeedParams(
+            sort = args[0] as Sort,
+            page = args[1] as Int,
+            filters = args[2] as Map<FilterGroup, List<String>>,
+            histories = args[3] as List<DetailedHistory>
+        )
+    }.flatMapLatest { params: FeedParams ->
         Pager(
             config = PagingConfig(
                 pageSize = 40,
                 prefetchDistance = 0,
                 enablePlaceholders = false
             ),
-            initialKey = page
+            initialKey = params.page
         ) {
-            createPagingSource(action, sort)
-        }.flow
+            createPagingSource(action, params.sort)
+        }.flow.map { pd: PagingData<ComicSimple> -> applyParamsToPagingData(pd, params) }
     }.cachedIn(viewModelScope)
-
-    // combine DB Flow：每当收藏/进度变化时，对当前 PagingData 快照重新注入本地状态
-    // 这样无需 invalidate/reload 整个列表，只需 map 重算徽章字段即可。
-    private val statusEnrichedComics: Flow<PagingData<ComicSimple>> = combine(
-        basePagedComics,
-        historyDao.getDetailedHistories(),
-    ) { pagingData, histories ->
-        pagingData.map { comic -> comic.injectSingleFrom(histories) }
-    }
-
-    val pagedComics: Flow<PagingData<ComicSimple>> = combine(
-        statusEnrichedComics,
-        filterSelections
-    ) { pagingData, filters ->
-        if (filters.isEmpty() || filters.values.all { it.isEmpty() }) {
-            pagingData
-        } else {
-            pagingData.filter { comic ->
-                matchesFilters(comic, filters)
-            }
-        }
-    }
 
     fun toggleFilter(group: FilterGroup, value: String) {
         currentPage.value = 1
@@ -125,77 +114,7 @@ class FeedViewModel @AssistedInject constructor(
         currentPage.value = target
     }
 
-    private fun matchesFilters(
-        comic: ComicSimple,
-        filters: Map<FilterGroup, List<String>>
-    ): Boolean {
-        for ((group, selectedValues) in filters) {
-            if (selectedValues.isEmpty()) continue
-            // 检查当前这本漫画是否符合这一组的条件
-            val matchesGroup = when (group) {
-                is FilterGroup.Topic -> {
-                    selectedValues.any { it in comic.categories }
-                }
-
-                is FilterGroup.ExcludeTopic -> {
-                    // 排除勾选的主题分类：漫画所有的 categories 里必须没有任何一个被包含在 selectedValues 中
-                    selectedValues.none { it in comic.categories }
-                }
-
-                is FilterGroup.Status -> {
-                    val isFinishedSelected = "完结" in selectedValues
-                    val isOngoingSelected = "连载" in selectedValues
-                    if (isFinishedSelected && isOngoingSelected) {
-                        true // 两个都选了，等于没限制
-                    } else if (isFinishedSelected) {
-                        comic.finished // 必须是 true
-                    } else if (isOngoingSelected) {
-                        !comic.finished // finished 必须是 false
-                    } else {
-                        true
-                    }
-                }
-
-                is FilterGroup.EpsRange -> {
-                    // 话数范围：OR 逻辑，满足任意一个区间即可
-                    selectedValues.any { label ->
-                        matchesEpsRange(comic.epsCount, label)
-                    }
-                }
-
-                is FilterGroup.PagesRange -> {
-                    // 页数范围：OR 逻辑，满足任意一个区间即可
-                    selectedValues.any { label ->
-                        matchesPagesRange(comic.pagesCount, label)
-                    }
-                }
-            }
-            // AND 逻辑：只要有任意一组条件不满足，这本漫画就被过滤掉
-            if (!matchesGroup) {
-                return false
-            }
-        }
-
-        // 所有组的条件都通过了，保留这本漫画
-        return true
-    }
-
-    private fun matchesEpsRange(epsCount: Int, label: String): Boolean = when (label) {
-        "单话 (1话)" -> epsCount == 1
-        "短篇 (2-5话)" -> epsCount in 2..5
-        "中篇 (6-20话)" -> epsCount in 6..20
-        "长篇 (21-100话)" -> epsCount in 21..100
-        "超长篇 (100话以上)" -> epsCount > 100
-        else -> true
-    }
-
-    private fun matchesPagesRange(pagesCount: Int, label: String): Boolean = when (label) {
-        "少页 (<50页)" -> pagesCount in 1..<50
-        "中等 (50-200页)" -> pagesCount in 50..200
-        "多页 (200-500页)" -> pagesCount in 201..500
-        "超多页 (500页以上)" -> pagesCount > 500
-        else -> true
-    }
+    // matchesFilters、matchesEpsRange、matchesPagesRange 已提取为文件顶层私有函数
 
 
     private fun createPagingSource(
@@ -275,4 +194,74 @@ private fun ComicSimple.injectSingleFrom(histories: List<DetailedHistory>): Comi
         isFavourited = detailed.history.isFavourited,
         lastReadChapterProgress = progressText
     )
+}
+
+/**
+ * 存储 combine 所需的参数组合，帮助 Kotlin 推断类型。
+ */
+private data class FeedParams(
+    val sort: Sort,
+    val page: Int,
+    val filters: Map<FilterGroup, List<String>>,
+    val histories: List<DetailedHistory>
+)
+
+/**
+ * 将 FeedParams 应用到 PagingData：先注入阅读状态，再执行本地过滤。
+ * 提取为顶层函数以避免 Kotlin 在嵌套 lambda 中无法推断 PagingData.map/filter 扩展接收者的编译问题。
+ */
+private fun applyParamsToPagingData(
+    pagingData: PagingData<ComicSimple>,
+    params: FeedParams
+): PagingData<ComicSimple> {
+    val enriched = pagingData.pagingMap { comic -> comic.injectSingleFrom(params.histories) }
+    return if (params.filters.isEmpty() || params.filters.values.all { it.isEmpty() }) {
+        enriched
+    } else {
+        enriched.pagingFilter { comic -> matchesFilters(comic, params.filters) }
+    }
+}
+
+private fun matchesFilters(
+    comic: ComicSimple,
+    filters: Map<FilterGroup, List<String>>
+): Boolean {
+    for ((group, selectedValues) in filters) {
+        if (selectedValues.isEmpty()) continue
+        val matchesGroup = when (group) {
+            is FilterGroup.Topic -> selectedValues.any { it in comic.categories }
+            is FilterGroup.ExcludeTopic -> selectedValues.none { it in comic.categories }
+            is FilterGroup.Status -> {
+                val isFinishedSelected = "完结" in selectedValues
+                val isOngoingSelected = "连载" in selectedValues
+                when {
+                    isFinishedSelected && isOngoingSelected -> true
+                    isFinishedSelected -> comic.finished
+                    isOngoingSelected -> !comic.finished
+                    else -> true
+                }
+            }
+            is FilterGroup.EpsRange -> selectedValues.any { matchesEpsRange(comic.epsCount, it) }
+            is FilterGroup.PagesRange -> selectedValues.any { matchesPagesRange(comic.pagesCount, it) }
+        }
+        if (!matchesGroup) return false
+    }
+    return true
+}
+
+private fun matchesEpsRange(epsCount: Int, label: String): Boolean = when (label) {
+    "单话 (1话)" -> epsCount == 1
+    "短篇 (2-5话)" -> epsCount in 2..5
+    "中篇 (6-20话)" -> epsCount in 6..20
+    "长篇 (21-100话)" -> epsCount in 21..100
+    "超长篇 (100话以上)" -> epsCount > 100
+    else -> true
+}
+
+private fun matchesPagesRange(pagesCount: Int, label: String): Boolean = when (label) {
+    "少页 (<50页)" -> pagesCount in 1..<50
+    "中等 (50-200页)" -> pagesCount in 50..200
+    "多页 (200-500页)" -> pagesCount in 201..500
+    "超多页 (500页以上)" -> pagesCount > 500
+    else -> true
 }
