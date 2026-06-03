@@ -333,6 +333,7 @@ private fun FilterRow(
         item {
             SuggestionChip(
                 onClick = onCountChipClick,
+                enabled = totalCount > 0,
                 label = {
                     Text(
                         text = if (totalCount > 0) "$totalCount 本" else "加载中…",
@@ -348,10 +349,11 @@ private fun FilterRow(
                     containerColor = if (totalCount > 0)
                         MaterialTheme.colorScheme.secondaryContainer
                     else
-                        MaterialTheme.colorScheme.surfaceVariant
+                        MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
                 ),
                 border = SuggestionChipDefaults.suggestionChipBorder(
-                    enabled = true,
+                    enabled = totalCount > 0,
                     borderWidth = 0.dp,
                     borderColor = Color.Transparent
                 )
