@@ -73,9 +73,7 @@ class FeedViewModel @AssistedInject constructor(
     }.flatMapLatest { params: FeedParams ->
         Pager(
             config = PagingConfig(
-                pageSize = 40,
-                prefetchDistance = 0,
-                enablePlaceholders = false
+                pageSize = 40
             ),
             initialKey = params.page
         ) {
