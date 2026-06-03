@@ -134,6 +134,20 @@ class FeedViewModel @AssistedInject constructor(
                         true
                     }
                 }
+
+                is FilterGroup.EpsRange -> {
+                    // 话数范围：OR 逻辑，满足任意一个区间即可
+                    selectedValues.any { label ->
+                        matchesEpsRange(comic.epsCount, label)
+                    }
+                }
+
+                is FilterGroup.PagesRange -> {
+                    // 页数范围：OR 逻辑，满足任意一个区间即可
+                    selectedValues.any { label ->
+                        matchesPagesRange(comic.pagesCount, label)
+                    }
+                }
             }
             // AND 逻辑：只要有任意一组条件不满足，这本漫画就被过滤掉
             if (!matchesGroup) {
@@ -144,6 +158,24 @@ class FeedViewModel @AssistedInject constructor(
         // 所有组的条件都通过了，保留这本漫画
         return true
     }
+
+    private fun matchesEpsRange(epsCount: Int, label: String): Boolean = when (label) {
+        "单话 (1话)" -> epsCount == 1
+        "短篇 (2-5话)" -> epsCount in 2..5
+        "中篇 (6-20话)" -> epsCount in 6..20
+        "长篇 (21-100话)" -> epsCount in 21..100
+        "超长篇 (100话以上)" -> epsCount > 100
+        else -> true
+    }
+
+    private fun matchesPagesRange(pagesCount: Int, label: String): Boolean = when (label) {
+        "少页 (<50页)" -> pagesCount in 1..<50
+        "中等 (50-200页)" -> pagesCount in 50..200
+        "多页 (200-500页)" -> pagesCount in 201..500
+        "超多页 (500页以上)" -> pagesCount > 500
+        else -> true
+    }
+
 
     private fun createPagingSource(
         action: DiscoveryAction,

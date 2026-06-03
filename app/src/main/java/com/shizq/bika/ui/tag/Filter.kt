@@ -40,7 +40,13 @@ fun rememberFilterState(
     selections: Map<FilterGroup, List<String>>
 ): FilterState {
     return remember(selections) {
-        val filterGroups = listOf(FilterGroup.Topic, FilterGroup.ExcludeTopic, FilterGroup.Status)
+        val filterGroups = listOf(
+            FilterGroup.Topic,
+            FilterGroup.ExcludeTopic,
+            FilterGroup.Status,
+            FilterGroup.EpsRange,
+            FilterGroup.PagesRange,
+        )
         val chips = filterGroups.map { group ->
 
             val currentSelection = selections[group].orEmpty()
@@ -49,6 +55,8 @@ fun rememberFilterState(
                 is FilterGroup.Topic -> "主题" to group.values
                 is FilterGroup.ExcludeTopic -> "排除主题" to group.values
                 is FilterGroup.Status -> "状态" to group.values
+                is FilterGroup.EpsRange -> "话数" to group.values
+                is FilterGroup.PagesRange -> "页数" to group.values
             }
             FilterChipState(
                 label = label,
