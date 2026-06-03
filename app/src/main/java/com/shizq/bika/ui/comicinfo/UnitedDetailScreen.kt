@@ -277,6 +277,16 @@ fun ComicDetailContent(
                                         )
                                     )
                                 },
+                                onPostComment = { text, replyToCommentId ->
+                                    viewModel.postComment(text, replyToCommentId) { success ->
+                                        if (success) {
+                                            regularComments.refresh()
+                                            if (replyToCommentId != null) {
+                                                replyList.refresh()
+                                            }
+                                        }
+                                    }
+                                }
                             )
                         }
                     }

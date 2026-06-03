@@ -180,6 +180,12 @@ class BikaDataSource @Inject constructor(
         }.bodyAsText()
     }
 
+    suspend fun addCommentReply(commentId: String, content: String) {
+        client.post("comments/$commentId") {
+            setBody("""{"content":"$content"}""")
+        }.bodyAsText()
+    }
+
     suspend fun getGameComments(id: String, page: Int): CommentsData {
         return client.get("games/$id/comments/") {
             parameter("page", page)

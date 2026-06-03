@@ -1,5 +1,7 @@
 package com.shizq.bika.ui.comicinfo
 
+import android.util.Log
+
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -9,6 +11,7 @@ import androidx.paging.cachedIn
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
+import com.shizq.bika.core.network.model.Type
 import com.shizq.bika.paging.EpisodePagingSource
 import com.shizq.bika.ui.comicinfo.paging.CommentPagingSource
 import com.shizq.bika.ui.comicinfo.paging.ReplyPagingSource
@@ -90,12 +93,29 @@ class ComicInfoViewModel @AssistedInject constructor(
         }
     }
     fun toggleCommentLike(id: String) {
-//        val currentState = comicDetailUiState.value
-//        if (currentState is ComicDetailUiState.Success) {
-//            viewModelScope.launch {
-//                network.toggleCommentLike(id)
-//            }
-//        }
+        viewModelScope.launch {
+            try {
+                network.toggleCommentLike(id)
+            } catch (e: Exception) {
+                Log.e(TAG, "toggleCommentLike: ", e)
+            }
+        }
+    }
+
+    fun postComment(text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) {
+        viewModelScope.launch {
+            try {
+                if (replyToCommentId == null) {
+                    network.addReply(Type.COMIC, id, text)
+                } else {
+                    network.addCommentReply(replyToCommentId, text)
+                }
+                onResult(true)
+            } catch (e: Exception) {
+                Log.e(TAG, "postComment failed", e)
+                onResult(false)
+            }
+        }
     }
 
     @AssistedFactory
