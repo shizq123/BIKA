@@ -2,6 +2,8 @@ package com.shizq.bika.ui.feed
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -9,6 +11,8 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.Surface
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -33,6 +37,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,6 +80,8 @@ fun FeedScreen(
     val pagedComics = viewModel.pagedComics.collectAsLazyPagingItems()
     val currentSortOrder by viewModel.currentSortOrder.collectAsStateWithLifecycle()
     val filterSelections by viewModel.filterSelections.collectAsStateWithLifecycle()
+    val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
+    val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
     FeedContent(
         title = title,
         pagedComics = pagedComics,
@@ -84,6 +91,9 @@ fun FeedScreen(
         onSortOrderChanged = viewModel::updateSortOrder,
         filterSelections = filterSelections,
         onFilterChanged = viewModel::toggleFilter,
+        currentPage = currentPage,
+        totalPages = totalPages,
+        onPageChanged = viewModel::updatePage,
     )
 }
 
@@ -151,56 +161,71 @@ private fun FeedContent(
     onBackClick: () -> Unit,
     filterSelections: Map<FilterGroup, List<String>>,
     onFilterChanged: (group: FilterGroup, value: String) -> Unit,
+    currentPage: Int,
+    totalPages: Int,
+    onPageChanged: (Int) -> Unit,
     scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-    var showJumpDialog by remember { mutableStateOf(false) }
-    var jumpInputText by remember { mutableStateOf("") }
-    var jumpInputError by remember { mutableStateOf<String?>(null) }
+
+    var showPageJumpDialog by remember { mutableStateOf(false) }
+    var pageJumpInputText by remember { mutableStateOf("") }
+    var pageJumpInputError by remember { mutableStateOf<String?>(null) }
+
     val totalCount = pagedComics.itemCount
 
-    if (showJumpDialog) {
+    // 动态计算当前可视项所属的页码
+    val visiblePage by remember(currentPage, totalPages) {
+        derivedStateOf {
+            val firstIndex = listState.firstVisibleItemIndex
+            val computed = currentPage + (firstIndex / 40)
+            computed.coerceIn(1, totalPages)
+        }
+    }
+
+    if (showPageJumpDialog) {
         AlertDialog(
             onDismissRequest = {
-                showJumpDialog = false
-                jumpInputText = ""
-                jumpInputError = null
+                showPageJumpDialog = false
+                pageJumpInputText = ""
+                pageJumpInputError = null
             },
-            title = { Text("跳转到指定位置") },
+            title = { Text("跳转到指定页码") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(
-                        text = "当前共 $totalCount 本漫画，请输入序号（1 ~ $totalCount）",
+                        text = "当前共 $totalPages 页，请输入页码（1 ~ $totalPages）",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     OutlinedTextField(
-                        value = jumpInputText,
+                        value = pageJumpInputText,
                         onValueChange = {
-                            jumpInputText = it
-                            jumpInputError = null
+                            pageJumpInputText = it
+                            pageJumpInputError = null
                         },
-                        label = { Text("序号") },
+                        label = { Text("页码") },
                         singleLine = true,
-                        isError = jumpInputError != null,
-                        supportingText = jumpInputError?.let { { Text(it) } },
+                        isError = pageJumpInputError != null,
+                        supportingText = pageJumpInputError?.let { { Text(it) } },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Number,
                             imeAction = ImeAction.Go
                         ),
                         keyboardActions = KeyboardActions(
                             onGo = {
-                                val index = jumpInputText.trim().toIntOrNull()
+                                val page = pageJumpInputText.trim().toIntOrNull()
                                 when {
-                                    index == null -> jumpInputError = "请输入有效数字"
-                                    index < 1 -> jumpInputError = "序号不能小于 1"
-                                    index > totalCount -> jumpInputError = "序号不能超过 $totalCount"
+                                    page == null -> pageJumpInputError = "请输入有效数字"
+                                    page < 1 -> pageJumpInputError = "页码不能小于 1"
+                                    page > totalPages -> pageJumpInputError = "页码不能超过 $totalPages"
                                     else -> {
-                                        scope.launch { listState.animateScrollToItem(index - 1) }
-                                        showJumpDialog = false
-                                        jumpInputText = ""
-                                        jumpInputError = null
+                                        onPageChanged(page)
+                                        scope.launch { listState.scrollToItem(0) }
+                                        showPageJumpDialog = false
+                                        pageJumpInputText = ""
+                                        pageJumpInputError = null
                                     }
                                 }
                             }
@@ -213,16 +238,17 @@ private fun FeedContent(
             confirmButton = {
                 TextButton(
                     onClick = {
-                        val index = jumpInputText.trim().toIntOrNull()
+                        val page = pageJumpInputText.trim().toIntOrNull()
                         when {
-                            index == null -> jumpInputError = "请输入有效数字"
-                            index < 1 -> jumpInputError = "序号不能小于 1"
-                            index > totalCount -> jumpInputError = "序号不能超过 $totalCount"
+                            page == null -> pageJumpInputError = "请输入有效数字"
+                            page < 1 -> pageJumpInputError = "页码不能小于 1"
+                            page > totalPages -> pageJumpInputError = "页码不能超过 $totalPages"
                             else -> {
-                                scope.launch { listState.animateScrollToItem(index - 1) }
-                                showJumpDialog = false
-                                jumpInputText = ""
-                                jumpInputError = null
+                                onPageChanged(page)
+                                scope.launch { listState.scrollToItem(0) }
+                                showPageJumpDialog = false
+                                pageJumpInputText = ""
+                                pageJumpInputError = null
                             }
                         }
                     }
@@ -231,9 +257,9 @@ private fun FeedContent(
             dismissButton = {
                 TextButton(
                     onClick = {
-                        showJumpDialog = false
-                        jumpInputText = ""
-                        jumpInputError = null
+                        showPageJumpDialog = false
+                        pageJumpInputText = ""
+                        pageJumpInputError = null
                     }
                 ) { Text("取消") }
             }
@@ -263,7 +289,9 @@ private fun FeedContent(
                 filterState = filterState,
                 onFilterChanged = onFilterChanged,
                 totalCount = totalCount,
-                onCountChipClick = { showJumpDialog = true },
+                currentPage = visiblePage,
+                totalPages = totalPages,
+                onCountChipClick = { showPageJumpDialog = true },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -302,6 +330,21 @@ private fun FeedContent(
                     }
                 }
             }
+
+            if (totalPages > 1 && pagedComics.loadState.refresh is LoadState.NotLoading) {
+                PaginationBar(
+                    currentPage = visiblePage,
+                    totalPages = totalPages,
+                    onPageChanged = { page ->
+                        onPageChanged(page)
+                        scope.launch { listState.scrollToItem(0) }
+                    },
+                    onPageIndicatorClick = { showPageJumpDialog = true },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp, top = 8.dp, start = 16.dp, end = 16.dp)
+                )
+            }
         }
     }
 }
@@ -311,6 +354,8 @@ private fun FilterRow(
     filterState: FilterState,
     onFilterChanged: (group: FilterGroup, value: String) -> Unit,
     totalCount: Int,
+    currentPage: Int,
+    totalPages: Int,
     onCountChipClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -336,7 +381,11 @@ private fun FilterRow(
                 enabled = totalCount > 0,
                 label = {
                     Text(
-                        text = if (totalCount > 0) "$totalCount 本" else "加载中…",
+                        text = if (totalCount > 0) {
+                            if (totalPages > 1) "第 $currentPage / $totalPages 页" else "$totalCount 本"
+                        } else {
+                            "加载中…"
+                        },
                         style = MaterialTheme.typography.labelMedium,
                         fontWeight = FontWeight.SemiBold,
                         color = if (totalCount > 0)
@@ -358,6 +407,51 @@ private fun FilterRow(
                     borderColor = Color.Transparent
                 )
             )
+        }
+    }
+}
+
+@Composable
+private fun PaginationBar(
+    currentPage: Int,
+    totalPages: Int,
+    onPageChanged: (Int) -> Unit,
+    onPageIndicatorClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        FilledTonalButton(
+            onClick = { onPageChanged(currentPage - 1) },
+            enabled = currentPage > 1,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text("上一页", style = MaterialTheme.typography.labelLarge)
+        }
+
+        Surface(
+            onClick = onPageIndicatorClick,
+            shape = RoundedCornerShape(16.dp),
+            color = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+        ) {
+            Text(
+                text = "$currentPage / $totalPages 页",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        }
+
+        FilledTonalButton(
+            onClick = { onPageChanged(currentPage + 1) },
+            enabled = currentPage < totalPages,
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+        ) {
+            Text("下一页", style = MaterialTheme.typography.labelLarge)
         }
     }
 }

@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
 import com.shizq.bika.core.database.dao.DownloadTaskDao
 import com.shizq.bika.core.database.model.DownloadTaskEntity
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.ChapterProgressEntity
 
 private const val TAG = "ComicInfoViewModel"
 
@@ -38,6 +40,7 @@ class ComicInfoViewModel @AssistedInject constructor(
     private val replyPagingSourceFactory: ReplyPagingSource.Factory,
     stateMachineFactory: UnitedDetailsStateMachine.Factory,
     private val downloadTaskDao: DownloadTaskDao,
+    private val historyDao: ReadingHistoryDao,
     @Assisted private val id: String,
 ) : ViewModel() {
 
@@ -46,6 +49,13 @@ class ComicInfoViewModel @AssistedInject constructor(
     val state = stateMachine.state
 
     val downloadTasks = downloadTaskDao.getTasksByComic(id)
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    val chapterProgress = historyDao.getChapterProgressByComic(id)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

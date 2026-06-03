@@ -48,15 +48,29 @@ class FeedViewModel @AssistedInject constructor(
         field = MutableStateFlow(Sort.NEWEST)
     val filterSelections: StateFlow<Map<FilterGroup, List<String>>>
         field = MutableStateFlow(emptyMap())
+    val currentPage: StateFlow<Int>
+        field = MutableStateFlow(1)
+    val totalPages: StateFlow<Int>
+        field = MutableStateFlow(1)
 
     // 网络数据（含 PagingSource 首次加载时的一次性本地状态注入）
-    private val basePagedComics: Flow<PagingData<ComicSimple>> = currentSortOrder
-        .flatMapLatest { sort ->
-            Pager(PagingConfig(pageSize = 40)) {
-                createPagingSource(action, sort)
-            }.flow
-        }
-        .cachedIn(viewModelScope)
+    private val basePagedComics: Flow<PagingData<ComicSimple>> = combine(
+        currentSortOrder,
+        currentPage
+    ) { sort, page ->
+        sort to page
+    }.flatMapLatest { (sort, page) ->
+        Pager(
+            config = PagingConfig(
+                pageSize = 40,
+                prefetchDistance = 0,
+                enablePlaceholders = false
+            ),
+            initialKey = page
+        ) {
+            createPagingSource(action, sort)
+        }.flow
+    }.cachedIn(viewModelScope)
 
     // combine DB Flow：每当收藏/进度变化时，对当前 PagingData 快照重新注入本地状态
     // 这样无需 invalidate/reload 整个列表，只需 map 重算徽章字段即可。
@@ -81,6 +95,7 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     fun toggleFilter(group: FilterGroup, value: String) {
+        currentPage.value = 1
         filterSelections.update { currentMap ->
             val newMap = currentMap.toMutableMap()
             val currentList = newMap[group]?.toMutableList() ?: mutableListOf()
@@ -101,7 +116,13 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     fun updateSortOrder(newSort: Sort) {
+        currentPage.value = 1
         currentSortOrder.update { newSort }
+    }
+
+    fun updatePage(page: Int) {
+        val target = page.coerceIn(1, totalPages.value)
+        currentPage.value = target
     }
 
     private fun matchesFilters(
@@ -181,7 +202,7 @@ class FeedViewModel @AssistedInject constructor(
         action: DiscoveryAction,
         sort: Sort
     ): PagingSource<Int, ComicSimple> {
-        return when (action) {
+        val source = when (action) {
             is DiscoveryAction.Channel -> channelPagingSourceFactory.create(action.name, sort)
             is DiscoveryAction.Knight -> advancedSearchPagingSourceFactory.create(action.name, sort)
             is DiscoveryAction.AdvancedSearch -> advancedSearchPagingSourceFactory.create(
@@ -192,15 +213,37 @@ class FeedViewModel @AssistedInject constructor(
             is DiscoveryAction.ToFavourite -> favouriteComicsPagingSourceFactory.create(sort)
 
             DiscoveryAction.ToCollections -> SinglePagePagingSource {
+                totalPages.value = 1
                 api.getCollections().collections.firstOrNull()?.comics ?: emptyList()
             }
 
             DiscoveryAction.ToRandom -> SinglePagePagingSource {
+                totalPages.value = 1
                 api.getRandomComics().comics
             }
 
             DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get()
         }
+
+        when (source) {
+            is ChannelPagingSource -> source.onPageInfoLoaded = { pages, _ ->
+                totalPages.value = pages
+            }
+            is AdvancedSearchPagingSource -> source.onPageInfoLoaded = { pages, _ ->
+                totalPages.value = pages
+            }
+            is RecentUpdatesPagingSource -> source.onPageInfoLoaded = { pages, _ ->
+                totalPages.value = pages
+            }
+            is FavouriteComicsPagingSource -> source.onPageInfoLoaded = { pages, _ ->
+                totalPages.value = pages
+            }
+            else -> {
+                totalPages.value = 1
+            }
+        }
+
+        return source
     }
 
     @AssistedFactory

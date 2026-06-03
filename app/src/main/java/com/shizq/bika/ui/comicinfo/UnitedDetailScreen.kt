@@ -36,6 +36,7 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.database.model.DownloadTaskEntity
+import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
@@ -60,6 +61,7 @@ fun ComicDetailScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
     val downloadTasks by viewModel.downloadTasks.collectAsStateWithLifecycle()
+    val chapterProgress by viewModel.chapterProgress.collectAsStateWithLifecycle()
 
     val pinnedComments by viewModel.pinnedComments.collectAsStateWithLifecycle()
     val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
@@ -69,6 +71,7 @@ fun ComicDetailScreen(
         unitedState = state,
         episodes = episodes,
         downloadTasks = downloadTasks,
+        chapterProgress = chapterProgress,
         onBackClick = onBackClick,
         navigationToReader = navigationToReader,
         navigationToComicInfo = onForYouClick,
@@ -90,6 +93,7 @@ fun ComicDetailContent(
     pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
     downloadTasks: List<DownloadTaskEntity> = emptyList(),
+    chapterProgress: List<ChapterProgressEntity> = emptyList(),
     onBackClick: () -> Unit = {},
     navigationToReader: (id: String, index: Int) -> Unit = { _, _ -> },
     navigationToComicInfo: (String) -> Unit = {},
@@ -220,20 +224,43 @@ fun ComicDetailContent(
                                 EpisodesPage(
                                     episodes = episodes,
                                     downloadTasks = downloadTasks,
+                                    chapterProgress = chapterProgress,
                                     navigateToReader = {
                                         navigationToReader(detail.id, it)
                                     },
-                                    onDownloadClick = { episode ->
-                                        DownloadWorker.startDownload(
-                                            context = context,
-                                            comicId = detail.id,
-                                            comicTitle = detail.title,
-                                            coverUrl = detail.cover,
-                                            episodeId = episode.id,
-                                            episodeTitle = episode.title,
-                                            episodeOrder = episode.order
-                                        )
-                                        Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
+                                    onDownloadClick = { selectedEpisodes ->
+                                        selectedEpisodes.forEach { episode ->
+                                            DownloadWorker.startDownload(
+                                                context = context,
+                                                comicId = detail.id,
+                                                comicTitle = detail.title,
+                                                coverUrl = detail.cover,
+                                                episodeId = episode.id,
+                                                episodeTitle = episode.title,
+                                                episodeOrder = episode.order
+                                            )
+                                        }
+                                        val message = if (selectedEpisodes.size == 1) {
+                                            "已加入下载队列"
+                                        } else {
+                                            "已成功将 ${selectedEpisodes.size} 个章节加入下载队列"
+                                        }
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    },
+                                    onFetchAllEpisodes = {
+                                        val list = mutableListOf<Episode>()
+                                        var pageIndex = 1
+                                        var hasNext = true
+                                        while (hasNext) {
+                                            val res = viewModel.network.getComicEpisodes(detail.id, pageIndex)
+                                            list.addAll(res.eps.docs)
+                                            if (pageIndex < res.eps.pages) {
+                                                pageIndex++
+                                            } else {
+                                                hasNext = false
+                                            }
+                                        }
+                                        list
                                     }
                                 )
                             }
