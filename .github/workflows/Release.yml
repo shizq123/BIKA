@@ -55,6 +55,24 @@ jobs:
           sudo udevadm trigger --name-match=kvm
           ls /dev/kvm
 
+      - name: Decrypt and Configure Keystore
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || '123456' }}
+          ALIAS: ${{ secrets.ALIAS || 'shizq' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || '123456' }}
+        run: |
+          if [ -n "$SIGNING_KEY" ]; then
+            echo "$SIGNING_KEY" | base64 -d > app/appkey.jks
+            echo "STORE_FILE=appkey.jks" >> local.properties
+            echo "STORE_PASSWORD=$KEY_STORE_PASSWORD" >> local.properties
+            echo "KEY_ALIAS=$ALIAS" >> local.properties
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> local.properties
+            echo "Keystore successfully configured."
+          else
+            echo "Warning: SIGNING_KEY secret is empty. Skipping signing configuration."
+          fi
+
       - name: Generate baseline profile
         run: |
           ./gradlew :app:generateReleaseBaselineProfile \

@@ -327,6 +327,8 @@ fun EpisodeItem(
         }
     }
 }
+}
+
 
 @Preview(showBackground = true, name = "Episodes Page Preview")
 @Composable
