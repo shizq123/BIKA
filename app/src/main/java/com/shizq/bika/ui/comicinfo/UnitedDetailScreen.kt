@@ -81,7 +81,8 @@ fun ComicDetailScreen(
         dispatch = viewModel::dispatch,
         replyList = replyList,
         navigationToFeed = navigationToFeed,
-        viewModel = viewModel,
+        onFetchAllEpisodes = { viewModel.fetchAllEpisodes() },
+        onPostComment = viewModel::postComment,
     )
 }
 
@@ -101,7 +102,8 @@ fun ComicDetailContent(
     dispatch: (UnitedDetailsAction) -> Unit = {},
     replyList: LazyPagingItems<Comment>,
     navigationToFeed: (DiscoveryAction) -> Unit,
-    viewModel: ComicInfoViewModel,
+    onFetchAllEpisodes: suspend () -> List<Episode> = { emptyList() },
+    onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
 ) {
     when (unitedState) {
         is UnitedDetailsUiState.Initialize -> LoadingState()
@@ -186,31 +188,19 @@ fun ComicDetailContent(
                                         scope.launch {
                                             try {
                                                 Toast.makeText(context, "正在获取章节列表，准备全部下载...", Toast.LENGTH_SHORT).show()
-                                                var pageIndex = 1
-                                                var hasNext = true
-                                                var totalQueued = 0
-                                                while (hasNext) {
-                                                    val res = viewModel.network.getComicEpisodes(detail.id, pageIndex)
-                                                    val epsList = res.eps.docs
-                                                    epsList.forEach { episode: Episode ->
-                                                        DownloadWorker.startDownload(
-                                                            context = context,
-                                                            comicId = detail.id,
-                                                            comicTitle = detail.title,
-                                                            coverUrl = detail.cover,
-                                                            episodeId = episode.id,
-                                                            episodeTitle = episode.title,
-                                                            episodeOrder = episode.order
-                                                        )
-                                                        totalQueued++
-                                                    }
-                                                    if (pageIndex < res.eps.pages) {
-                                                        pageIndex++
-                                                    } else {
-                                                        hasNext = false
-                                                    }
+                                                val allEps = onFetchAllEpisodes()
+                                                allEps.forEach { episode ->
+                                                    DownloadWorker.startDownload(
+                                                        context = context,
+                                                        comicId = detail.id,
+                                                        comicTitle = detail.title,
+                                                        coverUrl = detail.cover,
+                                                        episodeId = episode.id,
+                                                        episodeTitle = episode.title,
+                                                        episodeOrder = episode.order
+                                                    )
                                                 }
-                                                Toast.makeText(context, "已成功将所有 ${totalQueued} 个章节加入下载队列", Toast.LENGTH_LONG).show()
+                                                Toast.makeText(context, "已成功将所有 ${allEps.size} 个章节加入下载队列", Toast.LENGTH_LONG).show()
                                             } catch (e: Exception) {
                                                 Toast.makeText(context, "获取章节失败，请重试: ${e.message}", Toast.LENGTH_LONG).show()
                                             }
@@ -247,21 +237,7 @@ fun ComicDetailContent(
                                         }
                                         Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
                                     },
-                                    onFetchAllEpisodes = {
-                                        val list = mutableListOf<Episode>()
-                                        var pageIndex = 1
-                                        var hasNext = true
-                                        while (hasNext) {
-                                            val res = viewModel.network.getComicEpisodes(detail.id, pageIndex)
-                                            list.addAll(res.eps.docs)
-                                            if (pageIndex < res.eps.pages) {
-                                                pageIndex++
-                                            } else {
-                                                hasNext = false
-                                            }
-                                        }
-                                        list
-                                    }
+                                    onFetchAllEpisodes = onFetchAllEpisodes
                                 )
                             }
 
@@ -278,7 +254,7 @@ fun ComicDetailContent(
                                     )
                                 },
                                 onPostComment = { text, replyToCommentId ->
-                                    viewModel.postComment(text, replyToCommentId) { success ->
+                                    onPostComment(text, replyToCommentId) { success ->
                                         if (success) {
                                             regularComments.refresh()
                                             if (replyToCommentId != null) {

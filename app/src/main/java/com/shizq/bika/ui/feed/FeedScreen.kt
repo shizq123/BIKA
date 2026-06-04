@@ -185,6 +185,23 @@ private fun FeedContent(
     }
 
     if (showPageJumpDialog) {
+        // 页码校验+跳转逻辑，提取为局部函数避免重复
+        fun handlePageJump() {
+            val page = pageJumpInputText.trim().toIntOrNull()
+            when {
+                page == null -> pageJumpInputError = "请输入有效数字"
+                page < 1 -> pageJumpInputError = "页码不能小于 1"
+                page > totalPages -> pageJumpInputError = "页码不能超过 $totalPages"
+                else -> {
+                    onPageChanged(page)
+                    scope.launch { listState.scrollToItem(0) }
+                    showPageJumpDialog = false
+                    pageJumpInputText = ""
+                    pageJumpInputError = null
+                }
+            }
+        }
+
         AlertDialog(
             onDismissRequest = {
                 showPageJumpDialog = false
@@ -213,46 +230,14 @@ private fun FeedContent(
                             keyboardType = KeyboardType.Number,
                             imeAction = ImeAction.Go
                         ),
-                        keyboardActions = KeyboardActions(
-                            onGo = {
-                                val page = pageJumpInputText.trim().toIntOrNull()
-                                when {
-                                    page == null -> pageJumpInputError = "请输入有效数字"
-                                    page < 1 -> pageJumpInputError = "页码不能小于 1"
-                                    page > totalPages -> pageJumpInputError = "页码不能超过 $totalPages"
-                                    else -> {
-                                        onPageChanged(page)
-                                        scope.launch { listState.scrollToItem(0) }
-                                        showPageJumpDialog = false
-                                        pageJumpInputText = ""
-                                        pageJumpInputError = null
-                                    }
-                                }
-                            }
-                        ),
+                        keyboardActions = KeyboardActions(onGo = { handlePageJump() }),
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        val page = pageJumpInputText.trim().toIntOrNull()
-                        when {
-                            page == null -> pageJumpInputError = "请输入有效数字"
-                            page < 1 -> pageJumpInputError = "页码不能小于 1"
-                            page > totalPages -> pageJumpInputError = "页码不能超过 $totalPages"
-                            else -> {
-                                onPageChanged(page)
-                                scope.launch { listState.scrollToItem(0) }
-                                showPageJumpDialog = false
-                                pageJumpInputText = ""
-                                pageJumpInputError = null
-                            }
-                        }
-                    }
-                ) { Text("跳转") }
+                TextButton(onClick = { handlePageJump() }) { Text("跳转") }
             },
             dismissButton = {
                 TextButton(

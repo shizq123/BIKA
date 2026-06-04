@@ -1,4 +1,5 @@
 import com.android.build.api.variant.impl.VariantOutputImpl
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.bika.android.application)
@@ -21,11 +22,15 @@ android {
     }
 
     signingConfigs {
+        val localProps = Properties().apply {
+            val f = rootProject.file("local.properties")
+            if (f.exists()) load(f.inputStream())
+        }
         create("keyStore") {
-            storeFile = file("appkey.jks")
-            storePassword = "123456"
-            keyAlias = "shizq"
-            keyPassword = "123456"
+            storeFile = file(localProps.getProperty("STORE_FILE", "appkey.jks"))
+            storePassword = localProps.getProperty("STORE_PASSWORD", "")
+            keyAlias = localProps.getProperty("KEY_ALIAS", "")
+            keyPassword = localProps.getProperty("KEY_PASSWORD", "")
         }
     }
     buildTypes {
@@ -86,7 +91,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.material)
-    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -95,7 +99,6 @@ dependencies {
 
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.preference.ktx)
-    implementation(libs.androidx.core.splashscreen)
 
     implementation(libs.pictureselector)
     implementation(libs.ucrop)
@@ -103,7 +106,6 @@ dependencies {
     implementation(libs.photoview)
 
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
 
     implementation(libs.androidx.paging.runtime)

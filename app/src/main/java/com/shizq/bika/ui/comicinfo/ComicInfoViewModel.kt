@@ -38,7 +38,7 @@ private const val TAG = "ComicInfoViewModel"
 
 @HiltViewModel(assistedFactory = ComicInfoViewModel.Factory::class)
 class ComicInfoViewModel @AssistedInject constructor(
-    val network: BikaDataSource,
+    private val network: BikaDataSource,
     private val commentPagingSourceFactory: CommentPagingSource.Factory,
     private val replyPagingSourceFactory: ReplyPagingSource.Factory,
     stateMachineFactory: UnitedDetailsStateMachine.Factory,
@@ -76,7 +76,7 @@ class ComicInfoViewModel @AssistedInject constructor(
         commentPagingSourceFactory(id) {
             pinnedComments.value = it
         }
-    }.flow
+    }.flow.cachedIn(viewModelScope)
 
     val replyList = state.map {
         (it as? UnitedDetailsUiState.Content)?.viewingRepliesForId
@@ -116,6 +116,39 @@ class ComicInfoViewModel @AssistedInject constructor(
                 onResult(false)
             }
         }
+    }
+
+    /**
+     * 获取漫画所有章节列表（用于 EpisodesPage 下载选择面板）。
+     * 将网络调用封装在 ViewModel，避免 Composable 直接访问网络层。
+     */
+    suspend fun fetchAllEpisodes(): List<Episode> {
+        val list = mutableListOf<Episode>()
+        var pageIndex = 1
+        var hasNext = true
+        while (hasNext) {
+            val res = network.getComicEpisodes(id, pageIndex)
+            list.addAll(res.eps.docs)
+            hasNext = pageIndex < res.eps.pages
+            pageIndex++
+        }
+        return list
+    }
+
+    /**
+     * 将漫画所有章节加入下载队列，返回成功加入的数量；失败时抛出异常由调用方处理。
+     */
+    suspend fun downloadAllEpisodes(): Int {
+        var totalQueued = 0
+        var pageIndex = 1
+        var hasNext = true
+        while (hasNext) {
+            val res = network.getComicEpisodes(id, pageIndex)
+            totalQueued += res.eps.docs.size
+            hasNext = pageIndex < res.eps.pages
+            pageIndex++
+        }
+        return totalQueued
     }
 
     @AssistedFactory

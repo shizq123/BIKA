@@ -49,6 +49,7 @@ captures/
 # Keystore files
 *.jks
 *.keystore
+appkey_base64.txt
 
 # Google Services (e.g. APIs or Firebase)
 # google-services.json

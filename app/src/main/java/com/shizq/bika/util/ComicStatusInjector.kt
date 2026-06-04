@@ -48,7 +48,7 @@ suspend fun List<ComicSimple>.injectLocalStatus(historyDao: ReadingHistoryDao): 
     }
 }
 
-private fun computeProgressText(lastProgress: ChapterProgressEntity?, epsCount: Int): String? {
+internal fun computeProgressText(lastProgress: ChapterProgressEntity?, epsCount: Int): String? {
     if (lastProgress == null) return null
     return when {
         epsCount > lastProgress.chapterId -> "有更新"

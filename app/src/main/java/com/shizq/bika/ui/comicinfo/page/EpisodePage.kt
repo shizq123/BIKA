@@ -283,54 +283,47 @@ fun EpisodeItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 
-                if (progress != null) {
-                    val currentPage = progress.currentPage
-                    val pageCount = progress.pageCount
-                    val progressText = if (pageCount > 0 && currentPage >= pageCount) {
-                        "已读完"
-                    } else {
-                        "看到第 ${currentPage} 页"
-                    }
-                    val pageText = if (pageCount > 0) "共 ${pageCount} 页" else "页数未知"
-                    Text(
-                        text = "$pageText · $progressText",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                } else {
-                    Text(
-                        text = "未阅读",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-            
-            if (progress != null) {
-                val isCompleted = progress.pageCount > 0 && progress.currentPage >= progress.pageCount
-                Surface(
-                    shape = RoundedCornerShape(4.dp),
-                    color = if (isCompleted) 
-                        MaterialTheme.colorScheme.primaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.secondaryContainer,
-                    contentColor = if (isCompleted) 
-                        MaterialTheme.colorScheme.onPrimaryContainer 
-                    else 
-                        MaterialTheme.colorScheme.onSecondaryContainer
-                ) {
-                    Text(
-                        text = if (isCompleted) "已读完" else "已看",
-                        style = MaterialTheme.typography.labelSmall,
-                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+        if (progress != null) {
+            val isCompleted = progress.pageCount > 0 && progress.currentPage >= progress.pageCount
+            val progressText = if (isCompleted) "已读完" else "看到第 ${progress.currentPage} 页"
+            val pageText = if (progress.pageCount > 0) "共 ${progress.pageCount} 页" else "页数未知"
+            Text(
+                text = "$pageText · $progressText",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        } else {
+            Text(
+                text = "未阅读",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+    
+    if (progress != null) {
+        val isCompleted = progress.pageCount > 0 && progress.currentPage >= progress.pageCount
+        Surface(
+            shape = RoundedCornerShape(4.dp),
+            color = if (isCompleted) 
+                MaterialTheme.colorScheme.primaryContainer 
+            else 
+                MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = if (isCompleted) 
+                MaterialTheme.colorScheme.onPrimaryContainer 
+            else 
+                MaterialTheme.colorScheme.onSecondaryContainer
+        ) {
+            Text(
+                text = if (isCompleted) "已读完" else "已看",
+                style = MaterialTheme.typography.labelSmall,
+                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                fontWeight = FontWeight.Bold
+            )
         }
     }
 }

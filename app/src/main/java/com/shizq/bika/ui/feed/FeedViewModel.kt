@@ -21,6 +21,7 @@ import com.shizq.bika.paging.FavouriteComicsPagingSource
 import com.shizq.bika.paging.RecentUpdatesPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
 import com.shizq.bika.ui.tag.FilterGroup
+import com.shizq.bika.util.computeProgressText
 import com.shizq.bika.util.injectLocalStatusFrom
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -178,21 +179,13 @@ class FeedViewModel @AssistedInject constructor(
 
 /**
  * 对单个 ComicSimple 从 DetailedHistory 列表快照中注入本地状态。
- * 供 PagingData.map{} 使用，此处不能是挂起函数。
+ * 为避免重复逻辑，调用 ComicStatusInjector.kt 中的 injectLocalStatusFrom。
  */
 private fun ComicSimple.injectSingleFrom(histories: List<DetailedHistory>): ComicSimple {
-    val detailed = histories.find { it.history.id == id } ?: return this
+    val historyMap = histories.associateBy { it.history.id }
+    val detailed = historyMap[id] ?: return this
     val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
-    val progressText = if (lastProgress != null) {
-        val epsCount = detailed.history.epsCount
-        when {
-            epsCount > lastProgress.chapterId -> "有更新"
-            lastProgress.chapterId >= epsCount
-                    && lastProgress.currentPage >= lastProgress.pageCount
-                    && lastProgress.pageCount > 0 -> "已读完"
-            else -> "已阅读"
-        }
-    } else null
+    val progressText = computeProgressText(lastProgress, detailed.history.epsCount)
     return copy(
         isFavourited = detailed.history.isFavourited,
         lastReadChapterProgress = progressText
