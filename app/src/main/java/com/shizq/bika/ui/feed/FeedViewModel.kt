@@ -60,25 +60,30 @@ class FeedViewModel @AssistedInject constructor(
     val pagedComics: Flow<PagingData<ComicSimple>> = combine(
         currentSortOrder,
         currentPage,
-        filterSelections,
-        historyDao.getDetailedHistories()
-    ) { args: Array<*> ->
-        @Suppress("UNCHECKED_CAST")
-        FeedParams(
-            sort = args[0] as Sort,
-            page = args[1] as Int,
-            filters = args[2] as Map<FilterGroup, List<String>>,
-            histories = args[3] as List<DetailedHistory>
-        )
-    }.flatMapLatest { params: FeedParams ->
-        Pager(
+        filterSelections
+    ) { sort, page, filters ->
+        Triple(sort, page, filters)
+    }.flatMapLatest { (sort, page, filters) ->
+        val baseFlow = Pager(
             config = PagingConfig(
                 pageSize = 40
             ),
-            initialKey = params.page
+            initialKey = page
         ) {
-            createPagingSource(action, params.sort)
-        }.flow.map { pd: PagingData<ComicSimple> -> applyParamsToPagingData(pd, params) }
+            createPagingSource(action, sort)
+        }.flow
+
+        combine(
+            baseFlow,
+            historyDao.getDetailedHistories()
+        ) { pd, histories ->
+            val enriched = pd.pagingMap { comic -> comic.injectSingleFrom(histories) }
+            if (filters.isEmpty() || filters.values.all { it.isEmpty() }) {
+                enriched
+            } else {
+                enriched.pagingFilter { comic -> matchesFilters(comic, filters) }
+            }
+        }
     }.cachedIn(viewModelScope)
 
     fun toggleFilter(group: FilterGroup, value: String) {
@@ -194,31 +199,6 @@ private fun ComicSimple.injectSingleFrom(histories: List<DetailedHistory>): Comi
     )
 }
 
-/**
- * 存储 combine 所需的参数组合，帮助 Kotlin 推断类型。
- */
-private data class FeedParams(
-    val sort: Sort,
-    val page: Int,
-    val filters: Map<FilterGroup, List<String>>,
-    val histories: List<DetailedHistory>
-)
-
-/**
- * 将 FeedParams 应用到 PagingData：先注入阅读状态，再执行本地过滤。
- * 提取为顶层函数以避免 Kotlin 在嵌套 lambda 中无法推断 PagingData.map/filter 扩展接收者的编译问题。
- */
-private fun applyParamsToPagingData(
-    pagingData: PagingData<ComicSimple>,
-    params: FeedParams
-): PagingData<ComicSimple> {
-    val enriched = pagingData.pagingMap { comic -> comic.injectSingleFrom(params.histories) }
-    return if (params.filters.isEmpty() || params.filters.values.all { it.isEmpty() }) {
-        enriched
-    } else {
-        enriched.pagingFilter { comic -> matchesFilters(comic, params.filters) }
-    }
-}
 
 private fun matchesFilters(
     comic: ComicSimple,
@@ -257,6 +237,7 @@ private fun matchesEpsRange(epsCount: Int, label: String): Boolean = when (label
 }
 
 private fun matchesPagesRange(pagesCount: Int, label: String): Boolean {
+    if (pagesCount <= 0) return true // 列表接口未返回页数时，默认为 0，不进行过滤，避免列表为空
     if (label.startsWith("指定数量: ")) {
         val text = label.substringAfter("指定数量: ").replace("页", "").trim()
         if (text.contains("-")) {
