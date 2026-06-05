@@ -14,12 +14,12 @@ import kotlinx.coroutines.flow.Flow
 
 @HiltViewModel
 class NotificationsViewModel @Inject constructor(
-    private val notificationsPagingSource: NotificationsPagingSource,
+    private val notificationsPagingSourceProvider: javax.inject.Provider<NotificationsPagingSource>,
 ) : ViewModel() {
     val notificationsFlow: Flow<PagingData<NotificationDoc>> = Pager(
         config = PagingConfig(20),
     ) {
-        notificationsPagingSource
+        notificationsPagingSourceProvider.get()
     }.flow
         .cachedIn(viewModelScope)
 }

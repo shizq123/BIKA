@@ -80,10 +80,10 @@ fun GameContent(
 
 @HiltViewModel
 class GameViewModel @Inject constructor(
-    private val gameListPagingSource: GameListPagingSource,
+    private val gameListPagingSourceProvider: javax.inject.Provider<GameListPagingSource>,
 ) : ViewModel() {
     val gameList = Pager(PagingConfig(100, initialLoadSize = 100)) {
-        gameListPagingSource
+        gameListPagingSourceProvider.get()
     }.flow
         .cachedIn(viewModelScope)
 }

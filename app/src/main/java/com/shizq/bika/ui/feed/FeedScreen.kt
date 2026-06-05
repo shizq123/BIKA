@@ -59,6 +59,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.ui.ComicCard
 import com.shizq.bika.core.ui.ErrorState
@@ -78,6 +79,7 @@ fun FeedScreen(
     title: String
 ) {
     val pagedComics = viewModel.pagedComics.collectAsLazyPagingItems()
+    val detailedHistories by viewModel.detailedHistories.collectAsStateWithLifecycle()
     val currentSortOrder by viewModel.currentSortOrder.collectAsStateWithLifecycle()
     val filterSelections by viewModel.filterSelections.collectAsStateWithLifecycle()
     val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
@@ -85,6 +87,7 @@ fun FeedScreen(
     FeedContent(
         title = title,
         pagedComics = pagedComics,
+        detailedHistories = detailedHistories,
         onBackClick = onBackClick,
         onComicClick = onComicClick,
         currentSortOrder = currentSortOrder,
@@ -155,6 +158,7 @@ private fun FeedAppBar(
 private fun FeedContent(
     title: String,
     pagedComics: LazyPagingItems<ComicSimple>,
+    detailedHistories: List<DetailedHistory>,
     currentSortOrder: Sort,
     onSortOrderChanged: (Sort) -> Unit,
     onComicClick: (comicId: String) -> Unit,
@@ -301,7 +305,10 @@ private fun FeedContent(
                     ) {
                         items(pagedComics.itemCount, key = pagedComics.itemKey { it.id }) { index ->
                             pagedComics[index]?.let { item ->
-                                ComicCard(comic = item) {
+                                val enrichedItem = remember(item, detailedHistories) {
+                                    item.injectSingleFrom(detailedHistories)
+                                }
+                                ComicCard(comic = enrichedItem) {
                                     onComicClick(item.id)
                                 }
                             }

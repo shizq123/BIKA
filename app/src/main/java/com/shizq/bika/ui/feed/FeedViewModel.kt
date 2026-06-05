@@ -65,27 +65,28 @@ class FeedViewModel @AssistedInject constructor(
     ) { sort, page, filters ->
         Triple(sort, page, filters)
     }.flatMapLatest { (sort, page, filters) ->
-        val baseFlow = Pager(
+        Pager(
             config = PagingConfig(
                 pageSize = 40
             ),
             initialKey = page
         ) {
             createPagingSource(action, sort)
-        }.flow
-
-        combine(
-            baseFlow,
-            historyDao.getDetailedHistories()
-        ) { pd, histories ->
-            val enriched = pd.pagingMap { comic -> comic.injectSingleFrom(histories) }
+        }.flow.map { pd ->
             if (filters.isEmpty() || filters.values.all { it.isEmpty() }) {
-                enriched
+                pd
             } else {
-                enriched.pagingFilter { comic -> matchesFilters(comic, filters) }
+                pd.pagingFilter { comic -> matchesFilters(comic, filters) }
             }
         }
     }.cachedIn(viewModelScope)
+
+    val detailedHistories = historyDao.getDetailedHistories()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     fun toggleFilter(group: FilterGroup, value: String) {
         currentPage.value = 1
@@ -181,7 +182,7 @@ class FeedViewModel @AssistedInject constructor(
  * 对单个 ComicSimple 从 DetailedHistory 列表快照中注入本地状态。
  * 为避免重复逻辑，调用 ComicStatusInjector.kt 中的 injectLocalStatusFrom。
  */
-private fun ComicSimple.injectSingleFrom(histories: List<DetailedHistory>): ComicSimple {
+fun ComicSimple.injectSingleFrom(histories: List<DetailedHistory>): ComicSimple {
     val historyMap = histories.associateBy { it.history.id }
     val detailed = historyMap[id] ?: return this
     val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
