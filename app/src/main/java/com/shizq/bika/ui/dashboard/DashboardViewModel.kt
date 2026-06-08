@@ -4,6 +4,8 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.coroutine.FlowRestarter
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.Channel
@@ -37,7 +39,15 @@ sealed interface CheckInEvent {
 class DashboardViewModel @Inject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val network: BikaDataSource,
+    private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
+    val lastReadHistory = historyDao.getDetailedHistories()
+        .map { list -> list.firstOrNull() }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
+        )
     private val dashboardRestarter = FlowRestarter()
 
     private val _checkInEvent = MutableSharedFlow<CheckInEvent>()

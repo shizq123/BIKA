@@ -16,10 +16,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.CardDefaults
+import com.shizq.bika.core.database.model.DetailedHistory
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -82,8 +87,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.background
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
@@ -108,11 +115,13 @@ fun DashboardScreen(
     onCommentsClick: () -> Unit,
     onDownloadsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
+    navigationToReader: (String, Int) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val lastReadHistory by viewModel.lastReadHistory.collectAsStateWithLifecycle()
     val context = LocalContext.current
     
     var checkInDialogMessage by remember { mutableStateOf<String?>(null) }
@@ -232,6 +241,7 @@ fun DashboardScreen(
 
     DashboardContent(
         userProfileUiState = userProfileUiState,
+        lastReadHistory = lastReadHistory,
         onCheckInClick = viewModel::onCheckIn,
         onUpdateSlogan = viewModel::updateProfileSlogan,
         onChangePassword = viewModel::changePassword,
@@ -245,6 +255,7 @@ fun DashboardScreen(
         onCommentsClick = onCommentsClick,
         onDownloadsClick = onDownloadsClick,
         onNotificationsClick = onNotificationsClick,
+        navigationToReader = navigationToReader,
     )
 }
 
@@ -252,6 +263,7 @@ fun DashboardScreen(
 @Composable
 fun DashboardContent(
     userProfileUiState: UserProfileUiState,
+    lastReadHistory: DetailedHistory?,
     onCheckInClick: () -> Unit,
     onUpdateSlogan: (String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
     onChangePassword: (String, String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
@@ -265,6 +277,7 @@ fun DashboardContent(
     onCommentsClick: () -> Unit,
     onDownloadsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
+    navigationToReader: (String, Int) -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -555,6 +568,13 @@ fun DashboardContent(
             ) {
                 DashboardDrawerContent(
                     userProfile = userProfileUiState,
+                    lastReadHistory = lastReadHistory,
+                    navigationToReader = { comicId, order ->
+                        scope.launch {
+                            drawerState.close()
+                            navigationToReader(comicId, order)
+                        }
+                    },
                     onCheckInClick = {
                         scope.launch {
                             drawerState.close()
@@ -631,6 +651,16 @@ fun DashboardContent(
                     .padding(innerPadding)
                     .testTag("dashboard:grid"),
             ) {
+                lastReadHistory?.let { history ->
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        QuickResumeCard(
+                            history = history,
+                            onClick = navigationToReader,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
+
                 items(
                     channelSettingsUiState,
                     key = { it.resName }
@@ -732,6 +762,8 @@ private fun navigation(
 @Composable
 fun DashboardDrawerContent(
     userProfile: UserProfileUiState,
+    lastReadHistory: DetailedHistory?,
+    navigationToReader: (String, Int) -> Unit,
     modifier: Modifier = Modifier,
     onCheckInClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
@@ -768,6 +800,14 @@ fun DashboardDrawerContent(
                         .padding(vertical = 8.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
+                    lastReadHistory?.let { history ->
+                        QuickResumeCard(
+                            history = history,
+                            onClick = navigationToReader,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp))
+                    }
                     DrawerMenuItem(
                         label = "历史记录",
                         iconRes = R.drawable.ic_history,
@@ -968,6 +1008,84 @@ fun UserProfileCard(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickResumeCard(
+    history: DetailedHistory,
+    onClick: (String, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val lastProgress = remember(history) {
+        history.progressList.maxByOrNull { it.lastReadAt }
+    }
+    val chapterTitle = lastProgress?.let { "第 ${it.chapterId} 话" } ?: "第一话"
+    val progressText = lastProgress?.let { "已读至第 ${it.currentPage} 页 / 共 ${it.pageCount} 页" } ?: "未开始阅读"
+    val lastReadChapterOrder = lastProgress?.chapterId ?: 1
+
+    ElevatedCard(
+        onClick = { onClick(history.history.id, lastReadChapterOrder) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(history.history.coverUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Cover",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "继续阅读",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = history.history.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "$chapterTitle · $progressText",
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = "继续阅读",
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }

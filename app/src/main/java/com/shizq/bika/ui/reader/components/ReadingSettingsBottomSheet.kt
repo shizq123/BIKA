@@ -31,6 +31,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.shizq.bika.core.model.TapZoneLayout
+import com.shizq.bika.core.model.BookSpreadsMode
+import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.state.ReaderAction
 import kotlin.math.roundToInt
@@ -142,6 +144,146 @@ fun ReadingSettingsBottomSheet(
                         Switch(
                             checked = config.volumeKeyNavigation,
                             onCheckedChange = null
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    SectionTitle("护眼与暗化蒙层")
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .toggleable(
+                                config.eyeCareEnabled,
+                                role = Role.Switch
+                            ) {
+                                dispatch(ReaderAction.SetEyeCareEnabled(it))
+                            }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "夜间护眼蒙层",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "在最顶层加盖黑色透明滤镜，削减背景刺眼亮度",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = config.eyeCareEnabled,
+                            onCheckedChange = null
+                        )
+                    }
+
+                    if (config.eyeCareEnabled) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            var localDarkness by remember(config.eyeCareDarkness) { mutableFloatStateOf(config.eyeCareDarkness) }
+                            Slider(
+                                value = localDarkness,
+                                onValueChange = { localDarkness = it },
+                                onValueChangeFinished = {
+                                    dispatch(ReaderAction.SetEyeCareDarkness(localDarkness))
+                                },
+                                valueRange = 0.1f..0.6f,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Text(
+                                text = "${(localDarkness * 100).roundToInt()}%",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                textAlign = TextAlign.End,
+                                modifier = Modifier
+                                    .padding(start = 16.dp)
+                                    .width(50.dp)
+                            )
+                        }
+                    }
+
+                    if (config.readingMode == ReadingMode.WEBTOON) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SectionTitle("条漫自动滚动")
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.small)
+                                .toggleable(
+                                    config.autoScrollEnabled,
+                                    role = Role.Switch
+                                ) {
+                                    dispatch(ReaderAction.SetAutoScrollEnabled(it))
+                                }
+                                .padding(vertical = 8.dp, horizontal = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = "自动滚动",
+                                    style = MaterialTheme.typography.bodyLarge
+                                )
+                                Text(
+                                    text = "条漫模式下一键启用自动向下慢滚页面",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            Switch(
+                                checked = config.autoScrollEnabled,
+                                onCheckedChange = null
+                            )
+                        }
+
+                        if (config.autoScrollEnabled) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp, horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                var localSpeed by remember(config.autoScrollSpeed) { mutableFloatStateOf(config.autoScrollSpeed.toFloat()) }
+                                Slider(
+                                    value = localSpeed,
+                                    onValueChange = { localSpeed = it },
+                                    onValueChangeFinished = {
+                                        dispatch(ReaderAction.SetAutoScrollSpeed(localSpeed.roundToInt()))
+                                    },
+                                    valueRange = 1f..5f,
+                                    steps = 3,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Text(
+                                    text = "速度 ${localSpeed.roundToInt()}",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier
+                                        .padding(start = 16.dp)
+                                        .width(60.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    if (config.readingMode != ReadingMode.WEBTOON) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SectionTitle("大屏版面")
+                        OptionFlowRow(
+                            options = BookSpreadsMode.entries,
+                            selectedOption = config.bookSpreadsMode,
+                            onOptionSelected = { dispatch(ReaderAction.SetBookSpreadsMode(it)) },
+                            labelProvider = { it.label }
                         )
                     }
 

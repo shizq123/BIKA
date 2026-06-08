@@ -28,6 +28,7 @@ import com.shizq.bika.ui.reader.ReaderScreen
 import com.shizq.bika.ui.reader.ReaderViewModel
 import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.settings.SettingsScreen
+import com.shizq.bika.ui.settings.StorageManagerScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 import com.shizq.bika.ui.download.DownloadListScreen
@@ -126,6 +127,9 @@ fun EntryProviderScope<NavKey>.featureSection(
             onCommentsClick = { navigator.navigate(ConnectedRoute.MineCommentRoute) },
             onDownloadsClick = { navigator.navigate(ConnectedRoute.DownloadListRoute) },
             onNotificationsClick = { navigator.navigate(ConnectedRoute.NotificationsRoute) },
+            navigationToReader = { id, order ->
+                navigator.navigate(ConnectedRoute.ReaderRoute(id, order))
+            },
         )
     }
 
@@ -199,6 +203,14 @@ fun EntryProviderScope<NavKey>.featureSection(
     ) {
         SettingsScreen(
             navigationToLogin = { navigator.navigate(AuthenticationRoute) },
+            navigationToStorageManager = { navigator.navigate(ConnectedRoute.StorageManagerRoute) },
+            onBackClick = navigator::goBack
+        )
+    }
+    entry<ConnectedRoute.StorageManagerRoute>(
+        metadata = slideTransitionMetadata()
+    ) {
+        StorageManagerScreen(
             onBackClick = navigator::goBack
         )
     }

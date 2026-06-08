@@ -12,16 +12,22 @@ import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.ViewerType
 import com.shizq.bika.paging.ChapterPage
+import androidx.compose.ui.platform.LocalConfiguration
 import com.shizq.bika.ui.reader.util.preload.LazyListScrollStateProvider
 import com.shizq.bika.ui.reader.util.preload.PagerScrollStateProvider
 import com.shizq.bika.ui.reader.util.preload.ScrollStateProvider
+
+import com.shizq.bika.core.model.BookSpreadsMode
+
+import androidx.compose.foundation.lazy.LazyListState
 
 @Stable
 data class ReaderContext(
     val layout: ReaderLayout,
     val controller: ReaderController,
     val scrollStateProvider: ScrollStateProvider,
-    val config: ReaderConfig = ReaderConfig.Default
+    val config: ReaderConfig = ReaderConfig.Default,
+    val lazyListState: LazyListState? = null
 )
 
 data class ReaderConfig(
@@ -30,6 +36,11 @@ data class ReaderConfig(
     val screenOrientation: ScreenOrientation,
     val tapZoneLayout: TapZoneLayout,
     val preloadCount: Int,
+    val eyeCareEnabled: Boolean,
+    val eyeCareDarkness: Float,
+    val autoScrollEnabled: Boolean,
+    val autoScrollSpeed: Int,
+    val bookSpreadsMode: BookSpreadsMode,
 ) {
     companion object {
         val Default = ReaderConfig(
@@ -38,6 +49,11 @@ data class ReaderConfig(
             screenOrientation = ScreenOrientation.Portrait,
             tapZoneLayout = TapZoneLayout.LShape,
             preloadCount = 0,
+            eyeCareEnabled = false,
+            eyeCareDarkness = 0.3f,
+            autoScrollEnabled = false,
+            autoScrollSpeed = 3,
+            bookSpreadsMode = BookSpreadsMode.AUTO,
         )
     }
 }
@@ -50,6 +66,23 @@ fun rememberReaderContext(
     initialPageIndex: Int,
     chapterOrder: Int,
 ): ReaderContext {
+    val configuration = LocalConfiguration.current
+    val isLargeOrLandscape = remember(configuration) {
+        val aspect = configuration.screenWidthDp.toFloat() / configuration.screenHeightDp.toFloat()
+        aspect >= 1.25f || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    }
+    val useDoublePage = remember(config.bookSpreadsMode, isLargeOrLandscape, readingMode) {
+        if (readingMode.viewerType != ViewerType.Pager) {
+            false
+        } else {
+            when (config.bookSpreadsMode) {
+                BookSpreadsMode.SINGLE -> false
+                BookSpreadsMode.DOUBLE -> true
+                BookSpreadsMode.AUTO -> isLargeOrLandscape
+            }
+        }
+    }
+
     return when (readingMode.viewerType) {
         ViewerType.Scrolling -> {
             // 用 key(chapterOrder) 强制在章节切换时重建 listState，
@@ -70,7 +103,8 @@ fun rememberReaderContext(
                     layout = layout,
                     controller = controller,
                     scrollStateProvider = scrollProvider,
-                    config = config
+                    config = config,
+                    lazyListState = listState
                 )
             }
         }
@@ -78,18 +112,20 @@ fun rememberReaderContext(
         ViewerType.Pager -> {
             // 同理，chapter 切换时强制重建 pagerState。
             key(chapterOrder) {
+                val pageCount = if (useDoublePage) (chapterPages.itemCount + 1) / 2 else chapterPages.itemCount
                 val pagerState =
-                    rememberPagerState(initialPage = initialPageIndex) { chapterPages.itemCount }
+                    rememberPagerState(initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex) { pageCount }
 
-                val layout = remember(pagerState, readingMode.direction, readingMode.isRtl) {
+                val layout = remember(pagerState, readingMode.direction, readingMode.isRtl, useDoublePage) {
                     PagerLayout(
                         pagerState = pagerState,
                         direction = readingMode.direction,
-                        isRtl = readingMode.isRtl
+                        isRtl = readingMode.isRtl,
+                        useDoublePage = useDoublePage
                     )
                 }
 
-                val controller = remember(pagerState) { PagerController(pagerState) }
+                val controller = remember(pagerState, useDoublePage) { PagerController(pagerState, useDoublePage) }
                 val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
 
                 ReaderContext(

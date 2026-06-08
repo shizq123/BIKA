@@ -132,6 +132,17 @@ class DownloadRepository @Inject constructor(
         downloadTaskDao.markAsViewed(taskId)
     }
 
+    /** 置顶指定的下载任务 */
+    suspend fun bringToTop(taskId: String) = withContext(Dispatchers.IO) {
+        val maxPriority = downloadTaskDao.getMaxPriority()
+        downloadTaskDao.updateTaskPriority(taskId, maxPriority + 1)
+    }
+
+    /** 更新指定的任务优先级 */
+    suspend fun updateTaskPriority(taskId: String, priority: Int) = withContext(Dispatchers.IO) {
+        downloadTaskDao.updateTaskPriority(taskId, priority)
+    }
+
     /** 删除下载任务及其本地文件 */
     suspend fun deleteDownload(task: DownloadTaskEntity) = withContext(Dispatchers.IO) {
         if (task.localPath.isNotEmpty()) {

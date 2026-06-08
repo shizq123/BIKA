@@ -122,13 +122,33 @@ class ReaderStateMachine @Inject constructor(
                 onActionEffect<ReaderAction.SetVolumeKeyNavigation> {
                     userPreferencesDataSource.setIsVolumeKeyNavigation(it.enable)
                 }
+                onActionEffect<ReaderAction.SetEyeCareEnabled> {
+                    userPreferencesDataSource.setEyeCareEnabled(it.enable)
+                }
+                onActionEffect<ReaderAction.SetEyeCareDarkness> {
+                    userPreferencesDataSource.setEyeCareDarkness(it.darkness)
+                }
+                onActionEffect<ReaderAction.SetAutoScrollEnabled> {
+                    userPreferencesDataSource.setAutoScrollEnabled(it.enable)
+                }
+                onActionEffect<ReaderAction.SetAutoScrollSpeed> {
+                    userPreferencesDataSource.setAutoScrollSpeed(it.speed)
+                }
+                onActionEffect<ReaderAction.SetBookSpreadsMode> {
+                    userPreferencesDataSource.setBookSpreadsMode(it.mode)
+                }
                 collectWhileInState(userPreferencesDataSource.userData) {
                     val newConfig = ReaderConfig(
                         volumeKeyNavigation = it.volumeKeyNavigation,
                         readingMode = it.readingMode,
                         screenOrientation = it.screenOrientation,
                         tapZoneLayout = it.tapZoneLayout,
-                        preloadCount = it.preloadCount
+                        preloadCount = it.preloadCount,
+                        eyeCareEnabled = it.eyeCareEnabled,
+                        eyeCareDarkness = it.eyeCareDarkness,
+                        autoScrollEnabled = it.autoScrollEnabled,
+                        autoScrollSpeed = it.autoScrollSpeed,
+                        bookSpreadsMode = it.bookSpreadsMode,
                     )
                     mutate { copy(config = newConfig) }
                 }

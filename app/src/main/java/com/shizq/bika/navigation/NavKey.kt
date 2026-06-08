@@ -55,6 +55,9 @@ data object ConnectedRoute : Root {
 
     @Serializable
     data object GuestbookRoute : Connected
+
+    @Serializable
+    data object StorageManagerRoute : Connected
 }
 
 @Serializable

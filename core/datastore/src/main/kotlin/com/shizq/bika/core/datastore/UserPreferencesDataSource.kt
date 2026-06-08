@@ -3,6 +3,7 @@ package com.shizq.bika.core.datastore
 import androidx.datastore.core.DataStore
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.DarkThemeConfig
+import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
@@ -97,6 +98,36 @@ class UserPreferencesDataSource @Inject constructor(
     suspend fun setMaxConcurrentDownloads(count: Int) {
         userPreferences.updateData {
             it.copy(maxConcurrentDownloads = count)
+        }
+    }
+
+    suspend fun setEyeCareEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(eyeCareEnabled = enabled)
+        }
+    }
+
+    suspend fun setEyeCareDarkness(darkness: Float) {
+        userPreferences.updateData {
+            it.copy(eyeCareDarkness = darkness)
+        }
+    }
+
+    suspend fun setAutoScrollEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(autoScrollEnabled = enabled)
+        }
+    }
+
+    suspend fun setAutoScrollSpeed(speed: Int) {
+        userPreferences.updateData {
+            it.copy(autoScrollSpeed = speed)
+        }
+    }
+
+    suspend fun setBookSpreadsMode(mode: BookSpreadsMode) {
+        userPreferences.updateData {
+            it.copy(bookSpreadsMode = mode)
         }
     }
 

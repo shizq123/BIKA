@@ -88,6 +88,18 @@ class DownloadListViewModel @Inject constructor(
         _selectedComicId.value = comicId
     }
 
+    fun bringToTop(task: DownloadTaskEntity) {
+        viewModelScope.launch {
+            downloadRepository.bringToTop(task.id)
+        }
+    }
+
+    fun updateTaskPriority(task: DownloadTaskEntity, priority: Int) {
+        viewModelScope.launch {
+            downloadRepository.updateTaskPriority(task.id, priority)
+        }
+    }
+
     fun deleteDownload(task: DownloadTaskEntity) {
         viewModelScope.launch {
             downloadRepository.deleteDownload(task)

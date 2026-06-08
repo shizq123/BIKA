@@ -58,6 +58,7 @@ import com.shizq.bika.core.model.NetworkLine
 @Composable
 fun SettingsScreen(
     navigationToLogin: () -> Unit,
+    navigationToStorageManager: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
 ) {
@@ -185,13 +186,14 @@ fun SettingsScreen(
                     android.widget.Toast.makeText(context, "导出失败: ${e.localizedMessage}", android.widget.Toast.LENGTH_SHORT).show()
                 }
             } else {
-                android.widget.Toast.makeText(context, "日志为空，请先开启日志开关并操作产生日志", android.widget.Toast.LENGTH_SHORT).show()
+                android.widget.Toast.makeText(context, "日志为空，请先开启日志开关并操作产生日志后再来查看", android.widget.Toast.LENGTH_SHORT).show()
             }
         },
         onLogoutClicked = {
             viewModel.logout()
             navigationToLogin()
         },
+        onStorageManagerClick = navigationToStorageManager,
         onBackClick = onBackClick,
         onCheckForUpdates = viewModel::checkForUpdates,
     )
@@ -203,6 +205,7 @@ fun SettingsContent(
     settingsUiState: SettingsUiState,
     cacheSize: String,
     onClearCache: () -> Unit = {},
+    onStorageManagerClick: () -> Unit = {},
     onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit = {},
     onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
     onUpdateNetworkLine: (line: NetworkLine) -> Unit = {},
@@ -274,6 +277,12 @@ fun SettingsContent(
                                 summary = cacheSize,
                                 iconVector = Icons.Default.Close,
                                 onClick = { showDialog = true }
+                            )
+                            Preference(
+                                title = "存储与空间管理",
+                                summary = "管理图片缓存及已离线的章节",
+                                iconVector = Icons.AutoMirrored.Filled.List,
+                                onClick = onStorageManagerClick
                             )
                             ListPreference(
                                 title = "选择网络分流",

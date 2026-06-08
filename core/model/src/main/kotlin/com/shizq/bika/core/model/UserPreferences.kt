@@ -22,6 +22,12 @@ data class UserPreferences(
     val isLoggingEnabled: Boolean = false,
     val downloadOverWifiOnly: Boolean = false,
     val maxConcurrentDownloads: Int = 3,
+    // ---- 阅读辅助体验配置 ----
+    val eyeCareEnabled: Boolean = false,
+    val eyeCareDarkness: Float = 0.3f,
+    val autoScrollEnabled: Boolean = false,
+    val autoScrollSpeed: Int = 3,
+    val bookSpreadsMode: BookSpreadsMode = BookSpreadsMode.AUTO,
     // ---- 缓存的用户信息（无网时回退使用）----
     val cachedUserName: String = "",
     val cachedUserAvatarUrl: String = "",

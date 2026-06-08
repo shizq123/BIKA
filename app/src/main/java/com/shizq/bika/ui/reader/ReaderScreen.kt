@@ -7,7 +7,10 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -15,18 +18,30 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Remove
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -88,6 +103,82 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -
     )
 }
 
+@Composable
+fun AutoScrollOverlay(
+    isScrolling: Boolean,
+    speed: Int,
+    onPlayPauseToggle: () -> Unit,
+    onSpeedUp: () -> Unit,
+    onSpeedDown: () -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.Surface(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+        color = Color.Black.copy(alpha = 0.75f),
+        contentColor = Color.White,
+        modifier = modifier
+            .padding(16.dp)
+            .width(56.dp)
+    ) {
+        androidx.compose.foundation.layout.Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(vertical = 12.dp)
+        ) {
+            IconButton(onClick = onPlayPauseToggle) {
+                Icon(
+                    imageVector = if (isScrolling) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                    contentDescription = if (isScrolling) "暂停" else "开始",
+                    tint = Color.White
+                )
+            }
+
+            IconButton(
+                onClick = onSpeedDown,
+                enabled = speed > 1
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Remove,
+                    contentDescription = "减速",
+                    tint = if (speed > 1) Color.White else Color.Gray
+                )
+            }
+
+            Text(
+                text = "v$speed",
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+            )
+
+            IconButton(
+                onClick = onSpeedUp,
+                enabled = speed < 5
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Add,
+                    contentDescription = "加速",
+                    tint = if (speed < 5) Color.White else Color.Gray
+                )
+            }
+
+            androidx.compose.material3.HorizontalDivider(
+                color = Color.White.copy(alpha = 0.3f),
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+            )
+
+            IconButton(onClick = onClose) {
+                Icon(
+                    imageVector = Icons.Rounded.Close,
+                    contentDescription = "退出自动滚动",
+                    tint = Color.Red
+                )
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReaderContent(
@@ -115,6 +206,42 @@ private fun ReaderContent(
                 chapterOrder = chapterState.order,
             )
             val controller = readerContext.controller
+
+            var isAutoScrolling by remember { mutableStateOf(false) }
+            var isUserInteracting by remember { mutableStateOf(false) }
+
+            LaunchedEffect(config.autoScrollEnabled) {
+                isAutoScrolling = config.autoScrollEnabled
+            }
+
+            val listState = readerContext.lazyListState
+            if (listState != null) {
+                val isDragged by listState.interactionSource.collectIsDraggedAsState()
+                LaunchedEffect(isDragged) {
+                    if (isDragged) {
+                        isUserInteracting = true
+                    } else {
+                        delay(1500)
+                        isUserInteracting = false
+                    }
+                }
+            }
+
+            LaunchedEffect(isAutoScrolling, isUserInteracting, config.autoScrollSpeed, listState) {
+                if (isAutoScrolling && !isUserInteracting && listState != null) {
+                    while (true) {
+                        val canScroll = listState.canScrollForward
+                        if (canScroll) {
+                            controller.scrollBy(config.autoScrollSpeed.toFloat())
+                        } else {
+                            isAutoScrolling = false
+                            android.widget.Toast.makeText(context, "已到达本章底部", android.widget.Toast.LENGTH_SHORT).show()
+                            break
+                        }
+                        delay(16)
+                    }
+                }
+            }
 
             // 当前页（提升到此层级，用于自动衔接检测）
             val currentPage by controller.visibleItemIndex.collectAsState(0)
@@ -192,87 +319,120 @@ private fun ReaderContent(
                 preloadCount = config.preloadCount
             )
 
-            ReaderScaffold(
-                showMenu = overlayState.showSystemBars,
-                topBar = {
-                    val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
-                    TopBar(title = { Text(title) }, onBackClick = onBackClick)
-                },
-                bottomBar = {
-                    LiveReaderBottomBar(
-                        controller = controller,
-                        currentPage = currentPage,
-                        totalPages = chapterState.totalPages,
-                        readingMode = config.readingMode,
-                        onSeekToPage = {
-                            scope.launch { controller.scrollToPage(it) }
-                        },
-                        onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
-                        onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
-                        onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
-                        onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
-                        onPrevChapter = prevChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } },
-                        onNextChapter = nextChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } }
-                            ?: { android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show() },
-                    )
-                },
-                floatingMessage = {
-                    if (chapterState.totalPages > 0) {
-                        LivePageIndicatorBadge(
+            Box(modifier = Modifier.fillMaxSize()) {
+                ReaderScaffold(
+                    showMenu = overlayState.showSystemBars,
+                    topBar = {
+                        val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
+                        TopBar(title = { Text(title) }, onBackClick = onBackClick)
+                    },
+                    bottomBar = {
+                        LiveReaderBottomBar(
                             controller = controller,
-                            total = chapterState.totalPages
+                            currentPage = currentPage,
+                            totalPages = chapterState.totalPages,
+                            readingMode = config.readingMode,
+                            onSeekToPage = {
+                                scope.launch { controller.scrollToPage(it) }
+                            },
+                            onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
+                            onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
+                            onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
+                            onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
+                            onPrevChapter = prevChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } },
+                            onNextChapter = nextChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } }
+                                ?: { android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show() },
                         )
-                    }
-                },
-                sideSheet = {
-                    val isChapterListVisible =
-                        overlayState.readerSheet is ReaderSheet.ChapterList
-                    AnimatedVisibility(
-                        visible = isChapterListVisible,
-                        enter = slideInHorizontally(
-                            animationSpec = tween(),
-                            initialOffsetX = { -it }
-                        ),
-                        exit = slideOutHorizontally(
-                            animationSpec = tween(),
-                            targetOffsetX = { -it }
-                        ),
-                    ) {
-                        SideSheetLayout(
-                            title = { Text("目录") },
-                            onDismissRequest = { dispatch(HideSheet) },
-                            closeButton = {
-                                IconButton(onClick = { dispatch(HideSheet) }) {
-                                    Icon(Icons.Rounded.Close, contentDescription = "关闭目录")
-                                }
-                            }
-                        ) {
-                            ChapterList(
-                                chapters = chapterList,
-                                currentChapterId = chapterState.order,
-                                onChapterClick = { newChapter ->
-                                    dispatch(JumpToChapter(newChapter))
-                                },
-                                modifier = Modifier.padding(top = 8.dp)
+                    },
+                    floatingMessage = {
+                        if (chapterState.totalPages > 0) {
+                            LivePageIndicatorBadge(
+                                controller = controller,
+                                total = chapterState.totalPages
                             )
                         }
-                    }
-                },
-                content = {
-                    val gestureState = rememberGestureState(config.tapZoneLayout)
-                    ReaderLayout(
-                        readerContext = readerContext,
-                        gestureState = gestureState,
-                        chapterPages = imageList,
-                        toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
-                        onHideMenu = {
-                            if (overlayState.showSystemBars) {
-                                dispatch(ToggleBarsVisibility)
+                    },
+                    sideSheet = {
+                        val isChapterListVisible =
+                            overlayState.readerSheet is ReaderSheet.ChapterList
+                        AnimatedVisibility(
+                            visible = isChapterListVisible,
+                            enter = slideInHorizontally(
+                                animationSpec = tween(),
+                                initialOffsetX = { -it }
+                            ),
+                            exit = slideOutHorizontally(
+                                animationSpec = tween(),
+                                targetOffsetX = { -it }
+                            ),
+                        ) {
+                            SideSheetLayout(
+                                title = { Text("目录") },
+                                onDismissRequest = { dispatch(HideSheet) },
+                                closeButton = {
+                                    IconButton(onClick = { dispatch(HideSheet) }) {
+                                        Icon(Icons.Rounded.Close, contentDescription = "关闭目录")
+                                    }
+                                }
+                            ) {
+                                ChapterList(
+                                    chapters = chapterList,
+                                    currentChapterId = chapterState.order,
+                                    onChapterClick = { newChapter ->
+                                        dispatch(JumpToChapter(newChapter))
+                                    },
+                                    modifier = Modifier.padding(top = 8.dp)
+                                )
                             }
                         }
+                    },
+                    content = {
+                        val gestureState = rememberGestureState(config.tapZoneLayout)
+                        ReaderLayout(
+                            readerContext = readerContext,
+                            gestureState = gestureState,
+                            chapterPages = imageList,
+                            toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
+                            onHideMenu = {
+                                if (overlayState.showSystemBars) {
+                                    dispatch(ToggleBarsVisibility)
+                                }
+                            }
+                        )
+                    }
+                )
+
+                if (config.autoScrollEnabled) {
+                    AutoScrollOverlay(
+                        isScrolling = isAutoScrolling,
+                        speed = config.autoScrollSpeed,
+                        onPlayPauseToggle = { isAutoScrolling = !isAutoScrolling },
+                        onSpeedUp = {
+                            if (config.autoScrollSpeed < 5) {
+                                dispatch(ReaderAction.SetAutoScrollSpeed(config.autoScrollSpeed + 1))
+                            }
+                        },
+                        onSpeedDown = {
+                            if (config.autoScrollSpeed > 1) {
+                                dispatch(ReaderAction.SetAutoScrollSpeed(config.autoScrollSpeed - 1))
+                            }
+                        },
+                        onClose = {
+                            dispatch(ReaderAction.SetAutoScrollEnabled(false))
+                        },
+                        modifier = Modifier.align(Alignment.CenterEnd)
                     )
                 }
-            )
+
+                if (config.eyeCareEnabled) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(Color.Black.copy(alpha = config.eyeCareDarkness))
+                            .pointerInput(Unit) {}
+                    )
+                }
+            }
         }
     }
 }

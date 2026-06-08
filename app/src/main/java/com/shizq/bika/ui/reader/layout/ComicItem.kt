@@ -48,7 +48,8 @@ import com.shizq.bika.paging.ChapterPage
 fun ComicPageItem(
     page: ChapterPage,
     index: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onSizeLoaded: ((width: Float, height: Float) -> Unit)? = null
 ) {
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
@@ -119,6 +120,7 @@ fun ComicPageItem(
                         if (imageAspectRatio != newRatio) {
                             imageAspectRatio = newRatio
                         }
+                        onSizeLoaded?.invoke(intrinsicSize.width, intrinsicSize.height)
                     }
                 }
             }

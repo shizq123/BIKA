@@ -47,6 +47,9 @@ data class DownloadTaskEntity(
 
     /** 下载完成时间（未完成时为 null） */
     val completedAt: Instant? = null,
+
+    /** 任务优先级，数值越大越优先 */
+    val priority: Int = 0,
 )
 
 enum class DownloadStatus {
