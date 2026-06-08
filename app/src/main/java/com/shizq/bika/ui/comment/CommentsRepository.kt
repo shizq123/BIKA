@@ -2,6 +2,7 @@ package com.shizq.bika.ui.comment
 
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.CommentsData
+import com.shizq.bika.core.network.model.Type
 import com.shizq.bika.core.result.Result
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -23,10 +24,8 @@ class CommentsRepository(private val bikaDataSource: BikaDataSource) {
         page: Int,
     ): Flow<Result<CommentsData>> = flow {
         emit(Result.Loading)
-        val data = when (comicsOrGames) {
-            "games" -> bikaDataSource.getGameComments(id, page)
-            else -> bikaDataSource.getComicComments(id, page)
-        }
+        val type = if (comicsOrGames == "games") Type.GAME else Type.COMIC
+        val data = bikaDataSource.getComments(type, id, page)
         emit(Result.Success(data))
     }.catch {
         emit(Result.Error(it))

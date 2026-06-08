@@ -103,7 +103,6 @@ fun DashboardScreen(
     navigateToFavourite: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
-    navigateToGame: () -> Unit,
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
@@ -241,7 +240,6 @@ fun DashboardScreen(
         navigateToFavourite = navigateToFavourite,
         navigationToHistory = navigationToHistory,
         navigationToSettings = navigationToSettings,
-        navigateToGame = navigateToGame,
         onSearchClick = onSearchClick,
         onChannelPreferenceClick = onChannelPreferenceClick,
         onCommentsClick = onCommentsClick,
@@ -262,7 +260,6 @@ fun DashboardContent(
     navigateToFavourite: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
-    navigateToGame: () -> Unit,
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
@@ -653,7 +650,6 @@ fun DashboardContent(
                                 channel = item,
                                 navigationToLeaderboard = navigationToLeaderboard,
                                 navigateToSearch = navigateToFavourite,
-                                navigateToGame = navigateToGame,
                             )
                         }
                     }
@@ -704,7 +700,6 @@ private fun navigation(
     context: Context,
     navigationToLeaderboard: () -> Unit,
     navigateToSearch: (DiscoveryAction) -> Unit,
-    navigateToGame: () -> Unit,
 ) {
 //    if (channel.link != null) {
 //        val token = SPUtil.get("token", "")
@@ -719,7 +714,6 @@ private fun navigation(
     when (channel.displayName) {
         "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)
         "排行榜" -> navigationToLeaderboard()
-        "游戏推荐" -> navigateToGame()
 //            "哔咔小程序" -> start(AppsActivity::class.java)
         "留言板" -> {
             android.widget.Toast.makeText(context, "该功能已下线", android.widget.Toast.LENGTH_SHORT).show()

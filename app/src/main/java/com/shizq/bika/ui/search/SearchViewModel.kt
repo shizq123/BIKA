@@ -6,8 +6,8 @@ import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.data.repository.RecentSearchRepository
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.KeywordsData
-import com.shizq.bika.network.Result
-import com.shizq.bika.network.asResult
+import com.shizq.bika.core.result.Result
+import com.shizq.bika.core.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -37,7 +37,7 @@ class SearchViewModel @Inject constructor(
         when (keywordsResult) {
             is Result.Loading -> RecentSearchQueriesUiState.Loading
             is Result.Error -> RecentSearchQueriesUiState.Error(
-                keywordsResult.exception?.message ?: ""
+                keywordsResult.exception.message ?: ""
             )
 
             is Result.Success -> RecentSearchQueriesUiState.Success(

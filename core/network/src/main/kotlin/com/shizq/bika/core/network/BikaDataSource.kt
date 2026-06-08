@@ -158,9 +158,8 @@ class BikaDataSource @Inject constructor(
         }.body<ChapterPagesData>()
     }
 
-    // todo add type parameter
-    suspend fun getComicComments(id: String, page: Int): CommentsData {
-        return client.get("comics/$id/comments/") {
+    suspend fun getComments(type: Type, id: String, page: Int): CommentsData {
+        return client.get("${type.type}/$id/comments/") {
             parameter("page", page)
         }.body()
     }
@@ -184,12 +183,6 @@ class BikaDataSource @Inject constructor(
         client.post("comments/$commentId") {
             setBody("""{"content":"$content"}""")
         }.bodyAsText()
-    }
-
-    suspend fun getGameComments(id: String, page: Int): CommentsData {
-        return client.get("games/$id/comments/") {
-            parameter("page", page)
-        }.body()
     }
 
     /**

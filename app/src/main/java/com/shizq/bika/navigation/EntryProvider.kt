@@ -21,9 +21,7 @@ import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
-import com.shizq.bika.ui.games.GameDetailScreen
-import com.shizq.bika.ui.games.GameDetailViewModel
-import com.shizq.bika.ui.games.GameScreen
+
 import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
 import com.shizq.bika.ui.reader.ReaderScreen
@@ -122,7 +120,7 @@ fun EntryProviderScope<NavKey>.featureSection(
             },
             navigationToHistory = { navigator.navigate(ConnectedRoute.HistoryRoute) },
             navigationToSettings = { navigator.navigate(ConnectedRoute.SettingsRoute) },
-            navigateToGame = { /*navigator.navigate(GameNavKey)*/ },
+
             onSearchClick = { navigator.navigate(ConnectedRoute.SearchRoute) },
             onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
             onCommentsClick = { navigator.navigate(ConnectedRoute.MineCommentRoute) },
@@ -253,27 +251,7 @@ fun EntryProviderScope<NavKey>.featureSection(
     }
 }
 
-fun EntryProviderScope<NavKey>.gameEntry(navigator: Navigator) {
-    entry<GameNavKey> {
-        GameScreen(
-            navigationToGameDetail = { navigator.navigate(GameDetailNavKey(it)) },
-            onBackClick = navigator::goBack
-        )
-    }
-}
 
-fun EntryProviderScope<NavKey>.gameDetailEntry(navigator: Navigator) {
-    entry<GameDetailNavKey> { key ->
-        GameDetailScreen(
-            onBackClick = navigator::goBack,
-            viewModel = hiltViewModel<GameDetailViewModel, GameDetailViewModel.Factory>(
-                key = key.id,
-            ) { factory ->
-                factory.create(key.id)
-            },
-        )
-    }
-}
 
 fun Navigator.navigateToUnitedDetail(id: String) {
     navigate(ConnectedRoute.UnitedDetailRoute(id))

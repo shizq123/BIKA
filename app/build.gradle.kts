@@ -42,7 +42,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            baselineProfile.automaticGenerationDuringBuild = false
         }
         debug {
             signingConfig = signingConfigs.getByName("keyStore")
