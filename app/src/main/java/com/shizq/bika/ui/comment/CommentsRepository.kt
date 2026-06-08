@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 
-class CommentsRepository(private val bikaDataSource: BikaDataSource) {
+import jakarta.inject.Inject
+
+class CommentsRepository @Inject constructor(private val bikaDataSource: BikaDataSource) {
 
     /**
      * 获取漫画或游戏的主评论列表

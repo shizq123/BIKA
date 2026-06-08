@@ -175,13 +175,19 @@ class BikaDataSource @Inject constructor(
 
     suspend fun addReply(type: Type, id: String, content: String) {
         client.post("${type.type}/$id/comments") {
-            setBody("""{"content":"$content"}""")
+            val jsonBody = buildJsonObject {
+                put("content", JsonPrimitive(content))
+            }
+            setBody(jsonBody)
         }.bodyAsText()
     }
 
     suspend fun addCommentReply(commentId: String, content: String) {
         client.post("comments/$commentId") {
-            setBody("""{"content":"$content"}""")
+            val jsonBody = buildJsonObject {
+                put("content", JsonPrimitive(content))
+            }
+            setBody(jsonBody)
         }.bodyAsText()
     }
 

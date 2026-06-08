@@ -91,7 +91,6 @@ sealed interface DiscoveryAction {
     data class Channel(override val name: String) : DiscoveryAction
 }
 @Serializable
-@Serializable
 internal data class SearchKey(
     val topic: String? = null,
     val tag: String? = null,

@@ -596,8 +596,7 @@ fun MangaBottomBar(
                         } else {
                             MaterialTheme.colorScheme.onSecondaryContainer
                         }
-                        FilledTonalButton(
-                            onClick = onFavoriteClick,
+                        Surface(
                             modifier = Modifier
                                 .weight(1f)
                                 .fillMaxHeight()
@@ -605,14 +604,19 @@ fun MangaBottomBar(
                                     onClick = onFavoriteClick,
                                     onLongClick = { showReorderDialog = true }
                                 ),
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = containerColor,
-                                contentColor = contentColor
-                            )
+                            shape = CircleShape,
+                            color = containerColor,
+                            contentColor = contentColor
                         ) {
-                            Icon(imageVector = icon, contentDescription = text)
-                            Spacer(Modifier.width(4.dp))
-                            Text(text)
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(imageVector = icon, contentDescription = text)
+                                Spacer(Modifier.width(4.dp))
+                                Text(text)
+                            }
                         }
                     }
                     BottomBarButtonType.DOWNLOAD -> {
@@ -628,8 +632,7 @@ fun MangaBottomBar(
                             } else {
                                 MaterialTheme.colorScheme.onSecondaryContainer
                             }
-                            FilledTonalButton(
-                                onClick = { if (!isDownloaded) onDownloadClick() },
+                            Surface(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
@@ -637,23 +640,27 @@ fun MangaBottomBar(
                                         onClick = { if (!isDownloaded) onDownloadClick() },
                                         onLongClick = { showReorderDialog = true }
                                     ),
-                                colors = ButtonDefaults.filledTonalButtonColors(
-                                    containerColor = containerColor,
-                                    contentColor = contentColor
-                                )
+                                shape = CircleShape,
+                                color = containerColor,
+                                contentColor = contentColor
                             ) {
-                                Icon(
-                                    imageVector = if (isDownloaded) Icons.Filled.Check else Icons.Filled.Download,
-                                    contentDescription = buttonText
-                                )
-                                Spacer(Modifier.width(4.dp))
-                                Text(buttonText)
+                                Row(
+                                    modifier = Modifier.fillMaxSize(),
+                                    horizontalArrangement = Arrangement.Center,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isDownloaded) Icons.Filled.Check else Icons.Filled.Download,
+                                        contentDescription = buttonText
+                                    )
+                                    Spacer(Modifier.width(4.dp))
+                                    Text(buttonText)
+                                }
                             }
                         }
                     }
                     BottomBarButtonType.READ -> {
-                        Button(
-                            onClick = onReadClick,
+                        Surface(
                             modifier = Modifier
                                 .weight(1.5f)
                                 .fillMaxHeight()
@@ -661,9 +668,17 @@ fun MangaBottomBar(
                                     onClick = onReadClick,
                                     onLongClick = { showReorderDialog = true }
                                 ),
-                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primary,
+                            contentColor = MaterialTheme.colorScheme.onPrimary
                         ) {
-                            Text("开始阅读", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            Row(
+                                modifier = Modifier.fillMaxSize(),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("开始阅读", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                            }
                         }
                     }
                 }

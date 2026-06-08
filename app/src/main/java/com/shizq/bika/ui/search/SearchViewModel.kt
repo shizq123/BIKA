@@ -34,17 +34,15 @@ class SearchViewModel @Inject constructor(
         keywordsResultFlow,
         recentSearchesFlow
     ) { keywordsResult, recentSearches ->
-        when (keywordsResult) {
-            is Result.Loading -> RecentSearchQueriesUiState.Loading
-            is Result.Error -> RecentSearchQueriesUiState.Error(
-                keywordsResult.exception.message ?: ""
-            )
-
-            is Result.Success -> RecentSearchQueriesUiState.Success(
-                hotKeywords = keywordsResult.data.keywords,
-                recentQueries = recentSearches
-            )
+        val hotKeywords = if (keywordsResult is Result.Success) {
+            keywordsResult.data.keywords
+        } else {
+            emptyList()
         }
+        RecentSearchQueriesUiState.Success(
+            hotKeywords = hotKeywords,
+            recentQueries = recentSearches
+        )
     }
         .stateIn(
             scope = viewModelScope,
