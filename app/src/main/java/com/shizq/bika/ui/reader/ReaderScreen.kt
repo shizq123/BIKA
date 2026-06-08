@@ -37,6 +37,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.activity.compose.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -275,6 +276,12 @@ private fun ReaderContent(
             OrientationEffect(config.screenOrientation)
             ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
 
+            val onBack = {
+                dispatch(SyncReadingProgress(currentPage))
+                onBackClick()
+            }
+            BackHandler(onBack = onBack)
+
             LaunchedEffect(overlayState.seekState) {
                 if (overlayState.seekState is SeekState.Seeking) {
                     controller.scrollToPage(overlayState.seekState.targetPage.toInt())
@@ -334,7 +341,7 @@ private fun ReaderContent(
                     showMenu = overlayState.showSystemBars,
                     topBar = {
                         val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
-                        TopBar(title = { Text(title) }, onBackClick = onBackClick)
+                        TopBar(title = { Text(title) }, onBackClick = onBack)
                     },
                     bottomBar = {
                         LiveReaderBottomBar(
