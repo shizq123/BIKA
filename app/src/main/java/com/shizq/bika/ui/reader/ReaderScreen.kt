@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -319,7 +320,16 @@ private fun ReaderContent(
                 preloadCount = config.preloadCount
             )
 
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .drawWithContent {
+                        drawContent()
+                        if (config.eyeCareEnabled) {
+                            drawRect(Color.Black.copy(alpha = config.eyeCareDarkness))
+                        }
+                    }
+            ) {
                 ReaderScaffold(
                     showMenu = overlayState.showSystemBars,
                     topBar = {
@@ -424,14 +434,7 @@ private fun ReaderContent(
                     )
                 }
 
-                if (config.eyeCareEnabled) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Black.copy(alpha = config.eyeCareDarkness))
-                            .pointerInput(Unit) {}
-                    )
-                }
+
             }
         }
     }
