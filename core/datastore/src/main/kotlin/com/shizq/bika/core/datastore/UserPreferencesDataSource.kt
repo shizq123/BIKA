@@ -131,6 +131,18 @@ class UserPreferencesDataSource @Inject constructor(
         }
     }
 
+    suspend fun setMagnifierEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(magnifierEnabled = enabled)
+        }
+    }
+
+    suspend fun setStatusBarCapsuleEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(statusBarCapsuleEnabled = enabled)
+        }
+    }
+
     /** 保存用户资料到本地，供无网时回退展示 */
     suspend fun saveUserProfileCache(
         name: String,

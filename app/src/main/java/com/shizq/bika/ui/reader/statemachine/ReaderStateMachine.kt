@@ -14,8 +14,11 @@ import com.shizq.bika.ui.reader.state.ReaderSheet
 import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.state.UiControlState
+import com.shizq.bika.core.coroutine.ApplicationScope
 import jakarta.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
@@ -24,6 +27,7 @@ class ReaderStateMachine @Inject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
     private val downloadRepository: DownloadRepository,
+    @ApplicationScope private val externalScope: CoroutineScope,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
     init {
         spec {
@@ -82,13 +86,14 @@ class ReaderStateMachine @Inject constructor(
 
                     val id = snapshot.id
                     if (id.isNotEmpty() && meta != null) {
-                        withContext(Dispatchers.IO) {
+                        val pageIndex = it.pageIndex
+                        externalScope.launch(Dispatchers.IO) {
                             val now = Clock.System.now()
                             historyDao.updateLastReadAt(id, now)
 
                             // 如果翻到最后一页或最后2页，则直接保存当前页为总页数，反馈已经看完
-                            val isFinished = meta.totalImages > 0 && it.pageIndex >= meta.totalImages - 2
-                            val savedPage = if (isFinished) meta.totalImages else it.pageIndex
+                            val isFinished = meta.totalImages > 0 && pageIndex >= meta.totalImages - 2
+                            val savedPage = if (isFinished) meta.totalImages else pageIndex
 
                             val chapterProgress = ChapterProgressEntity(
                                 historyId = id,
@@ -137,6 +142,12 @@ class ReaderStateMachine @Inject constructor(
                 onActionEffect<ReaderAction.SetBookSpreadsMode> {
                     userPreferencesDataSource.setBookSpreadsMode(it.mode)
                 }
+                onActionEffect<ReaderAction.SetMagnifierEnabled> {
+                    userPreferencesDataSource.setMagnifierEnabled(it.enable)
+                }
+                onActionEffect<ReaderAction.SetStatusBarCapsuleEnabled> {
+                    userPreferencesDataSource.setStatusBarCapsuleEnabled(it.enable)
+                }
                 collectWhileInState(userPreferencesDataSource.userData) {
                     val newConfig = ReaderConfig(
                         volumeKeyNavigation = it.volumeKeyNavigation,
@@ -149,6 +160,8 @@ class ReaderStateMachine @Inject constructor(
                         autoScrollEnabled = it.autoScrollEnabled,
                         autoScrollSpeed = it.autoScrollSpeed,
                         bookSpreadsMode = it.bookSpreadsMode,
+                        magnifierEnabled = it.magnifierEnabled,
+                        statusBarCapsuleEnabled = it.statusBarCapsuleEnabled,
                     )
                     mutate { copy(config = newConfig) }
                 }

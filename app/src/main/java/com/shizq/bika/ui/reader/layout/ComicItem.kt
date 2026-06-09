@@ -30,12 +30,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.magnifier
+import com.shizq.bika.ui.reader.layout.LocalReaderConfig
 import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
@@ -51,6 +56,47 @@ fun ComicPageItem(
     modifier: Modifier = Modifier,
     onSizeLoaded: ((width: Float, height: Float) -> Unit)? = null
 ) {
+    val config = LocalReaderConfig.current
+    var magnifierCenter by remember { androidx.compose.runtime.mutableStateOf(Offset.Unspecified) }
+
+    val magnifierModifier = if (config.magnifierEnabled) {
+        Modifier
+            .pointerInput(Unit) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        magnifierCenter = offset
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        magnifierCenter = if (magnifierCenter != Offset.Unspecified) {
+                            magnifierCenter + dragAmount
+                        } else {
+                            magnifierCenter
+                        }
+                    },
+                    onDragEnd = {
+                        magnifierCenter = Offset.Unspecified
+                    },
+                    onDragCancel = {
+                        magnifierCenter = Offset.Unspecified
+                    }
+                )
+            }
+            .magnifier(
+                sourceCenter = { magnifierCenter },
+                magnifierCenter = {
+                    if (magnifierCenter != Offset.Unspecified) {
+                        magnifierCenter - Offset(0f, 150f)
+                    } else {
+                        Offset.Unspecified
+                    }
+                },
+                zoom = 1.8f
+            )
+    } else {
+        Modifier
+    }
+
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val scaleMode = if (isLandscape) ContentScale.Fit else ContentScale.FillWidth
@@ -71,7 +117,8 @@ fun ComicPageItem(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(imageAspectRatio)
-            .animateContentSize(animationSpec = tween(durationMillis = 200)),
+            .animateContentSize(animationSpec = tween(durationMillis = 200))
+            .then(magnifierModifier),
     ) {
         Image(
             painter = painter,

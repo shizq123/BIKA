@@ -41,6 +41,8 @@ data class ReaderConfig(
     val autoScrollEnabled: Boolean,
     val autoScrollSpeed: Int,
     val bookSpreadsMode: BookSpreadsMode,
+    val magnifierEnabled: Boolean,
+    val statusBarCapsuleEnabled: Boolean,
 ) {
     companion object {
         val Default = ReaderConfig(
@@ -54,6 +56,8 @@ data class ReaderConfig(
             autoScrollEnabled = false,
             autoScrollSpeed = 3,
             bookSpreadsMode = BookSpreadsMode.AUTO,
+            magnifierEnabled = true,
+            statusBarCapsuleEnabled = true,
         )
     }
 }
@@ -138,3 +142,5 @@ fun rememberReaderContext(
         }
     }
 }
+
+val LocalReaderConfig = androidx.compose.runtime.staticCompositionLocalOf { ReaderConfig.Default }

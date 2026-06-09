@@ -287,6 +287,73 @@ fun ReadingSettingsBottomSheet(
                         )
                     }
 
+                    Spacer(modifier = Modifier.height(24.dp))
+                    SectionTitle("高级交互与沉浸体验")
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .toggleable(
+                                config.magnifierEnabled,
+                                role = Role.Switch
+                            ) {
+                                dispatch(ReaderAction.SetMagnifierEnabled(it))
+                            }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "长按局部放大镜",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "长按并滑动页面可悬浮放大局部画面与文本",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = config.magnifierEnabled,
+                            onCheckedChange = null
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(MaterialTheme.shapes.small)
+                            .toggleable(
+                                config.statusBarCapsuleEnabled,
+                                role = Role.Switch
+                            ) {
+                                dispatch(ReaderAction.SetStatusBarCapsuleEnabled(it))
+                            }
+                            .padding(vertical = 8.dp, horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "极简状态电量胶囊",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "全屏沉浸阅读时在右上角显示系统时间与电量",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = config.statusBarCapsuleEnabled,
+                            onCheckedChange = null
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(32.dp))
                 }
             }

@@ -68,6 +68,8 @@ sealed interface ReaderAction {
     data class SetAutoScrollEnabled(val enable: Boolean) : ReaderAction
     data class SetAutoScrollSpeed(val speed: Int) : ReaderAction
     data class SetBookSpreadsMode(val mode: BookSpreadsMode) : ReaderAction
+    data class SetMagnifierEnabled(val enable: Boolean) : ReaderAction
+    data class SetStatusBarCapsuleEnabled(val enable: Boolean) : ReaderAction
 
     data class ChapterMetaLoaded(val meta: ChapterMeta) : ReaderAction
 

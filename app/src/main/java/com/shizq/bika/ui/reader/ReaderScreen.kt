@@ -24,8 +24,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import com.shizq.bika.ui.reader.layout.LocalReaderConfig
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -209,6 +211,17 @@ private fun ReaderContent(
             )
             val controller = readerContext.controller
 
+            // 首次进入章节时，若 initialPage > 0 且数据加载完成（itemCount > 0），则自动跳转至上次进度位置。
+            var hasRestoredProgress by remember(chapterState.order) { mutableStateOf(false) }
+            LaunchedEffect(chapterState.initialPage, imageList.itemCount, hasRestoredProgress) {
+                if (!hasRestoredProgress && chapterState.initialPage > 0 && imageList.itemCount > 0) {
+                    controller.scrollToPage(chapterState.initialPage)
+                    hasRestoredProgress = true
+                } else if (chapterState.initialPage == 0) {
+                    hasRestoredProgress = true
+                }
+            }
+
             var isAutoScrolling by remember { mutableStateOf(false) }
             var isUserInteracting by remember { mutableStateOf(false) }
 
@@ -327,8 +340,9 @@ private fun ReaderContent(
                 preloadCount = config.preloadCount
             )
 
-            Box(
-                modifier = Modifier
+            CompositionLocalProvider(LocalReaderConfig provides config) {
+                Box(
+                    modifier = Modifier
                     .fillMaxSize()
                     .drawWithContent {
                         drawContent()
@@ -441,7 +455,14 @@ private fun ReaderContent(
                     )
                 }
 
-
+                if (config.statusBarCapsuleEnabled && !overlayState.showSystemBars) {
+                    StatusBarCapsule(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(top = 10.dp, end = 12.dp)
+                    )
+                }
+            }
             }
         }
     }
@@ -551,6 +572,90 @@ private fun SystemUiController(showSystemUI: Boolean) {
 private fun LivePageIndicatorBadge(controller: ReaderController, total: Int) {
     val current by controller.visibleItemIndex.collectAsState(0)
     PageIndicatorBadge(current = current + 1, total = total)
+}
+
+@Composable
+private fun StatusBarCapsule(
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    var clockTime by remember { mutableStateOf("") }
+    var batteryPct by remember { mutableStateOf(100) }
+    var isCharging by remember { mutableStateOf(false) }
+
+    val batteryManager = remember(context) {
+        context.getSystemService(android.content.Context.BATTERY_SERVICE) as android.os.BatteryManager
+    }
+
+    fun updateStatus() {
+        val calendar = java.util.Calendar.getInstance()
+        val hour = String.format("%02d", calendar.get(java.util.Calendar.HOUR_OF_DAY))
+        val minute = String.format("%02d", calendar.get(java.util.Calendar.MINUTE))
+        clockTime = "$hour:$minute"
+
+        batteryPct = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        isCharging = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            batteryManager.isCharging
+        } else {
+            false
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        updateStatus()
+        while (true) {
+            delay(15000)
+            updateStatus()
+        }
+    }
+
+    androidx.compose.material3.Surface(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+        color = Color.Black.copy(alpha = 0.55f),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            Color.White.copy(alpha = 0.15f)
+        ),
+        modifier = modifier
+    ) {
+        androidx.compose.foundation.layout.Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        ) {
+            Text(
+                text = clockTime,
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White.copy(alpha = 0.9f),
+                fontWeight = FontWeight.Medium
+            )
+
+            val batteryColor = when {
+                isCharging -> Color(0xFF4CAF50)
+                batteryPct <= 20 -> Color(0xFFF44336)
+                else -> Color.White.copy(alpha = 0.8f)
+            }
+
+            androidx.compose.foundation.layout.Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                if (isCharging) {
+                    Text(
+                        text = "⚡",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = batteryColor
+                    )
+                }
+                Text(
+                    text = "$batteryPct%",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = batteryColor,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
 }
 
 @Composable

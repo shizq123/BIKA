@@ -28,6 +28,8 @@ data class UserPreferences(
     val autoScrollEnabled: Boolean = false,
     val autoScrollSpeed: Int = 3,
     val bookSpreadsMode: BookSpreadsMode = BookSpreadsMode.AUTO,
+    val magnifierEnabled: Boolean = true,
+    val statusBarCapsuleEnabled: Boolean = true,
     // ---- 缓存的用户信息（无网时回退使用）----
     val cachedUserName: String = "",
     val cachedUserAvatarUrl: String = "",
