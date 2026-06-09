@@ -28,9 +28,9 @@ android {
         }
         create("keyStore") {
             storeFile = file(localProps.getProperty("STORE_FILE", "appkey.jks"))
-            storePassword = localProps.getProperty("STORE_PASSWORD", "")
-            keyAlias = localProps.getProperty("KEY_ALIAS", "")
-            keyPassword = localProps.getProperty("KEY_PASSWORD", "")
+            storePassword = localProps.getProperty("STORE_PASSWORD", "123456")
+            keyAlias = localProps.getProperty("KEY_ALIAS", "shizq")
+            keyPassword = localProps.getProperty("KEY_PASSWORD", "123456")
         }
     }
     buildTypes {
