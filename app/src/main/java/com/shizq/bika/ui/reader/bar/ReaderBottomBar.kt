@@ -39,6 +39,8 @@ fun ReaderBottomBar(
     onOpenOrientation: () -> Unit,
     onPrevChapter: (() -> Unit)? = null,
     onNextChapter: (() -> Unit)? = null,
+    onSeeking: ((Int) -> Unit)? = null,
+    onSeekingFinished: (() -> Unit)? = null,
 ) {
     BottomBar(
         progressIndicator = {
@@ -56,9 +58,11 @@ fun ReaderBottomBar(
                 value = sliderPosition,
                 onValueChange = {
                     sliderPosition = it
+                    onSeeking?.invoke(it.toInt())
                 },
                 onValueChangeFinished = {
                     onSeekToPage(sliderPosition.toInt())
+                    onSeekingFinished?.invoke()
                 },
                 valueRange = 0f..(totalPages.coerceAtLeast(1) - 1).toFloat(),
             )

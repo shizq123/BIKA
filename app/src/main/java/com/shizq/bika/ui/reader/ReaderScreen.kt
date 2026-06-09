@@ -21,6 +21,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
@@ -33,6 +36,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -90,6 +96,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import coil3.request.crossfade
 
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
@@ -332,12 +339,42 @@ private fun ReaderContent(
                     }
             }
 
+            // 智适应翻页速率预载计算
+            var lastPageChangeTime by remember { mutableLongStateOf(0L) }
+            val pageTimes = remember { mutableStateListOf<Long>() }
+            var smartPreloadCount by remember(config.preloadCount) { mutableIntStateOf(config.preloadCount) }
+
+            var draggedPage by remember { mutableStateOf<Int?>(null) }
+
+            LaunchedEffect(currentPage) {
+                val now = System.currentTimeMillis()
+                if (lastPageChangeTime > 0) {
+                    val diff = now - lastPageChangeTime
+                    if (diff in 100..10000) { // 剔除异常值或跳章等耗时
+                        pageTimes.add(diff)
+                        if (pageTimes.size > 3) {
+                            pageTimes.removeAt(0)
+                        }
+                        if (pageTimes.size == 3) {
+                            val avg = pageTimes.average()
+                            smartPreloadCount = when {
+                                config.preloadCount == 0 -> 0
+                                avg < 1500 -> 6 // 快速扫读
+                                avg > 3200 -> 2 // 慢速精读
+                                else -> config.preloadCount
+                            }
+                        }
+                    }
+                }
+                lastPageChangeTime = now
+            }
+
             val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
             PagingPreload(
                 pagingItems = imageList,
                 scrollStateProvider = readerContext.scrollStateProvider,
                 modelProvider = preloadModelProvider,
-                preloadCount = config.preloadCount
+                preloadCount = smartPreloadCount
             )
 
             CompositionLocalProvider(LocalReaderConfig provides config) {
@@ -373,6 +410,8 @@ private fun ReaderContent(
                             onPrevChapter = prevChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } },
                             onNextChapter = nextChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } }
                                 ?: { android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show() },
+                            onSeeking = { draggedPage = it },
+                            onSeekingFinished = { draggedPage = null }
                         )
                     },
                     floatingMessage = {
@@ -460,6 +499,17 @@ private fun ReaderContent(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(top = 10.dp, end = 12.dp)
+                    )
+                }
+
+                if (draggedPage != null) {
+                    val previewPage = draggedPage!!
+                    val pageUrl = if (previewPage in 0 until imageList.itemCount) imageList.peek(previewPage)?.url else null
+                    ScrubPreviewCard(
+                        pageUrl = pageUrl,
+                        currentPage = previewPage,
+                        totalPages = chapterState.totalPages,
+                        modifier = Modifier.align(Alignment.Center)
                     )
                 }
             }
@@ -659,6 +709,69 @@ private fun StatusBarCapsule(
 }
 
 @Composable
+private fun ScrubPreviewCard(
+    pageUrl: String?,
+    currentPage: Int,
+    totalPages: Int,
+    modifier: Modifier = Modifier
+) {
+    androidx.compose.material3.Surface(
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        color = Color.Black.copy(alpha = 0.75f),
+        border = androidx.compose.foundation.BorderStroke(
+            0.5.dp,
+            Color.White.copy(alpha = 0.15f)
+        ),
+        shadowElevation = 4.dp,
+        modifier = modifier
+            .width(90.dp)
+            .height(130.dp)
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (!pageUrl.isNullOrEmpty()) {
+                coil3.compose.AsyncImage(
+                    model = coil3.request.ImageRequest.Builder(LocalContext.current)
+                        .data(pageUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "Preview Page ${currentPage + 1}",
+                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize()
+                )
+            } else {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.DarkGray.copy(alpha = 0.3f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    androidx.compose.material3.CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.BottomCenter)
+                    .background(Color.Black.copy(alpha = 0.65f))
+                    .padding(vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = "${currentPage + 1} / $totalPages",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
 private fun LiveReaderBottomBar(
     controller: ReaderController,
     currentPage: Int,
@@ -671,6 +784,8 @@ private fun LiveReaderBottomBar(
     onOpenOrientation: () -> Unit,
     onPrevChapter: (() -> Unit)? = null,
     onNextChapter: (() -> Unit)? = null,
+    onSeeking: ((Int) -> Unit)? = null,
+    onSeekingFinished: (() -> Unit)? = null,
 ) {
     ReaderBottomBar(
         currentPage = currentPage,
@@ -683,5 +798,7 @@ private fun LiveReaderBottomBar(
         onOpenOrientation = onOpenOrientation,
         onPrevChapter = onPrevChapter,
         onNextChapter = onNextChapter,
+        onSeeking = onSeeking,
+        onSeekingFinished = onSeekingFinished,
     )
 }
