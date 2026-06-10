@@ -143,6 +143,12 @@ class UserPreferencesDataSource @Inject constructor(
         }
     }
 
+    suspend fun setSecureScreenEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(secureScreenEnabled = enabled)
+        }
+    }
+
     /** 保存用户资料到本地，供无网时回退展示 */
     suspend fun saveUserProfileCache(
         name: String,

@@ -30,6 +30,7 @@ data class UserPreferences(
     val bookSpreadsMode: BookSpreadsMode = BookSpreadsMode.AUTO,
     val magnifierEnabled: Boolean = true,
     val statusBarCapsuleEnabled: Boolean = true,
+    val secureScreenEnabled: Boolean = false,
     // ---- 缓存的用户信息（无网时回退使用）----
     val cachedUserName: String = "",
     val cachedUserAvatarUrl: String = "",

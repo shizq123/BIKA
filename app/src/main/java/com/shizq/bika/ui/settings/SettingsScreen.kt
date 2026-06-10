@@ -19,6 +19,7 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FormatSize
 import androidx.compose.material.icons.filled.Description
@@ -162,6 +163,7 @@ fun SettingsScreen(
         onToggleIsLoggingEnabled = viewModel::updateIsLoggingEnabled,
         onToggleDownloadOverWifiOnly = viewModel::updateDownloadOverWifiOnly,
         onUpdateMaxConcurrentDownloads = viewModel::updateMaxConcurrentDownloads,
+        onToggleSecureScreenEnabled = viewModel::updateSecureScreenEnabled,
         onViewLogs = {
             logsContent = viewModel.getLogsContent()
             showLogsDialog = true
@@ -213,6 +215,7 @@ fun SettingsContent(
     onToggleIsLoggingEnabled: (enabled: Boolean) -> Unit = {},
     onToggleDownloadOverWifiOnly: (enabled: Boolean) -> Unit = {},
     onUpdateMaxConcurrentDownloads: (count: Int) -> Unit = {},
+    onToggleSecureScreenEnabled: (enabled: Boolean) -> Unit = {},
     onViewLogs: () -> Unit = {},
     onExportLogs: () -> Unit = {},
     onLogoutClicked: () -> Unit = {},
@@ -322,6 +325,18 @@ fun SettingsContent(
                                     }
                                 },
                                 onOptionSelected = onUpdateFontScale
+                            )
+                        }
+                    }
+
+                    item {
+                        PreferenceGroup(title = { Text("隐私安全") }) {
+                            SwitchPreference(
+                                title = "隐私防截屏保护",
+                                summary = if (settingsUiState.secureScreenEnabled) "已开启（禁止截屏，后台任务缩略图保护）" else "已关闭",
+                                iconVector = Icons.Default.Lock,
+                                checked = settingsUiState.secureScreenEnabled,
+                                onCheckedChange = onToggleSecureScreenEnabled
                             )
                         }
                     }

@@ -42,7 +42,8 @@ class SettingsViewModel @Inject constructor(
             fontScale = it.fontScale,
             isLoggingEnabled = it.isLoggingEnabled,
             downloadOverWifiOnly = it.downloadOverWifiOnly,
-            maxConcurrentDownloads = it.maxConcurrentDownloads
+            maxConcurrentDownloads = it.maxConcurrentDownloads,
+            secureScreenEnabled = it.secureScreenEnabled
         )
     }.stateIn(
         viewModelScope,
@@ -167,6 +168,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateSecureScreenEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setSecureScreenEnabled(enabled)
+        }
+    }
+
     fun updateDownloadOverWifiOnly(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesDataSource.setDownloadOverWifiOnly(enabled)
@@ -245,7 +252,8 @@ sealed interface SettingsUiState {
         val fontScale: Float,
         val isLoggingEnabled: Boolean,
         val downloadOverWifiOnly: Boolean,
-        val maxConcurrentDownloads: Int
+        val maxConcurrentDownloads: Int,
+        val secureScreenEnabled: Boolean
     ) : SettingsUiState
 }
 
