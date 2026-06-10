@@ -23,6 +23,11 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.SelectAll
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -38,11 +43,14 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.Checkbox
+import com.shizq.bika.core.ui.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,6 +61,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
@@ -86,10 +96,33 @@ fun DownloadListScreen(
     val context = LocalContext.current
     var currentComicId by remember { mutableStateOf<String?>(null) }
 
-    BackHandler(enabled = currentComicId != null) {
-        currentComicId = null
-        viewModel.selectComic(null)
+    var isSelectMode by remember { mutableStateOf(false) }
+    val selectedTasks = remember { mutableStateListOf<DownloadTaskEntity>() }
+
+    val pickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        if (uri != null) {
+            val fileName = getFileName(context, uri) ?: "imported_comic.cbz"
+            if (!fileName.endsWith(".zip", ignoreCase = true) && !fileName.endsWith(".cbz", ignoreCase = true)) {
+                android.widget.Toast.makeText(context, "仅支持导入 .cbz 或 .zip 格式的漫画文件", android.widget.Toast.LENGTH_SHORT).show()
+                return@rememberLauncherForActivityResult
+            }
+            viewModel.importCbz(uri = uri, fileName = fileName)
+        }
     }
+
+    BackHandler(enabled = currentComicId != null) {
+        if (isSelectMode) {
+            isSelectMode = false
+            selectedTasks.clear()
+        } else {
+            currentComicId = null
+            viewModel.selectComic(null)
+        }
+    }
+
+
 
     // Group tasks by comicId
     val groupedComics = remember(tasks) {
@@ -137,7 +170,7 @@ fun DownloadListScreen(
             TopAppBar(
                 title = { 
                     Text(
-                        text = if (currentComicId == null) "我的下载" else selectedComicTitle,
+                        text = if (isSelectMode) "已选择 ${selectedTasks.size} 项" else if (currentComicId == null) "我的下载" else selectedComicTitle,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     ) 
@@ -145,46 +178,148 @@ fun DownloadListScreen(
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            if (currentComicId == null) {
+                            if (isSelectMode) {
+                                isSelectMode = false
+                                selectedTasks.clear()
+                            } else if (currentComicId == null) {
                                 onBackClick()
                             } else {
                                 currentComicId = null
+                                viewModel.selectComic(null)
                             }
                         }
                     ) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            imageVector = if (isSelectMode) Icons.Default.Close else Icons.AutoMirrored.Rounded.ArrowBack, 
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    if (currentComicId == null) {
+                        IconButton(onClick = { pickerLauncher.launch("*/*") }) {
+                            Icon(Icons.Default.Add, contentDescription = "导入本地漫画")
+                        }
+                    } else {
+                        if (isSelectMode) {
+                            val allCompleted = remember(selectedComic) {
+                                selectedComic.filter { it.status == DownloadStatus.COMPLETED }
+                            }
+                            val isAllSelected = selectedTasks.size == allCompleted.size && allCompleted.isNotEmpty()
+                            IconButton(
+                                onClick = {
+                                    if (isAllSelected) {
+                                        selectedTasks.clear()
+                                    } else {
+                                        selectedTasks.clear()
+                                        selectedTasks.addAll(allCompleted)
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Default.SelectAll, contentDescription = "全选")
+                            }
+                        } else {
+                            IconButton(onClick = { isSelectMode = true }) {
+                                Icon(Icons.Default.Edit, contentDescription = "多选")
+                            }
+                        }
                     }
                 }
             )
         },
         bottomBar = {
             if (currentComicId != null) {
-                val firstCompletedTask = remember(selectedComic) {
-                    selectedComic.filter { it.status == DownloadStatus.COMPLETED }
-                        .minByOrNull { it.episodeOrder }
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Button(
-                        onClick = {
-                            firstCompletedTask?.let {
-                                onComicClick(it.comicId, it.episodeOrder)
+                if (isSelectMode) {
+                    var showBatchDeleteDialog by remember { mutableStateOf(false) }
+
+                    if (showBatchDeleteDialog) {
+                        AlertDialog(
+                            onDismissRequest = { showBatchDeleteDialog = false },
+                            title = { Text("批量删除") },
+                            text = { Text("确定要删除选中的 ${selectedTasks.size} 个章节吗？此操作不可撤销。") },
+                            confirmButton = {
+                                TextButton(onClick = {
+                                    viewModel.deleteMultipleDownloads(selectedTasks.toList())
+                                    selectedTasks.clear()
+                                    isSelectMode = false
+                                    showBatchDeleteDialog = false
+                                }) {
+                                    Text("确定", color = MaterialTheme.colorScheme.error)
+                                }
+                            },
+                            dismissButton = {
+                                TextButton(onClick = { showBatchDeleteDialog = false }) {
+                                    Text("取消")
+                                }
                             }
-                        },
-                        enabled = firstCompletedTask != null,
+                        )
+                    }
+
+                    Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(50.dp)
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Text(
-                            text = if (firstCompletedTask != null) "开始阅读" else "下载完成后即可阅读",
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
+                        Button(
+                            onClick = { showBatchDeleteDialog = true },
+                            enabled = selectedTasks.isNotEmpty(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp)
+                        ) {
+                            Text("删除选中 (${selectedTasks.size})", fontWeight = FontWeight.Bold)
+                        }
+
+                        Button(
+                            onClick = {
+                                viewModel.exportMultipleToZip(
+                                    tasks = selectedTasks.toList(),
+                                    comicTitle = selectedComicTitle
+                                )
+                                isSelectMode = false
+                                selectedTasks.clear()
+                            },
+                            enabled = selectedTasks.isNotEmpty(),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(50.dp)
+                        ) {
+                            Text("打包归档", fontWeight = FontWeight.Bold)
+                        }
+                    }
+                } else {
+                    val firstCompletedTask = remember(selectedComic) {
+                        selectedComic.filter { it.status == DownloadStatus.COMPLETED }
+                            .minByOrNull { it.episodeOrder }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Button(
+                            onClick = {
+                                firstCompletedTask?.let {
+                                    onComicClick(it.comicId, it.episodeOrder)
+                                }
+                            },
+                            enabled = firstCompletedTask != null,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp)
+                        ) {
+                            Text(
+                                text = if (firstCompletedTask != null) "开始阅读" else "下载完成后即可阅读",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 16.sp
+                            )
+                        }
                     }
                 }
             }
@@ -326,26 +461,47 @@ fun DownloadListScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     items(selectedComicWithProgress, key = { it.task.id }) { taskWithProgress ->
+                        val task = taskWithProgress.task
                         DownloadTaskItem(
                             taskWithProgress = taskWithProgress,
                             onClick = {
-                                val task = taskWithProgress.task
-                                if (task.status == DownloadStatus.COMPLETED) {
-                                    onComicClick(task.comicId, task.episodeOrder)
-                                } else if (task.status == DownloadStatus.FAILED) {
-                                    DownloadWorker.startDownload(
-                                        context = context,
-                                        comicId = task.comicId,
-                                        comicTitle = task.comicTitle,
-                                        coverUrl = task.coverUrl,
-                                        episodeId = task.episodeId,
-                                        episodeTitle = task.episodeTitle,
-                                        episodeOrder = task.episodeOrder
-                                    )
+                                if (isSelectMode) {
+                                    if (task.status == DownloadStatus.COMPLETED) {
+                                        if (selectedTasks.contains(task)) {
+                                            selectedTasks.remove(task)
+                                        } else {
+                                            selectedTasks.add(task)
+                                        }
+                                    }
+                                } else {
+                                    if (task.status == DownloadStatus.COMPLETED) {
+                                        onComicClick(task.comicId, task.episodeOrder)
+                                    } else if (task.status == DownloadStatus.FAILED) {
+                                        DownloadWorker.startDownload(
+                                            context = context,
+                                            comicId = task.comicId,
+                                            comicTitle = task.comicTitle,
+                                            coverUrl = task.coverUrl,
+                                            episodeId = task.episodeId,
+                                            episodeTitle = task.episodeTitle,
+                                            episodeOrder = task.episodeOrder
+                                        )
+                                    }
                                 }
                             },
-                             onDelete = { viewModel.deleteDownload(it.task) },
-                             onBringToTop = { viewModel.bringToTop(it) }
+                            onDelete = { viewModel.deleteDownload(it.task) },
+                            onBringToTop = { viewModel.bringToTop(it) },
+                            onExport = { completedTask ->
+                                viewModel.exportToCbz(completedTask)
+                            },
+                            isSelectMode = isSelectMode,
+                            isSelected = selectedTasks.contains(task),
+                            onLongClick = {
+                                if (!isSelectMode && task.status == DownloadStatus.COMPLETED) {
+                                    isSelectMode = true
+                                    selectedTasks.add(task)
+                                }
+                            }
                         )
                     }
                 }
@@ -479,7 +635,11 @@ fun DownloadTaskItem(
     taskWithProgress: DownloadTaskWithProgress,
     onClick: () -> Unit,
     onDelete: (DownloadTaskWithProgress) -> Unit,
-    onBringToTop: (DownloadTaskEntity) -> Unit
+    onBringToTop: (DownloadTaskEntity) -> Unit,
+    onExport: (DownloadTaskEntity) -> Unit,
+    isSelectMode: Boolean,
+    isSelected: Boolean,
+    onLongClick: () -> Unit
 ) {
     val task = taskWithProgress.task
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -510,7 +670,7 @@ fun DownloadTaskItem(
             .fillMaxWidth()
             .combinedClickable(
                 onClick = onClick,
-                onLongClick = { showDeleteDialog = true }
+                onLongClick = onLongClick
             ),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
@@ -520,6 +680,14 @@ fun DownloadTaskItem(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            if (isSelectMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() },
+                    modifier = Modifier.padding(end = 8.dp),
+                    enabled = task.status == DownloadStatus.COMPLETED
+                )
+            }
             // Cover Image
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
@@ -615,22 +783,34 @@ fun DownloadTaskItem(
                 }
             }
 
-            if (task.status != DownloadStatus.COMPLETED) {
-                IconButton(onClick = { onBringToTop(task) }) {
+            if (!isSelectMode) {
+                if (task.status != DownloadStatus.COMPLETED) {
+                    IconButton(onClick = { onBringToTop(task) }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowUpward,
+                            contentDescription = "置顶优先",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                if (task.status == DownloadStatus.COMPLETED) {
+                    IconButton(onClick = { onExport(task) }) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "导出章节",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+
+                IconButton(onClick = { showDeleteDialog = true }) {
                     Icon(
-                        imageVector = Icons.Default.ArrowUpward,
-                        contentDescription = "置顶优先",
-                        tint = MaterialTheme.colorScheme.primary
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = "Delete",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-            }
-
-            IconButton(onClick = { showDeleteDialog = true }) {
-                Icon(
-                    imageVector = Icons.Default.Delete,
-                    contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -648,4 +828,26 @@ fun StatusChip(text: String, containerColor: Color, contentColor: Color) {
         border = null,
         modifier = Modifier.height(24.dp)
     )
+}
+
+fun getFileName(context: android.content.Context, uri: android.net.Uri): String? {
+    var result: String? = null
+    if (uri.scheme == "content") {
+        context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+            if (cursor.moveToFirst()) {
+                val index = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                if (index != -1) {
+                    result = cursor.getString(index)
+                }
+            }
+        }
+    }
+    if (result == null) {
+        result = uri.path
+        val cut = result?.lastIndexOf('/') ?: -1
+        if (cut != -1) {
+            result = result?.substring(cut + 1)
+        }
+    }
+    return result
 }

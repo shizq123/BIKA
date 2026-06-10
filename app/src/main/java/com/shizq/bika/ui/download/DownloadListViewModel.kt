@@ -105,4 +105,24 @@ class DownloadListViewModel @Inject constructor(
             downloadRepository.deleteDownload(task)
         }
     }
+
+    fun importCbz(uri: android.net.Uri, fileName: String) {
+        downloadRepository.importCbzAsync(uri, fileName)
+    }
+
+    fun exportToCbz(task: DownloadTaskEntity) {
+        downloadRepository.exportToCbzAsync(task)
+    }
+
+    fun exportMultipleToZip(tasks: List<DownloadTaskEntity>, comicTitle: String) {
+        downloadRepository.exportMultipleToZipAsync(tasks, comicTitle)
+    }
+
+    fun deleteMultipleDownloads(tasks: List<DownloadTaskEntity>) {
+        viewModelScope.launch {
+            tasks.forEach { task ->
+                downloadRepository.deleteDownload(task)
+            }
+        }
+    }
 }
