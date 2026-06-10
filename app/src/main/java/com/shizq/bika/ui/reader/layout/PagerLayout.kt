@@ -170,7 +170,10 @@ class PagerController(
     }
 
     override suspend fun scrollToPage(index: Int) {
-        val target = if (useDoublePage) index / 2 else index
-        pagerState.scrollToPage(target)
+        if (pagerState.pageCount > 0) {
+            val target = if (useDoublePage) index / 2 else index
+            val clampedTarget = target.coerceIn(0, pagerState.pageCount - 1)
+            pagerState.scrollToPage(clampedTarget)
+        }
     }
 }

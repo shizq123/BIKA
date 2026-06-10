@@ -68,7 +68,12 @@ class WebtoonController(
     }
 
     override suspend fun scrollToPage(index: Int) {
-        listState.scrollToItem(index)
+        val total = listState.layoutInfo.totalItemsCount
+        if (total > 0) {
+            listState.scrollToItem(index.coerceIn(0, total - 1))
+        } else {
+            listState.scrollToItem(index.coerceAtLeast(0))
+        }
     }
 
     override suspend fun scrollBy(value: Float) {

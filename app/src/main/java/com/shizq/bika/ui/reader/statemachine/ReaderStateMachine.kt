@@ -6,6 +6,8 @@ import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
+import com.shizq.bika.core.database.model.ReadingHistoryEntity
+import kotlinx.coroutines.flow.first
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.state.ChapterState
@@ -89,7 +91,21 @@ class ReaderStateMachine @Inject constructor(
                         val pageIndex = it.pageIndex
                         externalScope.launch(Dispatchers.IO) {
                             val now = Clock.System.now()
-                            historyDao.updateLastReadAt(id, now)
+                            val affectedRows = historyDao.updateLastReadAt(id, now)
+                            if (affectedRows == 0) {
+                                // 历史条目不存在（如离线直接打开下载章节），为避免外键冲突，先插入默认漫画主历史记录
+                                val task = downloadRepository.getTaskById(DownloadRepository.taskId(id, chapter.order)).first()
+                                val title = task?.comicTitle ?: meta.title.ifEmpty { "Comic $id" }
+                                val coverUrl = task?.coverUrl ?: ""
+                                val newRecord = ReadingHistoryEntity(
+                                    id = id,
+                                    title = title,
+                                    author = "未知作者",
+                                    coverUrl = coverUrl,
+                                    lastInteractionAt = now
+                                )
+                                historyDao.upsertHistory(newRecord)
+                            }
 
                             // 如果翻到最后一页或最后2页，则直接保存当前页为总页数，反馈已经看完
                             val isFinished = meta.totalImages > 0 && pageIndex >= meta.totalImages - 2
@@ -195,7 +211,13 @@ class ReaderStateMachine @Inject constructor(
             val history = historyDao.getDetailedHistoryById(historyId) ?: return@withContext 0
             history.asExternalModel().progressList
                 .find { it.chapterNumber == chapterOrder }
-                ?.currentPage ?: 0
+                ?.let { progress ->
+                    if (progress.currentPage >= progress.pageCount && progress.pageCount > 0) {
+                        0
+                    } else {
+                        progress.currentPage
+                    }
+                } ?: 0
         }
     }
 }

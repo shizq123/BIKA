@@ -28,6 +28,12 @@ import kotlin.time.Clock
 import com.shizq.bika.core.coroutine.ApplicationScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
+import java.util.concurrent.atomic.AtomicInteger
 
 @Singleton
 class DownloadRepository @Inject constructor(
@@ -105,18 +111,28 @@ class DownloadRepository @Inject constructor(
             val dir = getEpisodeDir(comicId, episodeOrder)
             dir.mkdirs()
 
-            allPages.forEachIndexed { index, imageUrl ->
-                val file = File(dir, "${String.format("%03d", index + 1)}.jpg")
-                if (!file.exists()) {
-                    downloadFile(imageUrl, file)
-                }
-                downloadTaskDao.updateProgress(
-                    taskId = taskId,
-                    downloadedPages = index + 1,
-                    totalPages = totalPages,
-                    progress = ((index + 1) * 100 / totalPages),
-                    status = DownloadStatus.DOWNLOADING,
-                )
+            val semaphore = Semaphore(5)
+            val completedPages = AtomicInteger(0)
+
+            coroutineScope {
+                allPages.mapIndexed { index, imageUrl ->
+                    async {
+                        semaphore.withPermit {
+                            val file = File(dir, "${String.format("%03d", index + 1)}.jpg")
+                            if (!file.exists()) {
+                                downloadFile(imageUrl, file)
+                            }
+                            val currentCompleted = completedPages.incrementAndGet()
+                            downloadTaskDao.updateProgress(
+                                taskId = taskId,
+                                downloadedPages = currentCompleted,
+                                totalPages = totalPages,
+                                progress = (currentCompleted * 100 / totalPages),
+                                status = DownloadStatus.DOWNLOADING,
+                            )
+                        }
+                    }
+                }.awaitAll()
             }
 
             downloadTaskDao.updateCompletion(
@@ -179,7 +195,10 @@ class DownloadRepository @Inject constructor(
     private fun downloadFile(url: String, dest: File) {
         val request = Request.Builder().url(url).build()
         okHttpClient.newCall(request).execute().use { response ->
-            val body = response.body
+            if (!response.isSuccessful) {
+                throw java.io.IOException("Unexpected HTTP code $response")
+            }
+            val body = response.body ?: throw java.io.IOException("Empty response body")
             dest.sink().buffer().use { sink ->
                 sink.writeAll(body.source())
             }
