@@ -63,6 +63,16 @@ class DownloadWorker @AssistedInject constructor(
         const val KEY_EPISODE_TITLE = "episode_title"
         const val KEY_EPISODE_ORDER = "episode_order"
 
+        /** 下载任务配置请求参数数据类 */
+        data class DownloadRequest(
+            val comicId: String,
+            val comicTitle: String,
+            val coverUrl: String,
+            val episodeId: String,
+            val episodeTitle: String,
+            val episodeOrder: Int
+        )
+
         /** 启动单次下载任务 */
         fun startDownload(
             context: Context,
@@ -89,6 +99,31 @@ class DownloadWorker @AssistedInject constructor(
                 .build()
 
             WorkManager.getInstance(context).enqueue(workRequest)
+        }
+
+        /** 批量启动下载任务，大幅减少 WorkManager 数据库事务开销 */
+        fun startDownloads(
+            context: Context,
+            requests: List<DownloadRequest>
+        ) {
+            if (requests.isEmpty()) return
+            val workRequests = requests.map { request ->
+                val inputData = Data.Builder()
+                    .putString(KEY_COMIC_ID, request.comicId)
+                    .putString(KEY_COMIC_TITLE, request.comicTitle)
+                    .putString(KEY_COVER_URL, request.coverUrl)
+                    .putString(KEY_EPISODE_ID, request.episodeId)
+                    .putString(KEY_EPISODE_TITLE, request.episodeTitle)
+                    .putInt(KEY_EPISODE_ORDER, request.episodeOrder)
+                    .putString("RouterWorkerDelegateClassName", DownloadWorker::class.qualifiedName)
+                    .build()
+
+                OneTimeWorkRequestBuilder<DelegatingWorker>()
+                    .setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
+                    .setInputData(inputData)
+                    .build()
+            }
+            WorkManager.getInstance(context).enqueue(workRequests)
         }
     }
 }

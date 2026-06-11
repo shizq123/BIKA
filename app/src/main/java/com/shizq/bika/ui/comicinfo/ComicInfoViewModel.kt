@@ -33,6 +33,8 @@ import com.shizq.bika.core.database.dao.DownloadTaskDao
 import com.shizq.bika.core.database.model.DownloadTaskEntity
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
+import android.content.Context
+import com.shizq.bika.sync.workers.DownloadWorker
 
 private const val TAG = "ComicInfoViewModel"
 
@@ -138,17 +140,41 @@ class ComicInfoViewModel @AssistedInject constructor(
     /**
      * 将漫画所有章节加入下载队列，返回成功加入的数量；失败时抛出异常由调用方处理。
      */
-    suspend fun downloadAllEpisodes(): Int {
-        var totalQueued = 0
-        var pageIndex = 1
-        var hasNext = true
-        while (hasNext) {
-            val res = network.getComicEpisodes(id, pageIndex)
-            totalQueued += res.eps.docs.size
-            hasNext = pageIndex < res.eps.pages
-            pageIndex++
+    suspend fun downloadAllEpisodes(context: Context, comicTitle: String, coverUrl: String): Int {
+        val allEps = fetchAllEpisodes()
+        if (allEps.isEmpty()) return 0
+        
+        val requests = allEps.map { episode ->
+            DownloadWorker.Companion.DownloadRequest(
+                comicId = id,
+                comicTitle = comicTitle,
+                coverUrl = coverUrl,
+                episodeId = episode.id,
+                episodeTitle = episode.title,
+                episodeOrder = episode.order
+            )
         }
-        return totalQueued
+        
+        DownloadWorker.startDownloads(context, requests)
+        return requests.size
+    }
+
+    /**
+     * 将指定的漫画章节列表加入下载队列。
+     */
+    fun downloadEpisodes(context: Context, comicTitle: String, coverUrl: String, episodes: List<Episode>) {
+        if (episodes.isEmpty()) return
+        val requests = episodes.map { episode ->
+            DownloadWorker.Companion.DownloadRequest(
+                comicId = id,
+                comicTitle = comicTitle,
+                coverUrl = coverUrl,
+                episodeId = episode.id,
+                episodeTitle = episode.title,
+                episodeOrder = episode.order
+            )
+        }
+        DownloadWorker.startDownloads(context, requests)
     }
 
     @AssistedFactory

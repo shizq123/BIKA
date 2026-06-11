@@ -18,6 +18,9 @@ interface DownloadTaskDao {
     @Delete
     suspend fun deleteTask(task: DownloadTaskEntity)
 
+    @Delete
+    suspend fun deleteTasks(tasks: List<DownloadTaskEntity>)
+
     @Query("DELETE FROM downloadTask WHERE id = :taskId")
     suspend fun deleteTaskById(taskId: String)
 

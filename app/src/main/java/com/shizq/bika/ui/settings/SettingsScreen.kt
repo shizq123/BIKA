@@ -56,6 +56,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.model.DarkThemeConfig
 import com.shizq.bika.core.model.NetworkLine
 
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+
 @Composable
 fun SettingsScreen(
     navigationToLogin: () -> Unit,
@@ -69,6 +72,7 @@ fun SettingsScreen(
 
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
+    val scope = rememberCoroutineScope()
 
     LaunchedEffect(updateUiState) {
         if (updateUiState is UpdateUiState.NoUpdate) {
@@ -165,8 +169,10 @@ fun SettingsScreen(
         onUpdateMaxConcurrentDownloads = viewModel::updateMaxConcurrentDownloads,
         onToggleSecureScreenEnabled = viewModel::updateSecureScreenEnabled,
         onViewLogs = {
-            logsContent = viewModel.getLogsContent()
-            showLogsDialog = true
+            scope.launch {
+                logsContent = viewModel.getLogsContent()
+                showLogsDialog = true
+            }
         },
         onExportLogs = {
             val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()

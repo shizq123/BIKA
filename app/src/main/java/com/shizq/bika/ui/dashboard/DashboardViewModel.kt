@@ -134,17 +134,17 @@ class DashboardViewModel @Inject constructor(
     // performInitialLogin
     fun onCheckIn(isAuto: Boolean = false) {
         viewModelScope.launch {
-//            if (!userPreferencesDataSource.userData.first().autoCheckIn) {
-//                return@launch
-//            }
             try {
                 network.punchIn()
-                val msg = if (isAuto) "自动签到成功！已成功打哔咔。" else "打卡成功！已成功打哔咔。"
-                _checkInEvent.emit(CheckInEvent.Success(msg))
+                if (!isAuto) {
+                    _checkInEvent.emit(CheckInEvent.Success("打卡成功！已成功打哔咔。"))
+                }
                 restart()
             } catch (e: Exception) {
                 Log.e("DashboardViewModel", "签到失败", e)
-                _checkInEvent.emit(CheckInEvent.Error("打卡失败：${e.localizedMessage ?: "未知错误"}"))
+                if (!isAuto) {
+                    _checkInEvent.emit(CheckInEvent.Error("打卡失败：${e.localizedMessage ?: "未知错误"}"))
+                }
             }
         }
     }

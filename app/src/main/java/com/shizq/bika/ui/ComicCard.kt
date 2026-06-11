@@ -59,6 +59,7 @@ fun ComicCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
+    onReadLatestClick: ((latestOrder: Int) -> Unit)? = null,
 ) {
     ElevatedCard(
         modifier = modifier
@@ -248,6 +249,36 @@ fun ComicCard(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        val lastProgress = detailedReadingHistory.lastReadChapterProgress
+                        if (onReadLatestClick != null && lastProgress != null && detailedReadingHistory.history.epsCount > lastProgress.chapterNumber) {
+                            androidx.compose.material3.Button(
+                                onClick = { onReadLatestClick(detailedReadingHistory.history.epsCount) },
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(28.dp),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.MenuBook,
+                                        contentDescription = "追更",
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "追更最新",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
                         if (detailedReadingHistory.history.totalLikes > 0) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,

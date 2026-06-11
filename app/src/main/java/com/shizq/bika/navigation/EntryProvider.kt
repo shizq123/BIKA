@@ -153,7 +153,10 @@ fun EntryProviderScope<NavKey>.featureSection(
     ) {
         HistoryScreen(
             onComicClick = navigator::navigateToUnitedDetail,
-            onBackClick = navigator::goBack
+            onBackClick = navigator::goBack,
+            onReadLatestClick = { id, order ->
+                navigator.navigate(ConnectedRoute.ReaderRoute(id, order))
+            }
         )
     }
     entry<ConnectedRoute.LeaderboardRoute>(

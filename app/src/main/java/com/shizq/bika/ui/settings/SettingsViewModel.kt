@@ -190,8 +190,8 @@ class SettingsViewModel @Inject constructor(
         com.shizq.bika.core.common.BikaLog.clearLogs()
     }
 
-    fun getLogsContent(): String {
-        return try {
+    suspend fun getLogsContent(): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
             val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()
             if (logFile != null && logFile.exists()) {
                 val lines = logFile.readLines()

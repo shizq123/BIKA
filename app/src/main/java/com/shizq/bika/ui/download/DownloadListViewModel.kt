@@ -120,9 +120,7 @@ class DownloadListViewModel @Inject constructor(
 
     fun deleteMultipleDownloads(tasks: List<DownloadTaskEntity>) {
         viewModelScope.launch {
-            tasks.forEach { task ->
-                downloadRepository.deleteDownload(task)
-            }
+            downloadRepository.deleteDownloads(tasks)
         }
     }
 }

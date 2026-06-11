@@ -259,8 +259,8 @@ fun ReadingSettingsBottomSheet(
                                     onValueChangeFinished = {
                                         dispatch(ReaderAction.SetAutoScrollSpeed(localSpeed.roundToInt()))
                                     },
-                                    valueRange = 1f..5f,
-                                    steps = 3,
+                                    valueRange = 1f..10f,
+                                    steps = 8,
                                     modifier = Modifier.weight(1f)
                                 )
                                 Text(

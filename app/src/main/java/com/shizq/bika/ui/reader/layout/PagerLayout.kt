@@ -105,43 +105,41 @@ class PagerLayout(
                     )
                 }
             } else {
-                val safeFirst = firstPage
-                val safeSecond = secondPage
-                if (safeFirst != null && safeSecond != null) {
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        if (isRtl) {
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                ComicPageItem(safeSecond, rightIndex)
-                            }
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                ComicPageItem(
-                                    page = safeFirst,
-                                    index = leftIndex,
-                                    onSizeLoaded = { width, height ->
-                                        if (width > 0 && height > 0 && width / height > 1.1f) {
-                                            widePages[safeFirst.id] = true
-                                        }
+                val nonNullFirst = requireNotNull(firstPage)
+                val nonNullSecond = requireNotNull(secondPage)
+                Row(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (isRtl) {
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            ComicPageItem(nonNullSecond, rightIndex)
+                        }
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            ComicPageItem(
+                                page = nonNullFirst,
+                                index = leftIndex,
+                                onSizeLoaded = { width, height ->
+                                    if (width > 0 && height > 0 && width / height > 1.1f) {
+                                        widePages[nonNullFirst.id] = true
                                     }
-                                )
-                            }
-                        } else {
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                ComicPageItem(
-                                    page = safeFirst,
-                                    index = leftIndex,
-                                    onSizeLoaded = { width, height ->
-                                        if (width > 0 && height > 0 && width / height > 1.1f) {
-                                            widePages[safeFirst.id] = true
-                                        }
+                                }
+                            )
+                        }
+                    } else {
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            ComicPageItem(
+                                page = nonNullFirst,
+                                index = leftIndex,
+                                onSizeLoaded = { width, height ->
+                                    if (width > 0 && height > 0 && width / height > 1.1f) {
+                                        widePages[nonNullFirst.id] = true
                                     }
-                                )
-                            }
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                ComicPageItem(safeSecond, rightIndex)
-                            }
+                                }
+                            )
+                        }
+                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                            ComicPageItem(nonNullSecond, rightIndex)
                         }
                     }
                 }

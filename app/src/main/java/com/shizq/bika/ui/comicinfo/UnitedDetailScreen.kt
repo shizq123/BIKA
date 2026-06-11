@@ -49,6 +49,7 @@ import com.shizq.bika.sync.workers.DownloadWorker
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import android.content.Context
 
 @Composable
 fun ComicDetailScreen(
@@ -82,6 +83,12 @@ fun ComicDetailScreen(
         replyList = replyList,
         navigationToFeed = navigationToFeed,
         onFetchAllEpisodes = { viewModel.fetchAllEpisodes() },
+        onDownloadAllEpisodes = { context, title, cover ->
+            viewModel.downloadAllEpisodes(context, title, cover)
+        },
+        onDownloadEpisodes = { context, title, cover, list ->
+            viewModel.downloadEpisodes(context, title, cover, list)
+        },
         onPostComment = viewModel::postComment,
     )
 }
@@ -103,6 +110,8 @@ fun ComicDetailContent(
     replyList: LazyPagingItems<Comment>,
     navigationToFeed: (DiscoveryAction) -> Unit,
     onFetchAllEpisodes: suspend () -> List<Episode> = { emptyList() },
+    onDownloadAllEpisodes: suspend (Context, String, String) -> Int = { _, _, _ -> 0 },
+    onDownloadEpisodes: (Context, String, String, List<Episode>) -> Unit = { _, _, _, _ -> },
     onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
 ) {
     when (unitedState) {
@@ -172,45 +181,34 @@ fun ComicDetailContent(
                                     navigationToReader = { navigationToReader(detail.id, 1) },
                                     navigationToComicInfo = { navigationToComicInfo(it) },
                                     navigationToFeed = navigationToFeed,
-                                 onDownloadClick = {
-                                    if (detail.epsCount <= 1) {
-                                        DownloadWorker.startDownload(
-                                            context = context,
-                                            comicId = detail.id,
-                                            comicTitle = detail.title,
-                                            coverUrl = detail.cover,
-                                            episodeId = "single_episode",
-                                            episodeTitle = "全一话",
-                                            episodeOrder = 1
-                                        )
-                                        Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
-                                    } else {
-                                        scope.launch {
-                                            try {
-                                                Toast.makeText(context, "正在获取章节列表，准备全部下载...", Toast.LENGTH_SHORT).show()
-                                                val allEps = onFetchAllEpisodes()
-                                                allEps.forEach { episode ->
-                                                    DownloadWorker.startDownload(
-                                                        context = context,
-                                                        comicId = detail.id,
-                                                        comicTitle = detail.title,
-                                                        coverUrl = detail.cover,
-                                                        episodeId = episode.id,
-                                                        episodeTitle = episode.title,
-                                                        episodeOrder = episode.order
-                                                    )
+                                    onDownloadClick = {
+                                        if (detail.epsCount <= 1) {
+                                            DownloadWorker.startDownload(
+                                                context = context,
+                                                comicId = detail.id,
+                                                comicTitle = detail.title,
+                                                coverUrl = detail.cover,
+                                                episodeId = "single_episode",
+                                                episodeTitle = "全一话",
+                                                episodeOrder = 1
+                                            )
+                                            Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            scope.launch {
+                                                try {
+                                                    Toast.makeText(context, "正在获取章节列表，准备全部下载...", Toast.LENGTH_SHORT).show()
+                                                    val count = onDownloadAllEpisodes(context, detail.title, detail.cover)
+                                                    Toast.makeText(context, "已成功将所有 $count 个章节加入下载队列", Toast.LENGTH_LONG).show()
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "获取章节失败，请重试: ${e.message}", Toast.LENGTH_LONG).show()
                                                 }
-                                                Toast.makeText(context, "已成功将所有 ${allEps.size} 个章节加入下载队列", Toast.LENGTH_LONG).show()
-                                            } catch (e: Exception) {
-                                                Toast.makeText(context, "获取章节失败，请重试: ${e.message}", Toast.LENGTH_LONG).show()
                                             }
                                         }
                                     }
-                                }
-                            )
-                        }
+                                )
+                            }
 
-                        1 -> {
+                            1 -> {
                                 EpisodesPage(
                                     episodes = episodes,
                                     downloadTasks = downloadTasks,
@@ -219,17 +217,7 @@ fun ComicDetailContent(
                                         navigationToReader(detail.id, it)
                                     },
                                     onDownloadClick = { selectedEpisodes ->
-                                        selectedEpisodes.forEach { episode ->
-                                            DownloadWorker.startDownload(
-                                                context = context,
-                                                comicId = detail.id,
-                                                comicTitle = detail.title,
-                                                coverUrl = detail.cover,
-                                                episodeId = episode.id,
-                                                episodeTitle = episode.title,
-                                                episodeOrder = episode.order
-                                            )
-                                        }
+                                        onDownloadEpisodes(context, detail.title, detail.cover, selectedEpisodes)
                                         val message = if (selectedEpisodes.size == 1) {
                                             "已加入下载队列"
                                         } else {

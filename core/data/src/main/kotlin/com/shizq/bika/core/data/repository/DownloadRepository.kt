@@ -111,28 +111,44 @@ class DownloadRepository @Inject constructor(
             val dir = getEpisodeDir(comicId, episodeOrder)
             dir.mkdirs()
 
-            val semaphore = Semaphore(5)
-            val completedPages = AtomicInteger(0)
+            val pendingPages = allPages.mapIndexed { index, imageUrl ->
+                index to imageUrl
+            }.filter { (index, _) ->
+                val file = File(dir, "${String.format("%03d", index + 1)}.jpg")
+                !file.exists()
+            }
 
-            coroutineScope {
-                allPages.mapIndexed { index, imageUrl ->
-                    async {
-                        semaphore.withPermit {
-                            val file = File(dir, "${String.format("%03d", index + 1)}.jpg")
-                            if (!file.exists()) {
+            val existsCount = totalPages - pendingPages.size
+            val completedPages = AtomicInteger(existsCount)
+
+            downloadTaskDao.updateProgress(
+                taskId = taskId,
+                downloadedPages = existsCount,
+                totalPages = totalPages,
+                progress = (existsCount * 100 / totalPages),
+                status = DownloadStatus.DOWNLOADING,
+            )
+
+            if (pendingPages.isNotEmpty()) {
+                val semaphore = Semaphore(5)
+                coroutineScope {
+                    pendingPages.map { (index, imageUrl) ->
+                        async {
+                            semaphore.withPermit {
+                                val file = File(dir, "${String.format("%03d", index + 1)}.jpg")
                                 downloadFile(imageUrl, file)
+                                val currentCompleted = completedPages.incrementAndGet()
+                                downloadTaskDao.updateProgress(
+                                    taskId = taskId,
+                                    downloadedPages = currentCompleted,
+                                    totalPages = totalPages,
+                                    progress = (currentCompleted * 100 / totalPages),
+                                    status = DownloadStatus.DOWNLOADING,
+                                )
                             }
-                            val currentCompleted = completedPages.incrementAndGet()
-                            downloadTaskDao.updateProgress(
-                                taskId = taskId,
-                                downloadedPages = currentCompleted,
-                                totalPages = totalPages,
-                                progress = (currentCompleted * 100 / totalPages),
-                                status = DownloadStatus.DOWNLOADING,
-                            )
                         }
-                    }
-                }.awaitAll()
+                    }.awaitAll()
+                }
             }
 
             downloadTaskDao.updateCompletion(
@@ -175,6 +191,16 @@ class DownloadRepository @Inject constructor(
             File(task.localPath).deleteRecursively()
         }
         downloadTaskDao.deleteTask(task)
+    }
+
+    /** 批量删除下载任务及其本地文件 */
+    suspend fun deleteDownloads(tasks: List<DownloadTaskEntity>) = withContext(Dispatchers.IO) {
+        tasks.forEach { task ->
+            if (task.localPath.isNotEmpty()) {
+                File(task.localPath).deleteRecursively()
+            }
+        }
+        downloadTaskDao.deleteTasks(tasks)
     }
 
     /** 获取隐藏目录下的章节文件夹 */

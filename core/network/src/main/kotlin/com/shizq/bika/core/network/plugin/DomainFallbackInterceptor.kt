@@ -123,7 +123,7 @@ class DomainFallbackInterceptor : Interceptor {
         val newRequest = chain.request.newBuilder().data(newUrl).build()
 
         return try {
-            withTimeoutOrNull(1000L) {
+            withTimeoutOrNull(3000L) {
                 val result = chain.withRequest(newRequest).proceed()
                 result as? SuccessResult
             }

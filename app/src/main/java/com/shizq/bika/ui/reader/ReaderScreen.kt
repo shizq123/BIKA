@@ -165,12 +165,12 @@ fun AutoScrollOverlay(
 
             IconButton(
                 onClick = onSpeedUp,
-                enabled = speed < 5
+                enabled = speed < 10
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Add,
                     contentDescription = "加速",
-                    tint = if (speed < 5) Color.White else Color.Gray
+                    tint = if (speed < 10) Color.White else Color.Gray
                 )
             }
 
@@ -229,45 +229,6 @@ private fun ReaderContent(
                 }
             }
 
-            var isAutoScrolling by remember { mutableStateOf(false) }
-            var isUserInteracting by remember { mutableStateOf(false) }
-
-            LaunchedEffect(config.autoScrollEnabled) {
-                isAutoScrolling = config.autoScrollEnabled
-            }
-
-            val listState = readerContext.lazyListState
-            if (listState != null) {
-                val isDragged by listState.interactionSource.collectIsDraggedAsState()
-                LaunchedEffect(isDragged) {
-                    if (isDragged) {
-                        isUserInteracting = true
-                    } else {
-                        delay(1500)
-                        isUserInteracting = false
-                    }
-                }
-            }
-
-            LaunchedEffect(isAutoScrolling, isUserInteracting, config.autoScrollSpeed, listState) {
-                if (isAutoScrolling && !isUserInteracting && listState != null) {
-                    while (true) {
-                        val canScroll = listState.canScrollForward
-                        if (canScroll) {
-                            controller.scrollBy(config.autoScrollSpeed.toFloat())
-                        } else {
-                            isAutoScrolling = false
-                            android.widget.Toast.makeText(context, "已到达本章底部", android.widget.Toast.LENGTH_SHORT).show()
-                            break
-                        }
-                        delay(16)
-                    }
-                }
-            }
-
-            // 当前页（提升到此层级，用于自动衔接检测）
-            val currentPage by controller.visibleItemIndex.collectAsState(0)
-
             // 根据当前章节 order 从列表中找出相邻章节
             val currentChapterIndex = remember(chapterState.order, chapterList.itemCount) {
                 (0 until chapterList.itemCount).firstOrNull {
@@ -290,6 +251,50 @@ private fun ReaderContent(
                     Chapter(id = "", order = chapterState.order + 1, title = "", updatedAt = "")
                 } else null
             }
+
+            var isAutoScrolling by remember { mutableStateOf(false) }
+            var isUserInteracting by remember { mutableStateOf(false) }
+
+            LaunchedEffect(config.autoScrollEnabled) {
+                isAutoScrolling = config.autoScrollEnabled
+            }
+
+            val listState = readerContext.lazyListState
+            if (listState != null) {
+                val isDragged by listState.interactionSource.collectIsDraggedAsState()
+                LaunchedEffect(isDragged) {
+                    if (isDragged) {
+                        isUserInteracting = true
+                    } else {
+                        delay(1500)
+                        isUserInteracting = false
+                    }
+                }
+            }
+
+            LaunchedEffect(isAutoScrolling, isUserInteracting, config.autoScrollSpeed, listState, nextChapter) {
+                if (isAutoScrolling && !isUserInteracting && listState != null) {
+                    while (true) {
+                        val canScroll = listState.canScrollForward
+                        if (canScroll) {
+                            controller.scrollBy(config.autoScrollSpeed.toFloat())
+                            delay(16)
+                        } else {
+                            if (nextChapter == null) {
+                                isAutoScrolling = false
+                                dispatch(ReaderAction.SetAutoScrollEnabled(false))
+                                android.widget.Toast.makeText(context, "已到达全书底部", android.widget.Toast.LENGTH_SHORT).show()
+                                break
+                            } else {
+                                delay(200)
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 当前页（提升到此层级，用于自动衔接检测）
+            val currentPage by controller.visibleItemIndex.collectAsState(0)
 
             SystemUiController(showSystemUI = overlayState.showSystemBars)
             KeepScreenOnEffect()
@@ -478,7 +483,7 @@ private fun ReaderContent(
                         speed = config.autoScrollSpeed,
                         onPlayPauseToggle = { isAutoScrolling = !isAutoScrolling },
                         onSpeedUp = {
-                            if (config.autoScrollSpeed < 5) {
+                            if (config.autoScrollSpeed < 10) {
                                 dispatch(ReaderAction.SetAutoScrollSpeed(config.autoScrollSpeed + 1))
                             }
                         },

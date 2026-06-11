@@ -172,28 +172,40 @@ class StorageManagerViewModel @Inject constructor(
                 imageLoader.diskCache?.clear()
                 imageLoader.memoryCache?.clear()
             }
-            loadStorageInfo()
-            _state.value = _state.value.copy(isClearing = false)
+            _state.value = _state.value.copy(
+                coilCacheSize = 0L,
+                isClearing = false
+            )
         }
     }
 
     fun deleteComicDownloads(comicId: String) {
         viewModelScope.launch {
             _state.value = _state.value.copy(isClearing = true)
+
+            val currentList = _state.value.offlineComics
+            val targetItem = currentList.find { it.comicId == comicId }
+            val targetSize = targetItem?.sizeInBytes ?: 0L
+
             withContext(Dispatchers.IO) {
                 val base = context.getExternalFilesDir(null) ?: context.filesDir
                 val folder = File(base, ".bika/comics/$comicId")
                 if (folder.exists()) {
                     folder.deleteRecursively()
                 }
-                
+
                 val tasks = downloadRepository.getTasksByComic(comicId).first()
-                for (task in tasks) {
-                    downloadRepository.deleteDownload(task)
-                }
+                downloadRepository.deleteDownloads(tasks)
             }
-            loadStorageInfo()
-            _state.value = _state.value.copy(isClearing = false)
+
+            val updatedList = currentList.filter { it.comicId != comicId }
+            val newDownloadsSize = (_state.value.downloadsSize - targetSize).coerceAtLeast(0L)
+
+            _state.value = _state.value.copy(
+                downloadsSize = newDownloadsSize,
+                offlineComics = updatedList,
+                isClearing = false
+            )
         }
     }
 }
