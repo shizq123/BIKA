@@ -1,8 +1,10 @@
 package com.shizq.bika.core.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.FavoriteBorder
@@ -26,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -44,17 +48,41 @@ fun ComicCard(
     ListItem(
         modifier = modifier.clickable(onClick = onItemClick),
         headlineContent = {
-            Text(
-                text = "[${comic.pagesCount}]" + comic.title,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                color = if (comic.finished) {
-                    MaterialTheme.colorScheme.primary
-                } else {
-                    Color.Unspecified
+            Column {
+                // 标题上方流式状态徽章墙
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(bottom = 6.dp)
+                ) {
+                    val progress = comic.lastReadChapterProgress
+                    if (progress != null) {
+                        if (progress == "有更新") {
+                            Badge(text = "有更新", containerColor = Color(0xFFFF9800))
+                        } else if (progress == "已读完") {
+                            Badge(text = "已读完", containerColor = Color(0xFF4CAF50))
+                        } else {
+                            Badge(text = "已阅读", containerColor = MaterialTheme.colorScheme.secondary)
+                        }
+                    }
+
+                    if (comic.finished) {
+                        Badge(text = "已完结", containerColor = MaterialTheme.colorScheme.primary)
+                    }
                 }
-            )
+
+                Text(
+                    text = "[${comic.pagesCount}]" + comic.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (comic.finished) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        Color.Unspecified
+                    }
+                )
+            }
         },
         supportingContent = {
             Column {
@@ -113,19 +141,53 @@ fun ComicCard(
             }
         },
         leadingContent = {
-            AsyncImage(
-                model = comic.image.originalImageUrl,
-                contentDescription = comic.title,
-                modifier = Modifier
-                    .width(100.dp)
-                    .aspectRatio(3f / 4f)
-                    .clip(MaterialTheme.shapes.small)
-            )
+            Box(contentAlignment = Alignment.TopStart) {
+                AsyncImage(
+                    model = comic.image.originalImageUrl,
+                    contentDescription = comic.title,
+                    modifier = Modifier
+                        .width(100.dp)
+                        .aspectRatio(3f / 4f)
+                        .clip(MaterialTheme.shapes.small)
+                )
+
+                if (comic.isFavourited) {
+                    Text(
+                        text = "已收藏",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiary,
+                        modifier = Modifier
+                            .padding(top = 4.dp, start = 4.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f))
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+            }
         },
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent,
             headlineColor = MaterialTheme.colorScheme.onSurfaceVariant
         )
+    )
+}
+
+@Composable
+private fun Badge(
+    text: String,
+    containerColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Text(
+        text = text,
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.White,
+        modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(containerColor)
+            .padding(horizontal = 4.dp, vertical = 1.dp)
     )
 }
 

@@ -1,4 +1,5 @@
 import com.android.build.api.variant.impl.VariantOutputImpl
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.bika.android.application)
@@ -14,18 +15,22 @@ android {
 
     defaultConfig {
         applicationId = "com.shizq.bika"
-        versionCode = 18
-        versionName = "1.10.5.4"
+        versionCode = 50
+        versionName = "1.11.7"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
+        val localProps = Properties().apply {
+            val f = rootProject.file("local.properties")
+            if (f.exists()) load(f.inputStream())
+        }
         create("keyStore") {
-            storeFile = file("appkey.jks")
-            storePassword = "123456"
-            keyAlias = "shizq"
-            keyPassword = "123456"
+            storeFile = file(localProps.getProperty("STORE_FILE", "appkey.jks"))
+            storePassword = localProps.getProperty("STORE_PASSWORD", "123456")
+            keyAlias = localProps.getProperty("KEY_ALIAS", "shizq")
+            keyPassword = localProps.getProperty("KEY_PASSWORD", "123456")
         }
     }
     buildTypes {
@@ -37,7 +42,6 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
-            baselineProfile.automaticGenerationDuringBuild = true
         }
         debug {
             signingConfig = signingConfigs.getByName("keyStore")
@@ -86,7 +90,6 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.material)
-    implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
@@ -95,7 +98,6 @@ dependencies {
 
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.preference.ktx)
-    implementation(libs.androidx.core.splashscreen)
 
     implementation(libs.pictureselector)
     implementation(libs.ucrop)
@@ -103,7 +105,6 @@ dependencies {
     implementation(libs.photoview)
 
     implementation(libs.kotlinx.coroutines.android)
-    implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
 
     implementation(libs.androidx.paging.runtime)

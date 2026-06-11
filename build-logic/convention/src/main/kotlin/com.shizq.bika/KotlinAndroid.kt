@@ -63,13 +63,7 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
     }.apply {
         jvmTarget = JvmTarget.JVM_21
         allWarningsAsErrors = warningsAsErrors
-        freeCompilerArgs.add(
-            // Enable experimental coroutines APIs, including Flow
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
-        )
-        freeCompilerArgs.add(
-            "-opt-in=kotlin.time.ExperimentalTime",
-        )
+        freeCompilerArgs.add("-opt-in=kotlin.time.ExperimentalTime")
         freeCompilerArgs.add(
             /**
              * Remove this args after Phase 3.
@@ -86,5 +80,59 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
         )
         freeCompilerArgs.add("-Xexplicit-backing-fields")
         freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
+
+        // 延迟、动态计算依赖情况，以根据实际模块依赖加入对应的 opt-in，消除 unresolved warning 与 needs opt-in 警告
+        freeCompilerArgs.addAll(providers.provider {
+            val list = mutableListOf<String>()
+            
+            if (hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-core") || 
+                hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-android")) {
+                list.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
+                list.add("-opt-in=kotlinx.coroutines.FlowPreview")
+            }
+            
+            if (pluginManager.hasPlugin("org.jetbrains.kotlin.plugin.serialization") ||
+                hasDependency("org.jetbrains.kotlinx", "kotlinx-serialization-core") ||
+                hasDependency("org.jetbrains.kotlinx", "kotlinx-serialization-json")) {
+                list.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi")
+            }
+            
+            list
+        })
+    }
+}
+
+/**
+ * 递归判断项目是否直接或间接（通过一级 project 依赖）引入了特定依赖，用于延迟按需配置 opt-in
+ */
+private fun Project.hasDependency(group: String, name: String): Boolean {
+    val directMatch = configurations.any { configuration ->
+        configuration.dependencies.any { dependency ->
+            dependency.group == group && dependency.name == name
+        }
+    }
+    if (directMatch) return true
+
+    return configurations.any { configuration ->
+        configuration.dependencies.any { dependency ->
+            val cls = dependency::class.java
+            if (cls.interfaces.any { it.name == "org.gradle.api.artifacts.ProjectDependency" } ||
+                cls.name.contains("ProjectDependency")) {
+                try {
+                    val getDepProjectMethod = cls.getMethod("getDependencyProject")
+                    val depProject = getDepProjectMethod.invoke(dependency) as? Project
+                    depProject?.configurations?.any { depConfig ->
+                        depConfig.dependencies.any { depDep ->
+                            depDep.group == group && depDep.name == name
+                        }
+                    } ?: false
+                } catch (e: Exception) {
+                    false
+                }
+            } else {
+                false
+            }
+        }
     }
 }

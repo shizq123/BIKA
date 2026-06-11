@@ -1,6 +1,7 @@
 package com.shizq.bika.ui.reader.layout
 
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -67,7 +68,16 @@ class WebtoonController(
     }
 
     override suspend fun scrollToPage(index: Int) {
-        listState.scrollToItem(index)
+        val total = listState.layoutInfo.totalItemsCount
+        if (total > 0) {
+            listState.scrollToItem(index.coerceIn(0, total - 1))
+        } else {
+            listState.scrollToItem(index.coerceAtLeast(0))
+        }
+    }
+
+    override suspend fun scrollBy(value: Float) {
+        listState.scrollBy(value)
     }
 
     /**

@@ -20,6 +20,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.jsonArray
 import java.text.DecimalFormat
 
 @HiltViewModel
@@ -30,7 +35,16 @@ class SettingsViewModel @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource
 ) : ViewModel() {
     val settingsUiState = userPreferencesDataSource.userData.map {
-        SettingsUiState.Success(it.darkThemeConfig, it.selectedNetworkLine, it.autoCheckIn, it.fontScale)
+        SettingsUiState.Success(
+            darkThemeConfig = it.darkThemeConfig,
+            selectedNetworkLine = it.selectedNetworkLine,
+            autoCheckIn = it.autoCheckIn,
+            fontScale = it.fontScale,
+            isLoggingEnabled = it.isLoggingEnabled,
+            downloadOverWifiOnly = it.downloadOverWifiOnly,
+            maxConcurrentDownloads = it.maxConcurrentDownloads,
+            secureScreenEnabled = it.secureScreenEnabled
+        )
     }.stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
@@ -41,8 +55,82 @@ class SettingsViewModel @Inject constructor(
     val cacheSize: StateFlow<String>
         field = MutableStateFlow("计算中...")
 
+    private val _updateUiState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
+    val updateUiState: StateFlow<UpdateUiState> = _updateUiState.asStateFlow()
+
     init {
         updateCacheSize()
+    }
+
+    fun checkForUpdates() {
+        if (_updateUiState.value is UpdateUiState.Checking) return
+        _updateUiState.value = UpdateUiState.Checking
+
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val okHttpClient = okhttp3.OkHttpClient.Builder()
+                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+                    .build()
+                val request = okhttp3.Request.Builder()
+                    .url("https://api.github.com/repos/STlxx-lin/BIKA/releases/tags/latest")
+                    .header("User-Agent", "BIKA-Android")
+                    .build()
+                okHttpClient.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw Exception("HTTP 错误码: ${response.code}")
+                    val bodyString = response.body.string()
+                    val json = Json.parseToJsonElement(bodyString).jsonObject
+                    val tagName = json["tag_name"]?.jsonPrimitive?.content ?: throw Exception("未找到 tag_name")
+                    val releaseNotes = json["body"]?.jsonPrimitive?.content ?: ""
+                    val htmlUrl = json["html_url"]?.jsonPrimitive?.content ?: "https://github.com/STlxx-lin/BIKA/releases"
+
+                    val assets = json["assets"]?.jsonArray
+                    var apkUrl = htmlUrl
+                    var remoteVersion = ""
+                    if (assets != null) {
+                        for (i in 0 until assets.size) {
+                            val assetObj = assets[i].jsonObject
+                            val name = assetObj["name"]?.jsonPrimitive?.content ?: ""
+                            if (name.endsWith(".apk") && name.contains("_v")) {
+                                remoteVersion = name.substringAfter("_v").substringBefore(".apk")
+                                apkUrl = assetObj["browser_download_url"]?.jsonPrimitive?.content ?: htmlUrl
+                                break
+                            }
+                        }
+                    }
+
+                    if (remoteVersion.isEmpty()) {
+                        remoteVersion = tagName.trimStart('v')
+                    }
+                    val currentVersion = com.shizq.bika.BuildConfig.VERSION_NAME
+
+                    if (isNewerVersion(remoteVersion, currentVersion)) {
+                        _updateUiState.value = UpdateUiState.HasUpdate(remoteVersion, releaseNotes, apkUrl)
+                    } else {
+                        _updateUiState.value = UpdateUiState.NoUpdate
+                    }
+                }
+            } catch (e: Exception) {
+                _updateUiState.value = UpdateUiState.Error(e.message ?: "未知网络错误")
+            }
+        }
+    }
+
+    fun resetUpdateState() {
+        _updateUiState.value = UpdateUiState.Idle
+    }
+
+    private fun isNewerVersion(latest: String, current: String): Boolean {
+        val latestParts = latest.split('.').mapNotNull { it.toIntOrNull() }
+        val currentParts = current.split('.').mapNotNull { it.toIntOrNull() }
+        val size = maxOf(latestParts.size, currentParts.size)
+        for (i in 0 until size) {
+            val l = latestParts.getOrNull(i) ?: 0
+            val c = currentParts.getOrNull(i) ?: 0
+            if (l > c) return true
+            if (l < c) return false
+        }
+        return false
     }
 
     fun logout() {
@@ -71,6 +159,52 @@ class SettingsViewModel @Inject constructor(
     fun updateFontScale(scale: Float) {
         viewModelScope.launch {
             userPreferencesDataSource.setFontScale(scale)
+        }
+    }
+
+    fun updateIsLoggingEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setIsLoggingEnabled(enabled)
+        }
+    }
+
+    fun updateSecureScreenEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setSecureScreenEnabled(enabled)
+        }
+    }
+
+    fun updateDownloadOverWifiOnly(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setDownloadOverWifiOnly(enabled)
+        }
+    }
+
+    fun updateMaxConcurrentDownloads(count: Int) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setMaxConcurrentDownloads(count)
+        }
+    }
+
+    fun clearLogs() {
+        com.shizq.bika.core.common.BikaLog.clearLogs()
+    }
+
+    suspend fun getLogsContent(): String = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        try {
+            val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()
+            if (logFile != null && logFile.exists()) {
+                val lines = logFile.readLines()
+                if (lines.size > 2000) {
+                    "【日志已截断，仅展示最后 2000 行】\n\n" + lines.takeLast(2000).joinToString("\n")
+                } else {
+                    lines.joinToString("\n")
+                }
+            } else {
+                ""
+            }
+        } catch (e: Exception) {
+            "读取日志失败: ${e.localizedMessage}"
         }
     }
 
@@ -115,6 +249,18 @@ sealed interface SettingsUiState {
         val darkThemeConfig: DarkThemeConfig,
         val selectedNetworkLine: NetworkLine,
         val autoCheckIn: Boolean,
-        val fontScale: Float
+        val fontScale: Float,
+        val isLoggingEnabled: Boolean,
+        val downloadOverWifiOnly: Boolean,
+        val maxConcurrentDownloads: Int,
+        val secureScreenEnabled: Boolean
     ) : SettingsUiState
+}
+
+sealed interface UpdateUiState {
+    data object Idle : UpdateUiState
+    data object Checking : UpdateUiState
+    data class HasUpdate(val version: String, val body: String, val url: String) : UpdateUiState
+    data object NoUpdate : UpdateUiState
+    data class Error(val message: String) : UpdateUiState
 }

@@ -31,6 +31,17 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.MenuBook
+import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material3.Icon
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import com.shizq.bika.core.data.model.DetailedReadingHistory
 import kotlinx.datetime.TimeZone
 import kotlinx.datetime.number
@@ -48,6 +59,7 @@ fun ComicCard(
     modifier: Modifier = Modifier,
     onClick: () -> Unit = {},
     onLongClick: () -> Unit = {},
+    onReadLatestClick: ((latestOrder: Int) -> Unit)? = null,
 ) {
     ElevatedCard(
         modifier = modifier
@@ -57,21 +69,39 @@ fun ComicCard(
             ),
     ) {
         Row(
-            modifier = Modifier.defaultMinSize(minHeight = 135.dp),
+            modifier = Modifier
+                .height(androidx.compose.foundation.layout.IntrinsicSize.Max)
+                .defaultMinSize(minHeight = 135.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            AsyncImage(
-                model = ImageRequest.Builder(LocalContext.current)
-                    .data(detailedReadingHistory.history.coverUrl)
-                    .crossfade(true)
-                    .build(),
-                contentDescription = "${detailedReadingHistory.history.title} Cover",
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .width(100.dp)
-                    .aspectRatio(3f / 4f)
-                    .clip(RoundedCornerShape(8.dp))
-            )
+            Box(contentAlignment = Alignment.TopStart) {
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(detailedReadingHistory.history.coverUrl)
+                        .crossfade(true)
+                        .build(),
+                    contentDescription = "${detailedReadingHistory.history.title} Cover",
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .width(100.dp)
+                        .aspectRatio(3f / 4f)
+                        .clip(RoundedCornerShape(8.dp))
+                )
+
+                if (detailedReadingHistory.history.isFavourited) {
+                    Text(
+                        text = "已收藏",
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onTertiary,
+                        modifier = Modifier
+                            .padding(top = 4.dp, start = 4.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f))
+                            .padding(horizontal = 4.dp, vertical = 1.dp)
+                    )
+                }
+            }
 
             Spacer(modifier = Modifier.width(16.dp))
 
@@ -85,12 +115,45 @@ fun ComicCard(
                 // 标题和作者
                 Column(modifier = Modifier.weight(1f)) {
                     Spacer(modifier = Modifier.height(12.dp))
+
+                    // 状态徽章墙 (标题上方)
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.padding(bottom = 6.dp)
+                    ) {
+                        val lastProgress = detailedReadingHistory.lastReadChapterProgress
+                        if (lastProgress != null) {
+                            val epsCount = detailedReadingHistory.history.epsCount
+                            if (epsCount > lastProgress.chapterNumber) {
+                                Badge(text = "有更新", containerColor = androidx.compose.ui.graphics.Color(0xFFFF9800))
+                            } else if (lastProgress.chapterNumber >= epsCount && lastProgress.currentPage >= lastProgress.pageCount && lastProgress.pageCount > 0) {
+                                Badge(text = "已读完", containerColor = androidx.compose.ui.graphics.Color(0xFF4CAF50))
+                            } else {
+                                Badge(text = "已阅读", containerColor = MaterialTheme.colorScheme.secondary)
+                            }
+                        }
+
+                        if (detailedReadingHistory.history.finished) {
+                            Badge(text = "已完结", containerColor = MaterialTheme.colorScheme.primary)
+                        }
+                    }
+
                     Text(
-                        text = detailedReadingHistory.history.title,
+                        text = buildString {
+                            if (detailedReadingHistory.history.pagesCount > 0) {
+                                append("[${detailedReadingHistory.history.pagesCount}P] ")
+                            }
+                            append(detailedReadingHistory.history.title)
+                        },
                         style = MaterialTheme.typography.titleMedium,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurface
+                        color = if (detailedReadingHistory.history.finished) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurface
+                        }
                     )
 
                     Spacer(modifier = Modifier.height(4.dp))
@@ -102,6 +165,28 @@ fun ComicCard(
                         overflow = TextOverflow.Ellipsis,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    // 药丸式分类 Tag 标签
+                    val categories = detailedReadingHistory.history.categories
+                    if (categories.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            categories.take(3).forEach { category ->
+                                Text(
+                                    text = category,
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier
+                                        .clip(CircleShape)
+                                        .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
+                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                 }
 
                 val lastProgress = detailedReadingHistory.lastReadChapterProgress
@@ -144,13 +229,97 @@ fun ComicCard(
                     Spacer(modifier = Modifier.height(8.dp))
                 }
 
-                // 最后交互时间
-                Text(
-                    text = formatRelativeTime(detailedReadingHistory.history.lastInteractionAt),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
+                // 底部：相对时间与数据指标并列
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // 左侧：最后阅读时间
+                    Text(
+                        text = formatRelativeTime(detailedReadingHistory.history.lastInteractionAt),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.outline
+                    )
+
+                    // 右侧：数据指标展示
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        val lastProgress = detailedReadingHistory.lastReadChapterProgress
+                        if (onReadLatestClick != null && lastProgress != null && detailedReadingHistory.history.epsCount > lastProgress.chapterNumber) {
+                            androidx.compose.material3.Button(
+                                onClick = { onReadLatestClick(detailedReadingHistory.history.epsCount) },
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                modifier = Modifier.height(28.dp),
+                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                ),
+                                shape = RoundedCornerShape(8.dp)
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.AutoMirrored.Rounded.MenuBook,
+                                        contentDescription = "追更",
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Text(
+                                        text = "追更最新",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        }
+
+                        if (detailedReadingHistory.history.totalLikes > 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.FavoriteBorder,
+                                    contentDescription = "点赞",
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                                Text(
+                                    text = detailedReadingHistory.history.totalLikes.toString(),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+
+                        if (detailedReadingHistory.history.epsCount > 0) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.MenuBook,
+                                    contentDescription = "章节",
+                                    modifier = Modifier.size(12.dp),
+                                    tint = MaterialTheme.colorScheme.outline
+                                )
+                                Text(
+                                    text = "${detailedReadingHistory.history.epsCount}话",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 11.sp,
+                                    color = MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -179,4 +348,21 @@ private fun formatRelativeTime(instant: Instant): String {
             }
         }
     }
+}
+
+@Composable
+private fun Badge(
+    text: String,
+    containerColor: androidx.compose.ui.graphics.Color
+) {
+    Text(
+        text = text,
+        fontSize = 9.sp,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.onPrimary,
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .background(containerColor)
+            .padding(horizontal = 4.dp, vertical = 1.dp)
+    )
 }

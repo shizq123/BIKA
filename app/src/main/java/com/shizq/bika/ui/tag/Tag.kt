@@ -46,5 +46,37 @@ sealed class FilterGroup(open val values: List<String>) {
     )
 
     @Immutable
+    data object ExcludeTopic : FilterGroup(Topic.values)
+
+    @Immutable
     data object Status : FilterGroup(listOf("完结"))
+
+    /**
+     * 章节数范围筛选（间接体现连载时间跨度）
+     * 格式：显示名称，内部通过 matchesFilters 映射到具体 epsCount 区间
+     */
+    @Immutable
+    data object EpsRange : FilterGroup(
+        listOf(
+            "单话 (1话)",
+            "短篇 (2-5话)",
+            "中篇 (6-20话)",
+            "长篇 (21-100话)",
+            "超长篇 (100话以上)"
+        )
+    )
+
+    /**
+     * 页数范围筛选
+     * 格式：显示名称，内部通过 matchesFilters 映射到具体 pagesCount 区间
+     */
+    @Immutable
+    data object PagesRange : FilterGroup(
+        listOf(
+            "少页 (<50页)",
+            "中等 (50-200页)",
+            "多页 (200-500页)",
+            "超多页 (500页以上)"
+        )
+    )
 }

@@ -35,6 +35,8 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.model.Episode
+import com.shizq.bika.core.database.model.DownloadTaskEntity
+import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
@@ -47,6 +49,7 @@ import com.shizq.bika.sync.workers.DownloadWorker
 import kotlinx.coroutines.launch
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import android.content.Context
 
 @Composable
 fun ComicDetailScreen(
@@ -58,6 +61,8 @@ fun ComicDetailScreen(
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
+    val downloadTasks by viewModel.downloadTasks.collectAsStateWithLifecycle()
+    val chapterProgress by viewModel.chapterProgress.collectAsStateWithLifecycle()
 
     val pinnedComments by viewModel.pinnedComments.collectAsStateWithLifecycle()
     val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
@@ -66,6 +71,8 @@ fun ComicDetailScreen(
     ComicDetailContent(
         unitedState = state,
         episodes = episodes,
+        downloadTasks = downloadTasks,
+        chapterProgress = chapterProgress,
         onBackClick = onBackClick,
         navigationToReader = navigationToReader,
         navigationToComicInfo = onForYouClick,
@@ -75,6 +82,14 @@ fun ComicDetailScreen(
         dispatch = viewModel::dispatch,
         replyList = replyList,
         navigationToFeed = navigationToFeed,
+        onFetchAllEpisodes = { viewModel.fetchAllEpisodes() },
+        onDownloadAllEpisodes = { context, title, cover ->
+            viewModel.downloadAllEpisodes(context, title, cover)
+        },
+        onDownloadEpisodes = { context, title, cover, list ->
+            viewModel.downloadEpisodes(context, title, cover, list)
+        },
+        onPostComment = viewModel::postComment,
     )
 }
 
@@ -85,6 +100,8 @@ fun ComicDetailContent(
     episodes: LazyPagingItems<Episode>,
     pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
+    downloadTasks: List<DownloadTaskEntity> = emptyList(),
+    chapterProgress: List<ChapterProgressEntity> = emptyList(),
     onBackClick: () -> Unit = {},
     navigationToReader: (id: String, index: Int) -> Unit = { _, _ -> },
     navigationToComicInfo: (String) -> Unit = {},
@@ -92,6 +109,10 @@ fun ComicDetailContent(
     dispatch: (UnitedDetailsAction) -> Unit = {},
     replyList: LazyPagingItems<Comment>,
     navigationToFeed: (DiscoveryAction) -> Unit,
+    onFetchAllEpisodes: suspend () -> List<Episode> = { emptyList() },
+    onDownloadAllEpisodes: suspend (Context, String, String) -> Int = { _, _, _ -> 0 },
+    onDownloadEpisodes: (Context, String, String, List<Episode>) -> Unit = { _, _, _, _ -> },
+    onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
 ) {
     when (unitedState) {
         is UnitedDetailsUiState.Initialize -> LoadingState()
@@ -144,46 +165,67 @@ fun ComicDetailContent(
                     ) { page ->
                         val context = LocalContext.current
                         when (page) {
-                            0 -> ComicDetailPage(
-                                detail = detail,
-                                recommendations = unitedState.recommendations,
-                                onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
-                                onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
-                                navigationToReader = { navigationToReader(detail.id, 1) },
-                                navigationToComicInfo = { navigationToComicInfo(it) },
-                                navigationToFeed = navigationToFeed,
-                                onDownloadClick = {
-                                    DownloadWorker.startDownload(
-                                        context = context,
-                                        comicId = detail.id,
-                                        comicTitle = detail.title,
-                                        coverUrl = detail.cover,
-                                        episodeId = "single_episode",
-                                        episodeTitle = "全一话",
-                                        episodeOrder = 1
-                                    )
-                                    Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
+                            0 -> {
+                                val isComicDownloaded = if (detail.epsCount <= 1) {
+                                    downloadTasks.any { it.status == com.shizq.bika.core.database.model.DownloadStatus.COMPLETED }
+                                } else {
+                                    val completedCount = downloadTasks.count { it.status == com.shizq.bika.core.database.model.DownloadStatus.COMPLETED }
+                                    completedCount > 0 && completedCount >= detail.epsCount
                                 }
-                            )
+                                ComicDetailPage(
+                                    detail = detail,
+                                    recommendations = unitedState.recommendations,
+                                    isDownloaded = isComicDownloaded,
+                                    onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
+                                    onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
+                                    navigationToReader = { navigationToReader(detail.id, 1) },
+                                    navigationToComicInfo = { navigationToComicInfo(it) },
+                                    navigationToFeed = navigationToFeed,
+                                    onDownloadClick = {
+                                        if (detail.epsCount <= 1) {
+                                            DownloadWorker.startDownload(
+                                                context = context,
+                                                comicId = detail.id,
+                                                comicTitle = detail.title,
+                                                coverUrl = detail.cover,
+                                                episodeId = "single_episode",
+                                                episodeTitle = "全一话",
+                                                episodeOrder = 1
+                                            )
+                                            Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
+                                        } else {
+                                            scope.launch {
+                                                try {
+                                                    Toast.makeText(context, "正在获取章节列表，准备全部下载...", Toast.LENGTH_SHORT).show()
+                                                    val count = onDownloadAllEpisodes(context, detail.title, detail.cover)
+                                                    Toast.makeText(context, "已成功将所有 $count 个章节加入下载队列", Toast.LENGTH_LONG).show()
+                                                } catch (e: Exception) {
+                                                    Toast.makeText(context, "获取章节失败，请重试: ${e.message}", Toast.LENGTH_LONG).show()
+                                                }
+                                            }
+                                        }
+                                    }
+                                )
+                            }
 
                             1 -> {
                                 EpisodesPage(
                                     episodes = episodes,
+                                    downloadTasks = downloadTasks,
+                                    chapterProgress = chapterProgress,
                                     navigateToReader = {
                                         navigationToReader(detail.id, it)
                                     },
-                                    onDownloadClick = { episode ->
-                                        DownloadWorker.startDownload(
-                                            context = context,
-                                            comicId = detail.id,
-                                            comicTitle = detail.title,
-                                            coverUrl = detail.cover,
-                                            episodeId = episode.id,
-                                            episodeTitle = episode.title,
-                                            episodeOrder = episode.order
-                                        )
-                                        Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
-                                    }
+                                    onDownloadClick = { selectedEpisodes ->
+                                        onDownloadEpisodes(context, detail.title, detail.cover, selectedEpisodes)
+                                        val message = if (selectedEpisodes.size == 1) {
+                                            "已加入下载队列"
+                                        } else {
+                                            "已成功将 ${selectedEpisodes.size} 个章节加入下载队列"
+                                        }
+                                        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+                                    },
+                                    onFetchAllEpisodes = onFetchAllEpisodes
                                 )
                             }
 
@@ -199,6 +241,16 @@ fun ComicDetailContent(
                                         )
                                     )
                                 },
+                                onPostComment = { text, replyToCommentId ->
+                                    onPostComment(text, replyToCommentId) { success ->
+                                        if (success) {
+                                            regularComments.refresh()
+                                            if (replyToCommentId != null) {
+                                                replyList.refresh()
+                                            }
+                                        }
+                                    }
+                                }
                             )
                         }
                     }

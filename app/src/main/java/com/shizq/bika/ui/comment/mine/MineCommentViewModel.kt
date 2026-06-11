@@ -14,12 +14,12 @@ import kotlinx.coroutines.flow.Flow
 
 @HiltViewModel
 class MineCommentViewModel @Inject constructor(
-    private val mineCommentPagingSource: MineCommentPagingSource,
+    private val mineCommentPagingSourceProvider: javax.inject.Provider<MineCommentPagingSource>,
 ) : ViewModel() {
     val myCommentsFlow: Flow<PagingData<Comment>> = Pager(
         config = PagingConfig(20),
     ) {
-        mineCommentPagingSource
+        mineCommentPagingSourceProvider.get()
     }.flow
         .cachedIn(viewModelScope)
 

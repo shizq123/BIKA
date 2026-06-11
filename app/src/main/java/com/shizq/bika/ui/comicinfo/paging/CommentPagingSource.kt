@@ -5,6 +5,7 @@ import androidx.paging.PagingState
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.model.Type
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -18,7 +19,7 @@ class CommentPagingSource @AssistedInject constructor(
         val page = params.key ?: 1
 
         return try {
-            val response = apiService.getComicComments(id, page)
+            val response = apiService.getComments(Type.COMIC, id, page)
             if (page == 1) {
                 onTopCommentsLoaded(response.topComments.map { it.asExternalModel() })
             }

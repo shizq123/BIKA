@@ -3,6 +3,7 @@ package com.shizq.bika.core.datastore
 import androidx.datastore.core.DataStore
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.DarkThemeConfig
+import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
@@ -79,6 +80,97 @@ class UserPreferencesDataSource @Inject constructor(
     suspend fun setFontScale(scale: Float) {
         userPreferences.updateData {
             it.copy(fontScale = scale)
+        }
+    }
+
+    suspend fun setIsLoggingEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(isLoggingEnabled = enabled)
+        }
+    }
+
+    suspend fun setDownloadOverWifiOnly(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(downloadOverWifiOnly = enabled)
+        }
+    }
+
+    suspend fun setMaxConcurrentDownloads(count: Int) {
+        userPreferences.updateData {
+            it.copy(maxConcurrentDownloads = count)
+        }
+    }
+
+    suspend fun setEyeCareEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(eyeCareEnabled = enabled)
+        }
+    }
+
+    suspend fun setEyeCareDarkness(darkness: Float) {
+        userPreferences.updateData {
+            it.copy(eyeCareDarkness = darkness)
+        }
+    }
+
+    suspend fun setAutoScrollEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(autoScrollEnabled = enabled)
+        }
+    }
+
+    suspend fun setAutoScrollSpeed(speed: Int) {
+        userPreferences.updateData {
+            it.copy(autoScrollSpeed = speed)
+        }
+    }
+
+    suspend fun setBookSpreadsMode(mode: BookSpreadsMode) {
+        userPreferences.updateData {
+            it.copy(bookSpreadsMode = mode)
+        }
+    }
+
+    suspend fun setMagnifierEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(magnifierEnabled = enabled)
+        }
+    }
+
+    suspend fun setStatusBarCapsuleEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(statusBarCapsuleEnabled = enabled)
+        }
+    }
+
+    suspend fun setSecureScreenEnabled(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(secureScreenEnabled = enabled)
+        }
+    }
+
+    /** 保存用户资料到本地，供无网时回退展示 */
+    suspend fun saveUserProfileCache(
+        name: String,
+        avatarUrl: String,
+        level: Int,
+        exp: Int,
+        title: String,
+        gender: String,
+        slogan: String,
+        characters: List<String>,
+    ) {
+        userPreferences.updateData {
+            it.copy(
+                cachedUserName = name,
+                cachedUserAvatarUrl = avatarUrl,
+                cachedUserLevel = level,
+                cachedUserExp = exp,
+                cachedUserTitle = title,
+                cachedUserGender = gender,
+                cachedUserSlogan = slogan,
+                cachedUserCharacters = characters,
+            )
         }
     }
 }

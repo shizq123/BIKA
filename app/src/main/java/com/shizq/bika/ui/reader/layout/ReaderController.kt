@@ -28,4 +28,9 @@ interface ReaderController {
      * 跳转到指定页码（用于目录跳转或进度条拖动）
      */
     suspend fun scrollToPage(index: Int)
+
+    /**
+     * 平滑移动偏移量（用于自动滚动）
+     */
+    suspend fun scrollBy(value: Float) {}
 }

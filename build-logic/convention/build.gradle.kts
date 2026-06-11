@@ -51,10 +51,6 @@ gradlePlugin {
             id = libs.plugins.bika.android.library.asProvider().get().pluginId
             implementationClass = "AndroidLibraryConventionPlugin"
         }
-        register("androidFeature") {
-            id = libs.plugins.bika.android.feature.get().pluginId
-            implementationClass = "AndroidFeatureConventionPlugin"
-        }
         register("hilt") {
             id = libs.plugins.bika.hilt.get().pluginId
             implementationClass = "HiltConventionPlugin"
