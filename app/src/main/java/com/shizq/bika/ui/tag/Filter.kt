@@ -25,6 +25,9 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.HorizontalDivider
+
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.runtime.Composable
@@ -93,6 +96,8 @@ data class FilterChipState(
 fun FilterChip(
     state: FilterChipState,
     onSelectionChanged: (value: String) -> Unit,
+    excludeTopicsGlobal: Boolean = false,
+    onExcludeTopicsGlobalChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showSheet by remember { mutableStateOf(false) }
@@ -135,6 +140,31 @@ fun FilterChip(
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(16.dp)
                     )
+
+                    if (state.kind is FilterGroup.ExcludeTopic) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onExcludeTopicsGlobalChanged(!excludeTopicsGlobal) }
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "全局生效",
+                                style = MaterialTheme.typography.bodyLarge,
+                                modifier = Modifier.weight(1f)
+                            )
+                            Switch(
+                                checked = excludeTopicsGlobal,
+                                onCheckedChange = onExcludeTopicsGlobalChanged
+                            )
+                        }
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
+
                     state.values.forEach { value ->
                         val isSelected = value in state.selected
                         Row(

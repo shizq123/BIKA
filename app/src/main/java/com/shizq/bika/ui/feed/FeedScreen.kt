@@ -48,6 +48,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -69,12 +70,41 @@ import com.shizq.bika.ui.tag.FilterGroup
 import com.shizq.bika.ui.tag.FilterState
 import com.shizq.bika.ui.tag.rememberFilterState
 import kotlinx.coroutines.launch
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.KeyboardArrowDown
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.StarBorder
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import com.shizq.bika.core.model.FavoriteTag
+import com.shizq.bika.navigation.DiscoveryAction
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FeedScreen(
     onBackClick: () -> Unit,
     onComicClick: (String) -> Unit,
+    onNavigateToFeed: (DiscoveryAction) -> Unit = {},
     viewModel: FeedViewModel = hiltViewModel(),
     title: String
 ) {
@@ -82,22 +112,71 @@ fun FeedScreen(
     val detailedHistories by viewModel.detailedHistories.collectAsStateWithLifecycle()
     val currentSortOrder by viewModel.currentSortOrder.collectAsStateWithLifecycle()
     val filterSelections by viewModel.filterSelections.collectAsStateWithLifecycle()
+    val excludeTopicsGlobal by viewModel.excludeTopicsGlobal.collectAsStateWithLifecycle()
+    val favoriteTags by viewModel.favoriteTags.collectAsStateWithLifecycle()
     val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
     val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
-    FeedContent(
-        title = title,
-        pagedComics = pagedComics,
-        detailedHistories = detailedHistories,
-        onBackClick = onBackClick,
-        onComicClick = onComicClick,
-        currentSortOrder = currentSortOrder,
-        onSortOrderChanged = viewModel::updateSortOrder,
-        filterSelections = filterSelections,
-        onFilterChanged = viewModel::toggleFilter,
-        currentPage = currentPage,
-        totalPages = totalPages,
-        onPageChanged = viewModel::updatePage,
-    )
+
+    var showDrawer by remember { mutableStateOf(false) }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        FeedContent(
+            title = title,
+            pagedComics = pagedComics,
+            detailedHistories = detailedHistories,
+            onBackClick = onBackClick,
+            onComicClick = onComicClick,
+            currentSortOrder = currentSortOrder,
+            onSortOrderChanged = viewModel::updateSortOrder,
+            filterSelections = filterSelections,
+            onFilterChanged = viewModel::toggleFilter,
+            excludeTopicsGlobal = excludeTopicsGlobal,
+            onExcludeTopicsGlobalChanged = viewModel::toggleExcludeTopicsGlobal,
+            currentPage = currentPage,
+            totalPages = totalPages,
+            onPageChanged = viewModel::updatePage,
+            onBookmarkClick = { showDrawer = true }
+        )
+
+        if (showDrawer) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        showDrawer = false
+                    }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showDrawer,
+            enter = slideInHorizontally(initialOffsetX = { it }),
+            exit = slideOutHorizontally(targetOffsetX = { it }),
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(300.dp)
+                .align(Alignment.CenterEnd)
+        ) {
+            FavoriteTagsDrawer(
+                favoriteTags = favoriteTags,
+                currentAction = viewModel.currentAction,
+                onNavigateToFeed = { action ->
+                    showDrawer = false
+                    onNavigateToFeed(action)
+                },
+                onAddFavorite = viewModel::addFavoriteTag,
+                onRemoveFavorite = viewModel::removeFavoriteTag,
+                onUpdateName = viewModel::updateFavoriteTagName,
+                onMove = viewModel::moveFavoriteTag,
+                onAddCustom = viewModel::addCustomFavoriteTag,
+                onClose = { showDrawer = false }
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -107,6 +186,7 @@ private fun FeedAppBar(
     currentSortOrder: Sort,
     onSortOrderChanged: (Sort) -> Unit,
     onBackClick: () -> Unit,
+    onBookmarkClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -121,6 +201,12 @@ private fun FeedAppBar(
             }
         },
         actions = {
+            IconButton(onClick = onBookmarkClick) {
+                Icon(
+                    imageVector = Icons.Rounded.Bookmarks,
+                    contentDescription = "标签收藏夹"
+                )
+            }
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Sort,
@@ -165,9 +251,12 @@ private fun FeedContent(
     onBackClick: () -> Unit,
     filterSelections: Map<FilterGroup, List<String>>,
     onFilterChanged: (group: FilterGroup, value: String) -> Unit,
+    excludeTopicsGlobal: Boolean,
+    onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
     currentPage: Int,
     totalPages: Int,
     onPageChanged: (Int) -> Unit,
+    onBookmarkClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 ) {
     val listState = rememberLazyListState()
@@ -263,6 +352,7 @@ private fun FeedContent(
                 onBackClick = onBackClick,
                 currentSortOrder = currentSortOrder,
                 onSortOrderChanged = onSortOrderChanged,
+                onBookmarkClick = onBookmarkClick
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -281,6 +371,8 @@ private fun FeedContent(
                 currentPage = visiblePage,
                 totalPages = totalPages,
                 onCountChipClick = { showPageJumpDialog = true },
+                excludeTopicsGlobal = excludeTopicsGlobal,
+                onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -349,6 +441,8 @@ private fun FilterRow(
     currentPage: Int,
     totalPages: Int,
     onCountChipClick: () -> Unit,
+    excludeTopicsGlobal: Boolean,
+    onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
     modifier: Modifier = Modifier
 ) {
     LazyRow(
@@ -363,7 +457,9 @@ private fun FilterRow(
                     chipState.kind?.let { group ->
                         onFilterChanged(group, value)
                     }
-                }
+                },
+                excludeTopicsGlobal = excludeTopicsGlobal,
+                onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged
             )
         }
 
@@ -445,5 +541,287 @@ private fun PaginationBar(
         ) {
             Text("下一页", style = MaterialTheme.typography.labelLarge)
         }
+    }
+}
+
+@Composable
+fun FavoriteTagsDrawer(
+    favoriteTags: List<FavoriteTag>,
+    currentAction: DiscoveryAction? = null,
+    onNavigateToFeed: (DiscoveryAction) -> Unit,
+    onAddFavorite: (FavoriteTag) -> Unit,
+    onRemoveFavorite: (FavoriteTag) -> Unit,
+    onUpdateName: (FavoriteTag, String) -> Unit,
+    onMove: (fromIndex: Int, toIndex: Int) -> Unit,
+    onAddCustom: (String) -> Unit,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    var isEditMode by remember { mutableStateOf(false) }
+    var showAddCustomDialog by remember { mutableStateOf(false) }
+    var tagToRename by remember { mutableStateOf<FavoriteTag?>(null) }
+
+    val currentTag = remember(currentAction) { currentAction?.toFavoriteTag() }
+    val isCurrentFavorited = remember(favoriteTags, currentTag) {
+        currentTag != null && favoriteTags.any { it.name == currentTag.name && it.actionType == currentTag.actionType }
+    }
+
+    Surface(
+        modifier = modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 8.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(vertical = 16.dp)
+        ) {
+            // Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "标签收藏夹",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.weight(1f)
+                )
+                IconButton(onClick = { showAddCustomDialog = true }) {
+                    Icon(Icons.Rounded.Add, contentDescription = "新增标签")
+                }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Rounded.Close, contentDescription = "关闭")
+                }
+            }
+
+            // Quick Add Current Tag
+            if (currentTag != null) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    if (isCurrentFavorited) {
+                        Button(
+                            onClick = { onRemoveFavorite(currentTag) },
+                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Rounded.Star, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("已收藏当前标签 (点击取消)")
+                        }
+                    } else {
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = { onAddFavorite(currentTag) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Rounded.StarBorder, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text("收藏当前标签")
+                        }
+                    }
+                }
+            }
+
+            HorizontalDivider(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                color = MaterialTheme.colorScheme.outlineVariant
+            )
+
+            // List Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "我的收藏",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f)
+                )
+                TextButton(
+                    onClick = { isEditMode = !isEditMode },
+                    contentPadding = PaddingValues(horizontal = 8.dp)
+                ) {
+                    Text(if (isEditMode) "完成" else "编辑")
+                }
+            }
+
+            // Tags List
+            if (favoriteTags.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "暂无收藏，点击上方按钮收藏",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            } else {
+                androidx.compose.foundation.lazy.LazyColumn(
+                    modifier = Modifier.weight(1f)
+                ) {
+                    itemsIndexed(favoriteTags) { index, tag ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(enabled = !isEditMode) {
+                                    onNavigateToFeed(tag.toAction())
+                                }
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (isEditMode) {
+                                IconButton(
+                                    onClick = { onRemoveFavorite(tag) },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Delete,
+                                        contentDescription = "删除",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                                Spacer(Modifier.width(8.dp))
+                            } else {
+                                Icon(
+                                    imageVector = Icons.Rounded.Bookmarks,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                                Spacer(Modifier.width(12.dp))
+                            }
+
+                            Text(
+                                text = tag.name,
+                                style = MaterialTheme.typography.bodyLarge,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+
+                            if (isEditMode) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(
+                                        onClick = { tagToRename = tag },
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.Edit,
+                                            contentDescription = "编辑名称",
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { onMove(index, index - 1) },
+                                        enabled = index > 0,
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.KeyboardArrowUp,
+                                            contentDescription = "上移"
+                                        )
+                                    }
+                                    IconButton(
+                                        onClick = { onMove(index, index + 1) },
+                                        enabled = index < favoriteTags.size - 1,
+                                        modifier = Modifier.size(36.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.KeyboardArrowDown,
+                                            contentDescription = "下移"
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
+                    }
+                }
+            }
+        }
+    }
+
+    if (showAddCustomDialog) {
+        var nameInput by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showAddCustomDialog = false },
+            title = { Text("新增自定义标签") },
+            text = {
+                OutlinedTextField(
+                    value = nameInput,
+                    onValueChange = { nameInput = it },
+                    label = { Text("标签名称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (nameInput.isNotBlank()) {
+                            onAddCustom(nameInput.trim())
+                            showAddCustomDialog = false
+                        }
+                    }
+                ) {
+                    Text("添加")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAddCustomDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (tagToRename != null) {
+        var renameInput by remember { mutableStateOf(tagToRename?.name.orEmpty()) }
+        AlertDialog(
+            onDismissRequest = { tagToRename = null },
+            title = { Text("重命名标签") },
+            text = {
+                OutlinedTextField(
+                    value = renameInput,
+                    onValueChange = { renameInput = it },
+                    label = { Text("新名称") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (renameInput.isNotBlank() && tagToRename != null) {
+                            onUpdateName(tagToRename!!, renameInput.trim())
+                            tagToRename = null
+                        }
+                    }
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { tagToRename = null }) {
+                    Text("取消")
+                }
+            }
+        )
     }
 }

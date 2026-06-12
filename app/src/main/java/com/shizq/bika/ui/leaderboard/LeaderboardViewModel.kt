@@ -11,6 +11,7 @@ import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.DetailedHistory
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.util.injectLocalStatusFrom
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -26,6 +27,7 @@ import com.shizq.bika.core.coroutine.restartable
 class LeaderboardViewModel @Inject constructor(
     private val api: BikaDataSource,
     private val historyDao: ReadingHistoryDao,
+    private val userPreferencesDataSource: UserPreferencesDataSource,
 ) : ViewModel() {
     private val leaderboardRestarter = FlowRestarter()
 
@@ -50,11 +52,28 @@ class LeaderboardViewModel @Inject constructor(
         rawLeaderboardFlow,
         // DB Flow：收藏/阅读进度任何变化都会触发此流发射新值，驱动 UI 实时更新
         historyDao.getDetailedHistories(),
-    ) { allData, histories ->
+        userPreferencesDataSource.userData,
+    ) { allData, histories, prefs ->
+        val daily = allData.dailyComics.injectLocalStatusFrom(histories)
+        val weekly = allData.weeklyComics.injectLocalStatusFrom(histories)
+        val monthly = allData.monthlyComics.injectLocalStatusFrom(histories)
+
+        val filteredDaily = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
+            daily.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        } else daily
+
+        val filteredWeekly = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
+            weekly.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        } else weekly
+
+        val filteredMonthly = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
+            monthly.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        } else monthly
+
         AllLeaderboards(
-            dailyComics = allData.dailyComics.injectLocalStatusFrom(histories),
-            weeklyComics = allData.weeklyComics.injectLocalStatusFrom(histories),
-            monthlyComics = allData.monthlyComics.injectLocalStatusFrom(histories),
+            dailyComics = filteredDaily,
+            weeklyComics = filteredWeekly,
+            monthlyComics = filteredMonthly,
             knightUsers = allData.knightUsers,
         )
     }

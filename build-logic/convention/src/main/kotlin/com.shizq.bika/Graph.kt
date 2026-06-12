@@ -50,13 +50,13 @@ private class Graph(
         seen += project.path
         plugins.putIfAbsent(
             project,
-            PluginType.entries.firstOrNull { project.pluginManager.hasPlugin(it.id) }
+            PluginType.values().firstOrNull { project.pluginManager.hasPlugin(it.id) }
                 ?: PluginType.Unknown,
         )
         dependencies.compute(project) { _, u -> u.orEmpty() }
         project.configurations
             .matching { it.name in supportedConfigurations.get() }
-            .associateWithNotNull { it.dependencies.withType<ProjectDependency>().ifEmpty { null } }
+            .associateWithNotNull { it.dependencies.withType<ProjectDependency>().takeIf { it.isNotEmpty() } }
             .flatMap { (c, value) -> value.map { dep -> c to project.project(dep.path) } }
             .filter { (_, p) -> p.path !in ignoredProjects.get() }
             .forEach { (configuration: Configuration, projectDependency: Project) ->
@@ -195,7 +195,7 @@ private abstract class GraphDumpTask : DefaultTask() {
             .forEach { appendLine(it.link(indent = 2)) }
         // Classes
         appendLine()
-        PluginType.entries.forEach { appendLine(it.classDef()) }
+        PluginType.values().forEach { appendLine(it.classDef()) }
     }
 
     private fun legend() = buildString {
@@ -216,7 +216,7 @@ private abstract class GraphDumpTask : DefaultTask() {
             appendLine(it.link(indent = 2))
         }
         appendLine()
-        PluginType.entries.forEach { appendLine(it.classDef()) }
+        PluginType.values().forEach { appendLine(it.classDef()) }
     }
 
     private class Dependency(val project: String, val configuration: String, val dependency: String)

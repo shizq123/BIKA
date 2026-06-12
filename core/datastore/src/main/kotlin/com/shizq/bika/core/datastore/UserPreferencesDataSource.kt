@@ -9,6 +9,7 @@ import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.UserPreferences
+import com.shizq.bika.core.model.FavoriteTag
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.Flow
 
@@ -171,6 +172,24 @@ class UserPreferencesDataSource @Inject constructor(
                 cachedUserSlogan = slogan,
                 cachedUserCharacters = characters,
             )
+        }
+    }
+
+    suspend fun setExcludeTopicsGlobal(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(excludeTopicsGlobal = enabled)
+        }
+    }
+
+    suspend fun setGlobalExcludedTopics(topics: List<String>) {
+        userPreferences.updateData {
+            it.copy(globalExcludedTopics = topics)
+        }
+    }
+
+    suspend fun updateFavoriteTags(tags: List<FavoriteTag>) {
+        userPreferences.updateData {
+            it.copy(favoriteTags = tags)
         }
     }
 }

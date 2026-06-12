@@ -27,6 +27,8 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.model.FavoriteTag
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -36,6 +38,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import javax.inject.Provider
 
 @HiltViewModel(assistedFactory = FeedViewModel.Factory::class)
@@ -46,12 +50,37 @@ class FeedViewModel @AssistedInject constructor(
     private val advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
     private val recentUpdatesPagingSourceProvider: Provider<RecentUpdatesPagingSource>,
     private val historyDao: ReadingHistoryDao,
+    private val userPreferencesDataSource: UserPreferencesDataSource,
     @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
     val currentSortOrder: StateFlow<Sort>
         field = MutableStateFlow(Sort.NEWEST)
-    val filterSelections: StateFlow<Map<FilterGroup, List<String>>>
-        field = MutableStateFlow(emptyMap())
+
+    private val localFilterSelections = MutableStateFlow<Map<FilterGroup, List<String>>>(emptyMap())
+
+    val filterSelections: StateFlow<Map<FilterGroup, List<String>>> = combine(
+        localFilterSelections,
+        userPreferencesDataSource.userData
+    ) { local, prefs ->
+        val newMap = local.toMutableMap()
+        if (prefs.excludeTopicsGlobal) {
+            newMap[FilterGroup.ExcludeTopic] = prefs.globalExcludedTopics
+        }
+        newMap
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = emptyMap()
+    )
+
+    val excludeTopicsGlobal: StateFlow<Boolean> = userPreferencesDataSource.userData
+        .map { it.excludeTopicsGlobal }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = false
+        )
+
     val currentPage: StateFlow<Int>
         field = MutableStateFlow(1)
     val totalPages: StateFlow<Int>
@@ -91,8 +120,25 @@ class FeedViewModel @AssistedInject constructor(
         )
 
     fun toggleFilter(group: FilterGroup, value: String) {
+        if (group is FilterGroup.ExcludeTopic) {
+            val isGlobal = excludeTopicsGlobal.value
+            if (isGlobal) {
+                viewModelScope.launch {
+                    val prefs = userPreferencesDataSource.userData.first()
+                    val currentList = prefs.globalExcludedTopics.toMutableList()
+                    if (currentList.contains(value)) {
+                        currentList.remove(value)
+                    } else {
+                        currentList.add(value)
+                    }
+                    userPreferencesDataSource.setGlobalExcludedTopics(currentList)
+                }
+                return
+            }
+        }
+
         currentPage.value = 1
-        filterSelections.update { currentMap ->
+        localFilterSelections.update { currentMap ->
             val newMap = currentMap.toMutableMap()
             val currentList = newMap[group]?.toMutableList() ?: mutableListOf()
 
@@ -111,6 +157,27 @@ class FeedViewModel @AssistedInject constructor(
         }
     }
 
+    fun toggleExcludeTopicsGlobal(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setExcludeTopicsGlobal(enabled)
+            if (enabled) {
+                val localExcluded = localFilterSelections.value[FilterGroup.ExcludeTopic].orEmpty()
+                userPreferencesDataSource.setGlobalExcludedTopics(localExcluded)
+            } else {
+                val globalExcluded = userPreferencesDataSource.userData.first().globalExcludedTopics
+                localFilterSelections.update { currentMap ->
+                    val newMap = currentMap.toMutableMap()
+                    if (globalExcluded.isNotEmpty()) {
+                        newMap[FilterGroup.ExcludeTopic] = globalExcluded
+                    } else {
+                        newMap.remove(FilterGroup.ExcludeTopic)
+                    }
+                    newMap
+                }
+            }
+        }
+    }
+
     fun updateSortOrder(newSort: Sort) {
         currentPage.value = 1
         currentSortOrder.update { newSort }
@@ -119,6 +186,62 @@ class FeedViewModel @AssistedInject constructor(
     fun updatePage(page: Int) {
         val target = page.coerceIn(1, totalPages.value)
         currentPage.value = target
+    }
+
+    val currentAction: DiscoveryAction = action
+
+    val favoriteTags: StateFlow<List<FavoriteTag>> = userPreferencesDataSource.userData
+        .map { it.favoriteTags }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    fun addFavoriteTag(tag: FavoriteTag) {
+        viewModelScope.launch {
+            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            if (currentTags.none { it.name == tag.name && it.actionType == tag.actionType }) {
+                currentTags.add(tag)
+                userPreferencesDataSource.updateFavoriteTags(currentTags)
+            }
+        }
+    }
+
+    fun removeFavoriteTag(tag: FavoriteTag) {
+        viewModelScope.launch {
+            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            currentTags.removeAll { it.name == tag.name && it.actionType == tag.actionType }
+            userPreferencesDataSource.updateFavoriteTags(currentTags)
+        }
+    }
+
+    fun updateFavoriteTagName(tag: FavoriteTag, newName: String) {
+        if (newName.isBlank()) return
+        viewModelScope.launch {
+            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            val index = currentTags.indexOfFirst { it.name == tag.name && it.actionType == tag.actionType }
+            if (index != -1) {
+                currentTags[index] = currentTags[index].copy(name = newName)
+                userPreferencesDataSource.updateFavoriteTags(currentTags)
+            }
+        }
+    }
+
+    fun moveFavoriteTag(fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            if (fromIndex in currentTags.indices && toIndex in currentTags.indices) {
+                val tag = currentTags.removeAt(fromIndex)
+                currentTags.add(toIndex, tag)
+                userPreferencesDataSource.updateFavoriteTags(currentTags)
+            }
+        }
+    }
+
+    fun addCustomFavoriteTag(name: String) {
+        if (name.isBlank()) return
+        addFavoriteTag(FavoriteTag(name = name, actionType = "AdvancedSearch"))
     }
 
     // matchesFilters、matchesEpsRange、matchesPagesRange 已提取为文件顶层私有函数
@@ -269,5 +392,22 @@ private fun matchesPagesRange(pagesCount: Int, label: String): Boolean {
         "多页 (200-500页)" -> pagesCount in 201..500
         "超多页 (500页以上)" -> pagesCount > 500
         else -> true
+    }
+}
+
+fun DiscoveryAction.toFavoriteTag(): FavoriteTag? {
+    return when (this) {
+        is DiscoveryAction.Channel -> FavoriteTag(name = name, actionType = "Channel")
+        is DiscoveryAction.Knight -> FavoriteTag(name = name, actionType = "Knight", actionId = id)
+        is DiscoveryAction.AdvancedSearch -> FavoriteTag(name = name, actionType = "AdvancedSearch")
+        else -> null
+    }
+}
+
+fun FavoriteTag.toAction(): DiscoveryAction {
+    return when (actionType) {
+        "Channel" -> DiscoveryAction.Channel(name)
+        "Knight" -> DiscoveryAction.Knight(name, actionId)
+        else -> DiscoveryAction.AdvancedSearch(name)
     }
 }

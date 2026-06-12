@@ -141,6 +141,9 @@ fun EntryProviderScope<NavKey>.featureSection(
             title = key.action.name,
             onBackClick = { navigator.goBack() },
             onComicClick = navigator::navigateToUnitedDetail,
+            onNavigateToFeed = { action ->
+                navigator.navigate(ConnectedRoute.FeedRoute(action))
+            },
             viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
                 key = key.toString(),
             ) { factory ->

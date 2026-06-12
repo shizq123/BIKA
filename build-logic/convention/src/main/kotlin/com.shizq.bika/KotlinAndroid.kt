@@ -82,24 +82,21 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
         freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
         freeCompilerArgs.add("-Xannotation-default-target=param-property")
 
-        // 延迟、动态计算依赖情况，以根据实际模块依赖加入对应的 opt-in，消除 unresolved warning 与 needs opt-in 警告
-        freeCompilerArgs.addAll(providers.provider {
-            val list = mutableListOf<String>()
-            
-            if (hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-core") || 
-                hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-android")) {
-                list.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
-                list.add("-opt-in=kotlinx.coroutines.FlowPreview")
-            }
-            
-            if (pluginManager.hasPlugin("org.jetbrains.kotlin.plugin.serialization") ||
-                hasDependency("org.jetbrains.kotlinx", "kotlinx-serialization-core") ||
-                hasDependency("org.jetbrains.kotlinx", "kotlinx-serialization-json")) {
-                list.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi")
-            }
-            
-            list
-        })
+        // Use a static list of opt-ins if the dependency is present at configuration time.
+        // Capturing 'Project' in a provider for freeCompilerArgs breaks Configuration Cache.
+        if (hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-core") ||
+            hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-android")
+        ) {
+            freeCompilerArgs.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
+            freeCompilerArgs.add("-opt-in=kotlinx.coroutines.FlowPreview")
+        }
+
+        if (pluginManager.hasPlugin("org.jetbrains.kotlin.plugin.serialization") ||
+            hasDependency("org.jetbrains.kotlinx", "kotlinx-serialization-core") ||
+            hasDependency("org.jetbrains.kotlinx", "kotlinx-serialization-json")
+        ) {
+            freeCompilerArgs.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi")
+        }
     }
 }
 

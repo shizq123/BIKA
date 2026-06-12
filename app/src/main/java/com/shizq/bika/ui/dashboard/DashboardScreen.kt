@@ -97,6 +97,16 @@ import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.navigation.DiscoveryAction
+import com.shizq.bika.ui.feed.FavoriteTagsDrawer
+import androidx.compose.foundation.clickable
+import com.shizq.bika.core.model.FavoriteTag
+import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.graphics.Color
 
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -239,6 +249,8 @@ fun DashboardScreen(
         else -> {}
     }
 
+    val favoriteTags by viewModel.favoriteTags.collectAsStateWithLifecycle()
+
     DashboardContent(
         userProfileUiState = userProfileUiState,
         lastReadHistory = lastReadHistory,
@@ -256,6 +268,12 @@ fun DashboardScreen(
         onDownloadsClick = onDownloadsClick,
         onNotificationsClick = onNotificationsClick,
         navigationToReader = navigationToReader,
+        favoriteTags = favoriteTags,
+        onAddFavorite = viewModel::addFavoriteTag,
+        onRemoveFavorite = viewModel::removeFavoriteTag,
+        onUpdateFavoriteName = viewModel::updateFavoriteTagName,
+        onMoveFavorite = viewModel::moveFavoriteTag,
+        onAddCustomFavorite = viewModel::addCustomFavoriteTag,
     )
 }
 
@@ -278,6 +296,12 @@ fun DashboardContent(
     onDownloadsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     navigationToReader: (String, Int) -> Unit,
+    favoriteTags: List<FavoriteTag>,
+    onAddFavorite: (FavoriteTag) -> Unit,
+    onRemoveFavorite: (FavoriteTag) -> Unit,
+    onUpdateFavoriteName: (FavoriteTag, String) -> Unit,
+    onMoveFavorite: (fromIndex: Int, toIndex: Int) -> Unit,
+    onAddCustomFavorite: (String) -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -545,6 +569,12 @@ fun DashboardContent(
     }
 
 
+    var showBookmarkDrawer by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = showBookmarkDrawer) {
+        showBookmarkDrawer = false
+    }
+
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch {
             drawerState.close()
@@ -558,8 +588,9 @@ fun DashboardContent(
             }
         }
     }
-    ModalNavigationDrawer(
-        modifier = Modifier.semantics { testTagsAsResourceId = true },
+    Box(modifier = Modifier.fillMaxSize()) {
+        ModalNavigationDrawer(
+            modifier = Modifier.semantics { testTagsAsResourceId = true },
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
@@ -635,6 +666,7 @@ fun DashboardContent(
                     onDrawerOpen = { scope.launch { drawerState.open() } },
                     onSearchClicked = onSearchClick,
                     onChannelPreferenceClicked = onChannelPreferenceClick,
+                    onBookmarkClicked = { showBookmarkDrawer = true },
                 )
             },
             modifier = Modifier
@@ -687,6 +719,46 @@ fun DashboardContent(
             }
         }
     }
+
+        if (showBookmarkDrawer) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        showBookmarkDrawer = false
+                    }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showBookmarkDrawer,
+            enter = slideInHorizontally(initialOffsetX = { it }),
+            exit = slideOutHorizontally(targetOffsetX = { it }),
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(300.dp)
+                .align(Alignment.CenterEnd)
+        ) {
+            FavoriteTagsDrawer(
+                favoriteTags = favoriteTags,
+                currentAction = null,
+                onNavigateToFeed = { action ->
+                    showBookmarkDrawer = false
+                    navigateToFavourite(action)
+                },
+                onAddFavorite = onAddFavorite,
+                onRemoveFavorite = onRemoveFavorite,
+                onUpdateName = onUpdateFavoriteName,
+                onMove = onMoveFavorite,
+                onAddCustom = onAddCustomFavorite,
+                onClose = { showBookmarkDrawer = false }
+            )
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -696,6 +768,7 @@ private fun DashboardAppBar(
     onDrawerOpen: () -> Unit,
     onSearchClicked: () -> Unit,
     onChannelPreferenceClicked: () -> Unit,
+    onBookmarkClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -707,6 +780,16 @@ private fun DashboardAppBar(
             }
         },
         actions = {
+            IconButton(
+                onClick = onBookmarkClicked,
+                modifier = Modifier.testTag("dashboard:bookmark")
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Bookmarks,
+                    contentDescription = "标签收藏夹"
+                )
+            }
+
             IconButton(
                 onClick = onChannelPreferenceClicked,
                 modifier = Modifier.testTag("dashboard:filter")
