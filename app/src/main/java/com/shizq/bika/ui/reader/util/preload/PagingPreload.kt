@@ -1,5 +1,8 @@
+@file:OptIn(FlowPreview::class)
+
 package com.shizq.bika.ui.reader.util.preload
 
+import kotlinx.coroutines.FlowPreview
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember

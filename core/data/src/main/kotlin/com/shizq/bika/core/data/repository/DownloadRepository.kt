@@ -224,7 +224,7 @@ class DownloadRepository @Inject constructor(
             if (!response.isSuccessful) {
                 throw java.io.IOException("Unexpected HTTP code $response")
             }
-            val body = response.body ?: throw java.io.IOException("Empty response body")
+            val body = response.body
             dest.sink().buffer().use { sink ->
                 sink.writeAll(body.source())
             }
