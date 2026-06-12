@@ -9,6 +9,8 @@ import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.model.FavoriteTag
+import kotlinx.coroutines.flow.StateFlow
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
@@ -316,5 +318,59 @@ class DashboardViewModel @Inject constructor(
                 onError(e.localizedMessage ?: "修改密码失败")
             }
         }
+    }
+
+    val favoriteTags: StateFlow<List<FavoriteTag>> = userPreferencesDataSource.userData
+        .map { it.favoriteTags }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
+
+    fun addFavoriteTag(tag: FavoriteTag) {
+        viewModelScope.launch {
+            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            if (currentTags.none { it.name == tag.name && it.actionType == tag.actionType }) {
+                currentTags.add(tag)
+                userPreferencesDataSource.updateFavoriteTags(currentTags)
+            }
+        }
+    }
+
+    fun removeFavoriteTag(tag: FavoriteTag) {
+        viewModelScope.launch {
+            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            currentTags.removeAll { it.name == tag.name && it.actionType == tag.actionType }
+            userPreferencesDataSource.updateFavoriteTags(currentTags)
+        }
+    }
+
+    fun updateFavoriteTagName(tag: FavoriteTag, newName: String) {
+        if (newName.isBlank()) return
+        viewModelScope.launch {
+            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            val index = currentTags.indexOfFirst { it.name == tag.name && it.actionType == tag.actionType }
+            if (index != -1) {
+                currentTags[index] = currentTags[index].copy(name = newName)
+                userPreferencesDataSource.updateFavoriteTags(currentTags)
+            }
+        }
+    }
+
+    fun moveFavoriteTag(fromIndex: Int, toIndex: Int) {
+        viewModelScope.launch {
+            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            if (fromIndex in currentTags.indices && toIndex in currentTags.indices) {
+                val tag = currentTags.removeAt(fromIndex)
+                currentTags.add(toIndex, tag)
+                userPreferencesDataSource.updateFavoriteTags(currentTags)
+            }
+        }
+    }
+
+    fun addCustomFavoriteTag(name: String) {
+        if (name.isBlank()) return
+        addFavoriteTag(FavoriteTag(name = name, actionType = "AdvancedSearch"))
     }
 }

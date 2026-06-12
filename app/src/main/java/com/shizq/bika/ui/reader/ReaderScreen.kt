@@ -1,5 +1,8 @@
+@file:OptIn(FlowPreview::class)
+
 package com.shizq.bika.ui.reader
 
+import kotlinx.coroutines.FlowPreview
 import android.content.pm.ActivityInfo
 import android.view.WindowManager
 import androidx.compose.animation.AnimatedVisibility

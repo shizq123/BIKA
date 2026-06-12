@@ -40,4 +40,14 @@ data class UserPreferences(
     val cachedUserGender: String = "",
     val cachedUserSlogan: String = "",
     val cachedUserCharacters: List<String> = emptyList(),
+    val excludeTopicsGlobal: Boolean = false,
+    val globalExcludedTopics: List<String> = emptyList(),
+    val favoriteTags: List<FavoriteTag> = emptyList(),
+)
+
+@Serializable
+data class FavoriteTag(
+    val name: String,
+    val actionType: String,
+    val actionId: String = ""
 )

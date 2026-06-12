@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.shizq.bika.ui.comicinfo
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import android.util.Log
 
 import androidx.lifecycle.ViewModel

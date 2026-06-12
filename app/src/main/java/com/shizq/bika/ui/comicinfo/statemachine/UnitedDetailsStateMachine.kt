@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.shizq.bika.ui.comicinfo.statemachine
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import android.util.Log
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
