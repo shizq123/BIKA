@@ -273,7 +273,7 @@ private fun FeedContent(
         derivedStateOf {
             val firstIndex = listState.firstVisibleItemIndex
             val computed = currentPage + (firstIndex / 40)
-            computed.coerceIn(1, totalPages)
+            computed.coerceIn(1, totalPages.coerceAtLeast(1))
         }
     }
 

@@ -234,9 +234,17 @@ class BikaDataSource @Inject constructor(
         sort: Sort,
         page: Int
     ): ComicResource {
+        // 针对后端搜索服务对带括号等正则特殊字符在无空格时匹配失败的 Bug：
+        // 若搜索词包含特殊正则元字符且末尾没有 3 个空格，自动追加 3 个空格以绕过服务端的过滤，触发后端的正常分词检索路径
+        val processedContent = if (content.any { it in "()[]{}*+?.\\^$|" } && !content.endsWith("   ")) {
+            content.trimEnd() + "   "
+        } else {
+            content
+        }
+
         return client.post("comics/advanced-search") {
             val body = buildJsonObject {
-                put("keyword", JsonPrimitive(content))
+                put("keyword", JsonPrimitive(processedContent))
                 put("sort", JsonPrimitive(sort.value))
                 putJsonArray("categories") {
                     addAll(categories)
