@@ -187,7 +187,7 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     fun updatePage(page: Int) {
-        val target = page.coerceIn(1, totalPages.value)
+        val target = page.coerceIn(1, totalPages.value.coerceAtLeast(1))
         currentPage.value = target
     }
 
