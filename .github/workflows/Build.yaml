@@ -85,78 +85,33 @@ jobs:
           echo "" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Archive Old Assets and Clear in Latest Release
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Extract Version
+        id: extract_version
         run: |
-          echo "Checking for existing assets in 'latest' release..."
-          if gh release view latest >/dev/null 2>&1; then
-            assets=$(gh release view latest --json assets --jq '.assets[].name' 2>/dev/null || echo "")
-            if [ -n "$assets" ]; then
-              # 创建临时暂存目录
-              mkdir -p /tmp/old_assets
-              for asset in $assets; do
-                echo "Processing asset for archive: $asset"
-                
-                # 使用 bash 正则匹配并提取版本号（例如从 BIKA_v1.10.6.1.apk 提取出 v1.10.6.1）
-                if [[ "$asset" =~ BIKA_(v[0-9\.]+)\.apk ]]; then
-                  tag_name="${BASH_REMATCH[1]}"
-                  echo "Parsed version tag: $tag_name"
-                  
-                  # 1. 从 latest 下载旧资产到本地暂存
-                  echo "Downloading $asset from 'latest' release..."
-                  gh release download latest -p "$asset" -D /tmp/old_assets || true
-                  
-                  # 2. 从 latest 彻底删除该资产
-                  echo "Deleting $asset from 'latest' release..."
-                  gh release delete-asset latest "$asset" -y || true
-                  
-                  # 3. 归档到对应版本号的独立 Tag Release 中
-                  if [ -f "/tmp/old_assets/$asset" ]; then
-                    echo "Checking if archive release '$tag_name' exists..."
-                    if gh release view "$tag_name" >/dev/null 2>&1; then
-                      echo "Archive release '$tag_name' exists. Uploading $asset..."
-                      gh release upload "$tag_name" "/tmp/old_assets/$asset" --clobber || true
-                    else
-                      echo "Archive release '$tag_name' does not exist. Creating new release and uploading $asset..."
-                      gh release create "$tag_name" "/tmp/old_assets/$asset" \
-                        --title "Release $tag_name" \
-                        --notes "由 GitHub Actions 自动归档的历史构建版本 ($tag_name)。" || true
-                    fi
-                  else
-                    echo "Error: Failed to download $asset to local workspace."
-                  fi
-                else
-                  # 如果不匹配版本格式，说明是其他非规范资产，直接从 latest 移除以清理
-                  echo "Asset $asset does not match standard version pattern. Deleting directly..."
-                  gh release delete-asset latest "$asset" -y || true
-                fi
-              done
+          apk_file=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          if [ -n "$apk_file" ]; then
+            filename=$(basename "$apk_file")
+            if [[ "$filename" =~ BIKA_v?([0-9\.]+)\.apk ]]; then
+              version="v${BASH_REMATCH[1]}"
+              echo "Successfully extracted version: $version"
             else
-              echo "No existing assets found in 'latest' release."
+              version="vunknown"
+              echo "Warning: Filename $filename does not match pattern."
             fi
           else
-            echo "'latest' release does not exist yet. Skipping archive and cleanup."
+            version="vunknown"
+            echo "Error: No APK file found."
           fi
+          echo "version=$version" >> $GITHUB_OUTPUT
 
-      - name: Delete Old Latest Release and Tag
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          # 删除旧的 latest release（含 tag），让 softprops 全新创建，
-          # 确保 created_at 时间戳 = 本次构建时间，始终排在 Releases 列表第一位。
-          gh release delete latest --yes --cleanup-tag 2>/dev/null || true
-
-      - name: Create Continuous Release
-        if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+      - name: Create Release
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.extract_version.outputs.version != 'vunknown'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: latest
-          name: Continuous Build (Latest)
+          tag_name: ${{ steps.extract_version.outputs.version }}
+          name: Release ${{ steps.extract_version.outputs.version }}
           body: |
-            自动打包成功！这是最新的自动构建版本。
+            自动打包成功！这是最新发布的构建版本。
             
             ### 📝 最新更新内容 (Git Commit Info)
             ${{ steps.changelog.outputs.latest_commit }}
@@ -169,7 +124,7 @@ jobs:
             **构建分支**: `${{ github.ref_name }}`
             **提交哈希**: `${{ github.sha }}`
             **构建时间**: ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
-          prerelease: true
+          prerelease: false
           make_latest: true
           files: |
             app/build/outputs/apk/release/*.apk
