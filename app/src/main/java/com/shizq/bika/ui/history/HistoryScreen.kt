@@ -30,6 +30,7 @@ fun HistoryScreen(
     viewModel: HistoryViewModel = hiltViewModel(),
     onComicClick: (String) -> Unit,
     onBackClick: () -> Unit,
+    onReadLatestClick: (comicId: String, latestOrder: Int) -> Unit,
 ) {
     val historiesState by viewModel.historiesWithReadChapters.collectAsStateWithLifecycle()
     val dialogState by viewModel.dialogState.collectAsStateWithLifecycle()
@@ -44,6 +45,7 @@ fun HistoryScreen(
         onDeleteAllClick = viewModel::requestClearAllHistory,
         onComicClick = onComicClick,
         onBackClick = onBackClick,
+        onReadLatestClick = onReadLatestClick,
     )
 }
 
@@ -55,6 +57,7 @@ private fun HistoryContent(
     onDeleteAllClick: () -> Unit = {},
     onComicClick: (String) -> Unit = {},
     onBackClick: () -> Unit = {},
+    onReadLatestClick: (comicId: String, latestOrder: Int) -> Unit = { _, _ -> },
 ) {
     Scaffold(
         topBar = {
@@ -85,6 +88,9 @@ private fun HistoryContent(
                     },
                     onLongClick = {
                         onDeleteOneClick(item.history.id, item.history.title)
+                    },
+                    onReadLatestClick = { order ->
+                        onReadLatestClick(item.history.id, order)
                     }
                 )
             }

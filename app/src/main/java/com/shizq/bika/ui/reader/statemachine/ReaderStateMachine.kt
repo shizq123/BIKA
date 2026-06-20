@@ -1,10 +1,16 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.shizq.bika.ui.reader.statemachine
 
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.shizq.bika.core.data.model.asExternalModel
+import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
+import com.shizq.bika.core.database.model.ReadingHistoryEntity
+import kotlinx.coroutines.flow.first
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.state.ChapterState
@@ -13,8 +19,11 @@ import com.shizq.bika.ui.reader.state.ReaderSheet
 import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.state.UiControlState
+import com.shizq.bika.core.coroutine.ApplicationScope
 import jakarta.inject.Inject
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
 
@@ -22,6 +31,8 @@ class ReaderStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
+    private val downloadRepository: DownloadRepository,
+    @ApplicationScope private val externalScope: CoroutineScope,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
     init {
         spec {
@@ -46,7 +57,9 @@ class ReaderStateMachine @Inject constructor(
                     val newOrder = chapter.chapter.order
                     savedStateHandle["order"] = newOrder
 
-                    val startPage = getStartPage(snapshot.id, newOrder)
+                    // startFromBeginning=true：自动跳转到下一章，始终从第 0 页开始。
+                    // startFromBeginning=false（默认）：手动跳章，恢复该章节上次阅读位置。
+                    val startPage = if (chapter.startFromBeginning) 0 else getStartPage(snapshot.id, newOrder)
                     mutate {
                         val newChapterState = ChapterState(
                             order = newOrder,
@@ -78,18 +91,43 @@ class ReaderStateMachine @Inject constructor(
 
                     val id = snapshot.id
                     if (id.isNotEmpty() && meta != null) {
-                        withContext(Dispatchers.IO) {
+                        val pageIndex = it.pageIndex
+                        externalScope.launch(Dispatchers.IO) {
                             val now = Clock.System.now()
-                            historyDao.updateLastReadAt(id, now)
+                            val affectedRows = historyDao.updateLastReadAt(id, now)
+                            if (affectedRows == 0) {
+                                // 历史条目不存在（如离线直接打开下载章节），为避免外键冲突，先插入默认漫画主历史记录
+                                val task = downloadRepository.getTaskById(DownloadRepository.taskId(id, chapter.order)).first()
+                                val title = task?.comicTitle ?: meta.title.ifEmpty { "Comic $id" }
+                                val coverUrl = task?.coverUrl ?: ""
+                                val newRecord = ReadingHistoryEntity(
+                                    id = id,
+                                    title = title,
+                                    author = "未知作者",
+                                    coverUrl = coverUrl,
+                                    lastInteractionAt = now
+                                )
+                                historyDao.upsertHistory(newRecord)
+                            }
+
+                            // 如果翻到最后一页或最后2页，则直接保存当前页为总页数，反馈已经看完
+                            val isFinished = meta.totalImages > 0 && pageIndex >= meta.totalImages - 2
+                            val savedPage = if (isFinished) meta.totalImages else pageIndex
 
                             val chapterProgress = ChapterProgressEntity(
                                 historyId = id,
                                 chapterId = chapter.order,
-                                currentPage = it.pageIndex,
+                                currentPage = savedPage,
                                 pageCount = meta.totalImages,
                                 lastReadAt = now
                             )
                             historyDao.upsertChapterProgress(chapterProgress)
+
+                            // 如果看完，则同步将该章节的下载任务标记为已查看
+                            if (isFinished) {
+                                val taskId = DownloadRepository.taskId(id, chapter.order)
+                                downloadRepository.markAsViewed(taskId)
+                            }
                         }
                     }
                 }
@@ -108,13 +146,41 @@ class ReaderStateMachine @Inject constructor(
                 onActionEffect<ReaderAction.SetVolumeKeyNavigation> {
                     userPreferencesDataSource.setIsVolumeKeyNavigation(it.enable)
                 }
+                onActionEffect<ReaderAction.SetEyeCareEnabled> {
+                    userPreferencesDataSource.setEyeCareEnabled(it.enable)
+                }
+                onActionEffect<ReaderAction.SetEyeCareDarkness> {
+                    userPreferencesDataSource.setEyeCareDarkness(it.darkness)
+                }
+                onActionEffect<ReaderAction.SetAutoScrollEnabled> {
+                    userPreferencesDataSource.setAutoScrollEnabled(it.enable)
+                }
+                onActionEffect<ReaderAction.SetAutoScrollSpeed> {
+                    userPreferencesDataSource.setAutoScrollSpeed(it.speed)
+                }
+                onActionEffect<ReaderAction.SetBookSpreadsMode> {
+                    userPreferencesDataSource.setBookSpreadsMode(it.mode)
+                }
+                onActionEffect<ReaderAction.SetMagnifierEnabled> {
+                    userPreferencesDataSource.setMagnifierEnabled(it.enable)
+                }
+                onActionEffect<ReaderAction.SetStatusBarCapsuleEnabled> {
+                    userPreferencesDataSource.setStatusBarCapsuleEnabled(it.enable)
+                }
                 collectWhileInState(userPreferencesDataSource.userData) {
                     val newConfig = ReaderConfig(
                         volumeKeyNavigation = it.volumeKeyNavigation,
                         readingMode = it.readingMode,
                         screenOrientation = it.screenOrientation,
                         tapZoneLayout = it.tapZoneLayout,
-                        preloadCount = it.preloadCount
+                        preloadCount = it.preloadCount,
+                        eyeCareEnabled = it.eyeCareEnabled,
+                        eyeCareDarkness = it.eyeCareDarkness,
+                        autoScrollEnabled = it.autoScrollEnabled,
+                        autoScrollSpeed = it.autoScrollSpeed,
+                        bookSpreadsMode = it.bookSpreadsMode,
+                        magnifierEnabled = it.magnifierEnabled,
+                        statusBarCapsuleEnabled = it.statusBarCapsuleEnabled,
                     )
                     mutate { copy(config = newConfig) }
                 }
@@ -153,7 +219,13 @@ class ReaderStateMachine @Inject constructor(
             val history = historyDao.getDetailedHistoryById(historyId) ?: return@withContext 0
             history.asExternalModel().progressList
                 .find { it.chapterNumber == chapterOrder }
-                ?.currentPage ?: 0
+                ?.let { progress ->
+                    if (progress.currentPage >= progress.pageCount && progress.pageCount > 0) {
+                        0
+                    } else {
+                        progress.currentPage
+                    }
+                } ?: 0
         }
     }
 }

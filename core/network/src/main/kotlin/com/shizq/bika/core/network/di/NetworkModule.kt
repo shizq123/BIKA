@@ -35,12 +35,9 @@ import io.ktor.utils.io.charsets.Charsets
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 
-// TODO: 一个暂时的操作，迁移后删除
-var ProjectOkhttp: OkHttpClient? = null
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -73,7 +70,7 @@ internal object NetworkModule {
             level = LogLevel.ALL
         }
         bikaAuth {
-            appChannel = runBlocking {
+            channel {
                 when (userPreferencesDataSource.userData.first().selectedNetworkLine) {
                     NetworkLine.LINE_1 -> "1"
                     NetworkLine.LINE_2 -> "2"
@@ -96,7 +93,6 @@ internal object NetworkModule {
             .authenticator(tokenAuthenticator)
             .dns(directDns)
             .build()
-            .also { ProjectOkhttp = it }
     }
 
     @Provides

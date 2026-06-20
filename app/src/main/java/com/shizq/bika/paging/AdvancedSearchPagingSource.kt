@@ -14,6 +14,8 @@ class AdvancedSearchPagingSource @AssistedInject constructor(
     @Assisted private val query: String,
     @Assisted private val sort: Sort,
 ) : PagingSource<Int, ComicSimple>() {
+    var onPageInfoLoaded: ((totalPages: Int, totalCount: Int) -> Unit)? = null
+
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSimple> {
         val page = params.key ?: 1
 
@@ -27,11 +29,13 @@ class AdvancedSearchPagingSource @AssistedInject constructor(
 
             val comicsPage = response.comics
 
-            LoadResult.Page(
+            LoadResult.Page<Int, ComicSimple>(
                 data = comicsPage.docs,
                 prevKey = null,
                 nextKey = if (page >= comicsPage.pages) null else page + 1
-            )
+            ).also {
+                onPageInfoLoaded?.invoke(comicsPage.pages, comicsPage.total)
+            }
         } catch (e: Exception) {
             LoadResult.Error(e)
         }

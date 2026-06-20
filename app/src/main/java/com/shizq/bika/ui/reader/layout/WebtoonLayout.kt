@@ -1,6 +1,7 @@
 package com.shizq.bika.ui.reader.layout
 
 import androidx.compose.foundation.gestures.animateScrollBy
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -17,10 +18,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 class WebtoonLayout(
     private val listState: LazyListState,
     private val hasPageGap: Boolean
-) : ReaderPageLayout {
+) : ReaderLayout {
     @Composable
     override fun Content(
-        pageItems: LazyPagingItems<ChapterPage>,
+        chapterPages: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
         LazyColumn(
@@ -29,10 +30,10 @@ class WebtoonLayout(
             verticalArrangement = if (hasPageGap) Arrangement.spacedBy(8.dp) else Arrangement.Top
         ) {
             items(
-                count = pageItems.itemCount,
-                key = pageItems.itemKey { it.id },
+                count = chapterPages.itemCount,
+                key = chapterPages.itemKey { it.id },
             ) { index ->
-                pageItems[index]?.let {
+                chapterPages[index]?.let {
                     ComicPageItem(it, index)
                 }
             }
@@ -67,11 +68,16 @@ class WebtoonController(
     }
 
     override suspend fun scrollToPage(index: Int) {
-        val totalItems = listState.layoutInfo.totalItemsCount
-        if (!hasPages(totalItems)) return
+        val total = listState.layoutInfo.totalItemsCount
+        if (total > 0) {
+            listState.scrollToItem(index.coerceIn(0, total - 1))
+        } else {
+            listState.scrollToItem(index.coerceAtLeast(0))
+        }
+    }
 
-        val targetIndex = index.coerceToPageIndex(totalItems)
-        listState.scrollToItem(targetIndex)
+    override suspend fun scrollBy(value: Float) {
+        listState.scrollBy(value)
     }
 
     /**
@@ -90,7 +96,7 @@ class WebtoonController(
         val firstVisibleItem = visibleItems.first()
 
         // 判定是否到底：最后一项可见且底部在视口内
-        val isLastItemVisible = lastVisibleItem.index == lastPageIndex(layoutInfo.totalItemsCount)
+        val isLastItemVisible = lastVisibleItem.index == layoutInfo.totalItemsCount - 1
         if (isLastItemVisible) {
             val isBottomEdgeVisible =
                 (lastVisibleItem.offset + lastVisibleItem.size) <= layoutInfo.viewportEndOffset

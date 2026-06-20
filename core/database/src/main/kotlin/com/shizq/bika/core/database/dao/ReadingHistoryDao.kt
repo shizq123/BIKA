@@ -90,4 +90,21 @@ interface ReadingHistoryDao {
 
     @Query("UPDATE readingHistory SET lastInteractionAt = :newTimestamp WHERE id = :id")
     suspend fun updateLastReadAt(id: String, newTimestamp: Instant): Int
+
+    @Query("UPDATE readingHistory SET isFavourited = :isFavourited WHERE id = :id")
+    suspend fun updateIsFavourited(id: String, isFavourited: Boolean): Int
+
+    /**
+     * 获取某本漫画所有已阅读章节的进度列表，实时 Flow，用于下载列表标记阅读记录。
+     * @param comicId 漫画 ID（对应 historyId）
+     */
+    @Query("SELECT * FROM chapterProgress WHERE historyId = :comicId")
+    fun getChapterProgressByComic(comicId: String): Flow<List<ChapterProgressEntity>>
+
+    /**
+     * 获取所有漫画所有已阅读章节的进度，供第一层漫画列表显示阅读状态统计。
+     * 返回 Flow 实时更新。
+     */
+    @Query("SELECT * FROM chapterProgress")
+    fun getAllChapterProgress(): Flow<List<ChapterProgressEntity>>
 }

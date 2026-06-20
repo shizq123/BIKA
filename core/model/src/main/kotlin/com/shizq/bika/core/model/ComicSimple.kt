@@ -18,6 +18,8 @@ data class ComicSimple(
     val tags: List<String> = emptyList(),
     @SerialName("thumb")
     val image: Image2,
+    val isFavourited: Boolean = false,
+    val lastReadChapterProgress: String? = null,
 )
 
 @Serializable

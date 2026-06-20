@@ -8,6 +8,8 @@ import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterMeta
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 
+import com.shizq.bika.core.model.BookSpreadsMode
+
 sealed interface ReaderUiState {
     @Immutable
     data class Initializing(val id: String, val order: Int) : ReaderUiState
@@ -49,7 +51,7 @@ sealed interface SeekState {
 }
 
 sealed interface ReaderAction {
-    data class JumpToChapter(val chapter: Chapter) : ReaderAction
+    data class JumpToChapter(val chapter: Chapter, val startFromBeginning: Boolean = false) : ReaderAction
     data class SyncReadingProgress(val pageIndex: Int) : ReaderAction
 
     data object ToggleBarsVisibility : ReaderAction
@@ -62,6 +64,13 @@ sealed interface ReaderAction {
     data class SetPreloadCount(val count: Int) : ReaderAction
     data class SetTapZoneLayout(val layout: TapZoneLayout) : ReaderAction
     data class SetVolumeKeyNavigation(val enable: Boolean) : ReaderAction
+    data class SetEyeCareEnabled(val enable: Boolean) : ReaderAction
+    data class SetEyeCareDarkness(val darkness: Float) : ReaderAction
+    data class SetAutoScrollEnabled(val enable: Boolean) : ReaderAction
+    data class SetAutoScrollSpeed(val speed: Int) : ReaderAction
+    data class SetBookSpreadsMode(val mode: BookSpreadsMode) : ReaderAction
+    data class SetMagnifierEnabled(val enable: Boolean) : ReaderAction
+    data class SetStatusBarCapsuleEnabled(val enable: Boolean) : ReaderAction
 
     data class ChapterMetaLoaded(val meta: ChapterMeta) : ReaderAction
 

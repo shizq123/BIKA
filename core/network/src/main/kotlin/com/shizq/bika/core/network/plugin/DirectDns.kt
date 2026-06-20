@@ -48,13 +48,19 @@ class DirectDns @Inject constructor(
     override fun lookup(hostname: String): List<InetAddress> {
         val currentIps = ipListRef.load()
 
-        if (currentIps.isNotEmpty()) {
+        if (currentIps.isNotEmpty() && isBikaHost(hostname)) {
             Log.d(TAG, "Returning global IP list for hostname: $hostname")
             return currentIps
         }
 
-        Log.d(TAG, "Global IP list is empty. Falling back to system DNS for: $hostname")
+        Log.d(TAG, "Global IP list is empty or non-Bika host. Falling back to system DNS for: $hostname")
         return Dns.SYSTEM.lookup(hostname)
+    }
+
+    private fun isBikaHost(hostname: String): Boolean {
+        return hostname.contains("picacomic.com", ignoreCase = true) ||
+               hostname.contains("diwodiwo.xyz", ignoreCase = true) ||
+               hostname.contains("tipatipa.xyz", ignoreCase = true)
     }
 }
 

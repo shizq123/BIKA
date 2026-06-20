@@ -3,17 +3,18 @@ name: Build
 on:
   workflow_dispatch:
   push:
-    branches:
-      - master
   pull_request:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  test_and_apk:
-    name: "Local tests and APKs"
+  build_apk:
+    name: "Build APKs"
     runs-on: ubuntu-latest
 
     permissions:
@@ -25,33 +26,105 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 5
 
       - name: Copy CI gradle.properties
         run: mkdir -p ~/.gradle ; cp .github/ci-gradle.properties ~/.gradle/gradle.properties
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: 21
+          distribution: 'temurin'
+          java-version: '21'
 
       - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v6
+        uses: gradle/actions/setup-gradle@v4
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
-          build-scan-publish: true
-          build-scan-terms-of-use-url: "https://gradle.com/terms-of-service"
-          build-scan-terms-of-use-agree: "yes"
+          build-scan-publish: false
 
-      - name: Check build-logic
-        run: ./gradlew :build-logic:convention:check
+      - name: Decrypt and Configure Keystore
+        env:
+          SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
+          KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || '123456' }}
+          ALIAS: ${{ secrets.ALIAS || 'shizq' }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD || '123456' }}
+        run: |
+          if [ -n "$SIGNING_KEY" ]; then
+            echo "$SIGNING_KEY" | base64 -d > app/appkey.jks
+            echo "STORE_FILE=appkey.jks" >> local.properties
+            echo "STORE_PASSWORD=$KEY_STORE_PASSWORD" >> local.properties
+            echo "KEY_ALIAS=$ALIAS" >> local.properties
+            echo "KEY_PASSWORD=$KEY_PASSWORD" >> local.properties
+            echo "Keystore successfully configured."
+          else
+            echo "Warning: SIGNING_KEY secret is empty. Skipping signing configuration."
+          fi
 
-      - name: Build all build type and flavor permutations
-        run: ./gradlew :app:assemble -PminifyWithR8=false
+      - name: Build Release APK
+        run: ./gradlew :app:assembleRelease -PminifyWithR8=false
 
       - name: Upload build outputs (APKs)
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@v4
         with:
           name: APKs
-          path: '**/build/outputs/apk/**/*.apk'
+          path: 'app/build/outputs/apk/release/*.apk'
+
+      - name: Generate Git Changelog
+        id: changelog
+        run: |
+          echo "git_changelog<<EOF" >> $GITHUB_OUTPUT
+          git log -5 --pretty=format:"* %s (%h) - %an" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          echo "latest_commit<<EOF" >> $GITHUB_OUTPUT
+          git log -1 --pretty=format:"%B" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Extract Version
+        id: extract_version
+        run: |
+          apk_file=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+          if [ -n "$apk_file" ]; then
+            filename=$(basename "$apk_file")
+            if [[ "$filename" =~ BIKA_v?([0-9\.]+)\.apk ]]; then
+              version="v${BASH_REMATCH[1]}"
+              echo "Successfully extracted version: $version"
+            else
+              version="vunknown"
+              echo "Warning: Filename $filename does not match pattern."
+            fi
+          else
+            version="vunknown"
+            echo "Error: No APK file found."
+          fi
+          echo "version=$version" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.extract_version.outputs.version != 'vunknown'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.extract_version.outputs.version }}
+          name: Release ${{ steps.extract_version.outputs.version }}
+          body: |
+            自动打包成功！这是最新发布的构建版本。
+            
+            ### 📝 最新更新内容 (Git Commit Info)
+            ${{ steps.changelog.outputs.latest_commit }}
+            
+            ---
+            ### 📜 近期提交历史 (Changelog)
+            ${{ steps.changelog.outputs.git_changelog }}
+            
+            ---
+            **构建分支**: `${{ github.ref_name }}`
+            **提交哈希**: `${{ github.sha }}`
+            **构建时间**: ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+          prerelease: false
+          make_latest: true
+          files: |
+            app/build/outputs/apk/release/*.apk

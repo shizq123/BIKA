@@ -93,6 +93,5 @@ private fun mapSortToDisplayName(sort: Sort): String {
         Sort.OLDEST -> "最早发布"
         Sort.MOST_LIKED -> "最多喜欢"
         Sort.MOST_VIEWED -> "最多浏览"
-        else -> sort.value
     }
 }

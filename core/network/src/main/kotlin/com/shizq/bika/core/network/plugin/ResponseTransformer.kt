@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.shizq.bika.core.network.plugin
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import com.shizq.bika.core.network.model.Box
 import io.ktor.client.plugins.api.ClientPlugin
 import io.ktor.client.plugins.api.createClientPlugin

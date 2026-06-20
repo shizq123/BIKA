@@ -124,6 +124,7 @@ fun CommentsPage(
                     replyingTo = writingState.replyTo?.user?.name,
                     onSend = {
                         onPostComment(text, writingState.replyTo?.id)
+                        setText("")
                         actionState = CommentsPageActionState.Idle
                     },
                     focusRequester = focusRequester

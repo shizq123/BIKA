@@ -18,6 +18,9 @@ interface DownloadTaskDao {
     @Delete
     suspend fun deleteTask(task: DownloadTaskEntity)
 
+    @Delete
+    suspend fun deleteTasks(tasks: List<DownloadTaskEntity>)
+
     @Query("DELETE FROM downloadTask WHERE id = :taskId")
     suspend fun deleteTaskById(taskId: String)
 
@@ -51,8 +54,8 @@ interface DownloadTaskDao {
     @Query("UPDATE downloadTask SET isViewed = 1 WHERE id = :taskId")
     suspend fun markAsViewed(taskId: String)
 
-    /** 获取所有下载任务（按创建时间降序），供下载列表页使用 */
-    @Query("SELECT * FROM downloadTask ORDER BY createdAt DESC")
+    /** 获取所有下载任务，先按优先级降序，再按创建时间降序，供下载列表页使用 */
+    @Query("SELECT * FROM downloadTask ORDER BY priority DESC, createdAt DESC")
     fun getAllTasks(): Flow<List<DownloadTaskEntity>>
 
     /** 获取某本漫画的所有已下载章节 */
@@ -64,6 +67,14 @@ interface DownloadTaskDao {
     fun getTaskById(taskId: String): Flow<DownloadTaskEntity?>
 
     /** 获取所有进行中的任务（App 重启后可恢复） */
-    @Query("SELECT * FROM downloadTask WHERE status = 'DOWNLOADING' OR status = 'PENDING'")
+    @Query("SELECT * FROM downloadTask WHERE status = 'DOWNLOADING' OR status = 'PENDING' ORDER BY priority DESC, createdAt ASC")
     suspend fun getPendingTasks(): List<DownloadTaskEntity>
+
+    /** 更新任务优先级 */
+    @Query("UPDATE downloadTask SET priority = :priority WHERE id = :taskId")
+    suspend fun updateTaskPriority(taskId: String, priority: Int)
+
+    /** 获取当前最大的 priority */
+    @Query("SELECT IFNULL(MAX(priority), 0) FROM downloadTask")
+    suspend fun getMaxPriority(): Int
 }

@@ -1,4 +1,3 @@
-import androidx.room.gradle.RoomExtension
 import com.google.devtools.ksp.gradle.KspExtension
 import com.shizq.bika.libs
 import org.gradle.api.Plugin
@@ -18,11 +17,25 @@ class AndroidRoomConventionPlugin : Plugin<Project> {
                 arg("room.generateKotlin", "true")
             }
 
-            extensions.configure<RoomExtension> {
-                // The schemas directory contains a schema file for each version of the Room database.
-                // This is required to enable Room auto migrations.
-                // See https://developer.android.com/reference/kotlin/androidx/room/AutoMigration.
-                schemaDirectory("$projectDir/schemas")
+            val room = extensions.findByName("room") as? Any
+            if (room != null) {
+                try {
+                    val roomClazz = Class.forName("androidx.room.gradle.RoomExtension")
+                    val method = roomClazz.getMethod("schemaDirectory", String::class.java)
+                    method.invoke(room, "$projectDir/schemas")
+                } catch (e: Throwable) {
+                    val method = room::class.java.methods.firstOrNull { 
+                        it.name == "schemaDirectory" && 
+                        it.parameterCount == 1 && 
+                        it.parameterTypes[0] == String::class.java &&
+                        !java.lang.reflect.Modifier.isStatic(it.modifiers)
+                    }
+                    if (method != null) {
+                        method.invoke(room, "$projectDir/schemas")
+                    } else {
+                        throw e
+                    }
+                }
             }
 
             dependencies {

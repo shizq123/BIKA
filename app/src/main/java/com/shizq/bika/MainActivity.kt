@@ -43,10 +43,39 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var lazyStats: Lazy<JankStats>
+
+    @Inject
+    lateinit var userPreferencesDataSource: com.shizq.bika.core.datastore.UserPreferencesDataSource
+
     private val viewModel: MainActivityViewModel by viewModels()
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        lifecycleScope.launch {
+            userPreferencesDataSource.userData
+                .map { it.isLoggingEnabled }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    com.shizq.bika.core.common.BikaLog.init(applicationContext, enabled)
+                    if (enabled) {
+                        com.shizq.bika.core.common.BikaLog.i("MainActivity", "Application launch: Logging system enabled.")
+                    }
+                }
+        }
+
+        lifecycleScope.launch {
+            userPreferencesDataSource.userData
+                .map { it.secureScreenEnabled }
+                .distinctUntilChanged()
+                .collect { enabled ->
+                    if (enabled) {
+                        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                    } else {
+                        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                    }
+                }
+        }
 
         var themeSettings by mutableStateOf(
             ThemeSettings(

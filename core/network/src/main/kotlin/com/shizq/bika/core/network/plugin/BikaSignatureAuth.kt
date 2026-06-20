@@ -32,6 +32,11 @@ class BikaAuthConfig {
     var appUuid: String = "defaultUuid"
     var appPlatform: String = "android"
 
+    internal var channelProvider: suspend () -> String = { "1" }
+    fun channel(block: suspend () -> String) {
+        channelProvider = block
+    }
+
     internal var tokenProvider: suspend () -> String? = { null }
     fun token(block: suspend () -> String?) {
         tokenProvider = block
@@ -62,7 +67,7 @@ val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
 
                 append("api-key", config.apiKey)
                 append("accept", "application/vnd.picacomic.com.v1+json")
-                append("app-channel", config.appChannel)
+                append("app-channel", config.channelProvider())
                 append("time", time)
                 append("nonce", nonce)
                 append("signature", signature)

@@ -1,5 +1,8 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.shizq.bika.core.network
 
+import kotlinx.serialization.ExperimentalSerializationApi
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.model.ActionData
 import com.shizq.bika.core.network.model.ChapterPagesData
@@ -17,6 +20,7 @@ import com.shizq.bika.core.network.model.KnightLeaderboardData
 import com.shizq.bika.core.network.model.LeaderboardData
 import com.shizq.bika.core.network.model.LoginData
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
+import com.shizq.bika.core.network.model.NotificationsData
 import com.shizq.bika.core.network.model.ProfileData
 import com.shizq.bika.core.network.model.RecommendationData
 import com.shizq.bika.core.network.model.Type
@@ -26,6 +30,7 @@ import io.ktor.client.call.body
 import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
+import io.ktor.client.request.put
 import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import jakarta.inject.Inject
@@ -51,31 +56,55 @@ class BikaDataSource @Inject constructor(
     }
 
     suspend fun login(username: String, password: String): LoginData {
-        val response = client.post("auth/sign-in") {
-            attributes.put(ExpectRawResponse, Unit)
-            val jsonBody = buildJsonObject {
-                put("email", JsonPrimitive(username))
-                put("password", JsonPrimitive(password))
+        return try {
+            val response = client.post("auth/sign-in") {
+                attributes.put(ExpectRawResponse, Unit)
+                val jsonBody = buildJsonObject {
+                    put("email", JsonPrimitive(username))
+                    put("password", JsonPrimitive(password))
+                }
+                setBody(jsonBody)
             }
-            setBody(jsonBody)
-        }
 
-        val jsonObj = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-        val code = jsonObj["code"]?.jsonPrimitive?.int
+            val jsonObj = Json.parseToJsonElement(response.bodyAsText()).jsonObject
+            val code = jsonObj["code"]?.jsonPrimitive?.int
 
-        return if (code == 200) {
-            val dataObj = jsonObj["data"]?.jsonObject ?: throw Exception("数据异常")
-            val token = dataObj["token"]?.jsonPrimitive?.content ?: throw Exception("Token为空")
-            LoginData(token = token, message = null)
-        } else {
-            val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
-            LoginData(token = null, message = msg)
+            if (code == 200) {
+                val dataObj = jsonObj["data"]?.jsonObject ?: throw Exception("数据异常")
+                val token = dataObj["token"]?.jsonPrimitive?.content ?: throw Exception("Token为空")
+                LoginData(token = token, message = null)
+            } else {
+                val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
+                LoginData(token = null, message = msg)
+            }
+        } catch (e: Exception) {
+            LoginData(token = null, message = e.message ?: "登录失败")
         }
     }
 
     suspend fun punchIn() {
         client.post("users/punch-in").bodyAsText()
     }
+
+    suspend fun updateUserProfileSlogan(slogan: String) {
+        client.put("users/profile") {
+            val jsonBody = buildJsonObject {
+                put("slogan", JsonPrimitive(slogan))
+            }
+            setBody(jsonBody)
+        }.bodyAsText()
+    }
+
+    suspend fun changePassword(oldPassword: String, newPassword: String) {
+        client.put("users/password") {
+            val jsonBody = buildJsonObject {
+                put("old_password", JsonPrimitive(oldPassword))
+                put("password", JsonPrimitive(newPassword))
+            }
+            setBody(jsonBody)
+        }.bodyAsText()
+    }
+
 
     suspend fun fetchUserProfile(): ProfileData {
         return client.get("users/profile").body()
@@ -132,9 +161,8 @@ class BikaDataSource @Inject constructor(
         }.body<ChapterPagesData>()
     }
 
-    // todo add type parameter
-    suspend fun getComicComments(id: String, page: Int): CommentsData {
-        return client.get("comics/$id/comments/") {
+    suspend fun getComments(type: Type, id: String, page: Int): CommentsData {
+        return client.get("${type.type}/$id/comments/") {
             parameter("page", page)
         }.body()
     }
@@ -150,14 +178,20 @@ class BikaDataSource @Inject constructor(
 
     suspend fun addReply(type: Type, id: String, content: String) {
         client.post("${type.type}/$id/comments") {
-            setBody("""{"content":"$content"}""")
+            val jsonBody = buildJsonObject {
+                put("content", JsonPrimitive(content))
+            }
+            setBody(jsonBody)
         }.bodyAsText()
     }
 
-    suspend fun getGameComments(id: String, page: Int): CommentsData {
-        return client.get("games/$id/comments/") {
-            parameter("page", page)
-        }.body()
+    suspend fun addCommentReply(commentId: String, content: String) {
+        client.post("comments/$commentId") {
+            val jsonBody = buildJsonObject {
+                put("content", JsonPrimitive(content))
+            }
+            setBody(jsonBody)
+        }.bodyAsText()
     }
 
     /**
@@ -200,9 +234,17 @@ class BikaDataSource @Inject constructor(
         sort: Sort,
         page: Int
     ): ComicResource {
+        // 针对后端搜索服务对带括号等正则特殊字符在无空格时匹配失败的 Bug：
+        // 若搜索词包含特殊正则元字符且末尾没有 3 个空格，自动追加 3 个空格以绕过服务端的过滤，触发后端的正常分词检索路径
+        val processedContent = if (content.any { it in "()[]{}*+?.\\^$|" } && !content.endsWith("   ")) {
+            content.trimEnd() + "   "
+        } else {
+            content
+        }
+
         return client.post("comics/advanced-search") {
             val body = buildJsonObject {
-                put("keyword", JsonPrimitive(content))
+                put("keyword", JsonPrimitive(processedContent))
                 put("sort", JsonPrimitive(sort.value))
                 putJsonArray("categories") {
                     addAll(categories)
@@ -250,6 +292,12 @@ class BikaDataSource @Inject constructor(
 
     suspend fun mineComment(page: Int): CommentDoc {
         return client.get("users/my-comments") {
+            parameter("page", page)
+        }.body()
+    }
+
+    suspend fun getNotifications(page: Int): NotificationsData {
+        return client.get("users/notifications") {
             parameter("page", page)
         }.body()
     }

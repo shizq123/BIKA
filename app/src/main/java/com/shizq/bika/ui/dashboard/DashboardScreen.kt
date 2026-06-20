@@ -16,10 +16,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material3.ElevatedCard
+import androidx.compose.material3.CardDefaults
+import com.shizq.bika.core.database.model.DetailedHistory
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -33,7 +38,12 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.material3.Button
+
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -76,17 +86,32 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.background
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.navigation.DiscoveryAction
-import com.shizq.bika.ui.chatroom.current.roomlist.ChatRoomListActivity
+import com.shizq.bika.ui.feed.FavoriteTagsDrawer
+import androidx.compose.foundation.clickable
+import com.shizq.bika.core.model.FavoriteTag
+import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.graphics.Color
+
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
 
 @Composable
 fun DashboardScreen(
@@ -94,31 +119,160 @@ fun DashboardScreen(
     navigateToFavourite: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
-    navigateToGame: () -> Unit,
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
     onDownloadsClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    navigationToReader: (String, Int) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val lastReadHistory by viewModel.lastReadHistory.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    
+    var checkInDialogMessage by remember { mutableStateOf<String?>(null) }
+
     LaunchedEffect(Unit) {
-        viewModel.onCheckIn()
+        viewModel.checkUpdate(com.shizq.bika.BuildConfig.VERSION_NAME)
     }
+
+    LaunchedEffect(viewModel.checkInEvent) {
+        viewModel.checkInEvent.collect { event ->
+            when (event) {
+                is CheckInEvent.Success -> {
+                    checkInDialogMessage = event.message
+                }
+                is CheckInEvent.Error -> {
+                    checkInDialogMessage = event.error
+                }
+            }
+        }
+    }
+
+    // 自动打卡触发器：用户信息加载成功且非离线缓存时，如果发现未打卡，才在后台安全触发自动打卡
+    LaunchedEffect(userProfileUiState) {
+        val state = userProfileUiState
+        if (state is UserProfileUiState.Success && !state.isOfflineCache) {
+            if (!state.user.hasCheckedIn) {
+                viewModel.onCheckIn(isAuto = true)
+            }
+        }
+    }
+
+    if (checkInDialogMessage != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { checkInDialogMessage = null },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { checkInDialogMessage = null }) {
+                    Text("确定")
+                }
+            },
+            title = { Text("打哔咔提示") },
+            text = { Text(checkInDialogMessage!!) }
+        )
+    }
+
+    // ================== 版本更新 UI 渲染控制 ==================
+    when (val state = updateState) {
+        is DashboardViewModel.UpdateUiState.HasUpdate -> {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { viewModel.resetUpdateState() },
+                confirmButton = {
+                    androidx.compose.material3.Button(onClick = {
+                        viewModel.downloadAndInstall(context, state.downloadUrl)
+                    }) {
+                        Text("立即更新")
+                    }
+                },
+                dismissButton = {
+                    androidx.compose.material3.TextButton(onClick = { viewModel.resetUpdateState() }) {
+                        Text("稍后")
+                    }
+                },
+                title = { Text("发现新版本 v${state.remoteVersion}") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("检测到有最新版可以更新，是否立即升级？")
+                        if (state.changelog.isNotEmpty()) {
+                            Text(
+                                text = "更新日志：\n${state.changelog}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            )
+        }
+
+        is DashboardViewModel.UpdateUiState.Downloading -> {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = {},
+                confirmButton = {},
+                title = { Text("正在下载更新...") },
+                text = {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        androidx.compose.material3.LinearProgressIndicator(
+                            progress = { state.progress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = "已下载: ${(state.progress * 100).toInt()}%",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            )
+        }
+
+        is DashboardViewModel.UpdateUiState.Error -> {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { viewModel.resetUpdateState() },
+                confirmButton = {
+                    androidx.compose.material3.TextButton(onClick = { viewModel.resetUpdateState() }) {
+                        Text("确定")
+                    }
+                },
+                title = { Text("更新失败") },
+                text = { Text(state.message) }
+            )
+        }
+
+        else -> {}
+    }
+
+    val favoriteTags by viewModel.favoriteTags.collectAsStateWithLifecycle()
+
     DashboardContent(
         userProfileUiState = userProfileUiState,
+        lastReadHistory = lastReadHistory,
         onCheckInClick = viewModel::onCheckIn,
+        onUpdateSlogan = viewModel::updateProfileSlogan,
+        onChangePassword = viewModel::changePassword,
         channelSettingsUiState = channelSettingsUiState,
         navigationToLeaderboard = navigationToLeaderboard,
         navigateToFavourite = navigateToFavourite,
         navigationToHistory = navigationToHistory,
         navigationToSettings = navigationToSettings,
-        navigateToGame = navigateToGame,
         onSearchClick = onSearchClick,
         onChannelPreferenceClick = onChannelPreferenceClick,
         onCommentsClick = onCommentsClick,
         onDownloadsClick = onDownloadsClick,
+        onNotificationsClick = onNotificationsClick,
+        navigationToReader = navigationToReader,
+        favoriteTags = favoriteTags,
+        onAddFavorite = viewModel::addFavoriteTag,
+        onRemoveFavorite = viewModel::removeFavoriteTag,
+        onUpdateFavoriteName = viewModel::updateFavoriteTagName,
+        onMoveFavorite = viewModel::moveFavoriteTag,
+        onAddCustomFavorite = viewModel::addCustomFavoriteTag,
     )
 }
 
@@ -126,20 +280,300 @@ fun DashboardScreen(
 @Composable
 fun DashboardContent(
     userProfileUiState: UserProfileUiState,
+    lastReadHistory: DetailedHistory?,
     onCheckInClick: () -> Unit,
+    onUpdateSlogan: (String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
+    onChangePassword: (String, String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
     channelSettingsUiState: List<Channel>,
     navigationToLeaderboard: () -> Unit,
     navigateToFavourite: (DiscoveryAction) -> Unit,
     navigationToHistory: () -> Unit,
     navigationToSettings: () -> Unit,
-    navigateToGame: () -> Unit,
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
     onCommentsClick: () -> Unit,
     onDownloadsClick: () -> Unit,
+    onNotificationsClick: () -> Unit,
+    navigationToReader: (String, Int) -> Unit,
+    favoriteTags: List<FavoriteTag>,
+    onAddFavorite: (FavoriteTag) -> Unit,
+    onRemoveFavorite: (FavoriteTag) -> Unit,
+    onUpdateFavoriteName: (FavoriteTag, String) -> Unit,
+    onMoveFavorite: (fromIndex: Int, toIndex: Int) -> Unit,
+    onAddCustomFavorite: (String) -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    var showEditProfileDialog by remember { mutableStateOf(false) }
+    var inputSlogan by remember { mutableStateOf("") }
+    var isSaving by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    var inputOldPassword by remember { mutableStateOf("") }
+    var inputNewPassword by remember { mutableStateOf("") }
+    var inputConfirmPassword by remember { mutableStateOf("") }
+    var isPasswordSaving by remember { mutableStateOf(false) }
+    var passwordErrorMessage by remember { mutableStateOf<String?>(null) }
+    var oldPasswordVisible by remember { mutableStateOf(false) }
+    var newPasswordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+
+    LaunchedEffect(showEditProfileDialog) {
+        if (showEditProfileDialog) {
+            isSaving = false
+            errorMessage = null
+            if (userProfileUiState is UserProfileUiState.Success) {
+                inputSlogan = userProfileUiState.user.slogan
+            }
+        }
+    }
+
+    LaunchedEffect(showChangePasswordDialog) {
+        if (showChangePasswordDialog) {
+            inputOldPassword = ""
+            inputNewPassword = ""
+            inputConfirmPassword = ""
+            isPasswordSaving = false
+            passwordErrorMessage = null
+            oldPasswordVisible = false
+            newPasswordVisible = false
+            confirmPasswordVisible = false
+        }
+    }
+
+    if (showEditProfileDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { if (!isSaving) showEditProfileDialog = false },
+            title = { Text("修改资料") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = inputSlogan,
+                        onValueChange = { inputSlogan = it },
+                        label = { Text("自我介绍") },
+                        placeholder = { Text("输入您的个性签名") },
+                        singleLine = true,
+                        enabled = !isSaving,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (errorMessage != null) {
+                        Text(
+                            text = errorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (isSaving) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+
+                    TextButton(
+                        onClick = {
+                            showEditProfileDialog = false
+                            showChangePasswordDialog = true
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Lock,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("修改密码")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isSaving,
+                    onClick = {
+                        isSaving = true
+                        errorMessage = null
+                        onUpdateSlogan(
+                            inputSlogan,
+                            {
+                                isSaving = false
+                                showEditProfileDialog = false
+                            },
+                            { err ->
+                                isSaving = false
+                                errorMessage = err
+                            }
+                        )
+                    }
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isSaving,
+                    onClick = { showEditProfileDialog = false }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+    if (showChangePasswordDialog) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { if (!isPasswordSaving) showChangePasswordDialog = false },
+            title = { Text("修改密码") },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    androidx.compose.material3.OutlinedTextField(
+                        value = inputOldPassword,
+                        onValueChange = { inputOldPassword = it },
+                        label = { Text("旧密码") },
+                        placeholder = { Text("请输入旧密码") },
+                        singleLine = true,
+                        enabled = !isPasswordSaving,
+                        visualTransformation = if (oldPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { oldPasswordVisible = !oldPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (oldPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (oldPasswordVisible) "隐藏旧密码" else "显示旧密码"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    androidx.compose.material3.OutlinedTextField(
+                        value = inputNewPassword,
+                        onValueChange = { inputNewPassword = it },
+                        label = { Text("新密码") },
+                        placeholder = { Text("请输入新密码（至少8位）") },
+                        singleLine = true,
+                        enabled = !isPasswordSaving,
+                        visualTransformation = if (newPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (newPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (newPasswordVisible) "隐藏新密码" else "显示新密码"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    androidx.compose.material3.OutlinedTextField(
+                        value = inputConfirmPassword,
+                        onValueChange = { inputConfirmPassword = it },
+                        label = { Text("确认新密码") },
+                        placeholder = { Text("请再次输入新密码") },
+                        singleLine = true,
+                        enabled = !isPasswordSaving,
+                        visualTransformation = if (confirmPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                                Icon(
+                                    imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (confirmPasswordVisible) "隐藏确认密码" else "显示确认密码"
+                                )
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (passwordErrorMessage != null) {
+                        Text(
+                            text = passwordErrorMessage!!,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    if (isPasswordSaving) {
+                        Row(
+                            horizontalArrangement = Arrangement.Center,
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                        ) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    enabled = !isPasswordSaving,
+                    onClick = {
+                        if (inputOldPassword.isEmpty()) {
+                            passwordErrorMessage = "请输入旧密码"
+                            return@TextButton
+                        }
+                        if (inputNewPassword.isEmpty()) {
+                            passwordErrorMessage = "请输入新密码"
+                            return@TextButton
+                        }
+                        if (inputNewPassword.length < 8) {
+                            passwordErrorMessage = "新密码长度至少需要8个字符"
+                            return@TextButton
+                        }
+                        if (inputNewPassword != inputConfirmPassword) {
+                            passwordErrorMessage = "两次输入的新密码不一致"
+                            return@TextButton
+                        }
+
+                        isPasswordSaving = true
+                        passwordErrorMessage = null
+                        onChangePassword(
+                            inputOldPassword,
+                            inputNewPassword,
+                            {
+                                isPasswordSaving = false
+                                showChangePasswordDialog = false
+                                android.widget.Toast.makeText(context, "密码修改成功", android.widget.Toast.LENGTH_SHORT).show()
+                            },
+                            { err ->
+                                isPasswordSaving = false
+                                passwordErrorMessage = err
+                            }
+                        )
+                    }
+                ) {
+                    Text("保存")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    enabled = !isPasswordSaving,
+                    onClick = { showChangePasswordDialog = false }
+                ) {
+                    Text("取消")
+                }
+            }
+        )
+    }
+
+
+    var showBookmarkDrawer by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = showBookmarkDrawer) {
+        showBookmarkDrawer = false
+    }
+
     BackHandler(enabled = drawerState.isOpen) {
         scope.launch {
             drawerState.close()
@@ -153,8 +587,9 @@ fun DashboardContent(
             }
         }
     }
-    ModalNavigationDrawer(
-        modifier = Modifier.semantics { testTagsAsResourceId = true },
+    Box(modifier = Modifier.fillMaxSize()) {
+        ModalNavigationDrawer(
+            modifier = Modifier.semantics { testTagsAsResourceId = true },
         drawerState = drawerState,
         drawerContent = {
             ModalDrawerSheet(
@@ -163,6 +598,13 @@ fun DashboardContent(
             ) {
                 DashboardDrawerContent(
                     userProfile = userProfileUiState,
+                    lastReadHistory = lastReadHistory,
+                    navigationToReader = { comicId, order ->
+                        scope.launch {
+                            drawerState.close()
+                            navigationToReader(comicId, order)
+                        }
+                    },
                     onCheckInClick = {
                         scope.launch {
                             drawerState.close()
@@ -170,7 +612,10 @@ fun DashboardContent(
                         }
                     },
                     onEditProfileClick = {
-
+                        scope.launch {
+                            drawerState.close()
+                            showEditProfileDialog = true
+                        }
                     },
                     onHistoryClick = {
                         scope.launch {
@@ -185,7 +630,10 @@ fun DashboardContent(
                         }
                     },
                     onNotificationsClick = {
-
+                        scope.launch {
+                            drawerState.close()
+                            onNotificationsClick()
+                        }
                     },
                     onCommentsClick = {
                         scope.launch {
@@ -217,6 +665,7 @@ fun DashboardContent(
                     onDrawerOpen = { scope.launch { drawerState.open() } },
                     onSearchClicked = onSearchClick,
                     onChannelPreferenceClicked = onChannelPreferenceClick,
+                    onBookmarkClicked = { showBookmarkDrawer = true },
                 )
             },
             modifier = Modifier
@@ -233,6 +682,16 @@ fun DashboardContent(
                     .padding(innerPadding)
                     .testTag("dashboard:grid"),
             ) {
+                lastReadHistory?.let { history ->
+                    item(span = { GridItemSpan(maxLineSpan) }) {
+                        QuickResumeCard(
+                            history = history,
+                            onClick = navigationToReader,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                }
+
                 items(
                     channelSettingsUiState,
                     key = { it.resName }
@@ -252,12 +711,51 @@ fun DashboardContent(
                                 channel = item,
                                 navigationToLeaderboard = navigationToLeaderboard,
                                 navigateToSearch = navigateToFavourite,
-                                navigateToGame = navigateToGame,
                             )
                         }
                     }
                 }
             }
+        }
+    }
+
+        if (showBookmarkDrawer) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.5f))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null
+                    ) {
+                        showBookmarkDrawer = false
+                    }
+            )
+        }
+
+        AnimatedVisibility(
+            visible = showBookmarkDrawer,
+            enter = slideInHorizontally(initialOffsetX = { it }),
+            exit = slideOutHorizontally(targetOffsetX = { it }),
+            modifier = Modifier
+                .fillMaxHeight()
+                .width(300.dp)
+                .align(Alignment.CenterEnd)
+        ) {
+            FavoriteTagsDrawer(
+                favoriteTags = favoriteTags,
+                currentAction = null,
+                onNavigateToFeed = { action ->
+                    showBookmarkDrawer = false
+                    navigateToFavourite(action)
+                },
+                onAddFavorite = onAddFavorite,
+                onRemoveFavorite = onRemoveFavorite,
+                onUpdateName = onUpdateFavoriteName,
+                onMove = onMoveFavorite,
+                onAddCustom = onAddCustomFavorite,
+                onClose = { showBookmarkDrawer = false }
+            )
         }
     }
 }
@@ -269,6 +767,7 @@ private fun DashboardAppBar(
     onDrawerOpen: () -> Unit,
     onSearchClicked: () -> Unit,
     onChannelPreferenceClicked: () -> Unit,
+    onBookmarkClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -280,6 +779,16 @@ private fun DashboardAppBar(
             }
         },
         actions = {
+            IconButton(
+                onClick = onBookmarkClicked,
+                modifier = Modifier.testTag("dashboard:bookmark")
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Bookmarks,
+                    contentDescription = "标签收藏夹"
+                )
+            }
+
             IconButton(
                 onClick = onChannelPreferenceClicked,
                 modifier = Modifier.testTag("dashboard:filter")
@@ -303,7 +812,6 @@ private fun navigation(
     context: Context,
     navigationToLeaderboard: () -> Unit,
     navigateToSearch: (DiscoveryAction) -> Unit,
-    navigateToGame: () -> Unit,
 ) {
 //    if (channel.link != null) {
 //        val token = SPUtil.get("token", "")
@@ -318,11 +826,9 @@ private fun navigation(
     when (channel.displayName) {
         "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)
         "排行榜" -> navigationToLeaderboard()
-        "游戏推荐" -> navigateToGame()
 //            "哔咔小程序" -> start(AppsActivity::class.java)
         "留言板" -> {
-            val intent = Intent(context, ChatRoomListActivity::class.java)
-            context.startActivity(intent)
+            android.widget.Toast.makeText(context, "该功能已下线", android.widget.Toast.LENGTH_SHORT).show()
         }
 
         "最近更新" -> navigateToSearch(DiscoveryAction.ToRecent)
@@ -338,6 +844,8 @@ private fun navigation(
 @Composable
 fun DashboardDrawerContent(
     userProfile: UserProfileUiState,
+    lastReadHistory: DetailedHistory?,
+    navigationToReader: (String, Int) -> Unit,
     modifier: Modifier = Modifier,
     onCheckInClick: () -> Unit = {},
     onEditProfileClick: () -> Unit = {},
@@ -374,6 +882,14 @@ fun DashboardDrawerContent(
                         .padding(vertical = 8.dp)
                         .verticalScroll(rememberScrollState())
                 ) {
+                    lastReadHistory?.let { history ->
+                        QuickResumeCard(
+                            history = history,
+                            onClick = navigationToReader,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
+                        )
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp))
+                    }
                     DrawerMenuItem(
                         label = "历史记录",
                         iconRes = R.drawable.ic_history,
@@ -472,11 +988,27 @@ fun UserProfileCard(
             Spacer(modifier = Modifier.width(16.dp))
 
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = user.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(
+                        text = user.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    // 无网络时显示离线缓存标识
+                    if (state.isOfflineCache) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "离线",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -550,6 +1082,84 @@ fun UserProfileCard(
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+fun QuickResumeCard(
+    history: DetailedHistory,
+    onClick: (String, Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val lastProgress = remember(history) {
+        history.progressList.maxByOrNull { it.lastReadAt }
+    }
+    val chapterTitle = lastProgress?.let { "第 ${it.chapterId} 话" } ?: "第一话"
+    val progressText = lastProgress?.let { "已读至第 ${it.currentPage} 页 / 共 ${it.pageCount} 页" } ?: "未开始阅读"
+    val lastReadChapterOrder = lastProgress?.chapterId ?: 1
+
+    ElevatedCard(
+        onClick = { onClick(history.history.id, lastReadChapterOrder) },
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        colors = CardDefaults.elevatedCardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 3.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            AsyncImage(
+                model = ImageRequest.Builder(LocalContext.current)
+                    .data(history.history.coverUrl)
+                    .crossfade(true)
+                    .build(),
+                contentDescription = "Cover",
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .size(60.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+            )
+
+            Spacer(modifier = Modifier.width(16.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "继续阅读",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = history.history.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "$chapterTitle · $progressText",
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.KeyboardArrowRight,
+                contentDescription = "继续阅读",
+                tint = MaterialTheme.colorScheme.primary
             )
         }
     }

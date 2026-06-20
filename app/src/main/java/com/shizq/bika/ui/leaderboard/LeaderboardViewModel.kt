@@ -9,20 +9,32 @@ import com.shizq.bika.core.model.ComicSimple
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.DetailedHistory
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.util.injectLocalStatusFrom
 import dagger.hilt.android.lifecycle.HiltViewModel
-import jakarta.inject.Inject
+import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import com.shizq.bika.core.coroutine.FlowRestarter
+import com.shizq.bika.core.coroutine.restartable
 
 @HiltViewModel
 class LeaderboardViewModel @Inject constructor(
     private val api: BikaDataSource,
+    private val historyDao: ReadingHistoryDao,
+    private val userPreferencesDataSource: UserPreferencesDataSource,
 ) : ViewModel() {
+    private val leaderboardRestarter = FlowRestarter()
+
     val scrollStates = List(4) { LazyListState() }
-    val leaderboardUiState = combine(
+
+    // 网络数据：一次性加载（排行榜数据本身不需要轮询）
+    private val rawLeaderboardFlow = combine(
         getLeaderboard(TIME_H24),
         getLeaderboard(TIME_D7),
         getLeaderboard(TIME_D30),
@@ -35,7 +47,38 @@ class LeaderboardViewModel @Inject constructor(
             knightUsers = knights
         )
     }
+
+    val leaderboardUiState = combine(
+        rawLeaderboardFlow,
+        // DB Flow：收藏/阅读进度任何变化都会触发此流发射新值，驱动 UI 实时更新
+        historyDao.getDetailedHistories(),
+        userPreferencesDataSource.userData,
+    ) { allData, histories, prefs ->
+        val daily = allData.dailyComics.injectLocalStatusFrom(histories)
+        val weekly = allData.weeklyComics.injectLocalStatusFrom(histories)
+        val monthly = allData.monthlyComics.injectLocalStatusFrom(histories)
+
+        val filteredDaily = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
+            daily.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        } else daily
+
+        val filteredWeekly = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
+            weekly.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        } else weekly
+
+        val filteredMonthly = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
+            monthly.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        } else monthly
+
+        AllLeaderboards(
+            dailyComics = filteredDaily,
+            weeklyComics = filteredWeekly,
+            monthlyComics = filteredMonthly,
+            knightUsers = allData.knightUsers,
+        )
+    }
         .asResult()
+        .restartable(leaderboardRestarter)
         .map { result ->
             when (result) {
                 is Result.Error -> LeaderboardUiState.Error(
@@ -58,6 +101,11 @@ class LeaderboardViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = LeaderboardUiState.Loading
         )
+
+    fun refresh() {
+        leaderboardRestarter.restart()
+    }
+
     private fun getKnightLeaderboardFlow() = flow {
         val response = api.getKnightLeaderboard()
         val users = response.users.map { it.asExternalModel() }
@@ -66,8 +114,8 @@ class LeaderboardViewModel @Inject constructor(
 
     private fun getLeaderboard(timeType: String) = flow {
         val response = api.getLeaderboard(timeType)
-        val comics = response.comics
-        emit(comics)
+        // 这里只发射原始网络数据，本地状态由上层 combine + DB Flow 注入
+        emit(response.comics)
     }
 
     private data class AllLeaderboards(
