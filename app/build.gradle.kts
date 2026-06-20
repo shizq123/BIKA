@@ -89,7 +89,6 @@ dependencies {
     implementation(libs.coil.kt)
     implementation(libs.kotlinx.serialization.json)
 
-    implementation(libs.material)
     implementation(libs.androidx.appcompat)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
