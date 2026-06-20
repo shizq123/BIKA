@@ -172,13 +172,21 @@ fun ComicDetailContent(
                                     val completedCount = downloadTasks.count { it.status == com.shizq.bika.core.database.model.DownloadStatus.COMPLETED }
                                     completedCount > 0 && completedCount >= detail.epsCount
                                 }
+
+                                val lastReadChapter = remember(chapterProgress) {
+                                    chapterProgress.maxByOrNull { it.lastReadAt }
+                                }
+                                val lastReadChapterOrder = lastReadChapter?.chapterId ?: 1
+                                val isContinue = lastReadChapter != null
+
                                 ComicDetailPage(
                                     detail = detail,
                                     recommendations = unitedState.recommendations,
                                     isDownloaded = isComicDownloaded,
+                                    isContinue = isContinue,
                                     onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
                                     onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
-                                    navigationToReader = { navigationToReader(detail.id, 1) },
+                                    navigationToReader = { navigationToReader(detail.id, lastReadChapterOrder) },
                                     navigationToComicInfo = { navigationToComicInfo(it) },
                                     navigationToFeed = navigationToFeed,
                                     onDownloadClick = {
