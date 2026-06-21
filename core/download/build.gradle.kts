@@ -9,4 +9,6 @@ android {
 
 dependencies {
     api(libs.kotlinx.datetime)
+
+    implementation(projects.core.database)
 }

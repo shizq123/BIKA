@@ -3,78 +3,189 @@ package com.shizq.bika.core.database.dao
 import androidx.room.Dao
 import androidx.room.Delete
 import androidx.room.Query
+import androidx.room.Transaction
 import androidx.room.Upsert
+import com.shizq.bika.core.database.model.DownloadErrorCode
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.database.model.DownloadTaskEntity
 import kotlinx.coroutines.flow.Flow
 import kotlin.time.Instant
 
 @Dao
-interface DownloadTaskDao {
+abstract class DownloadTaskDao {
 
     @Upsert
-    suspend fun upsertTask(task: DownloadTaskEntity)
+    abstract suspend fun upsert(task: DownloadTaskEntity)
+
+    @Upsert
+    abstract suspend fun upsert(tasks: List<DownloadTaskEntity>)
 
     @Delete
-    suspend fun deleteTask(task: DownloadTaskEntity)
+    abstract suspend fun delete(task: DownloadTaskEntity)
 
     @Delete
-    suspend fun deleteTasks(tasks: List<DownloadTaskEntity>)
+    abstract suspend fun delete(tasks: List<DownloadTaskEntity>)
 
     @Query("DELETE FROM downloadTask WHERE id = :taskId")
-    suspend fun deleteTaskById(taskId: String)
+    abstract suspend fun deleteById(taskId: String)
 
-    /** 更新下载进度 */
+    @Query("SELECT * FROM downloadTask ORDER BY priority DESC, createdAt DESC")
+    abstract fun observeAll(): Flow<List<DownloadTaskEntity>>
+
+    @Query("SELECT * FROM downloadTask WHERE comicId = :comicId ORDER BY episodeOrder ASC")
+    abstract fun observeByComic(comicId: String): Flow<List<DownloadTaskEntity>>
+
+    @Query("SELECT * FROM downloadTask WHERE id = :taskId LIMIT 1")
+    abstract fun observeById(taskId: String): Flow<DownloadTaskEntity?>
+
+    @Query("SELECT * FROM downloadTask WHERE id = :taskId LIMIT 1")
+    abstract suspend fun getById(taskId: String): DownloadTaskEntity?
+
     @Query(
-        "UPDATE downloadTask SET downloadedPages = :downloadedPages, " +
-            "totalPages = :totalPages, progress = :progress, status = :status " +
-            "WHERE id = :taskId"
+        """
+        SELECT * FROM downloadTask
+        WHERE status IN (:statusNames)
+        ORDER BY priority DESC, createdAt ASC
+        LIMIT :limit
+        """
     )
-    suspend fun updateProgress(
+    abstract suspend fun getByStatuses(
+        statusNames: List<String>,
+        limit: Int,
+    ): List<DownloadTaskEntity>
+
+    @Query(
+        """
+        UPDATE downloadTask
+        SET downloadedPages = :downloadedPages,
+            totalPages = :totalPages,
+            progress = :progress,
+            updatedAt = :updatedAt
+        WHERE id = :taskId
+        """
+    )
+    abstract suspend fun updateProgress(
         taskId: String,
         downloadedPages: Int,
         totalPages: Int,
         progress: Int,
-        status: DownloadStatus,
+        updatedAt: Instant,
     )
 
-    /** 更新下载状态（完成/失败） */
     @Query(
-        "UPDATE downloadTask SET status = :status, completedAt = :completedAt, " +
-            "localPath = :localPath WHERE id = :taskId"
+        """
+        UPDATE downloadTask
+        SET status = :status,
+            errorCode = :errorCode,
+            errorMessage = :errorMessage,
+            retryCount = retryCount + :retryDelta,
+            completedAt = :completedAt,
+            updatedAt = :updatedAt
+        WHERE id = :taskId
+        """
     )
-    suspend fun updateCompletion(
+    abstract suspend fun updateStatus(
         taskId: String,
         status: DownloadStatus,
+        errorCode: DownloadErrorCode,
+        errorMessage: String,
+        retryDelta: Int,
         completedAt: Instant?,
-        localPath: String,
+        updatedAt: Instant,
     )
 
-    /** 标记为已本地查看 */
-    @Query("UPDATE downloadTask SET isViewed = 1 WHERE id = :taskId")
-    suspend fun markAsViewed(taskId: String)
+    @Query(
+        """
+        UPDATE downloadTask
+        SET status = :status,
+            errorCode = :errorCode,
+            errorMessage = :errorMessage,
+            localPath = :localPath,
+            progress = 100,
+            totalPages = :totalPages,
+            downloadedPages = :downloadedPages,
+            completedAt = :completedAt,
+            updatedAt = :updatedAt
+        WHERE id = :taskId
+        """
+    )
+    abstract suspend fun markCompleted(
+        taskId: String,
+        status: DownloadStatus,
+        errorCode: DownloadErrorCode,
+        errorMessage: String,
+        localPath: String,
+        totalPages: Int,
+        downloadedPages: Int,
+        completedAt: Instant,
+        updatedAt: Instant,
+    )
 
-    /** 获取所有下载任务，先按优先级降序，再按创建时间降序，供下载列表页使用 */
-    @Query("SELECT * FROM downloadTask ORDER BY priority DESC, createdAt DESC")
-    fun getAllTasks(): Flow<List<DownloadTaskEntity>>
+    @Query(
+        """
+        UPDATE downloadTask
+        SET localPath = :localPath,
+            updatedAt = :updatedAt
+        WHERE id = :taskId
+        """
+    )
+    abstract suspend fun updateLocalPath(
+        taskId: String,
+        localPath: String,
+        updatedAt: Instant,
+    )
 
-    /** 获取某本漫画的所有已下载章节 */
-    @Query("SELECT * FROM downloadTask WHERE comicId = :comicId ORDER BY episodeOrder ASC")
-    fun getTasksByComic(comicId: String): Flow<List<DownloadTaskEntity>>
+    @Query(
+        """
+        UPDATE downloadTask
+        SET isViewed = 1,
+            updatedAt = :updatedAt
+        WHERE id = :taskId
+        """
+    )
+    abstract suspend fun markAsViewed(
+        taskId: String,
+        updatedAt: Instant,
+    )
 
-    /** 查询单个任务（用于判断某章节是否已下载） */
-    @Query("SELECT * FROM downloadTask WHERE id = :taskId")
-    fun getTaskById(taskId: String): Flow<DownloadTaskEntity?>
+    @Query(
+        """
+        UPDATE downloadTask
+        SET priority = :priority,
+            updatedAt = :updatedAt
+        WHERE id = :taskId
+        """
+    )
+    abstract suspend fun updatePriority(
+        taskId: String,
+        priority: Int,
+        updatedAt: Instant,
+    )
 
-    /** 获取所有进行中的任务（App 重启后可恢复） */
-    @Query("SELECT * FROM downloadTask WHERE status = 'DOWNLOADING' OR status = 'PENDING' ORDER BY priority DESC, createdAt ASC")
-    suspend fun getPendingTasks(): List<DownloadTaskEntity>
-
-    /** 更新任务优先级 */
-    @Query("UPDATE downloadTask SET priority = :priority WHERE id = :taskId")
-    suspend fun updateTaskPriority(taskId: String, priority: Int)
-
-    /** 获取当前最大的 priority */
     @Query("SELECT IFNULL(MAX(priority), 0) FROM downloadTask")
-    suspend fun getMaxPriority(): Int
+    abstract suspend fun getMaxPriority(): Int
+
+    @Query(
+        """
+        UPDATE downloadTask
+        SET status = :targetStatus,
+            errorCode = :errorCode,
+            errorMessage = :errorMessage,
+            updatedAt = :updatedAt
+        WHERE status = :sourceStatus
+        """
+    )
+    abstract suspend fun replaceStatus(
+        sourceStatus: DownloadStatus,
+        targetStatus: DownloadStatus,
+        errorCode: DownloadErrorCode,
+        errorMessage: String,
+        updatedAt: Instant,
+    ): Int
+
+    @Transaction
+    open suspend fun bringToTop(taskId: String, updatedAt: Instant) {
+        val nextPriority = getMaxPriority() + 1
+        updatePriority(taskId, nextPriority, updatedAt)
+    }
 }
