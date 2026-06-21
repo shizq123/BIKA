@@ -1,36 +1,32 @@
 package com.shizq.bika.ui.dashboard
 
+import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.coroutine.FlowRestarter
+import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.core.database.model.DetailedHistory
-import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.FavoriteTag
-import kotlinx.coroutines.flow.StateFlow
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.Dispatchers
-import android.content.Context
-import android.content.Intent
-import com.shizq.bika.core.coroutine.restartable
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 sealed interface CheckInEvent {
     data class Success(val message: String) : CheckInEvent
@@ -106,6 +102,7 @@ class DashboardViewModel @Inject constructor(
                         slogan = user.slogan,
                         characters = user.characters,
                     )
+
                     UserProfileUiState.Success(
                         User(
                             name = user.name,

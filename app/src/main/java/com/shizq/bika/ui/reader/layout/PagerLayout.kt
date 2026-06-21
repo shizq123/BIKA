@@ -1,6 +1,7 @@
 package com.shizq.bika.ui.reader.layout
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -18,27 +19,24 @@ import com.shizq.bika.core.model.Direction
 import com.shizq.bika.paging.ChapterPage
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
-
 class PagerLayout(
     private val pagerState: PagerState,
     private val direction: Direction,
     private val isRtl: Boolean,
     private val useDoublePage: Boolean
-) : ReaderLayout {
+) : ReaderPageLayout {
 
     @Composable
     override fun Content(
-        chapterPages: LazyPagingItems<ChapterPage>,
+        pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
         val widePages = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
         val pageContent: @Composable (Int) -> Unit = { pageIndex ->
             if (useDoublePage) {
-                DoublePageItem(chapterPages, pageIndex, widePages)
+                DoublePageItem(pageItems, pageIndex, widePages)
             } else {
-                PageItem(chapterPages, pageIndex)
+                PageItem(pageItems, pageIndex)
             }
         }
 
@@ -46,7 +44,7 @@ class PagerLayout(
             VerticalPager(
                 state = pagerState,
                 modifier = modifier,
-                key = if (useDoublePage) null else chapterPages.itemKey { it.id },
+                key = if (useDoublePage) null else pageItems.itemKey { it.id },
                 pageContent = { pageContent(it) }
             )
         } else {
@@ -55,7 +53,7 @@ class PagerLayout(
                 HorizontalPager(
                     state = pagerState,
                     modifier = modifier,
-                    key = if (useDoublePage) null else chapterPages.itemKey { it.id },
+                    key = if (useDoublePage) null else pageItems.itemKey { it.id },
                     pageContent = { pageContent(it) }
                 )
             }

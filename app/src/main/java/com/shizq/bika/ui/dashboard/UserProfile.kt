@@ -1,7 +1,5 @@
 package com.shizq.bika.ui.dashboard
 
-import com.shizq.bika.core.network.model.Gender
-
 sealed interface UserProfileUiState {
     data object Loading : UserProfileUiState
     data class Error(val message: String) : UserProfileUiState
@@ -15,7 +13,7 @@ data class User(
     val level: Int,
     val exp: Int,
     val title: String,
-    val gender: Gender,
+    val gender: String,
     val slogan: String,
     val hasCheckedIn: Boolean
 ) {

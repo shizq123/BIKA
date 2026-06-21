@@ -18,10 +18,10 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 class WebtoonLayout(
     private val listState: LazyListState,
     private val hasPageGap: Boolean
-) : ReaderLayout {
+) : ReaderPageLayout {
     @Composable
     override fun Content(
-        chapterPages: LazyPagingItems<ChapterPage>,
+        pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
         LazyColumn(
@@ -30,10 +30,10 @@ class WebtoonLayout(
             verticalArrangement = if (hasPageGap) Arrangement.spacedBy(8.dp) else Arrangement.Top
         ) {
             items(
-                count = chapterPages.itemCount,
-                key = chapterPages.itemKey { it.id },
+                count = pageItems.itemCount,
+                key = pageItems.itemKey { it.id },
             ) { index ->
-                chapterPages[index]?.let {
+                pageItems[index]?.let {
                     ComicPageItem(it, index)
                 }
             }

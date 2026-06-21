@@ -226,7 +226,7 @@ private fun UserProfileSuccessCard(
                 shape = RoundedCornerShape(4.dp)
             ) {
                 Text(
-                    text = user.gender.value,
+                    text = user.gender,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                 )
