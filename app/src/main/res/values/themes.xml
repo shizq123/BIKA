@@ -1,6 +1,6 @@
 <resources>
-    <!-- Base application theme. -->
-    <style name="AppTheme" parent="Theme.Material3.DayNight.NoActionBar">
+
+    <style name="AppTheme" parent="Theme.AppCompat.DayNight.NoActionBar">
         <item name="android:windowActivityTransitions">true</item>
         <item name="android:windowLightStatusBar">?attr/isLightTheme</item>
         <item name="android:navigationBarColor">@android:color/transparent</item>
@@ -13,32 +13,8 @@
         <item name="postSplashScreenTheme">@style/AppTheme</item>
     </style>
 
-
-    <!--ShapeableImageView 圆 -->
-    <style name="CircleStyle">
-        <item name="cornerFamily">rounded</item>
-        <item name="cornerSize">50%</item>
-    </style>
-
     <style name="InputTextMsgDialog_anim">
         <item name="android:windowEnterAnimation">@anim/anim_enter_from_bottom</item>
         <item name="android:windowExitAnimation">@anim/anim_exit_from_bottom</item>
     </style>
-
-    <style name="ChipElevated"  parent="Widget.Material3.Chip.Assist.Elevated">
-        <item name="closeIconVisible">true</item>
-    </style>
-
-    <style name="Chip"  parent="Widget.Material3.Chip.Assist">
-        <item name="closeIconVisible">true</item>
-    </style>
-
-<!--  添加parent="ThemeOverlay.Material3" 解决动态颜色不生效 -->
-    <style name="InputTextMsgDialog" parent="ThemeOverlay.Material3">
-        <!--        设置是否可滑动 -->
-        <item name="android:windowIsFloating">true</item>
-        <!--        点击空白部分消失 -->
-        <item name="android:windowCloseOnTouchOutside">true</item>
-    </style>
-
 </resources>
