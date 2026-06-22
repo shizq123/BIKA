@@ -8,7 +8,10 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.database)
+
     api(libs.kotlinx.datetime)
 
-    implementation(projects.core.database)
+    implementation(libs.okhttp)
+    implementation(libs.okio)
 }

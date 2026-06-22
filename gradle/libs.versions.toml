@@ -31,6 +31,7 @@ coil = "3.5.0"
 
 androidPreference = "1.2.1"
 androidxRecyclerview = "1.4.0"
+okio = "3.17.0"
 room = "2.8.4"
 flowredux = "2.0.1"
 hilt = "2.59.2"
@@ -136,6 +137,7 @@ ktor-serialization-kotlinx-json = { group = "io.ktor", name = "ktor-serializatio
 ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version.ref = "ktor" }
 
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
+okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 photoview = { module = "com.github.chrisbanes:PhotoView", version.ref = "photoview" }
 pictureselector = { module = "io.github.lucksiege:pictureselector", version.ref = "pictureselector" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
