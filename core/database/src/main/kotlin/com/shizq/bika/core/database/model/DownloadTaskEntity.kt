@@ -1,5 +1,6 @@
 package com.shizq.bika.core.database.model
 
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.Index
 import androidx.room.PrimaryKey
@@ -40,7 +41,12 @@ data class DownloadTaskEntity(
     val isViewed: Boolean = false,
 
     /** 越大越靠前 */
+    @ColumnInfo(name = "priority")
     val priority: Int = 0,
+    @ColumnInfo(name = "worker_token")
+    val workerToken: String? = null,
+    @ColumnInfo(name = "next_schedule_at")
+    val nextScheduleAt: Long = 0L,
 
     /** 失败原因码 */
     val errorCode: DownloadErrorCode = DownloadErrorCode.NONE,

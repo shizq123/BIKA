@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.shizq.bika.core.database.BikaDatabase
 import com.shizq.bika.core.database.migration.MIGRATION_1_2
+import com.shizq.bika.core.database.migration.MIGRATION_2_3
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -23,7 +24,7 @@ internal object DatabaseModule {
         BikaDatabase::class.java,
         "bika-database",
     )
-        .addMigrations(MIGRATION_1_2)
+        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
         .fallbackToDestructiveMigration(true)
         .build()
 }
