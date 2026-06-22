@@ -3,7 +3,7 @@ package com.shizq.bika.core.download.executor
 import android.util.Log
 import com.shizq.bika.core.database.model.DownloadErrorCode
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.download.domain.model.DownloadTask
+import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.download.monitor.NetworkMonitor
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
 import com.shizq.bika.core.download.storage.LocalComicStorage
@@ -15,6 +15,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
@@ -191,11 +192,11 @@ class DefaultChapterDownloadExecutor @Inject constructor(
         var page = 1
 
         while (true) {
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             ensureNetworkConstraints(constraints)
 
             val response = network.getChapterPages(
-                comicId = task.comicId,
+                id = task.comicId,
                 order = task.episodeOrder,
                 page = page,
             )
