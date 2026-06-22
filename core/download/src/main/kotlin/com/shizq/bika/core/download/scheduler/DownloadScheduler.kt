@@ -23,6 +23,8 @@ interface DownloadScheduler {
         timeoutMs: Long = 15_000L,
     ): Boolean
 
-    /** App 启动后恢复可调度任务 */
     suspend fun restorePendingTasks(limit: Int = Int.MAX_VALUE)
+
+    /** 网络恢复后触发，把 WAITING_FOR_NETWORK 拉回调度 */
+    suspend fun onNetworkAvailable()
 }

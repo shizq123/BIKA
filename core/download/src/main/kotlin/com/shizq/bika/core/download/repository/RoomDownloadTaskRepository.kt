@@ -227,4 +227,43 @@ class RoomDownloadTaskRepository @Inject constructor(
             updatedAt = clock.now(),
         )
     }
+
+    override suspend fun tryClaimTask(
+        taskId: String,
+        workerToken: String,
+        maxConcurrent: Int,
+    ): ClaimDownloadTaskResult = database.withTransaction {
+        val now = System.currentTimeMillis()
+
+        val entity = downloadTaskDao.getTaskEntityById(taskId)
+            ?: return@withTransaction ClaimDownloadTaskResult.NotFound
+
+        if (entity.status != DownloadStatus.PENDING) {
+            return@withTransaction ClaimDownloadTaskResult.NotRunnable
+        }
+
+        if (entity.nextScheduleAt > now) {
+            return@withTransaction ClaimDownloadTaskResult.NotRunnable
+        }
+
+        val runningCount = downloadTaskDao.countTasksByStatus(DownloadStatus.DOWNLOADING)
+        if (runningCount >= maxConcurrent) {
+            return@withTransaction ClaimDownloadTaskResult.NoSlot
+        }
+
+        val updated = downloadTaskDao.claimPendingTask(
+            taskId = taskId,
+            workerToken = workerToken,
+            now = now,
+        )
+
+        if (updated != 1) {
+            return@withTransaction ClaimDownloadTaskResult.NotRunnable
+        }
+
+        val claimed = downloadTaskDao.getTaskEntityById(taskId)
+            ?: return@withTransaction ClaimDownloadTaskResult.NotFound
+
+        ClaimDownloadTaskResult.Claimed(claimed.asExternalModel())
+    }
 }

@@ -18,7 +18,7 @@ interface DownloadTaskRepository {
 
     suspend fun saveTask(task: DownloadTask)
 
-    suspend fun markPending(taskId: String)
+    suspend fun markPending(taskId: String, nextScheduleAt: Long)
 
     suspend fun markWaitingForNetwork(
         taskId: String,
@@ -62,4 +62,61 @@ interface DownloadTaskRepository {
     suspend fun deleteTask(taskId: String)
 
     suspend fun resetInterruptedTasks(): Int
+    suspend fun countRunningTasks(): Int
+
+    suspend fun getDispatchableTasks(
+        now: Long,
+        limit: Int,
+    ): List<DownloadTask>
+
+    suspend fun getNextPendingScheduleAt(now: Long): Long?
+
+    suspend fun tryClaimTask(
+        taskId: String,
+        workerToken: String,
+        maxConcurrent: Int,
+    ): ClaimDownloadTaskResult
+
+    suspend fun updateProgressOwned(
+        taskId: String,
+        workerToken: String,
+        downloadedPages: Int,
+        totalPages: Int,
+    )
+
+    suspend fun markCompletedOwned(
+        taskId: String,
+        workerToken: String,
+        localPath: String,
+        totalPages: Int,
+    ): Boolean
+
+    suspend fun markWaitingForNetworkOwned(
+        taskId: String,
+        workerToken: String,
+        errorCode: String?,
+        message: String?,
+    ): Boolean
+
+    suspend fun requeueRecoverableOwned(
+        taskId: String,
+        workerToken: String,
+        nextScheduleAt: Long,
+        errorCode: String?,
+        message: String?,
+    ): Boolean
+
+    suspend fun markFailedOwned(
+        taskId: String,
+        workerToken: String,
+        errorCode: String?,
+        message: String?,
+        incrementRetryCount: Boolean,
+    ): Boolean
+
+    suspend fun requeueWaitingForNetworkTasks(now: Long): Int
+
+    suspend fun setPriority(taskId: String, priority: Int)
+
+    suspend fun getMaxPriority(): Int
 }
