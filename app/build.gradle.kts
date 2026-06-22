@@ -90,6 +90,7 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
 
     implementation(libs.androidx.appcompat)
+    implementation(libs.google.material)
 
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
