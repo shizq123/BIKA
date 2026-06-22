@@ -1,6 +1,5 @@
-val isCI = System.getenv("CI") == "true"
-
 pluginManagement {
+    val isCI = System.getenv("CI") == "true"
     includeBuild("build-logic")
     repositories {
         if (!isCI) {
@@ -27,6 +26,7 @@ plugins {
 }
 
 dependencyResolutionManagement {
+    val isCI = System.getenv("CI") == "true"
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
     repositories {
         if (!isCI) {
