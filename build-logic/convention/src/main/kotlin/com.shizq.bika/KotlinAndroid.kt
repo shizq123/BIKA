@@ -78,9 +78,7 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
              */
             "-Xconsistent-data-class-copy-visibility"
         )
-        freeCompilerArgs.add("-Xexplicit-backing-fields")
         freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
-        freeCompilerArgs.add("-Xannotation-default-target=param-property")
 
         // Use a static list of opt-ins if the dependency is present at configuration time.
         // Capturing 'Project' in a provider for freeCompilerArgs breaks Configuration Cache.
