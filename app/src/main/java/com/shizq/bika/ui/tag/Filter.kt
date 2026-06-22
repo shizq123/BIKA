@@ -24,7 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
 import androidx.compose.material3.HorizontalDivider
 
@@ -101,7 +102,7 @@ fun FilterChip(
     modifier: Modifier = Modifier,
 ) {
     var showSheet by remember { mutableStateOf(false) }
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
 
     Box(modifier) {
         InputChip(

@@ -12,7 +12,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
-import androidx.compose.material3.adaptive.currentWindowAdaptiveInfo
+import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -28,7 +28,7 @@ import com.shizq.bika.navigation.rootSection
 fun BikaApp(
     appState: AppState,
     modifier: Modifier = Modifier,
-    windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfo(),
+    windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfoV2(),
 ) {
 
     val navigator = remember { Navigator(appState.navigationState) }
