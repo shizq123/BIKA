@@ -1,6 +1,14 @@
 pluginManagement {
+    val isCI = System.getenv("CI") == "true"
     includeBuild("build-logic")
     repositories {
+        if (!isCI) {
+            maven { setUrl("https://maven.aliyun.com/repository/google") }
+            maven { setUrl("https://maven.aliyun.com/repository/public") }
+            maven { setUrl("https://maven.aliyun.com/repository/gradle-plugin") }
+            maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/google/") }
+            maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
+        }
         google {
             content {
                 includeGroupByRegex("com\\.android.*")
@@ -18,8 +26,15 @@ plugins {
 }
 
 dependencyResolutionManagement {
+    val isCI = System.getenv("CI") == "true"
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
     repositories {
+        if (!isCI) {
+            maven { setUrl("https://maven.aliyun.com/repository/google") }
+            maven { setUrl("https://maven.aliyun.com/repository/public") }
+            maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/google/") }
+            maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
+        }
         google {
             content {
                 includeGroupByRegex("com\\.android.*")

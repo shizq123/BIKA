@@ -213,7 +213,6 @@ fun NotificationItem(
                 contentAlignment = Alignment.Center
             ) {
                 val avatarUrl = notification.sender?.avatar?.originalImageUrl
-                    ?: notification.sender?.avatar?.imageUrl
 
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -314,7 +313,7 @@ fun NotificationItem(
 
             // 右侧：如有封面展示封面
             notification.cover?.let { coverMedia ->
-                val coverUrl = coverMedia.originalImageUrl.ifEmpty { coverMedia.imageUrl }
+                val coverUrl = coverMedia.originalImageUrl
                 if (coverUrl.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(12.dp))
                     AsyncImage(

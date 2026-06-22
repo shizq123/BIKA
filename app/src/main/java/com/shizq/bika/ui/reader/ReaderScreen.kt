@@ -79,6 +79,7 @@ import com.shizq.bika.ui.reader.gesture.rememberGestureState
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderController
 import com.shizq.bika.ui.reader.layout.ReaderLayout
+import com.shizq.bika.ui.reader.layout.ReaderLayoutHost
 import com.shizq.bika.ui.reader.layout.SideSheetLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
 import com.shizq.bika.ui.reader.state.ReaderAction
@@ -339,6 +340,7 @@ private fun ReaderContent(
                             delay(300)
                             if (nextChapter != null) {
                                 // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
+                                dispatch(SyncReadingProgress(currentPage))
                                 dispatch(JumpToChapter(nextChapter, startFromBeginning = true))
                             } else {
                                 android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show()
@@ -415,8 +417,14 @@ private fun ReaderContent(
                             onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
                             onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
                             onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
-                            onPrevChapter = prevChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } },
-                            onNextChapter = nextChapter?.let { ch -> { dispatch(JumpToChapter(ch)) } }
+                            onPrevChapter = prevChapter?.let { ch -> {
+                                dispatch(SyncReadingProgress(currentPage))
+                                dispatch(JumpToChapter(ch))
+                            } },
+                            onNextChapter = nextChapter?.let { ch -> {
+                                dispatch(SyncReadingProgress(currentPage))
+                                dispatch(JumpToChapter(ch))
+                            } }
                                 ?: { android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show() },
                             onSeeking = { draggedPage = it },
                             onSeekingFinished = { draggedPage = null }
@@ -455,8 +463,9 @@ private fun ReaderContent(
                             ) {
                                 ChapterList(
                                     chapters = chapterList,
-                                    currentChapterId = chapterState.order,
+                                    currentChapterOrder = chapterState.order,
                                     onChapterClick = { newChapter ->
+                                        dispatch(SyncReadingProgress(currentPage))
                                         dispatch(JumpToChapter(newChapter))
                                     },
                                     modifier = Modifier.padding(top = 8.dp)
@@ -466,10 +475,10 @@ private fun ReaderContent(
                     },
                     content = {
                         val gestureState = rememberGestureState(config.tapZoneLayout)
-                        ReaderLayout(
+                        ReaderLayoutHost(
                             readerContext = readerContext,
                             gestureState = gestureState,
-                            chapterPages = imageList,
+                            pageItems = imageList,
                             toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
                             onHideMenu = {
                                 if (overlayState.showSystemBars) {

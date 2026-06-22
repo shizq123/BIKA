@@ -95,6 +95,7 @@ fun ComicDetailPage(
     modifier: Modifier = Modifier,
     recommendations: List<ComicSummary>,
     isDownloaded: Boolean = false,
+    isContinue: Boolean = false,
     onFavoriteClick: () -> Unit = {},
     onLikedClick: () -> Unit = {},
     navigationToReader: () -> Unit = {},
@@ -197,6 +198,7 @@ fun ComicDetailPage(
             isFavorited = detail.isFavourited,
             showDownload = true,
             isDownloaded = isDownloaded,
+            isContinue = isContinue,
             modifier = Modifier.align(Alignment.BottomCenter),
             onFavoriteClick = onFavoriteClick,
             onReadClick = navigationToReader,
@@ -484,6 +486,7 @@ fun MangaBottomBar(
     modifier: Modifier = Modifier,
     showDownload: Boolean = false,
     isDownloaded: Boolean = false,
+    isContinue: Boolean = false,
     onFavoriteClick: () -> Unit = {},
     onReadClick: () -> Unit = {},
     onDownloadClick: () -> Unit = {},
@@ -677,7 +680,7 @@ fun MangaBottomBar(
                                 horizontalArrangement = Arrangement.Center,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text("开始阅读", fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                                Text(if (isContinue) "继续阅读" else "开始阅读", fontWeight = FontWeight.Bold, fontSize = 16.sp)
                             }
                         }
                     }

@@ -30,15 +30,15 @@ class PagerLayout(
 
     @Composable
     override fun Content(
-        chapterPages: LazyPagingItems<ChapterPage>,
+        pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
         val widePages = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
         val pageContent: @Composable (Int) -> Unit = { pageIndex ->
             if (useDoublePage) {
-                DoublePageItem(chapterPages, pageIndex, widePages)
+                DoublePageItem(pageItems, pageIndex, widePages)
             } else {
-                PageItem(chapterPages, pageIndex)
+                PageItem(pageItems, pageIndex)
             }
         }
 
@@ -46,7 +46,7 @@ class PagerLayout(
             VerticalPager(
                 state = pagerState,
                 modifier = modifier,
-                key = if (useDoublePage) null else chapterPages.itemKey { it.id },
+                key = if (useDoublePage) null else pageItems.itemKey { it.id },
                 pageContent = { pageContent(it) }
             )
         } else {
@@ -55,7 +55,7 @@ class PagerLayout(
                 HorizontalPager(
                     state = pagerState,
                     modifier = modifier,
-                    key = if (useDoublePage) null else chapterPages.itemKey { it.id },
+                    key = if (useDoublePage) null else pageItems.itemKey { it.id },
                     pageContent = { pageContent(it) }
                 )
             }
