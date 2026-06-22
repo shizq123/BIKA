@@ -40,19 +40,46 @@ class DefaultLocalComicStorage @Inject constructor(
         )
     }
 
+    override fun resolveEpisodeDir(comicId: String, episodeOrder: Int): File {
+        val rootDir = getRootDir()
+        val comicDir = File(rootDir, sanitizePathSegment(comicId))
+        return File(comicDir, episodeOrder.toString())
+    }
+
     override fun prepareEpisodeDir(comicId: String, episodeOrder: Int): File {
         val rootDir = getRootDir()
         ensureDirectory(rootDir)
-
         val comicDir = File(rootDir, sanitizePathSegment(comicId))
         ensureDirectory(comicDir)
-
         val episodeDir = File(comicDir, episodeOrder.toString())
         ensureDirectory(episodeDir)
-
         cleanupStaleTempFiles(episodeDir)
-
         return episodeDir
+    }
+
+    override fun deleteEpisodeDir(dir: File): Boolean {
+        if (!dir.exists()) return true
+        val deleted = deleteRecursivelySafely(dir)
+        if (deleted) {
+            pruneEmptyAncestorDirs(
+                start = dir.parentFile,
+                stopBefore = getRootDir(),
+            )
+        }
+        return deleted
+    }
+
+    private fun pruneEmptyAncestorDirs(
+        start: File?,
+        stopBefore: File,
+    ) {
+        var current = start
+        while (current != null && current.exists() && current != stopBefore) {
+            val children = current.listFiles()
+            if (!children.isNullOrEmpty()) break
+            if (!current.delete()) break
+            current = current.parentFile
+        }
     }
 
     override fun findExistingPageFile(dir: File, pageNumber: Int): File? {
@@ -154,23 +181,19 @@ class DefaultLocalComicStorage @Inject constructor(
     override fun listPageFiles(dir: File): List<File> {
         if (!dir.exists() || !dir.isDirectory) return emptyList()
 
-        return dir.listFiles()
-            ?.asSequence()
-            ?.filter { it.isFile }
-            ?.filterNot { it.name.endsWith(TEMP_SUFFIX, ignoreCase = true) }
-            ?.filter { isSupportedImageFile(it.name) }
-            ?.filter { it.length() > 0L }
-            ?.sortedWith(
+        val files = dir.listFiles() ?: return emptyList()
+
+        return files
+            .asSequence()
+            .filter { it.isFile }
+            .filterNot { it.name.endsWith(TEMP_SUFFIX, ignoreCase = true) }
+            .filter { isSupportedImageFile(it.name) }
+            .filter { it.length() > 0L }
+            .sortedWith(
                 compareBy<File> { extractPageNumber(it.name) ?: Int.MAX_VALUE }
                     .thenBy { it.name.lowercase(Locale.ROOT) }
             )
-            ?.toList()
-            .orEmpty()
-    }
-
-    override fun deleteEpisodeDir(dir: File): Boolean {
-        if (!dir.exists()) return true
-        return deleteRecursivelySafely(dir)
+            .toList()
     }
 
     private fun getRootDir(): File {

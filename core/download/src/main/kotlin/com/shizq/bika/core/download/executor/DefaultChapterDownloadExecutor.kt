@@ -19,21 +19,24 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
+import okhttp3.Call
+import okhttp3.Callback
 import okhttp3.OkHttpClient
 import okhttp3.Request
-import okio.Source
+import okhttp3.Response
 import java.io.File
 import java.io.IOException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
 import java.util.concurrent.atomic.AtomicInteger
-import kotlin.coroutines.coroutineContext
+import kotlin.coroutines.resumeWithException
 import kotlin.time.Clock
 
 @Singleton
@@ -153,7 +156,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
                 Log.i(TAG, "等待网络: taskId=${task.id}, reason=${e.message}")
                 ChapterDownloadResult.WaitingForNetwork(
                     errorCode = e.errorCode,
-                    message = e.message ?: "等待网络条件满足",
+                    message = e.message,
                 )
             } catch (e: Throwable) {
                 Log.e(TAG, "下载失败: taskId=${task.id}", e)
@@ -239,7 +242,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
         var lastError: Throwable? = null
 
         repeat(MAX_PAGE_RETRY_COUNT + 1) { attempt ->
-            coroutineContext.ensureActive()
+            currentCoroutineContext().ensureActive()
             ensureNetworkConstraints(constraints)
 
             try {
@@ -272,7 +275,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
         throw lastError ?: IllegalStateException("未知页下载错误")
     }
 
-    private fun downloadSinglePage(
+    private suspend fun downloadSinglePage(
         dir: File,
         pageNumber: Int,
         imageUrl: String,
@@ -281,7 +284,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
             .url(imageUrl)
             .build()
 
-        okHttpClient.newCall(request).execute().use { response ->
+        executeCallCancellable(request).use { response ->
             if (!response.isSuccessful) {
                 throw HttpStatusException(
                     code = response.code,
@@ -302,19 +305,40 @@ class DefaultChapterDownloadExecutor @Inject constructor(
                 storage.buildPageFileName(pageNumber, extension),
             )
 
-            val source: Source = body.source()
-            source.use {
-                storage.writePageAtomically(targetFile, it)
+            body.source().use { source ->
+                storage.writePageAtomically(targetFile, source)
             }
         }
     }
+
+    private suspend fun executeCallCancellable(request: Request): Response =
+        suspendCancellableCoroutine { continuation ->
+            val call = okHttpClient.newCall(request)
+            continuation.invokeOnCancellation {
+                call.cancel()
+            }
+            call.enqueue(object : Callback {
+                override fun onFailure(call: Call, e: IOException) {
+                    if (continuation.isCancelled) return
+                    continuation.resumeWithException(e)
+                }
+
+                override fun onResponse(call: Call, response: Response) {
+                    if (!continuation.isActive) {
+                        response.close()
+                        return
+                    }
+                    continuation.resume(response) { _, response, _ -> response.close() }
+                }
+            })
+        }
 
     private fun Throwable.toFailedResult(): ChapterDownloadResult.Failed {
         return when (this) {
             is HttpStatusException -> {
                 ChapterDownloadResult.Failed(
                     errorCode = DownloadErrorCode.HTTP_ERROR,
-                    message = "图片请求失败，HTTP ${code}",
+                    message = "图片请求失败，HTTP $code",
                     recoverable = code >= 500 || code == 429,
                 )
             }
@@ -322,7 +346,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
             is NoImagesFoundException -> {
                 ChapterDownloadResult.Failed(
                     errorCode = DownloadErrorCode.NO_IMAGES_FOUND,
-                    message = message ?: "章节内未找到图片",
+                    message = message,
                     recoverable = false,
                 )
             }
@@ -357,12 +381,12 @@ class DefaultChapterDownloadExecutor @Inject constructor(
 
     private fun Throwable.isRetryable(): Boolean {
         return when (this) {
+            is HttpStatusException -> code >= 500 || code == 429
             is UnknownHostException,
             is ConnectException,
             is SocketTimeoutException,
             is IOException -> true
 
-            is HttpStatusException -> code >= 500 || code == 429
             else -> false
         }
     }

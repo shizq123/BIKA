@@ -6,6 +6,7 @@ import androidx.work.Constraints
 import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
+import androidx.work.WorkInfo
 import androidx.work.WorkManager
 import androidx.work.workDataOf
 import com.shizq.bika.core.database.model.DownloadStatus
@@ -15,6 +16,10 @@ import com.shizq.bika.core.download.worker.DownloadWorkSpec
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 
 @Singleton
@@ -23,7 +28,7 @@ class WorkManagerDownloadScheduler @Inject constructor(
     private val repository: DownloadTaskRepository,
 ) : DownloadScheduler {
 
-    private val workManager = WorkManager.Companion.getInstance(context)
+    private val workManager = WorkManager.getInstance(context)
 
     override suspend fun enqueue(taskId: String) {
         val task = repository.getTask(taskId) ?: return
@@ -52,8 +57,6 @@ class WorkManagerDownloadScheduler @Inject constructor(
         }
 
         repository.markPending(taskId)
-
-        // 用户主动恢复，应覆盖旧的 waiting/backoff work
         schedule(taskId = taskId, replace = true)
     }
 
@@ -85,6 +88,30 @@ class WorkManagerDownloadScheduler @Inject constructor(
             message = "用户取消下载",
         )
         workManager.cancelUniqueWork(DownloadWorkSpec.uniqueWorkName(taskId))
+    }
+
+    override suspend fun cancelAndAwaitStopped(
+        taskId: String,
+        timeoutMs: Long,
+    ): Boolean {
+        val uniqueName = DownloadWorkSpec.uniqueWorkName(taskId)
+        workManager.cancelUniqueWork(uniqueName)
+        return withTimeoutOrNull(timeoutMs) {
+            while (true) {
+                val infos = withContext(Dispatchers.IO) {
+                    workManager.getWorkInfosForUniqueWork(uniqueName).get()
+                }
+                val hasActiveWork = infos.any { info ->
+                    info.state == WorkInfo.State.ENQUEUED ||
+                            info.state == WorkInfo.State.RUNNING ||
+                            info.state == WorkInfo.State.BLOCKED
+                }
+                if (!hasActiveWork) {
+                    return@withTimeoutOrNull true
+                }
+                delay(200)
+            }
+        } ?: false
     }
 
     override suspend fun restorePendingTasks(limit: Int) {

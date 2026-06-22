@@ -5,6 +5,9 @@ import java.io.File
 
 interface LocalComicStorage {
 
+    /** 仅解析章节目录路径，不创建目录 */
+    fun resolveEpisodeDir(comicId: String, episodeOrder: Int): File
+
     /** 获取并确保章节目录可用，不可用时抛异常 */
     fun prepareEpisodeDir(comicId: String, episodeOrder: Int): File
 
