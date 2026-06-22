@@ -16,4 +16,8 @@ dependencies {
 
     implementation(libs.okhttp)
     implementation(libs.okio)
+
+    implementation(libs.androidx.tracing.ktx)
+    implementation(libs.androidx.work.ktx)
+    implementation(libs.hilt.ext.work)
 }
