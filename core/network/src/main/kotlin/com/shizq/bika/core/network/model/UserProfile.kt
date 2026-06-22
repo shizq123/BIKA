@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network.model
 
+import com.shizq.bika.core.network.utils.GenderSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -12,10 +13,10 @@ data class ProfileData(
 data class UserProfile(
     @SerialName("_id")
     val id: String = "",
-
     val name: String = "",         // 昵称
     val email: String = "",        // 邮箱
-    val gender: String = "",       // "m" or "f"
+    @Serializable(with = GenderSerializer::class)
+    val gender: Gender,
     val title: String = "",        // 头衔: "萌新"
     val level: Int = 0,            // 等级
     val exp: Int = 0,              // 经验值
@@ -38,5 +39,3 @@ data class UserProfile(
     val imageUrl2: String
         get() = "${avatar.fileServer}/static/${avatar.path}"
 }
-
-

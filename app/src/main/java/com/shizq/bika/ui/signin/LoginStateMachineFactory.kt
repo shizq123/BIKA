@@ -24,11 +24,11 @@ class LoginStateMachineFactory @Inject constructor(
             inState<LoginUiState> {
                 onEnter { loadInitialCredentials() }
 
-                on<LoginAction.AccountChanged> {
+                on<LoginAction.UsernameChanged> {
                     mutate {
                         copy(
-                            username = it.account,
-                            usernameIsEmpty = !it.account.isNotEmpty(),
+                            username = it.username,
+                            usernameIsEmpty = it.username.isEmpty(),
                             errorMessage = null
                         )
                     }
@@ -38,7 +38,7 @@ class LoginStateMachineFactory @Inject constructor(
                     mutate {
                         copy(
                             password = it.password,
-                            passwordIsEmpty = !it.password.isNotEmpty(),
+                            passwordIsEmpty = it.password.isEmpty(),
                             errorMessage = null
                         )
                     }

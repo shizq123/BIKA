@@ -15,7 +15,7 @@ data class LoginUiState(
 )
 
 sealed interface LoginAction {
-    data class AccountChanged(val account: String) : LoginAction
+    data class UsernameChanged(val username: String) : LoginAction
     data class PasswordChanged(val password: String) : LoginAction
     data class ToggleRememberPassword(val checked: Boolean) : LoginAction
 
