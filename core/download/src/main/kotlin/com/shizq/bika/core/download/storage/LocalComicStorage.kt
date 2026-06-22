@@ -8,7 +8,7 @@ interface LocalComicStorage {
     /** 获取并确保章节目录可用，不可用时抛异常 */
     fun prepareEpisodeDir(comicId: String, episodeOrder: Int): File
 
-    /** 根据页码查找已存在的最终图片文件，需忽略临时文件 */
+    /** 根据页码查找已存在的最终图片文件，忽略临时文件和损坏文件 */
     fun findExistingPageFile(dir: File, pageNumber: Int): File?
 
     /** 构建最终页文件名，例如 001.jpg / 002.webp */
@@ -19,11 +19,15 @@ interface LocalComicStorage {
 
     /**
      * 原子写入：
-     * 先写临时文件，再 rename 为最终文件
-     * 若存在同页不同扩展名旧文件，可在实现里做清理
+     * 1. 写入 targetFile.download
+     * 2. flush + fsync
+     * 3. rename 为最终文件
      */
     fun writePageAtomically(targetFile: File, source: Source)
 
     /** 获取本地章节所有图片文件，按页序排序 */
     fun listPageFiles(dir: File): List<File>
+
+    /** 删除整章目录 */
+    fun deleteEpisodeDir(dir: File): Boolean
 }
