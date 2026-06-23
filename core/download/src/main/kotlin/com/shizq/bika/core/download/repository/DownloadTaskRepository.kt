@@ -115,8 +115,4 @@ interface DownloadTaskRepository {
     ): Boolean
 
     suspend fun requeueWaitingForNetworkTasks(now: Long): Int
-
-    suspend fun setPriority(taskId: String, priority: Int)
-
-    suspend fun getMaxPriority(): Int
 }
