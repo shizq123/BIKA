@@ -94,23 +94,23 @@ interface DownloadTaskRepository {
     suspend fun markWaitingForNetworkOwned(
         taskId: String,
         workerToken: String,
-        errorCode: String?,
-        message: String?,
+        errorCode: DownloadErrorCode,
+        message: String,
     ): Boolean
 
     suspend fun requeueRecoverableOwned(
         taskId: String,
         workerToken: String,
         nextScheduleAt: Long,
-        errorCode: String?,
-        message: String?,
+        errorCode: DownloadErrorCode,
+        message: String,
     ): Boolean
 
     suspend fun markFailedOwned(
         taskId: String,
         workerToken: String,
-        errorCode: String?,
-        message: String?,
+        errorCode: DownloadErrorCode,
+        message: String,
         incrementRetryCount: Boolean,
     ): Boolean
 
