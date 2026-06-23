@@ -1,5 +1,6 @@
 package com.shizq.bika.core.download.repository
 
+import com.shizq.bika.core.database.dao.ClaimTaskOutcome
 import com.shizq.bika.core.database.dao.DownloadTaskDao
 import com.shizq.bika.core.database.model.DownloadErrorCode
 import com.shizq.bika.core.database.model.DownloadStatus
@@ -53,16 +54,10 @@ class RoomDownloadTaskRepository @Inject constructor(
         downloadTaskDao.upsert(normalized.asEntity())
     }
 
-    override suspend fun markPending(taskId: String) {
-        val now = clock.now()
-        downloadTaskDao.updateStatus(
+    override suspend fun markPending(taskId: String, nextScheduleAt: Long) {
+        downloadTaskDao.markPending(
             taskId = taskId,
-            status = DownloadStatus.PENDING,
-            errorCode = DownloadErrorCode.NONE,
-            errorMessage = "",
-            retryDelta = 0,
-            completedAt = null,
-            updatedAt = now,
+            nextScheduleAt = nextScheduleAt,
         )
     }
 
@@ -232,38 +227,124 @@ class RoomDownloadTaskRepository @Inject constructor(
         taskId: String,
         workerToken: String,
         maxConcurrent: Int,
-    ): ClaimDownloadTaskResult = database.withTransaction {
-        val now = System.currentTimeMillis()
-
-        val entity = downloadTaskDao.getTaskEntityById(taskId)
-            ?: return@withTransaction ClaimDownloadTaskResult.NotFound
-
-        if (entity.status != DownloadStatus.PENDING) {
-            return@withTransaction ClaimDownloadTaskResult.NotRunnable
-        }
-
-        if (entity.nextScheduleAt > now) {
-            return@withTransaction ClaimDownloadTaskResult.NotRunnable
-        }
-
-        val runningCount = downloadTaskDao.countTasksByStatus(DownloadStatus.DOWNLOADING)
-        if (runningCount >= maxConcurrent) {
-            return@withTransaction ClaimDownloadTaskResult.NoSlot
-        }
-
-        val updated = downloadTaskDao.claimPendingTask(
+    ): ClaimDownloadTaskResult {
+        val outcome = downloadTaskDao.claimPendingTaskTransactionally(
             taskId = taskId,
             workerToken = workerToken,
-            now = now,
+            maxConcurrent = maxConcurrent,
+            now = clock.now().toEpochMilliseconds(),
         )
+        return when (outcome) {
+            is ClaimTaskOutcome.Claimed ->
+                ClaimDownloadTaskResult.Claimed(outcome.task.asExternalModel())
 
-        if (updated != 1) {
-            return@withTransaction ClaimDownloadTaskResult.NotRunnable
+            ClaimTaskOutcome.NoSlot -> ClaimDownloadTaskResult.NoSlot
+            ClaimTaskOutcome.NotRunnable -> ClaimDownloadTaskResult.NotRunnable
+            ClaimTaskOutcome.NotFound -> ClaimDownloadTaskResult.NotFound
         }
-
-        val claimed = downloadTaskDao.getTaskEntityById(taskId)
-            ?: return@withTransaction ClaimDownloadTaskResult.NotFound
-
-        ClaimDownloadTaskResult.Claimed(claimed.asExternalModel())
     }
+
+    override suspend fun countRunningTasks(): Int =
+        downloadTaskDao.countTasksByStatus(DownloadStatus.DOWNLOADING)
+
+    override suspend fun getDispatchableTasks(
+        now: Long,
+        limit: Int,
+    ): List<DownloadTask> =
+        downloadTaskDao.getDispatchableTasks(
+            now = now,
+            limit = limit,
+        ).map { it.asExternalModel() }
+
+    override suspend fun getNextPendingScheduleAt(now: Long): Long? =
+        downloadTaskDao.getNextPendingScheduleAt(now = now)
+
+    override suspend fun updateProgressOwned(
+        taskId: String,
+        workerToken: String,
+        downloadedPages: Int,
+        totalPages: Int,
+    ) {
+        downloadTaskDao.updateProgressOwned(
+            taskId = taskId,
+            workerToken = workerToken,
+            downloadedPages = downloadedPages,
+            totalPages = totalPages,
+            now = clock.now().toEpochMilliseconds(),
+        )
+    }
+
+    override suspend fun markCompletedOwned(
+        taskId: String,
+        workerToken: String,
+        localPath: String,
+        totalPages: Int,
+    ): Boolean =
+        downloadTaskDao.markCompletedOwned(
+            taskId = taskId,
+            workerToken = workerToken,
+            localPath = localPath,
+            totalPages = totalPages,
+            now = clock.now().toEpochMilliseconds(),
+        ) == 1
+
+    override suspend fun markWaitingForNetworkOwned(
+        taskId: String,
+        workerToken: String,
+        errorCode: DownloadErrorCode,
+        message: String,
+    ): Boolean =
+        downloadTaskDao.markWaitingForNetworkOwned(
+            taskId = taskId,
+            workerToken = workerToken,
+            errorCode = errorCode.name,
+            message = message,
+            now = clock.now().toEpochMilliseconds(),
+        ) == 1
+
+    override suspend fun requeueRecoverableOwned(
+        taskId: String,
+        workerToken: String,
+        nextScheduleAt: Long,
+        errorCode: DownloadErrorCode,
+        message: String,
+    ): Boolean =
+        downloadTaskDao.requeueRecoverableOwned(
+            taskId = taskId,
+            workerToken = workerToken,
+            nextScheduleAt = nextScheduleAt,
+            errorCode = errorCode.name,
+            message = message,
+            now = clock.now().toEpochMilliseconds(),
+        ) == 1
+
+    override suspend fun markFailedOwned(
+        taskId: String,
+        workerToken: String,
+        errorCode: DownloadErrorCode,
+        message: String,
+        incrementRetryCount: Boolean,
+    ): Boolean =
+        downloadTaskDao.markFailedOwned(
+            taskId = taskId,
+            workerToken = workerToken,
+            errorCode = errorCode.name,
+            message = message,
+            incrementRetryCount = incrementRetryCount,
+            now = clock.now().toEpochMilliseconds(),
+        ) == 1
+
+    override suspend fun requeueWaitingForNetworkTasks(now: Long): Int =
+        downloadTaskDao.requeueWaitingForNetworkTasks(now = now)
+
+    override suspend fun setPriority(taskId: String, priority: Int) {
+        downloadTaskDao.updatePriority(
+            taskId = taskId,
+            priority = priority,
+            updatedAt = clock.now(),
+        )
+    }
+
+    override suspend fun getMaxPriority(): Int =
+        downloadTaskDao.getMaxPriority()
 }
