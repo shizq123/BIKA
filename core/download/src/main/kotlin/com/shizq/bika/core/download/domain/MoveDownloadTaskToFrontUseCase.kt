@@ -9,8 +9,9 @@ class MoveDownloadTaskToFrontUseCase @Inject constructor(
     private val scheduler: DownloadScheduler,
 ) {
     suspend operator fun invoke(taskId: String) {
-        val maxPriority = repository.getMaxPriority()
-        repository.setPriority(taskId, maxPriority + 1)
+        // bringToTop 在单个事务内原子完成 getMaxPriority + updatePriority，
+        // 避免并发调用时两个任务读到相同的 maxPriority 导致优先级相同。
+        repository.bringToTop(taskId)
         scheduler.resume(taskId)
     }
 }
