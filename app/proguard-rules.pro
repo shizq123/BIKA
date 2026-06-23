@@ -1,4 +1,2 @@
--keep class com.luck.picture.lib.** { *; }
--dontwarn com.yalantis.ucrop**
--keep class com.yalantis.ucrop** { *; }
--keep interface com.yalantis.ucrop** { *; }
+# Add project specific ProGuard rules here.
+# You can control the set of files you want to keep.

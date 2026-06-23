@@ -1,40 +1,14 @@
 pluginManagement {
-    val isCI = System.getenv("CI") == "true"
-    includeBuild("build-logic")
     repositories {
-        if (!isCI) {
-            maven { setUrl("https://maven.aliyun.com/repository/google") }
-            maven { setUrl("https://maven.aliyun.com/repository/public") }
-            maven { setUrl("https://maven.aliyun.com/repository/gradle-plugin") }
-            maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/google/") }
-            maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
-        }
-        google {
-            content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
-            }
-        }
-        mavenCentral()
         gradlePluginPortal()
+        google()
+        mavenCentral()
     }
 }
 
-plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
-}
-
 dependencyResolutionManagement {
-    val isCI = System.getenv("CI") == "true"
     repositoriesMode = RepositoriesMode.FAIL_ON_PROJECT_REPOS
     repositories {
-        if (!isCI) {
-            maven { setUrl("https://maven.aliyun.com/repository/google") }
-            maven { setUrl("https://maven.aliyun.com/repository/public") }
-            maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/google/") }
-            maven { setUrl("https://mirrors.cloud.tencent.com/nexus/repository/maven-public/") }
-        }
         google {
             content {
                 includeGroupByRegex("com\\.android.*")
@@ -43,7 +17,6 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
-        maven { setUrl("https://www.jitpack.io") }
     }
 }
 
@@ -63,3 +36,5 @@ include(":core:testing")
 include(":core:ui")
 
 include(":sync:work")
+
+includeBuild("build-logic")
