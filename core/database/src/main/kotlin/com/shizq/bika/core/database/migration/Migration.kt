@@ -45,38 +45,40 @@ val MIGRATION_1_2 = object : Migration(1, 2) {
 
 val MIGRATION_2_3 = object : Migration(2, 3) {
     override fun migrate(db: SupportSQLiteDatabase) {
+        // 修复原错误：此前误用 download_tasks（带下划线），实际表名为 downloadTask
         db.execSQL(
             """
-            ALTER TABLE download_tasks
+            ALTER TABLE downloadTask
             ADD COLUMN priority INTEGER NOT NULL DEFAULT 0
         """.trimIndent()
         )
 
         db.execSQL(
             """
-            ALTER TABLE download_tasks
+            ALTER TABLE downloadTask
             ADD COLUMN worker_token TEXT
         """.trimIndent()
         )
 
         db.execSQL(
             """
-            ALTER TABLE download_tasks
+            ALTER TABLE downloadTask
             ADD COLUMN next_schedule_at INTEGER NOT NULL DEFAULT 0
         """.trimIndent()
         )
 
+        // 沿用与 Entity 一致的索引命名规范（index_<tableName>_<columns>）
         db.execSQL(
             """
-            CREATE INDEX IF NOT EXISTS index_download_tasks_status_next_priority
-            ON download_tasks(status, next_schedule_at, priority DESC, created_at ASC)
+            CREATE INDEX IF NOT EXISTS index_downloadTask_priority
+            ON downloadTask(priority)
         """.trimIndent()
         )
 
         db.execSQL(
             """
-            CREATE INDEX IF NOT EXISTS index_download_tasks_worker_token
-            ON download_tasks(worker_token)
+            CREATE INDEX IF NOT EXISTS index_downloadTask_worker_token
+            ON downloadTask(worker_token)
         """.trimIndent()
         )
     }
