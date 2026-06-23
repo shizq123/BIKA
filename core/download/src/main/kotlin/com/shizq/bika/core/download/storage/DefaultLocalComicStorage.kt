@@ -110,9 +110,12 @@ class DefaultLocalComicStorage @Inject constructor(
 
         if (validFiles.isEmpty()) return null
 
-        // 正常情况下只应该有一个；如果历史遗留多个，取名字排序后的第一个
-        // 其余保留不动，避免误删用户数据。后续导出阶段可再做收敛。
-        return validFiles.sortedBy { it.name.lowercase(Locale.ROOT) }.first()
+        // 正常情况下只应该有一个有效文件；
+        // 若历史遗留多个同页不同格式的文件，保留名字排序最小的一个，其余删除，
+        // 防止长期积累浪费存储，并消除 listPageFiles 读到歧义文件的隐患。
+        val sorted = validFiles.sortedBy { it.name.lowercase(Locale.ROOT) }
+        sorted.drop(1).forEach { it.delete() }
+        return sorted.first()
     }
 
     override fun buildPageFileName(pageNumber: Int, extension: String): String {
