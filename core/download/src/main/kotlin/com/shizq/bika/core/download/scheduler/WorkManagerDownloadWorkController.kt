@@ -16,9 +16,7 @@ import com.shizq.bika.core.download.worker.delegatedData
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 
@@ -83,24 +81,19 @@ class WorkManagerDownloadWorkController @Inject constructor(
         val uniqueName = DownloadWorkSpec.uniqueTaskWorkName(taskId)
         workManager.cancelUniqueWork(uniqueName)
 
+        // 用 WorkInfo Flow 响应式等待，避免固定间隔轮询的浪费和延迟。
+        // getWorkInfosForUniqueWorkFlow 在没有匹配 Work 时发射空列表，
+        // 空列表等同于已停止（没有活跃 Work），直接视为成功。
         return withTimeoutOrNull(timeoutMs) {
-            while (true) {
-                val infos = withContext(Dispatchers.IO) {
-                    workManager.getWorkInfosForUniqueWork(uniqueName).get()
+            workManager.getWorkInfosForUniqueWorkFlow(uniqueName)
+                .first { infos ->
+                    infos.none { info ->
+                        info.state == WorkInfo.State.ENQUEUED ||
+                                info.state == WorkInfo.State.RUNNING ||
+                                info.state == WorkInfo.State.BLOCKED
+                    }
                 }
-
-                val hasActiveWork = infos.any { info ->
-                    info.state == WorkInfo.State.ENQUEUED ||
-                            info.state == WorkInfo.State.RUNNING ||
-                            info.state == WorkInfo.State.BLOCKED
-                }
-
-                if (!hasActiveWork) {
-                    return@withTimeoutOrNull true
-                }
-
-                delay(200)
-            }
+            true
         } ?: false
     }
 }
