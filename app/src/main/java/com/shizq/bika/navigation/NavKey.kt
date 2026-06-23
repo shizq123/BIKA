@@ -58,6 +58,9 @@ data object ConnectedRoute : Root {
 
     @Serializable
     data object StorageManagerRoute : Connected
+
+    @Serializable
+    data object DnsSettingsRoute : Connected
 }
 
 @Serializable

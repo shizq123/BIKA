@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material3.AlertDialog
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -63,6 +64,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     navigationToLogin: () -> Unit,
     navigationToStorageManager: () -> Unit,
+    navigationToDnsSettings: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
 ) {
@@ -202,6 +204,7 @@ fun SettingsScreen(
             navigationToLogin()
         },
         onStorageManagerClick = navigationToStorageManager,
+        onDnsSettingsClick = navigationToDnsSettings,
         onBackClick = onBackClick,
         onCheckForUpdates = viewModel::checkForUpdates,
     )
@@ -214,6 +217,7 @@ fun SettingsContent(
     cacheSize: String,
     onClearCache: () -> Unit = {},
     onStorageManagerClick: () -> Unit = {},
+    onDnsSettingsClick: () -> Unit = {},
     onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit = {},
     onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
     onUpdateNetworkLine: (line: NetworkLine) -> Unit = {},
@@ -300,6 +304,12 @@ fun SettingsContent(
                                 selectedValue = settingsUiState.selectedNetworkLine,
                                 optionToText = { it.display },
                                 onOptionSelected = onUpdateNetworkLine
+                            )
+                            Preference(
+                                title = "DNS直连与分流优化",
+                                summary = "获取直连 IP 并测试延迟以选择最佳线路",
+                                iconVector = Icons.Default.NetworkCheck,
+                                onClick = onDnsSettingsClick
                             )
                             SwitchPreference(
                                 title = "自动签到",

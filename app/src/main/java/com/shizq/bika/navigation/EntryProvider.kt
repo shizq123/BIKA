@@ -29,6 +29,7 @@ import com.shizq.bika.ui.reader.ReaderViewModel
 import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.settings.StorageManagerScreen
+import com.shizq.bika.ui.settings.DnsSettingsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 import com.shizq.bika.ui.download.DownloadListScreen
@@ -210,6 +211,7 @@ fun EntryProviderScope<NavKey>.featureSection(
         SettingsScreen(
             navigationToLogin = { navigator.navigate(AuthenticationRoute) },
             navigationToStorageManager = { navigator.navigate(ConnectedRoute.StorageManagerRoute) },
+            navigationToDnsSettings = { navigator.navigate(ConnectedRoute.DnsSettingsRoute) },
             onBackClick = navigator::goBack
         )
     }
@@ -217,6 +219,13 @@ fun EntryProviderScope<NavKey>.featureSection(
         metadata = slideTransitionMetadata()
     ) {
         StorageManagerScreen(
+            onBackClick = navigator::goBack
+        )
+    }
+    entry<ConnectedRoute.DnsSettingsRoute>(
+        metadata = slideTransitionMetadata()
+    ) {
+        DnsSettingsScreen(
             onBackClick = navigator::goBack
         )
     }

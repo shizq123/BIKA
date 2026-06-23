@@ -78,6 +78,12 @@ class UserPreferencesDataSource @Inject constructor(
         }
     }
 
+    suspend fun overwriteDns(dns: Set<String>) {
+        userPreferences.updateData {
+            it.copy(dns = dns)
+        }
+    }
+
     suspend fun setFontScale(scale: Float) {
         userPreferences.updateData {
             it.copy(fontScale = scale)
