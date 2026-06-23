@@ -337,14 +337,4 @@ class RoomDownloadTaskRepository @Inject constructor(
     override suspend fun requeueWaitingForNetworkTasks(now: Long): Int =
         downloadTaskDao.requeueWaitingForNetworkTasks(now = now)
 
-    override suspend fun setPriority(taskId: String, priority: Int) {
-        downloadTaskDao.updatePriority(
-            taskId = taskId,
-            priority = priority,
-            updatedAt = clock.now(),
-        )
-    }
-
-    override suspend fun getMaxPriority(): Int =
-        downloadTaskDao.getMaxPriority()
 }
