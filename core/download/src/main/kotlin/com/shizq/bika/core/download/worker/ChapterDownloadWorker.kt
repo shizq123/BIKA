@@ -43,10 +43,10 @@ class ChapterDownloadWorker @AssistedInject constructor(
 
                 ClaimDownloadTaskResult.NotRunnable -> Result.success()
 
-                ClaimDownloadTaskResult.NoSlot -> {
-                    workController.enqueueDispatchWork(replace = true)
-                    Result.success()
-                }
+                // NoSlot 不需要在这里额外触发 Dispatch：
+                // finally 块已经保证每个 Worker 退出时都会触发一次 enqueueDispatchWork，
+                // 避免多个 NoSlot Worker 并发退出时重复 replace，造成调度风暴。
+                ClaimDownloadTaskResult.NoSlot -> Result.success()
 
                 is ClaimDownloadTaskResult.Claimed -> {
                     handleClaimedTask(
