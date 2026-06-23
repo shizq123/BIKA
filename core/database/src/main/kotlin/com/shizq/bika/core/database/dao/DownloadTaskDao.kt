@@ -227,15 +227,6 @@ interface DownloadTaskDao {
 
     @Query(
         """
-    SELECT * FROM downloadTask
-    WHERE id = :taskId
-    LIMIT 1
-"""
-    )
-    suspend fun getTaskEntityById(taskId: String): DownloadTaskEntity?
-
-    @Query(
-        """
     UPDATE downloadTask
     SET status = :downloadingStatus,
         worker_token = :workerToken,
@@ -422,7 +413,7 @@ interface DownloadTaskDao {
         maxConcurrent: Int,
         now: Long,
     ): ClaimTaskOutcome {
-        val entity = getTaskEntityById(taskId)
+        val entity = getById(taskId)
             ?: return ClaimTaskOutcome.NotFound
 
         if (entity.status != DownloadStatus.PENDING) {
@@ -448,7 +439,7 @@ interface DownloadTaskDao {
             return ClaimTaskOutcome.NotRunnable
         }
 
-        val claimed = getTaskEntityById(taskId)
+        val claimed = getById(taskId)
             ?: return ClaimTaskOutcome.NotFound
 
         return ClaimTaskOutcome.Claimed(claimed)
