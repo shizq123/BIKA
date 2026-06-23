@@ -385,20 +385,6 @@ interface DownloadTaskDao {
 
     @Query(
         """
-    UPDATE downloadTask
-    SET priority = :priority,
-        updatedAt = :now
-    WHERE id = :taskId
-"""
-    )
-    suspend fun updatePriority(
-        taskId: String,
-        priority: Int,
-        now: Long,
-    ): Int
-
-    @Query(
-        """
     SELECT COALESCE(MAX(priority), 0)
     FROM downloadTask
 """
@@ -422,4 +408,57 @@ interface DownloadTaskDao {
         nextScheduleAt: Long,
         pendingStatus: DownloadStatus = DownloadStatus.PENDING,
     ): Int
+
+    /**
+     * 在单个事务内原子地认领一个待下载任务。
+     *
+     * 校验顺序：任务存在 -> 处于 PENDING -> 已到调度时间 -> 仍有空闲并发槽位，
+     * 全部满足后写入 worker_token 并切换到 DOWNLOADING，避免多 Worker 竞态。
+     */
+    @Transaction
+    suspend fun claimPendingTaskTransactionally(
+        taskId: String,
+        workerToken: String,
+        maxConcurrent: Int,
+        now: Long,
+    ): ClaimTaskOutcome {
+        val entity = getTaskEntityById(taskId)
+            ?: return ClaimTaskOutcome.NotFound
+
+        if (entity.status != DownloadStatus.PENDING) {
+            return ClaimTaskOutcome.NotRunnable
+        }
+
+        if (entity.nextScheduleAt > now) {
+            return ClaimTaskOutcome.NotRunnable
+        }
+
+        val runningCount = countTasksByStatus(DownloadStatus.DOWNLOADING)
+        if (runningCount >= maxConcurrent) {
+            return ClaimTaskOutcome.NoSlot
+        }
+
+        val updated = claimPendingTask(
+            taskId = taskId,
+            workerToken = workerToken,
+            now = now,
+        )
+
+        if (updated != 1) {
+            return ClaimTaskOutcome.NotRunnable
+        }
+
+        val claimed = getTaskEntityById(taskId)
+            ?: return ClaimTaskOutcome.NotFound
+
+        return ClaimTaskOutcome.Claimed(claimed)
+    }
+}
+
+/** [DownloadTaskDao.claimPendingTaskTransactionally] 的认领结果。 */
+sealed interface ClaimTaskOutcome {
+    data class Claimed(val task: DownloadTaskEntity) : ClaimTaskOutcome
+    data object NoSlot : ClaimTaskOutcome
+    data object NotRunnable : ClaimTaskOutcome
+    data object NotFound : ClaimTaskOutcome
 }

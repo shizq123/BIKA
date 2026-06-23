@@ -1,39 +1,46 @@
 package com.shizq.bika.core.data.repository
 
 import android.content.Context
+import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.Uri
 import android.util.Log
+import android.widget.Toast
+import androidx.core.content.FileProvider
+import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.database.dao.DownloadTaskDao
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.database.model.DownloadTaskEntity
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.network.BikaDataSource
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okio.buffer
 import okio.sink
-import android.net.Uri
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import kotlin.time.Clock
-import com.shizq.bika.core.coroutine.ApplicationScope
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
-import java.util.concurrent.atomic.AtomicInteger
 
 @Singleton
 class DownloadRepository @Inject constructor(
@@ -41,7 +48,7 @@ class DownloadRepository @Inject constructor(
     private val downloadTaskDao: DownloadTaskDao,
     private val network: BikaDataSource,
     private val okHttpClient: OkHttpClient,
-    private val userPreferencesDataSource: com.shizq.bika.core.datastore.UserPreferencesDataSource,
+    private val userPreferencesDataSource: UserPreferencesDataSource,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     companion object {
@@ -52,15 +59,15 @@ class DownloadRepository @Inject constructor(
     }
 
     /** 获取所有下载任务（供下载列表页使用） */
-    fun getAllTasks(): Flow<List<DownloadTaskEntity>> = downloadTaskDao.getAllTasks()
+    fun getAllTasks(): Flow<List<DownloadTaskEntity>> = downloadTaskDao.observeAll()
 
     /** 获取某本漫画的下载任务 */
     fun getTasksByComic(comicId: String): Flow<List<DownloadTaskEntity>> =
-        downloadTaskDao.getTasksByComic(comicId)
+        downloadTaskDao.observeByComic(comicId)
 
     /** 获取单个任务状态 */
     fun getTaskById(taskId: String): Flow<DownloadTaskEntity?> =
-        downloadTaskDao.getTaskById(taskId)
+        downloadTaskDao.observeById(taskId)
 
     /**
      * 开始下载某个章节。
@@ -87,8 +94,9 @@ class DownloadRepository @Inject constructor(
             episodeOrder = episodeOrder,
             status = DownloadStatus.DOWNLOADING,
             createdAt = Clock.System.now(),
+            updatedAt = Clock.System.now(),
         )
-        downloadTaskDao.upsertTask(task)
+        downloadTaskDao.upsert(task)
 
         try {
             // 离线下载 WiFi 环境检查
@@ -127,6 +135,7 @@ class DownloadRepository @Inject constructor(
                 totalPages = totalPages,
                 progress = (existsCount * 100 / totalPages),
                 status = DownloadStatus.DOWNLOADING,
+                updatedAt = Clock.System.now(),
             )
 
             if (pendingPages.isNotEmpty()) {
@@ -144,6 +153,7 @@ class DownloadRepository @Inject constructor(
                                     totalPages = totalPages,
                                     progress = (currentCompleted * 100 / totalPages),
                                     status = DownloadStatus.DOWNLOADING,
+                                    updatedAt = Clock.System.now(),
                                 )
                             }
                         }
@@ -171,18 +181,18 @@ class DownloadRepository @Inject constructor(
 
     /** 标记章节为已在本地查看 */
     suspend fun markAsViewed(taskId: String) {
-        downloadTaskDao.markAsViewed(taskId)
+        downloadTaskDao.markAsViewed(taskId, Clock.System.now())
     }
 
     /** 置顶指定的下载任务 */
     suspend fun bringToTop(taskId: String) = withContext(Dispatchers.IO) {
         val maxPriority = downloadTaskDao.getMaxPriority()
-        downloadTaskDao.updateTaskPriority(taskId, maxPriority + 1)
+        downloadTaskDao.updatePriority(taskId, maxPriority + 1, Clock.System.now())
     }
 
     /** 更新指定的任务优先级 */
     suspend fun updateTaskPriority(taskId: String, priority: Int) = withContext(Dispatchers.IO) {
-        downloadTaskDao.updateTaskPriority(taskId, priority)
+        downloadTaskDao.updatePriority(taskId, priority, Clock.System.now())
     }
 
     /** 删除下载任务及其本地文件 */
@@ -190,7 +200,7 @@ class DownloadRepository @Inject constructor(
         if (task.localPath.isNotEmpty()) {
             File(task.localPath).deleteRecursively()
         }
-        downloadTaskDao.deleteTask(task)
+        downloadTaskDao.delete(task)
     }
 
     /** 批量删除下载任务及其本地文件 */
@@ -200,7 +210,7 @@ class DownloadRepository @Inject constructor(
                 File(task.localPath).deleteRecursively()
             }
         }
-        downloadTaskDao.deleteTasks(tasks)
+        downloadTaskDao.delete(tasks)
     }
 
     /** 获取隐藏目录下的章节文件夹 */
@@ -222,7 +232,7 @@ class DownloadRepository @Inject constructor(
         val request = Request.Builder().url(url).build()
         okHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) {
-                throw java.io.IOException("Unexpected HTTP code $response")
+                throw IOException("Unexpected HTTP code $response")
             }
             val body = response.body
             dest.sink().buffer().use { sink ->
@@ -232,11 +242,12 @@ class DownloadRepository @Inject constructor(
     }
 
     private fun isWifiConnected(context: Context): Boolean {
-        val connectivityManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? android.net.ConnectivityManager
-            ?: return false
+        val connectivityManager =
+            context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+                ?: return false
         val activeNetwork = connectivityManager.activeNetwork ?: return false
         val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
-        return capabilities.hasTransport(android.net.NetworkCapabilities.TRANSPORT_WIFI)
+        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
     }
 
     /** 导入本地 CBZ/ZIP 漫画 */
@@ -304,8 +315,9 @@ class DownloadRepository @Inject constructor(
                 localPath = dir.absolutePath,
                 createdAt = Clock.System.now(),
                 completedAt = Clock.System.now(),
+                updatedAt = Clock.System.now(),
             )
-            downloadTaskDao.upsertTask(task)
+            downloadTaskDao.upsert(task)
 
         } finally {
             tempFile.delete()
@@ -343,62 +355,64 @@ class DownloadRepository @Inject constructor(
     }
 
     /** 批量导出已下载章节为单个 ZIP 文件 */
-    suspend fun exportMultipleToZip(tasks: List<DownloadTaskEntity>, comicTitle: String): File = withContext(Dispatchers.IO) {
-        val exportDir = File(context.cacheDir, "exported_comics")
-        exportDir.mkdirs()
+    suspend fun exportMultipleToZip(tasks: List<DownloadTaskEntity>, comicTitle: String): File =
+        withContext(Dispatchers.IO) {
+            val exportDir = File(context.cacheDir, "exported_comics")
+            exportDir.mkdirs()
 
-        // 移除非法字符，生成干净的文件名
-        val sanitizedComicTitle = comicTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-        val outputFile = File(exportDir, "${sanitizedComicTitle}_归档.zip")
+            // 移除非法字符，生成干净的文件名
+            val sanitizedComicTitle = comicTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+            val outputFile = File(exportDir, "${sanitizedComicTitle}_归档.zip")
 
-        ZipOutputStream(FileOutputStream(outputFile)).use { zos ->
-            tasks.forEach { task ->
-                val sourceDir = File(task.localPath)
-                if (sourceDir.exists() && sourceDir.isDirectory) {
-                    val chapterFolderName = task.episodeTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                    sourceDir.listFiles()?.forEach { file ->
-                        if (file.isFile && file.extension == "jpg") {
-                            val entry = ZipEntry("$chapterFolderName/${file.name}")
-                            zos.putNextEntry(entry)
-                            file.inputStream().use { fis ->
-                                fis.copyTo(zos)
+            ZipOutputStream(FileOutputStream(outputFile)).use { zos ->
+                tasks.forEach { task ->
+                    val sourceDir = File(task.localPath)
+                    if (sourceDir.exists() && sourceDir.isDirectory) {
+                        val chapterFolderName =
+                            task.episodeTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                        sourceDir.listFiles()?.forEach { file ->
+                            if (file.isFile && file.extension == "jpg") {
+                                val entry = ZipEntry("$chapterFolderName/${file.name}")
+                                zos.putNextEntry(entry)
+                                file.inputStream().use { fis ->
+                                    fis.copyTo(zos)
+                                }
+                                zos.closeEntry()
                             }
-                            zos.closeEntry()
                         }
                     }
                 }
             }
+            outputFile
         }
-        outputFile
-    }
 
     private fun isImageFile(name: String): Boolean {
         val ext = name.substringAfterLast(".", "").lowercase()
         return ext in listOf("jpg", "jpeg", "png", "webp")
     }
 
-    private suspend fun showToast(message: String, duration: Int = android.widget.Toast.LENGTH_SHORT) {
+    private suspend fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
         withContext(Dispatchers.Main) {
-            android.widget.Toast.makeText(context, message, duration).show()
+            Toast.makeText(context, message, duration).show()
         }
     }
 
     private fun shareFile(file: File, mimeType: String, title: String) {
         try {
-            val fileUri = androidx.core.content.FileProvider.getUriForFile(
+            val fileUri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
                 file
             )
-            val shareIntent = android.content.Intent().apply {
-                action = android.content.Intent.ACTION_SEND
-                putExtra(android.content.Intent.EXTRA_STREAM, fileUri)
+            val shareIntent = Intent().apply {
+                action = Intent.ACTION_SEND
+                putExtra(Intent.EXTRA_STREAM, fileUri)
                 type = mimeType
-                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            val chooserIntent = android.content.Intent.createChooser(shareIntent, title).apply {
-                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            val chooserIntent = Intent.createChooser(shareIntent, title).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             context.startActivity(chooserIntent)
         } catch (e: Exception) {

@@ -63,14 +63,15 @@ class DefaultChapterDownloadExecutor @Inject constructor(
         private const val PROGRESS_UPDATE_INTERVAL_MS = 500L
     }
 
-    override suspend fun execute(task: DownloadTask): ChapterDownloadResult =
+    override suspend fun execute(
+        task: DownloadTask,
+        workerToken: String,
+    ): ChapterDownloadResult =
         withContext(Dispatchers.IO) {
             try {
                 val constraints = loadConstraints()
 
                 ensureNetworkConstraints(constraints)
-
-                repository.markDownloading(task.id)
 
                 val pageUrls = fetchAllPageUrls(task, constraints)
                 if (pageUrls.isEmpty()) {
@@ -94,6 +95,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
 
                 val progressReporter = ProgressReporter(
                     taskId = task.id,
+                    workerToken = workerToken,
                     repository = repository,
                     clock = clock,
                 )
@@ -411,6 +413,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
 
     private class ProgressReporter(
         private val taskId: String,
+        private val workerToken: String,
         private val repository: DownloadTaskRepository,
         private val clock: Clock,
     ) {
@@ -444,8 +447,9 @@ class DefaultChapterDownloadExecutor @Inject constructor(
 
                 if (!shouldEmit) return
 
-                repository.updateProgress(
+                repository.updateProgressOwned(
                     taskId = taskId,
+                    workerToken = workerToken,
                     downloadedPages = downloadedPages,
                     totalPages = totalPages,
                 )
