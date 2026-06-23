@@ -25,6 +25,8 @@ internal object DatabaseModule {
         "bika-database",
     )
         .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-        .fallbackToDestructiveMigration(true)
+        // 仅对无法提供迁移路径的旧版本（1以下）允许破坏性重建，
+        // 避免因通配符导致任意版本跳跃都静默丢数据。
+        .fallbackToDestructiveMigrationFrom(true, 1)
         .build()
 }
