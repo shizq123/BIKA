@@ -439,10 +439,9 @@ class DefaultChapterDownloadExecutor @Inject constructor(
                         .coerceIn(0, 100)
                 }
 
-                val shouldEmit = force ||
-                        lastDownloadedPages != downloadedPages && (
-                        nowMs - lastEmitAtMs >= PROGRESS_UPDATE_INTERVAL_MS ||
-                                progress != lastProgress
+                val shouldEmit = force || (
+                        lastDownloadedPages != downloadedPages &&
+                                (nowMs - lastEmitAtMs >= PROGRESS_UPDATE_INTERVAL_MS || progress != lastProgress)
                         )
 
                 if (!shouldEmit) return
