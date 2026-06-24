@@ -12,19 +12,19 @@ class WorkManagerDownloadScheduler @Inject constructor(
 ) : DownloadScheduler {
 
     override suspend fun enqueue(taskId: String) {
-        val task = repository.getTask(taskId) ?: return
-        if (task.status == DownloadStatus.COMPLETED || task.status == DownloadStatus.CANCELED) {
-            return
-        }
-
-        repository.markPending(
-            taskId = taskId,
-            nextScheduleAt = System.currentTimeMillis(),
-        )
-        workController.enqueueDispatchWork(replace = true)
+        markPendingAndDispatch(taskId, cancelExistingWork = false)
     }
 
     override suspend fun resume(taskId: String) {
+        markPendingAndDispatch(taskId, cancelExistingWork = true)
+    }
+
+    /**
+     * 将任务置为 PENDING 并触发调度分发。
+     *
+     * @param cancelExistingWork 是否在触发前先取消当前正在运行的 WorkManager 任务（resume 时需要）
+     */
+    private suspend fun markPendingAndDispatch(taskId: String, cancelExistingWork: Boolean) {
         val task = repository.getTask(taskId) ?: return
         if (task.status == DownloadStatus.COMPLETED || task.status == DownloadStatus.CANCELED) {
             return
@@ -35,7 +35,9 @@ class WorkManagerDownloadScheduler @Inject constructor(
             nextScheduleAt = System.currentTimeMillis(),
         )
 
-        workController.cancelTaskWork(taskId)
+        if (cancelExistingWork) {
+            workController.cancelTaskWork(taskId)
+        }
         workController.enqueueDispatchWork(replace = true)
     }
 
