@@ -20,6 +20,19 @@ class RoomDownloadTaskRepository @Inject constructor(
     private val clock: Clock,
 ) : DownloadTaskRepository {
 
+    companion object {
+        /**
+         * 可被调度器感知的"活跃"状态集合。
+         * PENDING / WAITING_FOR_NETWORK 等待执行，DOWNLOADING 正在执行。
+         * 新增状态时同步维护此列表。
+         */
+        private val SCHEDULABLE_STATUSES = listOf(
+            DownloadStatus.PENDING.name,
+            DownloadStatus.WAITING_FOR_NETWORK.name,
+            DownloadStatus.DOWNLOADING.name,
+        )
+    }
+
     override fun observeAllTasks(): Flow<List<DownloadTask>> =
         downloadTaskDao.observeAll()
             .map { list -> list.map { it.asExternalModel() } }
@@ -36,13 +49,8 @@ class RoomDownloadTaskRepository @Inject constructor(
         downloadTaskDao.getById(taskId)?.asExternalModel()
 
     override suspend fun getSchedulableTasks(limit: Int): List<DownloadTask> {
-        val statuses = listOf(
-            DownloadStatus.PENDING.name,
-            DownloadStatus.WAITING_FOR_NETWORK.name,
-            DownloadStatus.DOWNLOADING.name,
-        )
         return downloadTaskDao.getByStatuses(
-            statusNames = statuses,
+            statusNames = SCHEDULABLE_STATUSES,
             limit = limit,
         ).map { it.asExternalModel() }
     }
