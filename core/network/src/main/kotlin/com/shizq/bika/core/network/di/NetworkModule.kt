@@ -7,7 +7,6 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.network.BuildConfig
 import com.shizq.bika.core.network.plugin.ApiEnvelopePlugin
 import com.shizq.bika.core.network.plugin.DirectDns
@@ -71,10 +70,12 @@ internal object NetworkModule {
         }
         bikaAuth {
             channel {
-                when (userPreferencesDataSource.userData.first().selectedNetworkLine) {
-                    NetworkLine.LINE_1 -> "1"
-                    NetworkLine.LINE_2 -> "2"
-                    NetworkLine.LINE_3 -> "3"
+                val activeLine = userPreferencesDataSource.userData.first().activeDnsLine
+                when (activeLine.lowercase()) {
+                    "telecom" -> "1"
+                    "unicom" -> "2"
+                    "mobile" -> "3"
+                    else -> "1"
                 }
             }
             token {
