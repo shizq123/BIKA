@@ -236,12 +236,14 @@ interface DownloadTaskDao {
     WHERE id = :taskId
       AND status = :pendingStatus
       AND next_schedule_at <= :now
+      AND (SELECT COUNT(*) FROM downloadTask WHERE status = :downloadingStatus) < :maxConcurrent
 """
     )
     suspend fun claimPendingTask(
         taskId: String,
         workerToken: String,
         now: Long,
+        maxConcurrent: Int,
         pendingStatus: DownloadStatus = DownloadStatus.PENDING,
         downloadingStatus: DownloadStatus = DownloadStatus.DOWNLOADING,
     ): Int
@@ -403,8 +405,10 @@ interface DownloadTaskDao {
     /**
      * 在单个事务内原子地认领一个待下载任务。
      *
-     * 校验顺序：任务存在 -> 处于 PENDING -> 已到调度时间 -> 仍有空闲并发槽位，
-     * 全部满足后写入 worker_token 并切换到 DOWNLOADING，避免多 Worker 竞态。
+     * 所有校验（任务存在、处于 PENDING、已到调度时间、并发槽位未满）均在一条 UPDATE SQL
+     * 的 WHERE 子句中完成，避免分步读写之间的 TOCTOU 竞态。
+     * UPDATE 影响行数为 1 表示认领成功，为 0 表示某项条件不满足。
+     * 为了区分 NotFound / NoSlot / NotRunnable，在 UPDATE 之后做一次轻量只读查询。
      */
     @Transaction
     suspend fun claimPendingTaskTransactionally(
@@ -413,36 +417,28 @@ interface DownloadTaskDao {
         maxConcurrent: Int,
         now: Long,
     ): ClaimTaskOutcome {
-        val entity = getById(taskId)
-            ?: return ClaimTaskOutcome.NotFound
-
-        if (entity.status != DownloadStatus.PENDING) {
-            return ClaimTaskOutcome.NotRunnable
-        }
-
-        if (entity.nextScheduleAt > now) {
-            return ClaimTaskOutcome.NotRunnable
-        }
-
-        val runningCount = countTasksByStatus(DownloadStatus.DOWNLOADING)
-        if (runningCount >= maxConcurrent) {
-            return ClaimTaskOutcome.NoSlot
-        }
-
+        // 单条 UPDATE 原子完成：status 检查 + 时间检查 + 槽位检查 + 写 token
         val updated = claimPendingTask(
             taskId = taskId,
             workerToken = workerToken,
             now = now,
+            maxConcurrent = maxConcurrent,
         )
 
-        if (updated != 1) {
+        if (updated == 1) {
+            val claimed = getById(taskId) ?: return ClaimTaskOutcome.NotFound
+            return ClaimTaskOutcome.Claimed(claimed)
+        }
+
+        // UPDATE 未命中：做一次只读查询区分失败原因，便于调用方决策
+        val entity = getById(taskId) ?: return ClaimTaskOutcome.NotFound
+
+        if (entity.status != DownloadStatus.PENDING || entity.nextScheduleAt > now) {
             return ClaimTaskOutcome.NotRunnable
         }
 
-        val claimed = getById(taskId)
-            ?: return ClaimTaskOutcome.NotFound
-
-        return ClaimTaskOutcome.Claimed(claimed)
+        // status/时间条件满足却未更新，说明并发槽位已满
+        return ClaimTaskOutcome.NoSlot
     }
 }
 
