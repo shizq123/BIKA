@@ -3,7 +3,6 @@ package com.shizq.bika.core.model
 import kotlinx.serialization.Serializable
 
 /**
- * @property selectedNetworkLine 分流线路
  * @property autoCheckIn 是否开启每日自动签到
  */
 @Serializable
@@ -15,9 +14,11 @@ data class UserPreferences(
     val channels: List<Channel> = ChannelDataSource.allChannels,
     val preloadCount: Int = 2,
     val darkThemeConfig: DarkThemeConfig = DarkThemeConfig.FOLLOW_SYSTEM,
-    val selectedNetworkLine: NetworkLine = NetworkLine.LINE_1,
     val autoCheckIn: Boolean = true,
     val dns: Set<String> = setOf("104.21.20.188"),
+    val apiDns: Set<String> = setOf("104.21.20.188"),
+    val imageDns: Set<String> = setOf("104.21.20.188"),
+    val activeDnsLine: String = "telecom",
     val fontScale: Float = 1.0f,
     val isLoggingEnabled: Boolean = false,
     val downloadOverWifiOnly: Boolean = false,

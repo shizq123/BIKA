@@ -22,42 +22,65 @@ class DirectDns @Inject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
     @ApplicationScope private val scope: CoroutineScope,
 ) : Dns {
-    private val ipListRef = AtomicReference<List<InetAddress>>(emptyList())
+    private val apiIpsRef = AtomicReference<List<InetAddress>>(emptyList())
+    private val imageIpsRef = AtomicReference<List<InetAddress>>(emptyList())
 
     init {
         scope.launch(Dispatchers.IO) {
             userPreferencesDataSource.userData
-                .map { it.dns }
-                .distinctUntilChanged()
-                .collect { dnsStrings ->
-                    val newIpList = dnsStrings.mapNotNull { ip ->
+                .distinctUntilChanged { old, new ->
+                    old.apiDns == new.apiDns && old.imageDns == new.imageDns
+                }
+                .collect { userData ->
+                    val apiIps = userData.apiDns.mapNotNull { ip ->
                         try {
                             InetAddress.getByName(ip)
                         } catch (e: UnknownHostException) {
-                            Log.w(TAG, "Invalid IP string received: $ip", e)
+                            Log.w(TAG, "Invalid API IP string: $ip", e)
+                            null
+                        }
+                    }
+                    val imageIps = userData.imageDns.mapNotNull { ip ->
+                        try {
+                            InetAddress.getByName(ip)
+                        } catch (e: UnknownHostException) {
+                            Log.w(TAG, "Invalid Image IP string: $ip", e)
                             null
                         }
                     }
 
-                    ipListRef.store(newIpList)
-                    Log.i(TAG, "Global IP list updated with ${newIpList.size} addresses.")
+                    apiIpsRef.store(apiIps)
+                    imageIpsRef.store(imageIps)
+                    Log.i(TAG, "Direct DNS updated. API IPs: ${apiIps.size}, Image IPs: ${imageIps.size}")
                 }
         }
     }
 
     override fun lookup(hostname: String): List<InetAddress> {
-        val currentIps = ipListRef.load()
-
-        if (currentIps.isNotEmpty() && isBikaHost(hostname)) {
-            Log.d(TAG, "Returning global IP list for hostname: $hostname")
-            return currentIps
+        if (isApiHost(hostname)) {
+            val currentApiIps = apiIpsRef.load()
+            if (currentApiIps.isNotEmpty()) {
+                Log.d(TAG, "Returning API IP list for hostname: $hostname")
+                return currentApiIps
+            }
+        } else if (isImageHost(hostname)) {
+            val currentImageIps = imageIpsRef.load()
+            if (currentImageIps.isNotEmpty()) {
+                Log.d(TAG, "Returning Image IP list for hostname: $hostname")
+                return currentImageIps
+            }
         }
 
-        Log.d(TAG, "Global IP list is empty or non-Bika host. Falling back to system DNS for: $hostname")
+        Log.d(TAG, "No direct IP matched or empty IP list. Falling back to system DNS for: $hostname")
         return Dns.SYSTEM.lookup(hostname)
     }
 
-    private fun isBikaHost(hostname: String): Boolean {
+    private fun isApiHost(hostname: String): Boolean {
+        return hostname.contains("picaapi.picacomic.com", ignoreCase = true)
+    }
+
+    private fun isImageHost(hostname: String): Boolean {
+        if (hostname.contains("picaapi.picacomic.com", ignoreCase = true)) return false
         return hostname.contains("picacomic.com", ignoreCase = true) ||
                hostname.contains("diwodiwo.xyz", ignoreCase = true) ||
                hostname.contains("tipatipa.xyz", ignoreCase = true)

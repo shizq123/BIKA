@@ -55,7 +55,6 @@ import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.model.DarkThemeConfig
-import com.shizq.bika.core.model.NetworkLine
 
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -164,7 +163,6 @@ fun SettingsScreen(
         onClearCache = viewModel::clearCache,
         onUpdateDarkThemeConfig = viewModel::updateDarkThemeConfig,
         onToggleAutoCheckIn = viewModel::updateAutoCheckIn,
-        onUpdateNetworkLine = viewModel::updateSelectedNetworkLine,
         onUpdateFontScale = viewModel::updateFontScale,
         onToggleIsLoggingEnabled = viewModel::updateIsLoggingEnabled,
         onToggleDownloadOverWifiOnly = viewModel::updateDownloadOverWifiOnly,
@@ -220,7 +218,6 @@ fun SettingsContent(
     onDnsSettingsClick: () -> Unit = {},
     onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit = {},
     onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
-    onUpdateNetworkLine: (line: NetworkLine) -> Unit = {},
     onUpdateFontScale: (scale: Float) -> Unit = {},
     onToggleIsLoggingEnabled: (enabled: Boolean) -> Unit = {},
     onToggleDownloadOverWifiOnly: (enabled: Boolean) -> Unit = {},
@@ -297,14 +294,7 @@ fun SettingsContent(
                                 iconVector = Icons.AutoMirrored.Filled.List,
                                 onClick = onStorageManagerClick
                             )
-                            ListPreference(
-                                title = "选择网络分流",
-                                iconVector = Icons.AutoMirrored.Filled.List,
-                                options = NetworkLine.entries,
-                                selectedValue = settingsUiState.selectedNetworkLine,
-                                optionToText = { it.display },
-                                onOptionSelected = onUpdateNetworkLine
-                            )
+
                             Preference(
                                 title = "DNS直连与分流优化",
                                 summary = "获取直连 IP 并测试延迟以选择最佳线路",

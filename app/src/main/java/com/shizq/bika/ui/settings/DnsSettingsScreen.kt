@@ -92,6 +92,7 @@ data class DnsLine(
 data class IpTestResult(
     val ip: String,
     val lineName: String,
+    val domain: String,
     val latency: Long? = null, // null means untested, Long.MAX_VALUE means timeout, otherwise ms
     val isSelected: Boolean = false
 )
@@ -101,7 +102,8 @@ data class DnsSettingsUiState(
     val isTesting: Boolean = false,
     val error: String? = null,
     val lines: Map<String, List<IpTestResult>> = emptyMap(),
-    val currentDnsSet: Set<String> = emptySet()
+    val currentApiDnsSet: Set<String> = emptySet(),
+    val currentImageDnsSet: Set<String> = emptySet()
 )
 
 @HiltViewModel
@@ -130,8 +132,8 @@ class DnsSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isFetching = true, error = null)
             try {
-                val deferred1 = async { fetchIpsForDomain("https://macapi1.com/app/picacomic/dns/resolve?domain=picacomic.com") }
-                val deferred2 = async { fetchIpsForDomain("https://macapi2.com/app/picacomic/dns/resolve?domain=picaapi.picacomic.com") }
+                val deferred1 = async { fetchIpsForDomain("https://macapi1.com/app/picacomic/dns/resolve?domain=picacomic.com", "picacomic.com") }
+                val deferred2 = async { fetchIpsForDomain("https://macapi2.com/app/picacomic/dns/resolve?domain=picaapi.picacomic.com", "picaapi.picacomic.com") }
 
                 val ips1 = deferred1.await()
                 val ips2 = deferred2.await()
@@ -145,20 +147,29 @@ class DnsSettingsViewModel @Inject constructor(
                     return@launch
                 }
 
-                val currentDns = userPreferencesDataSource.userData.first().dns
-                val grouped = combined.groupBy({ it.second }) { (ip, line) ->
+                val userData = userPreferencesDataSource.userData.first()
+                val currentApiDns = userData.apiDns
+                val currentImageDns = userData.imageDns
+
+                val grouped = combined.groupBy({ it.second }) { (ip, line, domain) ->
                     IpTestResult(
                         ip = ip,
                         lineName = line,
+                        domain = domain,
                         latency = null,
-                        isSelected = currentDns.contains(ip)
+                        isSelected = if (domain == "picacomic.com") {
+                            currentImageDns.contains(ip)
+                        } else {
+                            currentApiDns.contains(ip)
+                        }
                     )
                 }
 
                 _uiState.value = _uiState.value.copy(
                     isFetching = false,
                     lines = grouped,
-                    currentDnsSet = currentDns
+                    currentApiDnsSet = currentApiDns,
+                    currentImageDnsSet = currentImageDns
                 )
 
                 startLatencyTest()
@@ -171,7 +182,7 @@ class DnsSettingsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun fetchIpsForDomain(url: String): List<Pair<String, String>> = withContext(Dispatchers.IO) {
+    private suspend fun fetchIpsForDomain(url: String, domain: String): List<Triple<String, String, String>> = withContext(Dispatchers.IO) {
         val request = Request.Builder()
             .url(url)
             .build()
@@ -180,10 +191,10 @@ class DnsSettingsViewModel @Inject constructor(
                 if (!response.isSuccessful) return@withContext emptyList()
                 val body = response.body.string()
                 val parsed = json.decodeFromString<DnsResolveResponse>(body)
-                val resultList = mutableListOf<Pair<String, String>>()
+                val resultList = mutableListOf<Triple<String, String, String>>()
                 parsed.data?.lines?.forEach { (lineName, dnsLine) ->
                     dnsLine.ips.forEach { ip ->
-                        resultList.add(ip to lineName)
+                        resultList.add(Triple(ip, lineName, domain))
                     }
                 }
                 resultList
@@ -239,36 +250,109 @@ class DnsSettingsViewModel @Inject constructor(
         _uiState.value = _uiState.value.copy(lines = currentLines)
     }
 
-    fun selectIp(ip: String) {
+    fun selectIp(ip: String, domain: String, lineName: String) {
         viewModelScope.launch {
-            val currentDns = setOf(ip)
-            userPreferencesDataSource.overwriteDns(currentDns)
+            val selectedIp = ip
+            val otherDomain = if (domain == "picacomic.com") "picaapi.picacomic.com" else "picacomic.com"
+
+            // 寻找同线路下另一个域名的 IP 列表
+            val otherDomainIpsInSameLine = _uiState.value.lines[lineName]
+                ?.filter { it.domain == otherDomain }
+                ?: emptyList()
+
+            // 挑选另一个域名的最佳（延迟低/有效）IP，或者默认取第一个
+            val bestOtherIp = otherDomainIpsInSameLine
+                .filter { it.latency != null && it.latency != Long.MAX_VALUE }
+                .minByOrNull { it.latency!! }
+                ?.ip
+                ?: otherDomainIpsInSameLine.firstOrNull()?.ip
+
+            val finalApiDns: Set<String>
+            val finalImageDns: Set<String>
+
+            if (domain == "picacomic.com") {
+                finalImageDns = setOf(selectedIp)
+                finalApiDns = if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().apiDns
+            } else {
+                finalApiDns = setOf(selectedIp)
+                finalImageDns = if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().imageDns
+            }
+
+            userPreferencesDataSource.updateDnsSettings(
+                apiDns = finalApiDns,
+                imageDns = finalImageDns,
+                activeDnsLine = lineName
+            )
+
             val updatedLines = _uiState.value.lines.mapValues { (_, list) ->
                 list.map { item ->
-                    item.copy(isSelected = currentDns.contains(item.ip))
+                    val isSel = if (item.domain == "picacomic.com") {
+                        finalImageDns.contains(item.ip)
+                    } else {
+                        finalApiDns.contains(item.ip)
+                    }
+                    item.copy(isSelected = isSel)
                 }
             }
+
             _uiState.value = _uiState.value.copy(
                 lines = updatedLines,
-                currentDnsSet = currentDns
+                currentApiDnsSet = finalApiDns,
+                currentImageDnsSet = finalImageDns
             )
         }
     }
 
     fun applyLowestLatencyIp() {
         val allResults = _uiState.value.lines.values.flatten()
-        val lowest = allResults
-            .filter { it.latency != null && it.latency != Long.MAX_VALUE }
+        val lowestApiResult = allResults
+            .filter { it.domain == "picaapi.picacomic.com" && it.latency != null && it.latency != Long.MAX_VALUE }
             .minByOrNull { it.latency!! }
-        if (lowest != null) {
-            selectIp(lowest.ip)
+        val lowestApi = lowestApiResult?.ip
+
+        val lowestImageResult = allResults
+            .filter { it.domain == "picacomic.com" && it.latency != null && it.latency != Long.MAX_VALUE }
+            .minByOrNull { it.latency!! }
+        val lowestImage = lowestImageResult?.ip
+
+        viewModelScope.launch {
+            val currentData = userPreferencesDataSource.userData.first()
+            val finalApiDns = if (lowestApi != null) setOf(lowestApi) else currentData.apiDns
+            val finalImageDns = if (lowestImage != null) setOf(lowestImage) else currentData.imageDns
+
+            val finalLineName = lowestApiResult?.lineName 
+                ?: lowestImageResult?.lineName 
+                ?: currentData.activeDnsLine
+
+            userPreferencesDataSource.updateDnsSettings(
+                apiDns = finalApiDns,
+                imageDns = finalImageDns,
+                activeDnsLine = finalLineName
+            )
+
+            val updatedLines = _uiState.value.lines.mapValues { (_, list) ->
+                list.map { item ->
+                    val isSel = if (item.domain == "picacomic.com") {
+                        finalImageDns.contains(item.ip)
+                    } else {
+                        finalApiDns.contains(item.ip)
+                    }
+                    item.copy(isSelected = isSel)
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                lines = updatedLines,
+                currentApiDnsSet = finalApiDns,
+                currentImageDnsSet = finalImageDns
+            )
         }
     }
 
     fun resetToDefault() {
         viewModelScope.launch {
             val defaultDns = setOf("104.21.20.188")
-            userPreferencesDataSource.overwriteDns(defaultDns)
+            userPreferencesDataSource.updateDnsSettings(defaultDns, defaultDns, "telecom")
             val updatedLines = _uiState.value.lines.mapValues { (_, list) ->
                 list.map { item ->
                     item.copy(isSelected = defaultDns.contains(item.ip))
@@ -276,7 +360,8 @@ class DnsSettingsViewModel @Inject constructor(
             }
             _uiState.value = _uiState.value.copy(
                 lines = updatedLines,
-                currentDnsSet = defaultDns
+                currentApiDnsSet = defaultDns,
+                currentImageDnsSet = defaultDns
             )
         }
     }
@@ -351,7 +436,7 @@ fun DnsSettingsScreen(
                 }
             }
 
-            // 当前激活 IP 展示区
+            // 当前激活 IP 展示区（区分 API 和 图片展示）
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -364,17 +449,47 @@ fun DnsSettingsScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "当前生效的直连 IP",
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = uiState.currentDnsSet.joinToString(", ").ifBlank { "默认系统解析" },
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        fontFamily = FontFamily.Monospace
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "API 线路",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = uiState.currentApiDnsSet.joinToString(", ").ifBlank { "默认系统解析" },
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "图片存储",
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            )
+                            Spacer(modifier = Modifier.height(2.dp))
+                            Text(
+                                text = uiState.currentImageDnsSet.joinToString(", ").ifBlank { "默认系统解析" },
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
+                            )
+                        }
+                    }
                 }
             }
 
@@ -466,7 +581,7 @@ fun DnsSettingsScreen(
                         val result = ipResults[index]
                         IpRowItem(
                             result = result,
-                            onClick = { viewModel.selectIp(result.ip) }
+                            onClick = { viewModel.selectIp(result.ip, result.domain, result.lineName) }
                         )
                     }
                 }
@@ -510,13 +625,41 @@ fun IpRowItem(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Column {
-                Text(
-                    text = result.ip,
-                    style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.Bold,
-                    fontFamily = FontFamily.Monospace,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = result.ip,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    
+                    // 显示域名类型标签
+                    val tagText = if (result.domain == "picaapi.picacomic.com") "API" else "图片"
+                    val tagBgColor = if (result.domain == "picaapi.picacomic.com") {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.tertiaryContainer
+                    }
+                    val tagTextColor = if (result.domain == "picaapi.picacomic.com") {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onTertiaryContainer
+                    }
+                    Box(
+                        modifier = Modifier
+                            .background(tagBgColor, RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = tagText,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = tagTextColor,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(2.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val statusText: String

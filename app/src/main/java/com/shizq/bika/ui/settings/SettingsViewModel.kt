@@ -8,7 +8,6 @@ import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.DarkThemeConfig
-import com.shizq.bika.core.model.NetworkLine
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
@@ -37,7 +36,6 @@ class SettingsViewModel @Inject constructor(
     val settingsUiState = userPreferencesDataSource.userData.map {
         SettingsUiState.Success(
             darkThemeConfig = it.darkThemeConfig,
-            selectedNetworkLine = it.selectedNetworkLine,
             autoCheckIn = it.autoCheckIn,
             fontScale = it.fontScale,
             isLoggingEnabled = it.isLoggingEnabled,
@@ -144,11 +142,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun updateSelectedNetworkLine(line: NetworkLine) {
-        viewModelScope.launch {
-            userPreferencesDataSource.setNetworkLine(line)
-        }
-    }
 
     fun updateAutoCheckIn(enabled: Boolean) {
         viewModelScope.launch {
@@ -247,7 +240,6 @@ sealed interface SettingsUiState {
     data object Loading : SettingsUiState
     data class Success(
         val darkThemeConfig: DarkThemeConfig,
-        val selectedNetworkLine: NetworkLine,
         val autoCheckIn: Boolean,
         val fontScale: Float,
         val isLoggingEnabled: Boolean,
