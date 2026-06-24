@@ -2,216 +2,56 @@ package com.shizq.bika.core.data.repository
 
 import android.content.Context
 import android.content.Intent
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.shizq.bika.core.coroutine.ApplicationScope
-import com.shizq.bika.core.database.dao.DownloadTaskDao
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.database.model.DownloadTaskEntity
-import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.download.model.DownloadTask
+import com.shizq.bika.core.download.repository.DownloadTaskRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okio.buffer
-import okio.sink
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
 import java.util.UUID
-import java.util.concurrent.atomic.AtomicInteger
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
+import kotlin.collections.map
 import kotlin.time.Clock
 
 @Singleton
 class DownloadRepository @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val downloadTaskDao: DownloadTaskDao,
-    private val network: BikaDataSource,
-    private val okHttpClient: OkHttpClient,
-    private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val readingHistoryDao: ReadingHistoryDao,
+    private val downloadTaskRepository: DownloadTaskRepository,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     companion object {
         private const val TAG = "DownloadRepository"
-
-        /** 生成任务 ID */
-        fun taskId(comicId: String, episodeOrder: Int) = "${comicId}_$episodeOrder"
     }
 
-    /** 获取所有下载任务（供下载列表页使用） */
-    fun getAllTasks(): Flow<List<DownloadTaskEntity>> = downloadTaskDao.observeAll()
+    // ---- 阅读进度（Reading History 领域） ----
 
-    /** 获取某本漫画的下载任务 */
-    fun getTasksByComic(comicId: String): Flow<List<DownloadTaskEntity>> =
-        downloadTaskDao.observeByComic(comicId)
+    /** 获取所有漫画所有章节的阅读进度，实时 Flow */
+    fun getAllChapterProgress(): Flow<List<ChapterProgressEntity>> =
+        readingHistoryDao.getAllChapterProgress()
 
-    /** 获取单个任务状态 */
-    fun getTaskById(taskId: String): Flow<DownloadTaskEntity?> =
-        downloadTaskDao.observeById(taskId)
+    /** 获取指定漫画的章节阅读进度，实时 Flow */
+    fun getChapterProgressByComic(comicId: String): Flow<List<ChapterProgressEntity>> =
+        readingHistoryDao.getChapterProgressByComic(comicId)
 
-    /**
-     * 开始下载某个章节。
-     * 此方法在 IO 协程中执行，调用方需自行提供协程上下文。
-     */
-    suspend fun downloadEpisode(
-        comicId: String,
-        comicTitle: String,
-        coverUrl: String,
-        episodeId: String,
-        episodeTitle: String,
-        episodeOrder: Int,
-    ) = withContext(Dispatchers.IO) {
-        val taskId = taskId(comicId, episodeOrder)
-
-        // 创建或重置任务
-        val task = DownloadTaskEntity(
-            id = taskId,
-            comicId = comicId,
-            comicTitle = comicTitle,
-            coverUrl = coverUrl,
-            episodeId = episodeId,
-            episodeTitle = episodeTitle,
-            episodeOrder = episodeOrder,
-            status = DownloadStatus.DOWNLOADING,
-            createdAt = Clock.System.now(),
-            updatedAt = Clock.System.now(),
-        )
-        downloadTaskDao.upsert(task)
-
-        try {
-            // 离线下载 WiFi 环境检查
-            val userPrefs = userPreferencesDataSource.userData.first()
-            if (userPrefs.downloadOverWifiOnly && !isWifiConnected(context)) {
-                throw Exception("已开启仅在WiFi下下载偏好，当前处于非WiFi（蜂窝移动）网络环境，已安全拦截下载并挂起任务")
-            }
-
-            // 获取该章节的所有页面图片 URL
-            var page = 1
-            val allPages = mutableListOf<String>()
-            while (true) {
-                val data = network.getChapterPages(comicId, episodeOrder, page)
-                allPages.addAll(data.paginationData.images.map { it.media.originalImageUrl })
-                if (page >= data.paginationData.totalPages) break
-                page++
-            }
-
-            val totalPages = allPages.size
-            val dir = getEpisodeDir(comicId, episodeOrder)
-            dir.mkdirs()
-
-            val pendingPages = allPages.mapIndexed { index, imageUrl ->
-                index to imageUrl
-            }.filter { (index, _) ->
-                val file = File(dir, "${String.format("%03d", index + 1)}.jpg")
-                !file.exists()
-            }
-
-            val existsCount = totalPages - pendingPages.size
-            val completedPages = AtomicInteger(existsCount)
-
-            downloadTaskDao.updateProgress(
-                taskId = taskId,
-                downloadedPages = existsCount,
-                totalPages = totalPages,
-                progress = (existsCount * 100 / totalPages),
-                status = DownloadStatus.DOWNLOADING,
-                updatedAt = Clock.System.now(),
-            )
-
-            if (pendingPages.isNotEmpty()) {
-                val semaphore = Semaphore(5)
-                coroutineScope {
-                    pendingPages.map { (index, imageUrl) ->
-                        async {
-                            semaphore.withPermit {
-                                val file = File(dir, "${String.format("%03d", index + 1)}.jpg")
-                                downloadFile(imageUrl, file)
-                                val currentCompleted = completedPages.incrementAndGet()
-                                downloadTaskDao.updateProgress(
-                                    taskId = taskId,
-                                    downloadedPages = currentCompleted,
-                                    totalPages = totalPages,
-                                    progress = (currentCompleted * 100 / totalPages),
-                                    status = DownloadStatus.DOWNLOADING,
-                                    updatedAt = Clock.System.now(),
-                                )
-                            }
-                        }
-                    }.awaitAll()
-                }
-            }
-
-            downloadTaskDao.updateCompletion(
-                taskId = taskId,
-                status = DownloadStatus.COMPLETED,
-                completedAt = Clock.System.now(),
-                localPath = dir.absolutePath,
-            )
-            Log.i(TAG, "下载完成: $comicTitle - $episodeTitle")
-        } catch (e: Exception) {
-            Log.e(TAG, "下载失败: $comicTitle - $episodeTitle", e)
-            downloadTaskDao.updateCompletion(
-                taskId = taskId,
-                status = DownloadStatus.FAILED,
-                completedAt = null,
-                localPath = "",
-            )
-        }
-    }
-
-    /** 标记章节为已在本地查看 */
-    suspend fun markAsViewed(taskId: String) {
-        downloadTaskDao.markAsViewed(taskId, Clock.System.now())
-    }
-
-    /** 置顶指定的下载任务 */
-    suspend fun bringToTop(taskId: String) = withContext(Dispatchers.IO) {
-        val maxPriority = downloadTaskDao.getMaxPriority()
-        downloadTaskDao.updatePriority(taskId, maxPriority + 1, Clock.System.now())
-    }
-
-    /** 更新指定的任务优先级 */
-    suspend fun updateTaskPriority(taskId: String, priority: Int) = withContext(Dispatchers.IO) {
-        downloadTaskDao.updatePriority(taskId, priority, Clock.System.now())
-    }
-
-    /** 删除下载任务及其本地文件 */
-    suspend fun deleteDownload(task: DownloadTaskEntity) = withContext(Dispatchers.IO) {
-        if (task.localPath.isNotEmpty()) {
-            File(task.localPath).deleteRecursively()
-        }
-        downloadTaskDao.delete(task)
-    }
-
-    /** 批量删除下载任务及其本地文件 */
-    suspend fun deleteDownloads(tasks: List<DownloadTaskEntity>) = withContext(Dispatchers.IO) {
-        tasks.forEach { task ->
-            if (task.localPath.isNotEmpty()) {
-                File(task.localPath).deleteRecursively()
-            }
-        }
-        downloadTaskDao.delete(tasks)
-    }
+    // ---- 本地文件访问 ----
 
     /** 获取隐藏目录下的章节文件夹 */
     fun getEpisodeDir(comicId: String, episodeOrder: Int): File {
@@ -228,34 +68,28 @@ class DownloadRepository @Inject constructor(
             ?: emptyList()
     }
 
-    private fun downloadFile(url: String, dest: File) {
-        val request = Request.Builder().url(url).build()
-        okHttpClient.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) {
-                throw IOException("Unexpected HTTP code $response")
-            }
-            val body = response.body
-            dest.sink().buffer().use { sink ->
-                sink.writeAll(body.source())
+    // ---- CBZ 导入 ----
+
+    /** 导入本地 CBZ/ZIP 漫画（异步，带 Toast 通知） */
+    fun importCbzAsync(uri: Uri, fileName: String) {
+        scope.launch {
+            showToast("已在后台开始导入: $fileName")
+            try {
+                importCbz(uri, fileName)
+                showToast("导入成功: $fileName")
+            } catch (e: Exception) {
+                Log.e(TAG, "导入失败: $fileName", e)
+                showToast("导入失败: ${e.localizedMessage ?: "未知错误"}")
             }
         }
     }
 
-    private fun isWifiConnected(context: Context): Boolean {
-        val connectivityManager =
-            context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
-                ?: return false
-        val activeNetwork = connectivityManager.activeNetwork ?: return false
-        val capabilities = connectivityManager.getNetworkCapabilities(activeNetwork) ?: return false
-        return capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)
-    }
-
-    /** 导入本地 CBZ/ZIP 漫画 */
-    suspend fun importCbz(uri: Uri, fileName: String) = withContext(Dispatchers.IO) {
+    /** 导入本地 CBZ/ZIP 漫画（挂起，供 importCbzAsync 内部调用） */
+    private suspend fun importCbz(uri: Uri, fileName: String) = withContext(Dispatchers.IO) {
         val cleanName = fileName.substringBeforeLast(".")
         val comicId = "local_import_${cleanName.hashCode().let { if (it < 0) -it else it }}"
         val episodeOrder = 1
-        val taskId = taskId(comicId, episodeOrder)
+        val taskId = "${comicId}_$episodeOrder"
         val dir = getEpisodeDir(comicId, episodeOrder)
 
         // 清理旧的导入目录，创建新目录
@@ -297,10 +131,10 @@ class DownloadRepository @Inject constructor(
                 }
             }
 
-            // 注册到本地下载数据库
+            // 注册到本地下载数据库（通过 DownloadTaskRepository 统一入口）
             val firstPage = File(dir, "001.jpg")
             val coverUrl = if (firstPage.exists()) Uri.fromFile(firstPage).toString() else ""
-            val task = DownloadTaskEntity(
+            val task = DownloadTask(
                 id = taskId,
                 comicId = comicId,
                 comicTitle = cleanName,
@@ -317,15 +151,51 @@ class DownloadRepository @Inject constructor(
                 completedAt = Clock.System.now(),
                 updatedAt = Clock.System.now(),
             )
-            downloadTaskDao.upsert(task)
+            downloadTaskRepository.saveTask(task)
 
         } finally {
             tempFile.delete()
         }
     }
 
-    /** 导出已下载章节为本地 CBZ 文件 */
-    suspend fun exportToCbz(task: DownloadTaskEntity): File = withContext(Dispatchers.IO) {
+    // ---- CBZ / ZIP 导出 ----
+
+    /** 导出指定章节为 CBZ（异步，带 Toast + 系统分享） */
+    fun exportToCbzByTask(task: DownloadTask) {
+        scope.launch {
+            showToast("已在后台开始打包: ${task.episodeTitle}")
+            try {
+                val file = exportToCbz(task.toEntity())
+                showToast("打包成功: ${task.episodeTitle}")
+                shareFile(file, "application/x-cbz", "导出为 CBZ")
+            } catch (e: Exception) {
+                Log.e(TAG, "导出失败", e)
+                showToast("打包失败: ${e.localizedMessage ?: "未知错误"}")
+            }
+        }
+    }
+
+    /** 批量导出章节为单个 ZIP（异步，带 Toast + 系统分享） */
+    fun exportMultipleToZipByTasks(
+        tasks: List<DownloadTask>,
+        comicTitle: String,
+    ) {
+        scope.launch {
+            showToast("已在后台开始打包 ${tasks.size} 个章节...")
+            try {
+                val file = exportMultipleToZip(tasks.map { it.toEntity() }, comicTitle)
+                showToast("打包成功: ${comicTitle}_归档")
+                shareFile(file, "application/zip", "批量打包导出")
+            } catch (e: Exception) {
+                Log.e(TAG, "打包失败", e)
+                showToast("打包失败: ${e.localizedMessage ?: "未知错误"}")
+            }
+        }
+    }
+
+    // ---- 内部实现 ----
+
+    private suspend fun exportToCbz(task: DownloadTaskEntity): File = withContext(Dispatchers.IO) {
         val sourceDir = File(task.localPath)
         if (!sourceDir.exists() || !sourceDir.isDirectory) {
             throw Exception("找不到本地下载目录")
@@ -334,7 +204,6 @@ class DownloadRepository @Inject constructor(
         val exportDir = File(context.cacheDir, "exported_comics")
         exportDir.mkdirs()
 
-        // 移除非法字符，生成干净的文件名
         val sanitizedTitle = task.comicTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         val sanitizedEpisode = task.episodeTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         val outputFile = File(exportDir, "$sanitizedTitle - $sanitizedEpisode.cbz")
@@ -354,37 +223,37 @@ class DownloadRepository @Inject constructor(
         outputFile
     }
 
-    /** 批量导出已下载章节为单个 ZIP 文件 */
-    suspend fun exportMultipleToZip(tasks: List<DownloadTaskEntity>, comicTitle: String): File =
-        withContext(Dispatchers.IO) {
-            val exportDir = File(context.cacheDir, "exported_comics")
-            exportDir.mkdirs()
+    private suspend fun exportMultipleToZip(
+        tasks: List<DownloadTaskEntity>,
+        comicTitle: String,
+    ): File = withContext(Dispatchers.IO) {
+        val exportDir = File(context.cacheDir, "exported_comics")
+        exportDir.mkdirs()
 
-            // 移除非法字符，生成干净的文件名
-            val sanitizedComicTitle = comicTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-            val outputFile = File(exportDir, "${sanitizedComicTitle}_归档.zip")
+        val sanitizedComicTitle = comicTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+        val outputFile = File(exportDir, "${sanitizedComicTitle}_归档.zip")
 
-            ZipOutputStream(FileOutputStream(outputFile)).use { zos ->
-                tasks.forEach { task ->
-                    val sourceDir = File(task.localPath)
-                    if (sourceDir.exists() && sourceDir.isDirectory) {
-                        val chapterFolderName =
-                            task.episodeTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                        sourceDir.listFiles()?.forEach { file ->
-                            if (file.isFile && file.extension == "jpg") {
-                                val entry = ZipEntry("$chapterFolderName/${file.name}")
-                                zos.putNextEntry(entry)
-                                file.inputStream().use { fis ->
-                                    fis.copyTo(zos)
-                                }
-                                zos.closeEntry()
+        ZipOutputStream(FileOutputStream(outputFile)).use { zos ->
+            tasks.forEach { task ->
+                val sourceDir = File(task.localPath)
+                if (sourceDir.exists() && sourceDir.isDirectory) {
+                    val chapterFolderName =
+                        task.episodeTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
+                    sourceDir.listFiles()?.forEach { file ->
+                        if (file.isFile && file.extension == "jpg") {
+                            val entry = ZipEntry("$chapterFolderName/${file.name}")
+                            zos.putNextEntry(entry)
+                            file.inputStream().use { fis ->
+                                fis.copyTo(zos)
                             }
+                            zos.closeEntry()
                         }
                     }
                 }
             }
-            outputFile
         }
+        outputFile
+    }
 
     private fun isImageFile(name: String): Boolean {
         val ext = name.substringAfterLast(".", "").lowercase()
@@ -402,7 +271,7 @@ class DownloadRepository @Inject constructor(
             val fileUri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
-                file
+                file,
             )
             val shareIntent = Intent().apply {
                 action = Intent.ACTION_SEND
@@ -422,45 +291,24 @@ class DownloadRepository @Inject constructor(
             }
         }
     }
-
-    fun importCbzAsync(uri: Uri, fileName: String) {
-        scope.launch {
-            showToast("已在后台开始导入: $fileName")
-            try {
-                importCbz(uri, fileName)
-                showToast("导入成功: $fileName")
-            } catch (e: Exception) {
-                Log.e(TAG, "导入失败: $fileName", e)
-                showToast("导入失败: ${e.localizedMessage ?: "未知错误"}")
-            }
-        }
-    }
-
-    fun exportToCbzAsync(task: DownloadTaskEntity) {
-        scope.launch {
-            showToast("已在后台开始打包: ${task.episodeTitle}")
-            try {
-                val file = exportToCbz(task)
-                showToast("打包成功: ${task.episodeTitle}")
-                shareFile(file, "application/x-cbz", "导出为 CBZ")
-            } catch (e: Exception) {
-                Log.e(TAG, "导出失败", e)
-                showToast("打包失败: ${e.localizedMessage ?: "未知错误"}")
-            }
-        }
-    }
-
-    fun exportMultipleToZipAsync(tasks: List<DownloadTaskEntity>, comicTitle: String) {
-        scope.launch {
-            showToast("已在后台开始打包 ${tasks.size} 个章节...")
-            try {
-                val file = exportMultipleToZip(tasks, comicTitle)
-                showToast("打包成功: ${comicTitle}_归档")
-                shareFile(file, "application/zip", "批量打包导出")
-            } catch (e: Exception) {
-                Log.e(TAG, "打包失败", e)
-                showToast("打包失败: ${e.localizedMessage ?: "未知错误"}")
-            }
-        }
-    }
 }
+
+// ---- 映射扩展 ----
+
+private fun DownloadTask.toEntity() = DownloadTaskEntity(
+    id = id,
+    comicId = comicId,
+    comicTitle = comicTitle,
+    coverUrl = coverUrl,
+    episodeId = episodeId,
+    episodeTitle = episodeTitle,
+    episodeOrder = episodeOrder,
+    status = com.shizq.bika.core.database.model.DownloadStatus.valueOf(status.name),
+    progress = progress,
+    totalPages = totalPages,
+    downloadedPages = downloadedPages,
+    localPath = localPath,
+    createdAt = createdAt,
+    completedAt = completedAt,
+    updatedAt = updatedAt,
+)

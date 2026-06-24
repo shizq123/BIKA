@@ -38,7 +38,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -52,8 +51,9 @@ import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.shizq.bika.core.database.model.DownloadTaskEntity
-import com.shizq.bika.core.data.repository.DownloadRepository
+import com.shizq.bika.core.download.domain.DeleteDownloadTaskUseCase
+import com.shizq.bika.core.download.model.DownloadTask
+import com.shizq.bika.core.download.repository.DownloadTaskRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -72,7 +72,7 @@ data class OfflineComicItem(
     val coverUrl: String,
     val downloadedEpisodesCount: Int,
     val sizeInBytes: Long,
-    val tasks: List<DownloadTaskEntity>
+    val tasks: List<DownloadTask>
 )
 
 data class StorageState(
@@ -85,7 +85,8 @@ data class StorageState(
 @HiltViewModel
 class StorageManagerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val downloadRepository: DownloadRepository
+    private val downloadTaskRepository: DownloadTaskRepository,
+    private val deleteDownloadTaskUseCase: DeleteDownloadTaskUseCase,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StorageState())
@@ -113,7 +114,7 @@ class StorageManagerViewModel @Inject constructor(
     }
 
     private suspend fun getDownloadsInfo(): Pair<Long, List<OfflineComicItem>> = withContext(Dispatchers.IO) {
-        val tasks = downloadRepository.getAllTasks().first()
+        val tasks = downloadTaskRepository.observeAllTasks().first()
         val base = context.getExternalFilesDir(null) ?: context.filesDir
         val comicsDir = File(base, ".bika/comics")
         
@@ -194,8 +195,8 @@ class StorageManagerViewModel @Inject constructor(
                     folder.deleteRecursively()
                 }
 
-                val tasks = downloadRepository.getTasksByComic(comicId).first()
-                downloadRepository.deleteDownloads(tasks)
+                val tasks = downloadTaskRepository.observeTasksByComic(comicId).first()
+                tasks.forEach { task -> deleteDownloadTaskUseCase(task.id) }
             }
 
             val updatedList = currentList.filter { it.comicId != comicId }

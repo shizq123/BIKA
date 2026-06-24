@@ -1,15 +1,20 @@
 package com.shizq.bika.ui.download
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
-import com.shizq.bika.core.database.model.DownloadStatus
-import com.shizq.bika.core.database.model.DownloadTaskEntity
+import com.shizq.bika.core.download.domain.DeleteDownloadTaskUseCase
+import com.shizq.bika.core.download.domain.MoveDownloadTaskToFrontUseCase
+import com.shizq.bika.core.download.model.DownloadTask
+import com.shizq.bika.core.download.repository.DownloadTaskRepository
+import com.shizq.bika.core.download.scheduler.DownloadScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
@@ -22,7 +27,7 @@ import kotlinx.coroutines.launch
  * 下载章节 + 阅读进度的联合数据类，供 UI 展示阅读记录标记。
  */
 data class DownloadTaskWithProgress(
-    val task: DownloadTaskEntity,
+    val task: DownloadTask,
     /** 该章节的阅读进度，null 表示从未阅读过 */
     val readProgress: ChapterProgressEntity? = null
 ) {
@@ -45,12 +50,17 @@ data class ComicReadSummary(
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class DownloadListViewModel @Inject constructor(
+    private val downloadTaskRepository: DownloadTaskRepository,
+    private val deleteDownloadTaskUseCase: DeleteDownloadTaskUseCase,
+    private val moveToFrontUseCase: MoveDownloadTaskToFrontUseCase,
+    private val downloadScheduler: DownloadScheduler,
+    // 阅读进度属于 reading-history 领域，保持从 DownloadRepository 读取
     private val downloadRepository: DownloadRepository,
-    private val readingHistoryDao: ReadingHistoryDao,
+    private val historyDao: ReadingHistoryDao,
 ) : ViewModel() {
 
     /** 原始下载任务列表 */
-    val tasks = downloadRepository.getAllTasks()
+    val tasks = downloadTaskRepository.observeAllTasks()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     /**
@@ -58,9 +68,8 @@ class DownloadListViewModel @Inject constructor(
      * 供第一层漫画分组卡片实时显示已读完/阅读中章节数。
      */
     val allComicReadSummary: StateFlow<Map<String, ComicReadSummary>> =
-        readingHistoryDao.getAllChapterProgress()
+        downloadRepository.getAllChapterProgress()
             .map { allProgress ->
-                // 按 historyId（comicId）分组
                 allProgress.groupBy { it.historyId }.mapValues { (_, progressList) ->
                     val finished = progressList.count { it.pageCount > 0 && it.currentPage >= it.pageCount }
                     val reading = progressList.count { it.pageCount > 0 && it.currentPage < it.pageCount }
@@ -71,13 +80,13 @@ class DownloadListViewModel @Inject constructor(
 
     // ---- 第二层：选中漫画的章节阅读进度 ----
 
-    private val _selectedComicId = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    private val _selectedComicId = MutableStateFlow<String?>(null)
 
     /** 当前选中漫画的章节阅读进度 Map（chapterId -> ChapterProgressEntity） */
     val chapterProgressMap: StateFlow<Map<Int, ChapterProgressEntity>> =
         _selectedComicId.flatMapLatest { comicId ->
             if (comicId != null) {
-                readingHistoryDao.getChapterProgressByComic(comicId)
+                downloadRepository.getChapterProgressByComic(comicId)
                     .map { list -> list.associateBy { it.chapterId } }
             } else {
                 flowOf(emptyMap())
@@ -88,39 +97,57 @@ class DownloadListViewModel @Inject constructor(
         _selectedComicId.value = comicId
     }
 
-    fun bringToTop(task: DownloadTaskEntity) {
+    fun bringToTop(task: DownloadTask) {
         viewModelScope.launch {
-            downloadRepository.bringToTop(task.id)
+            moveToFrontUseCase(task.id)
         }
     }
 
-    fun updateTaskPriority(task: DownloadTaskEntity, priority: Int) {
+    fun updateTaskPriority(task: DownloadTask, priority: Int) {
         viewModelScope.launch {
-            downloadRepository.updateTaskPriority(task.id, priority)
+            downloadTaskRepository.updatePriority(task.id, priority)
         }
     }
 
-    fun deleteDownload(task: DownloadTaskEntity) {
+    fun deleteDownload(task: DownloadTask) {
         viewModelScope.launch {
-            downloadRepository.deleteDownload(task)
+            deleteDownloadTaskUseCase(task.id)
         }
     }
 
-    fun importCbz(uri: android.net.Uri, fileName: String) {
+    fun importCbz(uri: Uri, fileName: String) {
         downloadRepository.importCbzAsync(uri, fileName)
     }
 
-    fun exportToCbz(task: DownloadTaskEntity) {
-        downloadRepository.exportToCbzAsync(task)
-    }
-
-    fun exportMultipleToZip(tasks: List<DownloadTaskEntity>, comicTitle: String) {
-        downloadRepository.exportMultipleToZipAsync(tasks, comicTitle)
-    }
-
-    fun deleteMultipleDownloads(tasks: List<DownloadTaskEntity>) {
+    fun exportToCbz(task: DownloadTask) {
+        // 文件导出操作委托给 DownloadRepository，由其负责本地路径解析与 CBZ 打包
         viewModelScope.launch {
-            downloadRepository.deleteDownloads(tasks)
+            downloadRepository.exportToCbzByTask(task)
+        }
+    }
+
+    fun exportMultipleToZip(tasks: List<DownloadTask>, comicTitle: String) {
+        viewModelScope.launch {
+            downloadRepository.exportMultipleToZipByTasks(tasks, comicTitle)
+        }
+    }
+
+    fun deleteMultipleDownloads(tasks: List<DownloadTask>) {
+        viewModelScope.launch {
+            tasks.forEach { deleteDownloadTaskUseCase(it.id) }
+        }
+    }
+
+    /**
+     * 重试失败的下载任务。
+     * 通过 core:download 的 Scheduler 重置状态并重新入队，
+     * UI 层无需持有 Context。
+     */
+    fun retryDownload(task: DownloadTask) {
+        viewModelScope.launch {
+            // saveTask 保证任务记录存在（失败任务本身已在库里，这里幂等写入不影响）
+            downloadTaskRepository.saveTask(task)
+            downloadScheduler.resume(task.id)
         }
     }
 }

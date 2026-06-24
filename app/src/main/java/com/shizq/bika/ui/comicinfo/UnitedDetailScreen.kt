@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.comicinfo
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -27,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -34,9 +36,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.data.model.Comment
-import com.shizq.bika.core.network.model.Episode
-import com.shizq.bika.core.database.model.DownloadTaskEntity
 import com.shizq.bika.core.database.model.ChapterProgressEntity
+import com.shizq.bika.core.database.model.DownloadStatus
+import com.shizq.bika.core.download.model.DownloadTask
+import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
@@ -45,11 +48,7 @@ import com.shizq.bika.ui.comicinfo.page.CommentsPage
 import com.shizq.bika.ui.comicinfo.page.EpisodeItem
 import com.shizq.bika.ui.comicinfo.page.EpisodesPage
 import com.shizq.bika.ui.comicinfo.page.PageTab
-import com.shizq.bika.sync.workers.DownloadWorker
 import kotlinx.coroutines.launch
-import androidx.compose.ui.platform.LocalContext
-import android.widget.Toast
-import android.content.Context
 
 @Composable
 fun ComicDetailScreen(
@@ -83,11 +82,11 @@ fun ComicDetailScreen(
         replyList = replyList,
         navigationToFeed = navigationToFeed,
         onFetchAllEpisodes = { viewModel.fetchAllEpisodes() },
-        onDownloadAllEpisodes = { context, title, cover ->
-            viewModel.downloadAllEpisodes(context, title, cover)
+        onDownloadAllEpisodes = { title, cover ->
+            viewModel.downloadAllEpisodes(title, cover)
         },
-        onDownloadEpisodes = { context, title, cover, list ->
-            viewModel.downloadEpisodes(context, title, cover, list)
+        onDownloadEpisodes = { title, cover, list ->
+            viewModel.downloadEpisodes(title, cover, list)
         },
         onPostComment = viewModel::postComment,
     )
@@ -100,7 +99,7 @@ fun ComicDetailContent(
     episodes: LazyPagingItems<Episode>,
     pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
-    downloadTasks: List<DownloadTaskEntity> = emptyList(),
+    downloadTasks: List<DownloadTask> = emptyList(),
     chapterProgress: List<ChapterProgressEntity> = emptyList(),
     onBackClick: () -> Unit = {},
     navigationToReader: (id: String, index: Int) -> Unit = { _, _ -> },
@@ -110,8 +109,8 @@ fun ComicDetailContent(
     replyList: LazyPagingItems<Comment>,
     navigationToFeed: (DiscoveryAction) -> Unit,
     onFetchAllEpisodes: suspend () -> List<Episode> = { emptyList() },
-    onDownloadAllEpisodes: suspend (Context, String, String) -> Int = { _, _, _ -> 0 },
-    onDownloadEpisodes: (Context, String, String, List<Episode>) -> Unit = { _, _, _, _ -> },
+    onDownloadAllEpisodes: suspend (String, String) -> Int = { _, _ -> 0 },
+    onDownloadEpisodes: (String, String, List<Episode>) -> Unit = { _, _, _ -> },
     onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
 ) {
     when (unitedState) {
@@ -167,9 +166,10 @@ fun ComicDetailContent(
                         when (page) {
                             0 -> {
                                 val isComicDownloaded = if (detail.epsCount <= 1) {
-                                    downloadTasks.any { it.status == com.shizq.bika.core.database.model.DownloadStatus.COMPLETED }
+                                    downloadTasks.any { it.status == DownloadStatus.COMPLETED }
                                 } else {
-                                    val completedCount = downloadTasks.count { it.status == com.shizq.bika.core.database.model.DownloadStatus.COMPLETED }
+                                    val completedCount =
+                                        downloadTasks.count { it.status == DownloadStatus.COMPLETED }
                                     completedCount > 0 && completedCount >= detail.epsCount
                                 }
                                 ComicDetailPage(
@@ -183,21 +183,28 @@ fun ComicDetailContent(
                                     navigationToFeed = navigationToFeed,
                                     onDownloadClick = {
                                         if (detail.epsCount <= 1) {
-                                            DownloadWorker.startDownload(
-                                                context = context,
-                                                comicId = detail.id,
-                                                comicTitle = detail.title,
-                                                coverUrl = detail.cover,
-                                                episodeId = "single_episode",
-                                                episodeTitle = "全一话",
-                                                episodeOrder = 1
+                                            // 单话漫画直接走 ViewModel 入队
+                                            onDownloadEpisodes(
+                                                detail.title,
+                                                detail.cover,
+                                                listOf(
+                                                    Episode(
+                                                        id = "single_episode",
+                                                        title = "全一话",
+                                                        order = 1,
+                                                        updatedAt = ""
+                                                    )
+                                                )
                                             )
                                             Toast.makeText(context, "已加入下载队列", Toast.LENGTH_SHORT).show()
                                         } else {
                                             scope.launch {
                                                 try {
                                                     Toast.makeText(context, "正在获取章节列表，准备全部下载...", Toast.LENGTH_SHORT).show()
-                                                    val count = onDownloadAllEpisodes(context, detail.title, detail.cover)
+                                                    val count = onDownloadAllEpisodes(
+                                                        detail.title,
+                                                        detail.cover
+                                                    )
                                                     Toast.makeText(context, "已成功将所有 $count 个章节加入下载队列", Toast.LENGTH_LONG).show()
                                                 } catch (e: Exception) {
                                                     Toast.makeText(context, "获取章节失败，请重试: ${e.message}", Toast.LENGTH_LONG).show()
@@ -217,7 +224,11 @@ fun ComicDetailContent(
                                         navigationToReader(detail.id, it)
                                     },
                                     onDownloadClick = { selectedEpisodes ->
-                                        onDownloadEpisodes(context, detail.title, detail.cover, selectedEpisodes)
+                                        onDownloadEpisodes(
+                                            detail.title,
+                                            detail.cover,
+                                            selectedEpisodes
+                                        )
                                         val message = if (selectedEpisodes.size == 1) {
                                             "已加入下载队列"
                                         } else {
