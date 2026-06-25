@@ -1,6 +1,7 @@
 package com.shizq.bika.core.download.worker
 
 import android.content.Context
+import android.util.Log
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
@@ -30,6 +31,7 @@ class ChapterDownloadWorker @AssistedInject constructor(
             ?: return Result.failure()
 
         val workerToken = id.toString()
+        Log.d(TAG, "doWork start: taskId=$taskId workerToken=$workerToken")
 
         return try {
             when (
@@ -39,16 +41,26 @@ class ChapterDownloadWorker @AssistedInject constructor(
                     maxConcurrent = queuePolicy.maxConcurrentChapters(),
                 )
             ) {
-                ClaimDownloadTaskResult.NotFound -> Result.success()
+                ClaimDownloadTaskResult.NotFound -> {
+                    Log.w(TAG, "claim NotFound: taskId=$taskId")
+                    Result.success()
+                }
 
-                ClaimDownloadTaskResult.NotRunnable -> Result.success()
+                ClaimDownloadTaskResult.NotRunnable -> {
+                    Log.d(TAG, "claim NotRunnable: taskId=$taskId")
+                    Result.success()
+                }
 
                 // NoSlot 不需要在这里额外触发 Dispatch：
                 // finally 块已经保证每个 Worker 退出时都会触发一次 enqueueDispatchWork，
                 // 避免多个 NoSlot Worker 并发退出时重复 replace，造成调度风暴。
-                ClaimDownloadTaskResult.NoSlot -> Result.success()
+                ClaimDownloadTaskResult.NoSlot -> {
+                    Log.d(TAG, "claim NoSlot: taskId=$taskId")
+                    Result.success()
+                }
 
                 is ClaimDownloadTaskResult.Claimed -> {
+                    Log.d(TAG, "claim success: taskId=$taskId, executing...")
                     handleClaimedTask(
                         task = claimResult.task,
                         workerToken = workerToken,
@@ -58,7 +70,11 @@ class ChapterDownloadWorker @AssistedInject constructor(
         } catch (e: CancellationException) {
             throw e
         } finally {
-            workController.enqueueDispatchWork(replace = true)
+            // 使用 KEEP 而非 REPLACE：多个 ChapterDownloadWorker 并发完成时，
+            // 每个都用 replace=true 会让后一个取消前一个刚入队的 dispatch work，
+            // 最终可能导致调度链断裂。只需保证队列里有一个 dispatch work 即可，
+            // 不需要反复抢占。外部主动触发（enqueue/resume/cancel）仍可用 replace=true。
+            workController.enqueueDispatchWork(replace = false)
         }
     }
 
@@ -68,6 +84,7 @@ class ChapterDownloadWorker @AssistedInject constructor(
     ): Result {
         return when (val result = executor.execute(task, workerToken)) {
             is ChapterDownloadResult.Success -> {
+                Log.d(TAG, "download success: taskId=${task.id} pages=${result.totalPages}")
                 repository.markCompletedOwned(
                     taskId = task.id,
                     workerToken = workerToken,
@@ -78,6 +95,7 @@ class ChapterDownloadWorker @AssistedInject constructor(
             }
 
             is ChapterDownloadResult.WaitingForNetwork -> {
+                Log.d(TAG, "waiting for network: taskId=${task.id} code=${result.errorCode}")
                 repository.markWaitingForNetworkOwned(
                     taskId = task.id,
                     workerToken = workerToken,
@@ -91,7 +109,10 @@ class ChapterDownloadWorker @AssistedInject constructor(
                 if (result.recoverable) {
                     val nextDelay = queuePolicy.nextRetryDelayMs(task.retryCount + 1)
                     val nextScheduleAt = System.currentTimeMillis() + nextDelay
-
+                    Log.w(
+                        TAG,
+                        "download failed (recoverable), retry in ${nextDelay}ms: taskId=${task.id} code=${result.errorCode}"
+                    )
                     repository.requeueRecoverableOwned(
                         taskId = task.id,
                         workerToken = workerToken,
@@ -100,6 +121,10 @@ class ChapterDownloadWorker @AssistedInject constructor(
                         message = result.message,
                     )
                 } else {
+                    Log.e(
+                        TAG,
+                        "download failed (fatal): taskId=${task.id} code=${result.errorCode} msg=${result.message}"
+                    )
                     repository.markFailedOwned(
                         taskId = task.id,
                         workerToken = workerToken,
@@ -112,5 +137,9 @@ class ChapterDownloadWorker @AssistedInject constructor(
                 Result.success()
             }
         }
+    }
+
+    companion object {
+        private const val TAG = "ChapterDownloadWorker"
     }
 }
