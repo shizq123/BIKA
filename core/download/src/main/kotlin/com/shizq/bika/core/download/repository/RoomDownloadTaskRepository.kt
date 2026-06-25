@@ -17,9 +17,8 @@ import kotlin.time.Clock
 @Singleton
 class RoomDownloadTaskRepository @Inject constructor(
     private val downloadTaskDao: DownloadTaskDao,
-) : DownloadTaskRepository {
     private val clock: Clock = Clock.System
-
+) : DownloadTaskRepository {
     companion object {
         /**
          * 可被调度器感知的"活跃"状态集合。
