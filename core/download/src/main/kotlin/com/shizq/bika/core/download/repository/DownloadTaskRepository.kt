@@ -18,6 +18,8 @@ interface DownloadTaskRepository {
 
     suspend fun saveTask(task: DownloadTask)
 
+    suspend fun saveTasks(tasks: List<DownloadTask>)
+
     suspend fun markPending(taskId: String, nextScheduleAt: Long)
 
     suspend fun markWaitingForNetwork(

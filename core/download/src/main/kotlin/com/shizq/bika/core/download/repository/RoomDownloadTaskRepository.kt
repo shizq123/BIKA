@@ -62,10 +62,17 @@ class RoomDownloadTaskRepository @Inject constructor(
         downloadTaskDao.upsert(normalized.asEntity())
     }
 
+    override suspend fun saveTasks(tasks: List<DownloadTask>) {
+        val now = clock.now()
+        val entities = tasks.map { it.copy(updatedAt = now).asEntity() }
+        downloadTaskDao.upsert(entities)
+    }
+
     override suspend fun markPending(taskId: String, nextScheduleAt: Long) {
         downloadTaskDao.markPending(
             taskId = taskId,
             nextScheduleAt = nextScheduleAt,
+            now = clock.now().toEpochMilliseconds(),
         )
     }
 
