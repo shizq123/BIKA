@@ -45,9 +45,13 @@ class DownloadDispatchWorker @AssistedInject constructor(
         val nextAt = repository.getNextPendingScheduleAt(now)
         if (nextAt != null) {
             val delayMs = (nextAt - now).coerceAtLeast(1_000L)
+            // 使用 replace = false（KEEP 策略）：此时当前 dispatch worker 自身还在运行中，
+            // 若使用 REPLACE 会让 WorkManager 立刻取消正在执行的自身，触发 WorkerStoppedException。
+            // KEEP 策略下，若队列中已有同名 work 则保留（不重复入队）；
+            // 当前这次执行正常结束后，带 delay 的下一次 dispatch 已在队列中等待。
             workController.enqueueDispatchWork(
                 delayMs = delayMs,
-                replace = true,
+                replace = false,
             )
         }
 
