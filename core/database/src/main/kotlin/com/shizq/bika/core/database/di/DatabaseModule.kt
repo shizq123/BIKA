@@ -39,7 +39,5 @@ internal object DatabaseModule {
             // 快捷路径：schema 3 直达 6，Room 会优先选择跨度最大的路径
             MIGRATION_3_6,
         )
-        // 仅对 schema 1、2 的旧库走 destructive fallback（这两个版本无 downloadTask，数据可丢弃）
-        .fallbackToDestructiveMigrationFrom(true, 1, 2)
         .build()
 }
