@@ -5,6 +5,11 @@ import androidx.room.Room
 import com.shizq.bika.core.database.BikaDatabase
 import com.shizq.bika.core.database.migration.MIGRATION_1_2
 import com.shizq.bika.core.database.migration.MIGRATION_2_3
+import com.shizq.bika.core.database.migration.MIGRATION_3_4
+import com.shizq.bika.core.database.migration.MIGRATION_3_6
+import com.shizq.bika.core.database.migration.MIGRATION_4_5
+import com.shizq.bika.core.database.migration.MIGRATION_5_6
+import com.shizq.bika.core.database.migration.MIGRATION_6_7
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,9 +29,17 @@ internal object DatabaseModule {
         BikaDatabase::class.java,
         "bika-database",
     )
-        .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
-        // 仅对无法提供迁移路径的旧版本（1以下）允许破坏性重建，
-        // 避免因通配符导致任意版本跳跃都静默丢数据。
-        .fallbackToDestructiveMigrationFrom(true, 1)
+        .addMigrations(
+            MIGRATION_1_2,
+            MIGRATION_2_3,
+            MIGRATION_3_4,
+            MIGRATION_4_5,
+            MIGRATION_5_6,
+            MIGRATION_6_7,
+            // 快捷路径：schema 3 直达 6，Room 会优先选择跨度最大的路径
+            MIGRATION_3_6,
+        )
+        // 仅对 schema 1、2 的旧库走 destructive fallback（这两个版本无 downloadTask，数据可丢弃）
+        .fallbackToDestructiveMigrationFrom(true, 1, 2)
         .build()
 }
