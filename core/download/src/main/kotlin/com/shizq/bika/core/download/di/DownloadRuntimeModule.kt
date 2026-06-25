@@ -14,12 +14,17 @@ import com.shizq.bika.core.download.scheduler.WorkManagerDownloadScheduler
 import com.shizq.bika.core.download.scheduler.WorkManagerDownloadWorkController
 import dagger.Binds
 import dagger.Module
+import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import kotlin.time.Clock
 
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DownloadRuntimeModule {
+    
+    @Provides
+    fun provideClock(): Clock = Clock.System
 
     @Binds
     abstract fun bindNetworkMonitor(
