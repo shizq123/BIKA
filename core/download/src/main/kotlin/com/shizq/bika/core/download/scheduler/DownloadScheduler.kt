@@ -5,6 +5,12 @@ interface DownloadScheduler {
     /** 新任务入队，若已有未完成 Work，则不重复创建 */
     suspend fun enqueue(taskId: String)
 
+    /**
+     * 批量入队，所有任务标记为 PENDING 后只触发一次调度分发，
+     * 避免逐条入队时 REPLACE 策略反复取消前一次 DispatchWork。
+     */
+    suspend fun enqueueAll(taskIds: List<String>)
+
     /** 用户主动恢复，允许替换旧的 backoff / waiting work */
     suspend fun resume(taskId: String)
 
