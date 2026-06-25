@@ -17,8 +17,8 @@ import kotlin.time.Clock
 @Singleton
 class RoomDownloadTaskRepository @Inject constructor(
     private val downloadTaskDao: DownloadTaskDao,
-    private val clock: Clock,
 ) : DownloadTaskRepository {
+    private val clock: Clock = Clock.System
 
     companion object {
         /**
