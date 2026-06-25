@@ -231,8 +231,8 @@ interface DownloadTaskDao {
     SET status = :downloadingStatus,
         worker_token = :workerToken,
         updatedAt = :now,
-        errorCode = NULL,
-        errorMessage = NULL
+        errorCode = 'NONE',
+        errorMessage = ''
     WHERE id = :taskId
       AND status = :pendingStatus
       AND next_schedule_at <= :now
@@ -274,8 +274,8 @@ interface DownloadTaskDao {
         localPath = :localPath,
         downloadedPages = :totalPages,
         totalPages = :totalPages,
-        errorCode = NULL,
-        errorMessage = NULL,
+        errorCode = 'NONE',
+        errorMessage = '',
         updatedAt = :now,
         completedAt = :now
     WHERE id = :taskId
@@ -365,8 +365,8 @@ interface DownloadTaskDao {
     SET status = :pendingStatus,
         next_schedule_at = :now,
         updatedAt = :now,
-        errorCode = NULL,
-        errorMessage = NULL
+        errorCode = 'NONE',
+        errorMessage = ''
     WHERE status = :waitingStatus
 """
     )
@@ -391,8 +391,8 @@ interface DownloadTaskDao {
         worker_token = NULL,
         next_schedule_at = :nextScheduleAt,
         updatedAt = :nextScheduleAt,
-        errorCode = NULL,
-        errorMessage = NULL
+        errorCode = 'NONE',
+        errorMessage = ''
     WHERE id = :taskId
 """
     )
