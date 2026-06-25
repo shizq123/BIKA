@@ -20,4 +20,5 @@ dependencies {
     implementation(libs.androidx.tracing.ktx)
     implementation(libs.androidx.work.ktx)
     implementation(libs.hilt.ext.work)
+    ksp(libs.hilt.ext.compiler)
 }
