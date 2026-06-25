@@ -22,9 +22,10 @@ import kotlin.time.Clock
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class DownloadRuntimeModule {
-    
-    @Provides
-    fun provideClock(): Clock = Clock.System
+    companion object {
+        @Provides
+        fun provideClock(): Clock = Clock.System
+    }
 
     @Binds
     abstract fun bindNetworkMonitor(
