@@ -253,6 +253,9 @@ interface DownloadTaskDao {
     UPDATE downloadTask
     SET downloadedPages = :downloadedPages,
         totalPages = :totalPages,
+        progress = CASE WHEN :totalPages > 0
+                        THEN CAST((:downloadedPages * 100 / :totalPages) AS INTEGER)
+                        ELSE 0 END,
         updatedAt = :now
     WHERE id = :taskId
       AND worker_token = :workerToken
@@ -390,7 +393,7 @@ interface DownloadTaskDao {
     SET status = :pendingStatus,
         worker_token = NULL,
         next_schedule_at = :nextScheduleAt,
-        updatedAt = :nextScheduleAt,
+        updatedAt = :now,
         errorCode = 'NONE',
         errorMessage = ''
     WHERE id = :taskId
@@ -399,6 +402,7 @@ interface DownloadTaskDao {
     suspend fun markPending(
         taskId: String,
         nextScheduleAt: Long,
+        now: Long,
         pendingStatus: DownloadStatus = DownloadStatus.PENDING,
     ): Int
 
