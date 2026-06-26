@@ -86,11 +86,10 @@ class DefaultChapterDownloadExecutor @Inject constructor(
                 repository.updateLocalPath(task.id, episodeDir.absolutePath)
 
                 val totalPages = pageUrls.size
+                // 单次扫描目录得出已完成页码集合，避免逐页重复 listFiles() 的 O(N²) I/O。
+                val existingPages = storage.findExistingPageNumbers(episodeDir)
                 val completedPages = AtomicInteger(
-                    countExistingPages(
-                        dir = episodeDir,
-                        totalPages = totalPages,
-                    )
+                    existingPages.count { it in 1..totalPages }
                 )
 
                 val progressReporter = ProgressReporter(
@@ -117,9 +116,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
                                 coroutineContext.ensureActive()
                                 ensureNetworkConstraints(constraints)
 
-                                val existingFile =
-                                    storage.findExistingPageFile(episodeDir, pageNumber)
-                                if (existingFile != null) {
+                                if (pageNumber in existingPages) {
                                     return@withPermit
                                 }
 
@@ -220,19 +217,6 @@ class DefaultChapterDownloadExecutor @Inject constructor(
         }
 
         return allPages
-    }
-
-    private fun countExistingPages(
-        dir: File,
-        totalPages: Int,
-    ): Int {
-        var count = 0
-        for (pageNumber in 1..totalPages) {
-            if (storage.findExistingPageFile(dir, pageNumber) != null) {
-                count++
-            }
-        }
-        return count
     }
 
     private suspend fun downloadPageWithRetry(
