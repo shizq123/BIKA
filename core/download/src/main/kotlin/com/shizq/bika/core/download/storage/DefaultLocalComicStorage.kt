@@ -123,6 +123,47 @@ class DefaultLocalComicStorage @Inject constructor(
         return "${pageStem(pageNumber)}.$normalizedExt"
     }
 
+    override fun findExistingPageNumbers(dir: File): Set<Int> {
+        if (!dir.exists() || !dir.isDirectory) return emptySet()
+
+        val files = dir.listFiles() ?: return emptySet()
+
+        // 单次扫描目录，按页码归并同页的多个候选文件，避免逐页重复 listFiles()。
+        val candidatesByPage = HashMap<Int, MutableList<File>>()
+        for (file in files) {
+            if (!file.isFile) continue
+            if (file.name.endsWith(TEMP_SUFFIX, ignoreCase = true)) continue
+            if (!isSupportedImageFile(file.name)) continue
+            val pageNumber = extractPageNumber(file.name) ?: continue
+            candidatesByPage.getOrPut(pageNumber) { mutableListOf() }.add(file)
+        }
+
+        val result = HashSet<Int>(candidatesByPage.size)
+        for ((pageNumber, candidates) in candidatesByPage) {
+            // 零字节或损坏文件不算已完成，顺手清掉
+            val validFiles = candidates.filter { file ->
+                if (file.length() > 0L) {
+                    true
+                } else {
+                    file.delete()
+                    false
+                }
+            }
+            if (validFiles.isEmpty()) continue
+
+            // 同页存在多个不同格式的有效文件时，仅保留名字排序最小的一个，其余删除，
+            // 与 findExistingPageFile 的去歧义策略保持一致。
+            if (validFiles.size > 1) {
+                validFiles
+                    .sortedBy { it.name.lowercase(Locale.ROOT) }
+                    .drop(1)
+                    .forEach { it.delete() }
+            }
+            result += pageNumber
+        }
+        return result
+    }
+
     override fun resolveImageExtension(url: String?, contentType: String?): String {
         val normalizedContentType = contentType
             ?.substringBefore(";")

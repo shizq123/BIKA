@@ -14,6 +14,12 @@ interface LocalComicStorage {
     /** 根据页码查找已存在的最终图片文件，忽略临时文件和损坏文件 */
     fun findExistingPageFile(dir: File, pageNumber: Int): File?
 
+    /**
+     * 一次性扫描目录，返回所有已存在且有效（非空、非临时、受支持格式）的页码集合。
+     * 用于恢复下载时批量判断哪些页已完成，避免逐页重复扫描目录。
+     */
+    fun findExistingPageNumbers(dir: File): Set<Int>
+
     /** 构建最终页文件名，例如 001.jpg / 002.webp */
     fun buildPageFileName(pageNumber: Int, extension: String): String
 
