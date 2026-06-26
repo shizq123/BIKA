@@ -15,8 +15,8 @@ android {
 
     defaultConfig {
         applicationId = "com.shizq.bika"
-        versionCode = 56
-        versionName = "1.11.13"
+        versionCode = 58
+        versionName = "1.11.15"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -98,11 +98,6 @@ dependencies {
 
     implementation(libs.androidx.recyclerview)
     implementation(libs.androidx.preference.ktx)
-
-    implementation(libs.pictureselector)
-    implementation(libs.ucrop)
-
-    implementation(libs.photoview)
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)

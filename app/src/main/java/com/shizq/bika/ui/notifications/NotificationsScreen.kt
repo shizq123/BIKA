@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MailOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -39,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.paging.LoadState
@@ -211,7 +213,6 @@ fun NotificationItem(
                 contentAlignment = Alignment.Center
             ) {
                 val avatarUrl = notification.sender?.avatar?.originalImageUrl
-                    ?: notification.sender?.avatar?.originalImageUrl
 
                 AsyncImage(
                     model = ImageRequest.Builder(context)
@@ -312,7 +313,7 @@ fun NotificationItem(
 
             // 右侧：如有封面展示封面
             notification.cover?.let { coverMedia ->
-                val coverUrl = coverMedia.originalImageUrl.ifEmpty { coverMedia.originalImageUrl }
+                val coverUrl = coverMedia.originalImageUrl
                 if (coverUrl.isNotEmpty()) {
                     Spacer(modifier = Modifier.width(12.dp))
                     AsyncImage(

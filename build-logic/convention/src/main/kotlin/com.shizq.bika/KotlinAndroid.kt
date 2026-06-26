@@ -63,24 +63,7 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
     }.apply {
         jvmTarget = JvmTarget.JVM_21
         allWarningsAsErrors = warningsAsErrors
-        freeCompilerArgs.add("-opt-in=kotlin.time.ExperimentalTime")
-        freeCompilerArgs.add(
-            /**
-             * Remove this args after Phase 3.
-             * https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-consistent-copy-visibility/#deprecation-timeline
-             *
-             * Deprecation timeline
-             * Phase 3. (Supposedly Kotlin 2.2 or Kotlin 2.3).
-             * The default changes.
-             * Unless ExposedCopyVisibility is used, the generated 'copy' method has the same visibility as the primary constructor.
-             * The binary signature changes. The error on the declaration is no longer reported.
-             * '-Xconsistent-data-class-copy-visibility' compiler flag and ConsistentCopyVisibility annotation are now unnecessary.
-             */
-            "-Xconsistent-data-class-copy-visibility"
-        )
-        freeCompilerArgs.add("-Xexplicit-backing-fields")
         freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
-        freeCompilerArgs.add("-Xannotation-default-target=param-property")
 
         // Use a static list of opt-ins if the dependency is present at configuration time.
         // Capturing 'Project' in a provider for freeCompilerArgs breaks Configuration Cache.

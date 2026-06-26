@@ -4,7 +4,6 @@ import androidx.datastore.core.DataStore
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.DarkThemeConfig
 import com.shizq.bika.core.model.BookSpreadsMode
-import com.shizq.bika.core.model.NetworkLine
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
@@ -60,11 +59,7 @@ class UserPreferencesDataSource @Inject constructor(
         }
     }
 
-    suspend fun setNetworkLine(line: NetworkLine) {
-        userPreferences.updateData {
-            it.copy(selectedNetworkLine = line)
-        }
-    }
+
 
     suspend fun setAutoCheckIn(enabled: Boolean) {
         userPreferences.updateData {
@@ -74,7 +69,33 @@ class UserPreferencesDataSource @Inject constructor(
 
     suspend fun setDns(dns: Set<String>) {
         userPreferences.updateData {
-            it.copy(dns = it.dns + dns)
+            val combined = it.dns + dns
+            it.copy(
+                dns = combined,
+                apiDns = it.apiDns + dns,
+                imageDns = it.imageDns + dns
+            )
+        }
+    }
+
+    suspend fun overwriteDns(dns: Set<String>) {
+        userPreferences.updateData {
+            it.copy(
+                dns = dns,
+                apiDns = dns,
+                imageDns = dns
+            )
+        }
+    }
+
+    suspend fun updateDnsSettings(apiDns: Set<String>, imageDns: Set<String>, activeDnsLine: String) {
+        userPreferences.updateData {
+            it.copy(
+                apiDns = apiDns,
+                imageDns = imageDns,
+                dns = apiDns + imageDns,
+                activeDnsLine = activeDnsLine
+            )
         }
     }
 

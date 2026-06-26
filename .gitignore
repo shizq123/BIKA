@@ -21,9 +21,10 @@ out/
 .gradle
 .gradle/
 build/
-
+.agents
 # Signing files
 .signing/
+.vscode/
 
 # Local configuration file (sdk path, etc)
 local.properties

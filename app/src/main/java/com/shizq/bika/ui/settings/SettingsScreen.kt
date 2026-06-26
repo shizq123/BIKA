@@ -28,6 +28,7 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Wifi
+import androidx.compose.material.icons.filled.NetworkCheck
 import androidx.compose.material3.AlertDialog
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,7 +55,6 @@ import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.model.DarkThemeConfig
-import com.shizq.bika.core.model.NetworkLine
 
 import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
@@ -63,6 +63,7 @@ import kotlinx.coroutines.launch
 fun SettingsScreen(
     navigationToLogin: () -> Unit,
     navigationToStorageManager: () -> Unit,
+    navigationToDnsSettings: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
 ) {
@@ -162,7 +163,6 @@ fun SettingsScreen(
         onClearCache = viewModel::clearCache,
         onUpdateDarkThemeConfig = viewModel::updateDarkThemeConfig,
         onToggleAutoCheckIn = viewModel::updateAutoCheckIn,
-        onUpdateNetworkLine = viewModel::updateSelectedNetworkLine,
         onUpdateFontScale = viewModel::updateFontScale,
         onToggleIsLoggingEnabled = viewModel::updateIsLoggingEnabled,
         onToggleDownloadOverWifiOnly = viewModel::updateDownloadOverWifiOnly,
@@ -202,6 +202,7 @@ fun SettingsScreen(
             navigationToLogin()
         },
         onStorageManagerClick = navigationToStorageManager,
+        onDnsSettingsClick = navigationToDnsSettings,
         onBackClick = onBackClick,
         onCheckForUpdates = viewModel::checkForUpdates,
     )
@@ -214,9 +215,9 @@ fun SettingsContent(
     cacheSize: String,
     onClearCache: () -> Unit = {},
     onStorageManagerClick: () -> Unit = {},
+    onDnsSettingsClick: () -> Unit = {},
     onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit = {},
     onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
-    onUpdateNetworkLine: (line: NetworkLine) -> Unit = {},
     onUpdateFontScale: (scale: Float) -> Unit = {},
     onToggleIsLoggingEnabled: (enabled: Boolean) -> Unit = {},
     onToggleDownloadOverWifiOnly: (enabled: Boolean) -> Unit = {},
@@ -293,13 +294,12 @@ fun SettingsContent(
                                 iconVector = Icons.AutoMirrored.Filled.List,
                                 onClick = onStorageManagerClick
                             )
-                            ListPreference(
-                                title = "选择网络分流",
-                                iconVector = Icons.AutoMirrored.Filled.List,
-                                options = NetworkLine.entries,
-                                selectedValue = settingsUiState.selectedNetworkLine,
-                                optionToText = { it.display },
-                                onOptionSelected = onUpdateNetworkLine
+
+                            Preference(
+                                title = "DNS直连与分流优化",
+                                summary = "获取直连 IP 并测试延迟以选择最佳线路",
+                                iconVector = Icons.Default.NetworkCheck,
+                                onClick = onDnsSettingsClick
                             )
                             SwitchPreference(
                                 title = "自动签到",

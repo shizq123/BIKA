@@ -1,20 +1,9 @@
 pluginManagement {
-    includeBuild("build-logic")
     repositories {
-        google {
-            content {
-                includeGroupByRegex("com\\.android.*")
-                includeGroupByRegex("com\\.google.*")
-                includeGroupByRegex("androidx.*")
-            }
-        }
-        mavenCentral()
         gradlePluginPortal()
+        google()
+        mavenCentral()
     }
-}
-
-plugins {
-    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
 }
 
 dependencyResolutionManagement {
@@ -28,7 +17,6 @@ dependencyResolutionManagement {
             }
         }
         mavenCentral()
-        maven { setUrl("https://www.jitpack.io") }
     }
 }
 
@@ -49,3 +37,5 @@ include(":core:testing")
 include(":core:ui")
 
 include(":sync:work")
+
+includeBuild("build-logic")

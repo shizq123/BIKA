@@ -24,6 +24,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -172,13 +173,21 @@ fun ComicDetailContent(
                                         downloadTasks.count { it.status == DownloadStatus.COMPLETED }
                                     completedCount > 0 && completedCount >= detail.epsCount
                                 }
+
+                                val lastReadChapter = remember(chapterProgress) {
+                                    chapterProgress.maxByOrNull { it.lastReadAt }
+                                }
+                                val lastReadChapterOrder = lastReadChapter?.chapterId ?: 1
+                                val isContinue = lastReadChapter != null
+
                                 ComicDetailPage(
                                     detail = detail,
                                     recommendations = unitedState.recommendations,
                                     isDownloaded = isComicDownloaded,
+                                    isContinue = isContinue,
                                     onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
                                     onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
-                                    navigationToReader = { navigationToReader(detail.id, 1) },
+                                    navigationToReader = { navigationToReader(detail.id, lastReadChapterOrder) },
                                     navigationToComicInfo = { navigationToComicInfo(it) },
                                     navigationToFeed = navigationToFeed,
                                     onDownloadClick = {

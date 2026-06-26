@@ -11,6 +11,7 @@ import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.model.Gender
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -79,7 +80,11 @@ class DashboardViewModel @Inject constructor(
                                 level = prefs.cachedUserLevel,
                                 exp = prefs.cachedUserExp,
                                 title = prefs.cachedUserTitle,
-                                gender = prefs.cachedUserGender,
+                                gender = try {
+                                    Gender.valueOf(prefs.cachedUserGender)
+                                } catch (e: Exception) {
+                                    Gender.UNKNOWN
+                                },
                                 slogan = prefs.cachedUserSlogan,
                                 hasCheckedIn = false,
                             ),
@@ -98,7 +103,7 @@ class DashboardViewModel @Inject constructor(
                         level = user.level,
                         exp = user.exp,
                         title = user.title,
-                        gender = user.gender,
+                        gender = user.gender.name,
                         slogan = user.slogan,
                         characters = user.characters,
                     )

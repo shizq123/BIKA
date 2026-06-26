@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -25,9 +25,11 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.rememberBottomSheetState
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,7 +46,7 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.database.model.ChapterProgressEntity
-import com.shizq.bika.core.download.model.DownloadTask
+import com.shizq.bika.core.database.model.DownloadTaskEntity
 import com.shizq.bika.core.network.model.Episode
 import kotlinx.coroutines.flow.flowOf
 
@@ -53,7 +55,7 @@ import kotlinx.coroutines.flow.flowOf
 fun EpisodesPage(
     episodes: LazyPagingItems<Episode>,
     modifier: Modifier = Modifier,
-    downloadTasks: List<DownloadTask> = emptyList(),
+    downloadTasks: List<DownloadTaskEntity> = emptyList(),
     chapterProgress: List<ChapterProgressEntity> = emptyList(),
     navigateToReader: (index: Int) -> Unit = { _ -> },
     onDownloadClick: (List<Episode>) -> Unit = {},
@@ -124,7 +126,7 @@ fun EpisodesPage(
     }
 
     if (showDownloadSelectSheet) {
-        val sheetState = rememberModalBottomSheetState()
+        val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
         ModalBottomSheet(
             onDismissRequest = { showDownloadSelectSheet = false },
             sheetState = sheetState
