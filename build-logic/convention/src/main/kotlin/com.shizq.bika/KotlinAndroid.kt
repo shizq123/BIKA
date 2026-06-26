@@ -61,7 +61,7 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
         is KotlinJvmProjectExtension -> compilerOptions
         else -> TODO("Unsupported project extension $this ${T::class}")
     }.apply {
-        jvmTarget = JvmTarget.JVM_11
+        jvmTarget = JvmTarget.JVM_21
         allWarningsAsErrors = warningsAsErrors
         freeCompilerArgs.add(
             "-opt-in=kotlin.uuid.ExperimentalUuidApi",
