@@ -3,6 +3,9 @@ package com.shizq.bika.core.data.repository
 import android.util.Log
 import com.shizq.bika.core.network.GithubDataSource
 import jakarta.inject.Inject
+import java.io.File
+
+private const val TAG = "AppUpdateRepository"
 
 class AppUpdateRepositoryImpl @Inject constructor(
     private val githubDataSource: GithubDataSource,
@@ -29,20 +32,29 @@ class AppUpdateRepositoryImpl @Inject constructor(
                 downloadUrl = apkAsset.browserDownloadUrl,
             )
         } catch (e: Exception) {
-            Log.e("AppUpdateRepository", "检测版本更新失败", e)
+            Log.e(TAG, "检测版本更新失败", e)
             null
         }
     }
 
-    private fun isNewVersion(local: String, remote: String): Boolean {
+    override suspend fun downloadApk(
+        downloadUrl: String,
+        destFile: File,
+        onProgress: (Float) -> Unit,
+    ) {
+        if (destFile.exists()) destFile.delete()
+        githubDataSource.downloadApk(downloadUrl, destFile, onProgress)
+    }
+
+    internal fun isNewVersion(local: String, remote: String): Boolean {
         val localParts = local.split(".").mapNotNull { it.toIntOrNull() }
         val remoteParts = remote.split(".").mapNotNull { it.toIntOrNull() }
-        val size = maxOf(localParts.size, remoteParts.size)
-        for (i in 0 until size) {
-            val lVal = localParts.getOrNull(i) ?: 0
-            val rVal = remoteParts.getOrNull(i) ?: 0
-            if (rVal > lVal) return true
-            if (lVal > rVal) return false
+        val len = maxOf(localParts.size, remoteParts.size)
+        repeat(len) { i ->
+            val l = localParts.getOrElse(i) { 0 }
+            val r = remoteParts.getOrElse(i) { 0 }
+            if (r > l) return true
+            if (l > r) return false
         }
         return false
     }
