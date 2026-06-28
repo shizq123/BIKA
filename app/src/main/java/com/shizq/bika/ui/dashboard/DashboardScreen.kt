@@ -1,14 +1,20 @@
 package com.shizq.bika.ui.dashboard
 
 import android.content.Context
-import android.content.Intent
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,32 +27,31 @@ import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
-import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.CardDefaults
-import com.shizq.bika.core.database.model.DetailedHistory
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Comment
+import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
+import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -67,13 +72,14 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -83,38 +89,28 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.background
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import coil3.request.error
 import coil3.request.placeholder
 import com.shizq.bika.R
+import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.navigation.DiscoveryAction
+import com.shizq.bika.ui.dashboard.update.UpdateDialog
 import com.shizq.bika.ui.feed.FavoriteTagsDrawer
-import androidx.compose.foundation.clickable
-import com.shizq.bika.core.model.FavoriteTag
-import androidx.compose.material.icons.rounded.Bookmarks
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.layout.fillMaxHeight
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.ui.graphics.Color
-
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 
 @Composable
 fun DashboardScreen(
@@ -130,135 +126,58 @@ fun DashboardScreen(
     navigationToReader: (String, Int) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
-    val userProfileUiState by viewModel.userProfileUiState.collectAsStateWithLifecycle()
+    val state by viewModel.state.collectAsStateWithLifecycle()
     val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
-    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val lastReadHistory by viewModel.lastReadHistory.collectAsStateWithLifecycle()
-    val context = LocalContext.current
-    
-    var checkInDialogMessage by remember { mutableStateOf<String?>(null) }
+    val favoriteTags by viewModel.favoriteTags.collectAsStateWithLifecycle()
 
-    LaunchedEffect(Unit) {
-        viewModel.checkUpdate(com.shizq.bika.BuildConfig.VERSION_NAME)
-    }
-
-    LaunchedEffect(viewModel.checkInEvent) {
-        viewModel.checkInEvent.collect { event ->
-            when (event) {
-                is CheckInEvent.Success -> {
-                    checkInDialogMessage = event.message
-                }
-                is CheckInEvent.Error -> {
-                    checkInDialogMessage = event.error
-                }
-            }
-        }
-    }
-
-    // 自动打卡触发器：用户信息加载成功且非离线缓存时，如果发现未打卡，才在后台安全触发自动打卡
+    // 自动打卡：profile 首次加载成功且未打卡时 dispatch 一次，
+    // 实际检查逻辑在 StateMachine 内部完成，不会重复触发
+    val userProfileUiState = state.userProfile
     LaunchedEffect(userProfileUiState) {
-        val state = userProfileUiState
-        if (state is UserProfileUiState.Success && !state.isOfflineCache) {
-            if (!state.user.hasCheckedIn) {
-                viewModel.onCheckIn(isAuto = true)
-            }
+        if (userProfileUiState is UserProfileUiState.Success) {
+            viewModel.dispatch(DashboardAction.AutoCheckIn)
         }
     }
 
-    if (checkInDialogMessage != null) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { checkInDialogMessage = null },
+    // 打卡结果对话框（状态驱动）
+    val checkInResult = state.checkInResult
+    if (checkInResult != null) {
+        val message = when (checkInResult) {
+            is CheckInResult.Success -> checkInResult.message
+            is CheckInResult.Error -> checkInResult.error
+        }
+        AlertDialog(
+            onDismissRequest = { viewModel.dispatch(DashboardAction.DismissCheckInResult) },
             confirmButton = {
-                androidx.compose.material3.TextButton(onClick = { checkInDialogMessage = null }) {
+                TextButton(onClick = { viewModel.dispatch(DashboardAction.DismissCheckInResult) }) {
                     Text("确定")
                 }
             },
             title = { Text("打哔咔提示") },
-            text = { Text(checkInDialogMessage!!) }
+            text = { Text(message) },
         )
     }
 
-    // ================== 版本更新 UI 渲染控制 ==================
-    when (val state = updateState) {
-        is DashboardViewModel.UpdateUiState.HasUpdate -> {
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { viewModel.resetUpdateState() },
-                confirmButton = {
-                    androidx.compose.material3.Button(onClick = {
-                        viewModel.downloadAndInstall(context, state.downloadUrl)
-                    }) {
-                        Text("立即更新")
-                    }
-                },
-                dismissButton = {
-                    androidx.compose.material3.TextButton(onClick = { viewModel.resetUpdateState() }) {
-                        Text("稍后")
-                    }
-                },
-                title = { Text("发现新版本 v${state.remoteVersion}") },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text("检测到有最新版可以更新，是否立即升级？")
-                        if (state.changelog.isNotEmpty()) {
-                            Text(
-                                text = "更新日志：\n${state.changelog}",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            )
-        }
-
-        is DashboardViewModel.UpdateUiState.Downloading -> {
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = {},
-                confirmButton = {},
-                title = { Text("正在下载更新...") },
-                text = {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        androidx.compose.material3.LinearProgressIndicator(
-                            progress = { state.progress },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = "已下载: ${(state.progress * 100).toInt()}%",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                }
-            )
-        }
-
-        is DashboardViewModel.UpdateUiState.Error -> {
-            androidx.compose.material3.AlertDialog(
-                onDismissRequest = { viewModel.resetUpdateState() },
-                confirmButton = {
-                    androidx.compose.material3.TextButton(onClick = { viewModel.resetUpdateState() }) {
-                        Text("确定")
-                    }
-                },
-                title = { Text("更新失败") },
-                text = { Text(state.message) }
-            )
-        }
-
-        else -> {}
-    }
-
-    val favoriteTags by viewModel.favoriteTags.collectAsStateWithLifecycle()
+    UpdateDialog()
 
     DashboardContent(
         userProfileUiState = userProfileUiState,
         lastReadHistory = lastReadHistory,
-        onCheckInClick = viewModel::onCheckIn,
-        onUpdateSlogan = viewModel::updateProfileSlogan,
-        onChangePassword = viewModel::changePassword,
+        onCheckInClick = { viewModel.dispatch(DashboardAction.CheckIn) },
+        onUpdateSlogan = { slogan -> viewModel.dispatch(DashboardAction.UpdateSlogan(slogan)) },
+        sloganResult = OperationResult.Success,
+        onDismissSloganResult = { viewModel.dispatch(DashboardAction.DismissSloganResult) },
+        onChangePassword = { old, new ->
+            viewModel.dispatch(
+                DashboardAction.ChangePassword(
+                    old,
+                    new
+                )
+            )
+        },
+        passwordResult = OperationResult.Success,
+        onDismissPasswordResult = { viewModel.dispatch(DashboardAction.DismissPasswordResult) },
         channelSettingsUiState = channelSettingsUiState,
         navigationToLeaderboard = navigationToLeaderboard,
         navigateToFavourite = navigateToFavourite,
@@ -271,11 +190,25 @@ fun DashboardScreen(
         onNotificationsClick = onNotificationsClick,
         navigationToReader = navigationToReader,
         favoriteTags = favoriteTags,
-        onAddFavorite = viewModel::addFavoriteTag,
-        onRemoveFavorite = viewModel::removeFavoriteTag,
-        onUpdateFavoriteName = viewModel::updateFavoriteTagName,
-        onMoveFavorite = viewModel::moveFavoriteTag,
-        onAddCustomFavorite = viewModel::addCustomFavoriteTag,
+        onAddFavorite = { viewModel.dispatch(DashboardAction.AddFavoriteTag(it)) },
+        onRemoveFavorite = { viewModel.dispatch(DashboardAction.RemoveFavoriteTag(it)) },
+        onUpdateFavoriteName = { tag, name ->
+            viewModel.dispatch(
+                DashboardAction.UpdateFavoriteTagName(
+                    tag,
+                    name
+                )
+            )
+        },
+        onMoveFavorite = { from, to ->
+            viewModel.dispatch(
+                DashboardAction.MoveFavoriteTag(
+                    from,
+                    to
+                )
+            )
+        },
+        onAddCustomFavorite = { viewModel.dispatch(DashboardAction.AddCustomFavoriteTag(it)) },
     )
 }
 
@@ -285,8 +218,12 @@ fun DashboardContent(
     userProfileUiState: UserProfileUiState,
     lastReadHistory: DetailedHistory?,
     onCheckInClick: () -> Unit,
-    onUpdateSlogan: (String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
-    onChangePassword: (String, String, onSuccess: () -> Unit, onError: (String) -> Unit) -> Unit,
+    onUpdateSlogan: (String) -> Unit,
+    sloganResult: OperationResult?,
+    onDismissSloganResult: () -> Unit,
+    onChangePassword: (String, String) -> Unit,
+    passwordResult: OperationResult?,
+    onDismissPasswordResult: () -> Unit,
     channelSettingsUiState: List<Channel>,
     navigationToLeaderboard: () -> Unit,
     navigateToFavourite: (DiscoveryAction) -> Unit,
@@ -308,46 +245,35 @@ fun DashboardContent(
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    // ── 修改资料对话框 ────────────────────────────────────────────────────
     var showEditProfileDialog by remember { mutableStateOf(false) }
     var inputSlogan by remember { mutableStateOf("") }
-    var isSaving by remember { mutableStateOf(false) }
-    var errorMessage by remember { mutableStateOf<String?>(null) }
-
     var showChangePasswordDialog by remember { mutableStateOf(false) }
-    var inputOldPassword by remember { mutableStateOf("") }
-    var inputNewPassword by remember { mutableStateOf("") }
-    var inputConfirmPassword by remember { mutableStateOf("") }
-    var isPasswordSaving by remember { mutableStateOf(false) }
-    var passwordErrorMessage by remember { mutableStateOf<String?>(null) }
-    var oldPasswordVisible by remember { mutableStateOf(false) }
-    var newPasswordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    LaunchedEffect(showEditProfileDialog) {
-        if (showEditProfileDialog) {
-            isSaving = false
-            errorMessage = null
-            if (userProfileUiState is UserProfileUiState.Success) {
-                inputSlogan = userProfileUiState.user.slogan
+    // sloganResult 驱动：成功时关闭对话框，失败时保持打开并显示错误
+    val isSloganSaving = showEditProfileDialog && sloganResult == null &&
+            (userProfileUiState is UserProfileUiState.Success)
+    LaunchedEffect(sloganResult) {
+        when (sloganResult) {
+            OperationResult.Success -> {
+                showEditProfileDialog = false
+                onDismissSloganResult()
             }
-        }
-    }
 
-    LaunchedEffect(showChangePasswordDialog) {
-        if (showChangePasswordDialog) {
-            inputOldPassword = ""
-            inputNewPassword = ""
-            inputConfirmPassword = ""
-            isPasswordSaving = false
-            passwordErrorMessage = null
-            oldPasswordVisible = false
-            newPasswordVisible = false
-            confirmPasswordVisible = false
+            is OperationResult.Error, null -> Unit
         }
     }
 
     if (showEditProfileDialog) {
-        androidx.compose.material3.AlertDialog(
+        // isSaving 由是否正在等待 sloganResult 推导：打开对话框且 sloganResult 还没回来时为 true
+        var isSaving by remember { mutableStateOf(false) }
+        // sloganResult 返回后重置 isSaving
+        LaunchedEffect(sloganResult) {
+            if (sloganResult != null) isSaving = false
+        }
+
+        AlertDialog(
             onDismissRequest = { if (!isSaving) showEditProfileDialog = false },
             title = { Text("修改资料") },
             text = {
@@ -365,9 +291,9 @@ fun DashboardContent(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    if (errorMessage != null) {
+                    if (sloganResult is OperationResult.Error) {
                         Text(
-                            text = errorMessage!!,
+                            text = sloganResult.message,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
@@ -376,7 +302,9 @@ fun DashboardContent(
                     if (isSaving) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         }
@@ -406,18 +334,8 @@ fun DashboardContent(
                     enabled = !isSaving,
                     onClick = {
                         isSaving = true
-                        errorMessage = null
-                        onUpdateSlogan(
-                            inputSlogan,
-                            {
-                                isSaving = false
-                                showEditProfileDialog = false
-                            },
-                            { err ->
-                                isSaving = false
-                                errorMessage = err
-                            }
-                        )
+                        onDismissSloganResult()
+                        onUpdateSlogan(inputSlogan)
                     }
                 ) {
                     Text("保存")
@@ -426,7 +344,10 @@ fun DashboardContent(
             dismissButton = {
                 TextButton(
                     enabled = !isSaving,
-                    onClick = { showEditProfileDialog = false }
+                    onClick = {
+                        showEditProfileDialog = false
+                        onDismissSloganResult()
+                    }
                 ) {
                     Text("取消")
                 }
@@ -434,9 +355,53 @@ fun DashboardContent(
         )
     }
 
+    // ── 修改密码对话框 ────────────────────────────────────────────────────
+    var inputOldPassword by remember { mutableStateOf("") }
+    var inputNewPassword by remember { mutableStateOf("") }
+    var inputConfirmPassword by remember { mutableStateOf("") }
+    var oldPasswordVisible by remember { mutableStateOf(false) }
+    var newPasswordVisible by remember { mutableStateOf(false) }
+    var confirmPasswordVisible by remember { mutableStateOf(false) }
+    // 本地校验错误（未发到服务端前）
+    var localPasswordError by remember { mutableStateOf<String?>(null) }
+
+    // passwordResult 驱动：成功时 Toast + 关闭，失败时保持打开
+    LaunchedEffect(passwordResult) {
+        when (passwordResult) {
+            OperationResult.Success -> {
+                showChangePasswordDialog = false
+                android.widget.Toast.makeText(
+                    context,
+                    "密码修改成功",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
+                onDismissPasswordResult()
+            }
+
+            is OperationResult.Error, null -> Unit
+        }
+    }
+
     if (showChangePasswordDialog) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { if (!isPasswordSaving) showChangePasswordDialog = false },
+        var isSaving by remember { mutableStateOf(false) }
+        LaunchedEffect(passwordResult) {
+            if (passwordResult != null) isSaving = false
+        }
+        // 打开时重置所有字段
+        LaunchedEffect(Unit) {
+            inputOldPassword = ""
+            inputNewPassword = ""
+            inputConfirmPassword = ""
+            localPasswordError = null
+            isSaving = false
+            oldPasswordVisible = false
+            newPasswordVisible = false
+            confirmPasswordVisible = false
+            onDismissPasswordResult()
+        }
+
+        AlertDialog(
+            onDismissRequest = { if (!isSaving) showChangePasswordDialog = false },
             title = { Text("修改密码") },
             text = {
                 Column(
@@ -449,7 +414,7 @@ fun DashboardContent(
                         label = { Text("旧密码") },
                         placeholder = { Text("请输入旧密码") },
                         singleLine = true,
-                        enabled = !isPasswordSaving,
+                        enabled = !isSaving,
                         visualTransformation = if (oldPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { oldPasswordVisible = !oldPasswordVisible }) {
@@ -468,7 +433,7 @@ fun DashboardContent(
                         label = { Text("新密码") },
                         placeholder = { Text("请输入新密码（至少8位）") },
                         singleLine = true,
-                        enabled = !isPasswordSaving,
+                        enabled = !isSaving,
                         visualTransformation = if (newPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
@@ -487,7 +452,7 @@ fun DashboardContent(
                         label = { Text("确认新密码") },
                         placeholder = { Text("请再次输入新密码") },
                         singleLine = true,
-                        enabled = !isPasswordSaving,
+                        enabled = !isSaving,
                         visualTransformation = if (confirmPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
@@ -500,18 +465,23 @@ fun DashboardContent(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    if (passwordErrorMessage != null) {
+                    // 本地校验错误优先，服务端错误次之
+                    val displayError = localPasswordError
+                        ?: (passwordResult as? OperationResult.Error)?.message
+                    if (displayError != null) {
                         Text(
-                            text = passwordErrorMessage!!,
+                            text = displayError,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall
                         )
                     }
 
-                    if (isPasswordSaving) {
+                    if (isSaving) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp)
                         ) {
                             CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         }
@@ -520,40 +490,19 @@ fun DashboardContent(
             },
             confirmButton = {
                 TextButton(
-                    enabled = !isPasswordSaving,
+                    enabled = !isSaving,
                     onClick = {
-                        if (inputOldPassword.isEmpty()) {
-                            passwordErrorMessage = "请输入旧密码"
-                            return@TextButton
+                        localPasswordError = when {
+                            inputOldPassword.isEmpty() -> "请输入旧密码"
+                            inputNewPassword.isEmpty() -> "请输入新密码"
+                            inputNewPassword.length < 8 -> "新密码长度至少需要8个字符"
+                            inputNewPassword != inputConfirmPassword -> "两次输入的新密码不一致"
+                            else -> null
                         }
-                        if (inputNewPassword.isEmpty()) {
-                            passwordErrorMessage = "请输入新密码"
-                            return@TextButton
-                        }
-                        if (inputNewPassword.length < 8) {
-                            passwordErrorMessage = "新密码长度至少需要8个字符"
-                            return@TextButton
-                        }
-                        if (inputNewPassword != inputConfirmPassword) {
-                            passwordErrorMessage = "两次输入的新密码不一致"
-                            return@TextButton
-                        }
-
-                        isPasswordSaving = true
-                        passwordErrorMessage = null
-                        onChangePassword(
-                            inputOldPassword,
-                            inputNewPassword,
-                            {
-                                isPasswordSaving = false
-                                showChangePasswordDialog = false
-                                android.widget.Toast.makeText(context, "密码修改成功", android.widget.Toast.LENGTH_SHORT).show()
-                            },
-                            { err ->
-                                isPasswordSaving = false
-                                passwordErrorMessage = err
-                            }
-                        )
+                        if (localPasswordError != null) return@TextButton
+                        isSaving = true
+                        onDismissPasswordResult()
+                        onChangePassword(inputOldPassword, inputNewPassword)
                     }
                 ) {
                     Text("保存")
@@ -561,8 +510,11 @@ fun DashboardContent(
             },
             dismissButton = {
                 TextButton(
-                    enabled = !isPasswordSaving,
-                    onClick = { showChangePasswordDialog = false }
+                    enabled = !isSaving,
+                    onClick = {
+                        showChangePasswordDialog = false
+                        onDismissPasswordResult()
+                    }
                 ) {
                     Text("取消")
                 }
@@ -617,6 +569,10 @@ fun DashboardContent(
                     onEditProfileClick = {
                         scope.launch {
                             drawerState.close()
+                            // 同步初始化签名输入框，避免 LaunchedEffect 一帧延迟闪烁
+                            if (userProfileUiState is UserProfileUiState.Success) {
+                                inputSlogan = userProfileUiState.user.slogan
+                            }
                             showEditProfileDialog = true
                         }
                     },
@@ -859,78 +815,67 @@ fun DashboardDrawerContent(
     onDownloadsClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
 ) {
-    when (userProfile) {
-        is UserProfileUiState.Error -> {
-            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("加载用户信息失败")
-            }
-        }
+    Column(modifier = modifier.fillMaxSize()) {
+        // 用户信息卡片：Loading / Error / Success 三态统一由 UserProfileStateCard 处理
+        when (userProfile) {
+            is UserProfileUiState.Success -> UserProfileCard(
+                state = userProfile,
+                onCheckInClick = onCheckInClick,
+                onEditProfile = onEditProfileClick,
+            )
 
-        UserProfileUiState.Loading -> {
-            Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
-            }
+            else -> UserProfileStateCard(state = userProfile)
         }
-
-        is UserProfileUiState.Success -> {
-            Column(modifier = modifier.fillMaxSize()) {
-                UserProfileCard(
-                    state = userProfile,
-                    onCheckInClick = onCheckInClick,
-                    onEditProfile = onEditProfileClick
+        HorizontalDivider()
+        Column(
+            modifier = Modifier
+                .padding(vertical = 8.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            lastReadHistory?.let { history ->
+                QuickResumeCard(
+                    history = history,
+                    onClick = navigationToReader,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
                 )
-                HorizontalDivider()
-                Column(
-                    modifier = Modifier
-                        .padding(vertical = 8.dp)
-                        .verticalScroll(rememberScrollState())
-                ) {
-                    lastReadHistory?.let { history ->
-                        QuickResumeCard(
-                            history = history,
-                            onClick = navigationToReader,
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                        )
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp))
-                    }
-                    DrawerMenuItem(
-                        label = "历史记录",
-                        iconRes = R.drawable.ic_history,
-                        onClick = onHistoryClick,
-                        modifier = Modifier.testTag("dashboard:drawer:history")
-                    )
-                    DrawerMenuItem(
-                        label = "我的收藏",
-                        iconVector = Icons.Filled.Favorite,
-                        onClick = onFavouriteClick,
-                        modifier = Modifier.testTag("dashboard:drawer:favourite")
-                    )
-                    DrawerMenuItem(
-                        label = "我的消息",
-                        iconVector = Icons.Filled.Email,
-                        onClick = onNotificationsClick,
-                        modifier = Modifier.testTag("dashboard:drawer:notifications")
-                    )
-                    DrawerMenuItem(
-                        label = "我的评论",
-                        iconVector = Icons.AutoMirrored.Filled.Comment,
-                        onClick = onCommentsClick,
-                        modifier = Modifier.testTag("dashboard:drawer:comments")
-                    )
-                    DrawerMenuItem(
-                        label = "我的下载",
-                        iconVector = Icons.Filled.Download,
-                        onClick = onDownloadsClick,
-                        modifier = Modifier.testTag("dashboard:drawer:downloads")
-                    )
-                    DrawerMenuItem(
-                        label = "设置",
-                        iconVector = Icons.Filled.Settings,
-                        onClick = onSettingsClick,
-                        modifier = Modifier.testTag("dashboard:drawer:settings")
-                    )
-                }
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp))
             }
+            DrawerMenuItem(
+                label = "历史记录",
+                iconRes = R.drawable.ic_history,
+                onClick = onHistoryClick,
+                modifier = Modifier.testTag(DashboardDrawerTags.History)
+            )
+            DrawerMenuItem(
+                label = "我的收藏",
+                iconVector = Icons.Filled.Favorite,
+                onClick = onFavouriteClick,
+                modifier = Modifier.testTag(DashboardDrawerTags.Favourite)
+            )
+            DrawerMenuItem(
+                label = "我的消息",
+                iconVector = Icons.Filled.Email,
+                onClick = onNotificationsClick,
+                modifier = Modifier.testTag(DashboardDrawerTags.Notifications)
+            )
+            DrawerMenuItem(
+                label = "我的评论",
+                iconVector = Icons.AutoMirrored.Filled.Comment,
+                onClick = onCommentsClick,
+                modifier = Modifier.testTag(DashboardDrawerTags.Comments)
+            )
+            DrawerMenuItem(
+                label = "我的下载",
+                iconVector = Icons.Filled.Download,
+                onClick = onDownloadsClick,
+                modifier = Modifier.testTag(DashboardDrawerTags.Downloads)
+            )
+            DrawerMenuItem(
+                label = "设置",
+                iconVector = Icons.Filled.Settings,
+                onClick = onSettingsClick,
+                modifier = Modifier.testTag(DashboardDrawerTags.Settings)
+            )
         }
     }
 }
@@ -1035,8 +980,6 @@ fun UserProfileCard(
                 }
             }
 
-            Spacer(modifier = Modifier.height(12.dp))
-
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -1071,7 +1014,7 @@ fun UserProfileCard(
                 shape = RoundedCornerShape(4.dp)
             ) {
                 Text(
-                    text = user.gender.value,
+                    text = user.gender,
                     style = MaterialTheme.typography.labelSmall,
                     modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                 )

@@ -1,7 +1,6 @@
 package com.shizq.bika.ui.dashboard
 
 import com.shizq.bika.core.model.FavoriteTag
-import com.shizq.bika.core.network.model.Gender
 
 // ─────────────────────────────────────────────
 // Domain model
@@ -14,7 +13,7 @@ data class User(
     val level: Int,
     val exp: Int,
     val title: String,
-    val gender: Gender,
+    val gender: String,
     val slogan: String,
     val hasCheckedIn: Boolean,
 ) {
@@ -42,23 +41,9 @@ sealed interface CheckInResult {
     data class Error(val error: String) : CheckInResult
 }
 
-sealed interface UpdateUiState {
-    data object Idle : UpdateUiState
-    data class HasUpdate(
-        val remoteVersion: String,
-        val changelog: String,
-        val downloadUrl: String,
-    ) : UpdateUiState
-
-    data class Downloading(val progress: Float) : UpdateUiState
-    data class Success(val apkPath: String) : UpdateUiState
-    data class Error(val message: String) : UpdateUiState
-}
-
 /** 整个 Dashboard 的单一状态树 */
 data class DashboardState(
     val userProfile: UserProfileUiState = UserProfileUiState.Loading,
-    val updateUiState: UpdateUiState = UpdateUiState.Idle,
     val checkInResult: CheckInResult? = null,
     val sloganResult: OperationResult? = null,
     val passwordResult: OperationResult? = null,
@@ -71,19 +56,9 @@ data class DashboardState(
 sealed interface DashboardAction {
     // 打卡
     data object CheckIn : DashboardAction
-
     /** 由 Screen 在 profile 首次加载成功后 dispatch；检查逻辑在 SM 内部完成 */
     data object AutoCheckIn : DashboardAction
     data object DismissCheckInResult : DashboardAction
-
-    // 版本更新
-    data class CheckUpdate(val currentVersionName: String) : DashboardAction
-    data class StartDownload(
-        val downloadUrl: String,
-        val externalFilesDir: java.io.File?,
-    ) : DashboardAction
-
-    data object ResetUpdateState : DashboardAction
 
     // 个人资料
     data class UpdateSlogan(val slogan: String) : DashboardAction

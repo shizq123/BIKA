@@ -4,20 +4,19 @@ package com.shizq.bika.ui.dashboard
 
 import android.util.Log
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
+import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.network.model.Gender
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import jakarta.inject.Inject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.withContext
+
 
 private const val TAG = "DashboardSM"
 
@@ -29,6 +28,7 @@ class DashboardStateMachine @Inject constructor(
     private val profileRestarter = FlowRestarter()
 
     init {
+        initializeWith { DashboardState() }
         spec {
             inState<DashboardState> {
 
@@ -54,9 +54,7 @@ class DashboardStateMachine @Inject constructor(
                                         level = prefs.cachedUserLevel,
                                         exp = prefs.cachedUserExp,
                                         title = prefs.cachedUserTitle,
-                                        gender = runCatching {
-                                            Gender.valueOf(prefs.cachedUserGender)
-                                        }.getOrDefault(Gender.UNKNOWN),
+                                        gender = prefs.cachedUserGender,
                                         slogan = prefs.cachedUserSlogan,
                                         hasCheckedIn = false,
                                     ),
@@ -136,36 +134,6 @@ class DashboardStateMachine @Inject constructor(
 
                 on<DashboardAction.DismissCheckInResult> {
                     mutate { copy(checkInResult = null) }
-                }
-
-                // ── 版本更新检测 ──────────────────────────────────────────
-                on<DashboardAction.CheckUpdate> { action ->
-                    val updateResult = withContext(Dispatchers.IO) {
-                        checkUpdateInternal(action.currentVersionName)
-                    }
-                    mutate { copy(updateUiState = updateResult) }
-                }
-
-                on<DashboardAction.ResetUpdateState> {
-                    mutate { copy(updateUiState = UpdateUiState.Idle) }
-                }
-
-                // ── APK 下载 ──────────────────────────────────────────────
-                // 下载期间持续用 mutate 更新进度；下载完后切换到 Success/Error
-                on<DashboardAction.StartDownload> { action ->
-                    mutate { copy(updateUiState = UpdateUiState.Downloading(0f)) }
-                    val downloadResult = withContext(Dispatchers.IO) {
-                        downloadApkInternal(
-                            downloadUrl = action.downloadUrl,
-                            externalFilesDir = action.externalFilesDir,
-                            onProgress = { progress ->
-                                // withContext 内不能直接 mutate（不在 SM coroutine），
-                                // 通过回调在 IO 线程写 MutableStateFlow，SM 会 collect 到
-                                // 这里用 action 通道已足够：进度更新直接在 SM 协程里做
-                            }
-                        )
-                    }
-                    mutate { copy(updateUiState = downloadResult) }
                 }
 
                 // ── 个人资料修改 ──────────────────────────────────────────
@@ -265,104 +233,5 @@ class DashboardStateMachine @Inject constructor(
                 }
             }
         }
-    }
-
-    // ── 版本检测（IO）────────────────────────────────────────────────────
-
-    private fun checkUpdateInternal(currentVersion: String): UpdateUiState {
-        return try {
-            val connection = (java.net.URL(
-                "https://api.github.com/repos/STlxx-lin/BIKA/releases/tags/latest"
-            ).openConnection() as java.net.HttpURLConnection).apply {
-                requestMethod = "GET"
-                connectTimeout = 6_000
-                readTimeout = 6_000
-                setRequestProperty("User-Agent", "BIKA-Android-App")
-            }
-            if (connection.responseCode != 200) return UpdateUiState.Idle
-
-            val json = org.json.JSONObject(
-                connection.inputStream.bufferedReader().use { it.readText() }
-            )
-            val body = json.optString("body", "")
-            val assets = json.optJSONArray("assets") ?: return UpdateUiState.Idle
-
-            var downloadUrl = ""
-            var remoteVersion = ""
-            for (i in 0 until assets.length()) {
-                val asset = assets.getJSONObject(i)
-                val name = asset.optString("name", "")
-                if (name.endsWith(".apk") && name.contains("_v")) {
-                    remoteVersion = name.substringAfter("_v").substringBefore(".apk")
-                    downloadUrl = asset.optString("browser_download_url", "")
-                    break
-                }
-            }
-
-            if (remoteVersion.isNotEmpty() && downloadUrl.isNotEmpty()
-                && isNewerVersion(currentVersion, remoteVersion)
-            ) {
-                UpdateUiState.HasUpdate(
-                    remoteVersion = remoteVersion,
-                    changelog = body,
-                    downloadUrl = downloadUrl,
-                )
-            } else {
-                UpdateUiState.Idle
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "检测版本更新失败", e)
-            UpdateUiState.Idle
-        }
-    }
-
-    // ── APK 下载（IO）────────────────────────────────────────────────────
-
-    private fun downloadApkInternal(
-        downloadUrl: String,
-        externalFilesDir: java.io.File?,
-        onProgress: (Float) -> Unit,
-    ): UpdateUiState {
-        return try {
-            val connection = (java.net.URL(downloadUrl).openConnection()
-                    as java.net.HttpURLConnection).apply {
-                connectTimeout = 10_000
-                readTimeout = 15_000
-            }
-            val fileLength = connection.contentLength
-            val apkFile = java.io.File(externalFilesDir, "BIKA_update.apk")
-            if (apkFile.exists()) apkFile.delete()
-
-            connection.inputStream.use { input ->
-                apkFile.outputStream().use { output ->
-                    val buffer = ByteArray(8192)
-                    var totalRead = 0L
-                    var read: Int
-                    while (input.read(buffer).also { read = it } != -1) {
-                        output.write(buffer, 0, read)
-                        totalRead += read
-                        if (fileLength > 0) {
-                            onProgress(totalRead.toFloat() / fileLength.toFloat())
-                        }
-                    }
-                }
-            }
-            UpdateUiState.Success(apkFile.absolutePath)
-        } catch (e: Exception) {
-            Log.e(TAG, "下载最新版安装包失败", e)
-            UpdateUiState.Error("下载更新包失败: ${e.localizedMessage ?: "网络异常"}")
-        }
-    }
-
-    private fun isNewerVersion(local: String, remote: String): Boolean {
-        val lParts = local.split(".").mapNotNull { it.toIntOrNull() }
-        val rParts = remote.split(".").mapNotNull { it.toIntOrNull() }
-        repeat(maxOf(lParts.size, rParts.size)) { i ->
-            val l = lParts.getOrElse(i) { 0 }
-            val r = rParts.getOrElse(i) { 0 }
-            if (r > l) return true
-            if (l > r) return false
-        }
-        return false
     }
 }
