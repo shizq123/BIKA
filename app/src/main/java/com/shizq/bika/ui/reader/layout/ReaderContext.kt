@@ -21,7 +21,7 @@ import com.shizq.bika.ui.reader.util.preload.ScrollStateProvider
 
 @Stable
 data class ReaderContext(
-    val layout: ReaderPageLayout,
+    val layout: ReaderLayout,
     val controller: ReaderController,
     val scrollStateProvider: ScrollStateProvider,
     val config: ReaderConfig = ReaderConfig.Default,

@@ -24,7 +24,7 @@ class PagerLayout(
     private val direction: Direction,
     private val isRtl: Boolean,
     private val useDoublePage: Boolean
-) : ReaderPageLayout {
+) : ReaderLayout {
 
     @Composable
     override fun Content(

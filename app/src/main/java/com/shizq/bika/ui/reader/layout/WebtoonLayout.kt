@@ -18,7 +18,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 class WebtoonLayout(
     private val listState: LazyListState,
     private val hasPageGap: Boolean
-) : ReaderPageLayout {
+) : ReaderLayout {
     @Composable
     override fun Content(
         pageItems: LazyPagingItems<ChapterPage>,
