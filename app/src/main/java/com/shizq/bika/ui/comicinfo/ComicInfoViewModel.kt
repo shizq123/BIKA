@@ -2,9 +2,7 @@
 
 package com.shizq.bika.ui.comicinfo
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import android.util.Log
-
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -12,6 +10,10 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.shizq.bika.core.data.model.Comment
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.download.model.DownloadTask
+import com.shizq.bika.core.download.repository.DownloadTaskRepository
+import com.shizq.bika.core.download.scheduler.DownloadScheduler
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.network.model.Type
@@ -23,21 +25,17 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.launch
-import com.shizq.bika.core.database.dao.DownloadTaskDao
-import com.shizq.bika.core.database.model.DownloadTaskEntity
-import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.core.database.model.ChapterProgressEntity
-import android.content.Context
-import com.shizq.bika.sync.workers.DownloadWorker
+import kotlin.time.Clock
 
 private const val TAG = "ComicInfoViewModel"
 
@@ -47,7 +45,8 @@ class ComicInfoViewModel @AssistedInject constructor(
     private val commentPagingSourceFactory: CommentPagingSource.Factory,
     private val replyPagingSourceFactory: ReplyPagingSource.Factory,
     stateMachineFactory: UnitedDetailsStateMachine.Factory,
-    private val downloadTaskDao: DownloadTaskDao,
+    private val downloadTaskRepository: DownloadTaskRepository,
+    private val downloadScheduler: DownloadScheduler,
     private val historyDao: ReadingHistoryDao,
     @Assisted private val id: String,
 ) : ViewModel() {
@@ -56,7 +55,7 @@ class ComicInfoViewModel @AssistedInject constructor(
 
     val state = stateMachine.state
 
-    val downloadTasks = downloadTaskDao.getTasksByComic(id)
+    val downloadTasks = downloadTaskRepository.observeTasksByComic(id)
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -97,6 +96,7 @@ class ComicInfoViewModel @AssistedInject constructor(
             stateMachine.dispatch(action)
         }
     }
+
     fun toggleCommentLike(id: String) {
         viewModelScope.launch {
             try {
@@ -125,7 +125,6 @@ class ComicInfoViewModel @AssistedInject constructor(
 
     /**
      * 获取漫画所有章节列表（用于 EpisodesPage 下载选择面板）。
-     * 将网络调用封装在 ViewModel，避免 Composable 直接访问网络层。
      */
     suspend fun fetchAllEpisodes(): List<Episode> {
         val list = mutableListOf<Episode>()
@@ -141,43 +140,52 @@ class ComicInfoViewModel @AssistedInject constructor(
     }
 
     /**
-     * 将漫画所有章节加入下载队列，返回成功加入的数量；失败时抛出异常由调用方处理。
+     * 将漫画所有章节加入下载队列，返回成功加入的数量。
      */
-    suspend fun downloadAllEpisodes(context: Context, comicTitle: String, coverUrl: String): Int {
+    suspend fun downloadAllEpisodes(comicTitle: String, coverUrl: String): Int {
         val allEps = fetchAllEpisodes()
         if (allEps.isEmpty()) return 0
-        
-        val requests = allEps.map { episode ->
-            DownloadWorker.Companion.DownloadRequest(
-                comicId = id,
-                comicTitle = comicTitle,
-                coverUrl = coverUrl,
-                episodeId = episode.id,
-                episodeTitle = episode.title,
-                episodeOrder = episode.order
-            )
-        }
-        
-        DownloadWorker.startDownloads(context, requests)
-        return requests.size
+        enqueueEpisodes(comicTitle, coverUrl, allEps)
+        return allEps.size
     }
 
     /**
      * 将指定的漫画章节列表加入下载队列。
      */
-    fun downloadEpisodes(context: Context, comicTitle: String, coverUrl: String, episodes: List<Episode>) {
+    fun downloadEpisodes(comicTitle: String, coverUrl: String, episodes: List<Episode>) {
         if (episodes.isEmpty()) return
-        val requests = episodes.map { episode ->
-            DownloadWorker.Companion.DownloadRequest(
+        viewModelScope.launch {
+            enqueueEpisodes(comicTitle, coverUrl, episodes)
+        }
+    }
+
+    private suspend fun enqueueEpisodes(
+        comicTitle: String,
+        coverUrl: String,
+        episodes: List<Episode>,
+    ) {
+        val now = Clock.System.now()
+        episodes.forEach { episode ->
+            val taskId = taskId(id, episode.order)
+            val task = DownloadTask(
+                id = taskId,
                 comicId = id,
                 comicTitle = comicTitle,
                 coverUrl = coverUrl,
                 episodeId = episode.id,
                 episodeTitle = episode.title,
-                episodeOrder = episode.order
+                episodeOrder = episode.order,
+                createdAt = now,
+                updatedAt = now,
             )
+            downloadTaskRepository.saveTask(task)
+            downloadScheduler.enqueue(taskId)
         }
-        DownloadWorker.startDownloads(context, requests)
+    }
+
+    companion object {
+        /** 生成任务 ID，与旧 DownloadRepository.taskId 保持一致 */
+        fun taskId(comicId: String, episodeOrder: Int) = "${comicId}_$episodeOrder"
     }
 
     @AssistedFactory

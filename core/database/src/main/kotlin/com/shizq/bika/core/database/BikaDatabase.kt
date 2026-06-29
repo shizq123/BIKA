@@ -23,10 +23,13 @@ import com.shizq.bika.core.database.util.StringListConverter
         TagEntity::class,
         DownloadTaskEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
-@TypeConverters(InstantConverter::class, StringListConverter::class)
+@TypeConverters(
+    InstantConverter::class,
+    StringListConverter::class,
+)
 internal abstract class BikaDatabase : RoomDatabase() {
     abstract fun recentSearchQueryDao(): RecentSearchQueryDao
     abstract fun readingHistoryDao(): ReadingHistoryDao

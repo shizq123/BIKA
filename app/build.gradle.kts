@@ -63,6 +63,7 @@ androidComponents {
 
 dependencies {
     implementation(projects.core.data)
+    implementation(projects.core.download)
     implementation(projects.core.ui)
     implementation(projects.sync.work)
 
@@ -94,9 +95,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.viewmodel.ktx)
     implementation(libs.androidx.lifecycle.livedata.ktx)
-
-    implementation(libs.androidx.recyclerview)
-    implementation(libs.androidx.preference.ktx)
 
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)

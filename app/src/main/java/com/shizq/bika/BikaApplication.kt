@@ -7,6 +7,7 @@ import android.os.StrictMode.ThreadPolicy.Builder
 import coil3.ImageLoader
 import coil3.PlatformContext
 import coil3.SingletonImageLoader
+import com.shizq.bika.core.download.Download
 import com.shizq.bika.sync.initializers.Sync
 import com.shizq.bika.util.ProfileVerifierLogger
 import dagger.hilt.android.HiltAndroidApp
@@ -25,6 +26,7 @@ class BikaApplication : Application(), SingletonImageLoader.Factory {
         setStrictModePolicy()
 
         Sync.initialize(this)
+        Download.initialize(this)
         profileVerifierLogger()
     }
 

@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 6,
-    "identityHash": "bb9ed8d3459f1f5f22a03d3d9aca6536",
+    "identityHash": "ad08ec95fecc4e42fecfc9e76a2ad610",
     "entities": [
       {
         "tableName": "readingHistory",
@@ -182,7 +182,7 @@
       },
       {
         "tableName": "downloadTask",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `comicId` TEXT NOT NULL, `comicTitle` TEXT NOT NULL, `coverUrl` TEXT NOT NULL, `episodeId` TEXT NOT NULL, `episodeTitle` TEXT NOT NULL, `episodeOrder` INTEGER NOT NULL, `status` TEXT NOT NULL, `progress` INTEGER NOT NULL, `totalPages` INTEGER NOT NULL, `downloadedPages` INTEGER NOT NULL, `localPath` TEXT NOT NULL, `isViewed` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `completedAt` INTEGER, `priority` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `comicId` TEXT NOT NULL, `comicTitle` TEXT NOT NULL, `coverUrl` TEXT NOT NULL, `episodeId` TEXT NOT NULL, `episodeTitle` TEXT NOT NULL, `episodeOrder` INTEGER NOT NULL, `status` TEXT NOT NULL, `progress` INTEGER NOT NULL, `totalPages` INTEGER NOT NULL, `downloadedPages` INTEGER NOT NULL, `localPath` TEXT NOT NULL, `isViewed` INTEGER NOT NULL, `priority` INTEGER NOT NULL, `worker_token` TEXT, `next_schedule_at` INTEGER NOT NULL, `errorCode` TEXT NOT NULL, `errorMessage` TEXT NOT NULL, `retryCount` INTEGER NOT NULL, `createdAt` INTEGER NOT NULL, `updatedAt` INTEGER NOT NULL, `completedAt` INTEGER, PRIMARY KEY(`id`))",
         "fields": [
           {
             "fieldPath": "id",
@@ -263,8 +263,49 @@
             "notNull": true
           },
           {
+            "fieldPath": "priority",
+            "columnName": "priority",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "workerToken",
+            "columnName": "worker_token",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "nextScheduleAt",
+            "columnName": "next_schedule_at",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorCode",
+            "columnName": "errorCode",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "errorMessage",
+            "columnName": "errorMessage",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "retryCount",
+            "columnName": "retryCount",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
             "fieldPath": "createdAt",
             "columnName": "createdAt",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
             "affinity": "INTEGER",
             "notNull": true
           },
@@ -272,12 +313,6 @@
             "fieldPath": "completedAt",
             "columnName": "completedAt",
             "affinity": "INTEGER"
-          },
-          {
-            "fieldPath": "priority",
-            "columnName": "priority",
-            "affinity": "INTEGER",
-            "notNull": true
           }
         ],
         "primaryKey": {
@@ -285,12 +320,51 @@
           "columnNames": [
             "id"
           ]
-        }
+        },
+        "indices": [
+          {
+            "name": "index_downloadTask_status",
+            "unique": false,
+            "columnNames": [
+              "status"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_downloadTask_status` ON `${TABLE_NAME}` (`status`)"
+          },
+          {
+            "name": "index_downloadTask_priority",
+            "unique": false,
+            "columnNames": [
+              "priority"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_downloadTask_priority` ON `${TABLE_NAME}` (`priority`)"
+          },
+          {
+            "name": "index_downloadTask_createdAt",
+            "unique": false,
+            "columnNames": [
+              "createdAt"
+            ],
+            "orders": [],
+            "createSql": "CREATE INDEX IF NOT EXISTS `index_downloadTask_createdAt` ON `${TABLE_NAME}` (`createdAt`)"
+          },
+          {
+            "name": "index_downloadTask_comicId_episodeOrder",
+            "unique": true,
+            "columnNames": [
+              "comicId",
+              "episodeOrder"
+            ],
+            "orders": [],
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_downloadTask_comicId_episodeOrder` ON `${TABLE_NAME}` (`comicId`, `episodeOrder`)"
+          }
+        ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'bb9ed8d3459f1f5f22a03d3d9aca6536')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'ad08ec95fecc4e42fecfc9e76a2ad610')"
     ]
   }
 }

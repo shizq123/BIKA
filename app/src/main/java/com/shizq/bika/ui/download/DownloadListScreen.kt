@@ -1,5 +1,8 @@
 package com.shizq.bika.ui.download
 
+import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -7,6 +10,8 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,19 +25,21 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.SelectAll
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -43,14 +50,13 @@ import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.Checkbox
-import com.shizq.bika.core.ui.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -60,166 +66,171 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.core.database.model.DownloadStatus
-import com.shizq.bika.core.database.model.DownloadTaskEntity
-import com.shizq.bika.sync.workers.DownloadWorker
+import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.utils.TimeUtil
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.ui.unit.sp
 
-data class ComicDownloadGroup(
-    val comicId: String,
-    val comicTitle: String,
-    val coverUrl: String,
-    val tasks: List<DownloadTaskEntity>
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DownloadListScreen(
     onBackClick: () -> Unit,
     onComicClick: (comicId: String, episodeOrder: Int) -> Unit,
     viewModel: DownloadListViewModel = hiltViewModel()
 ) {
-    val tasks by viewModel.tasks.collectAsStateWithLifecycle()
-    val chapterProgressMap by viewModel.chapterProgressMap.collectAsStateWithLifecycle()
-    val allComicReadSummary by viewModel.allComicReadSummary.collectAsStateWithLifecycle()
+    val navState by viewModel.navState.collectAsStateWithLifecycle()
+    val groupedComics by viewModel.groupedComics.collectAsStateWithLifecycle()
+    val selectedComicEpisodes by viewModel.selectedComicEpisodes.collectAsStateWithLifecycle()
     val context = LocalContext.current
-    var currentComicId by remember { mutableStateOf<String?>(null) }
-
+    val currentComicId = (navState as? DownloadNavState.ComicDetail)?.comicId
+    val isInDetail = currentComicId != null
     var isSelectMode by remember { mutableStateOf(false) }
-    val selectedTasks = remember { mutableStateListOf<DownloadTaskEntity>() }
-
+    val selectedEpisodeOrders = remember { mutableStateListOf<Int>() }
+    var showBatchDeleteDialog by remember { mutableStateOf(false) }
+    val exitSelectMode = {
+        isSelectMode = false
+        selectedEpisodeOrders.clear()
+        showBatchDeleteDialog = false
+    }
+    val selectedComicTitle = selectedComicEpisodes.firstOrNull()?.task?.comicTitle ?: "作品下载详情"
+    val allCompletedTasks = selectedComicEpisodes
+        .map { it.task }
+        .filter { it.status == DownloadStatus.COMPLETED }
+    val selectedOrderSet = selectedEpisodeOrders.toSet()
+    val selectedCompletedTasks = allCompletedTasks.filter { it.episodeOrder in selectedOrderSet }
+    val firstCompletedTask = allCompletedTasks.minByOrNull { it.episodeOrder }
+    val failedTasks = selectedComicEpisodes
+        .map { it.task }
+        .filter { it.status == DownloadStatus.FAILED }
     val pickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         if (uri != null) {
             val fileName = getFileName(context, uri) ?: "imported_comic.cbz"
-            if (!fileName.endsWith(".zip", ignoreCase = true) && !fileName.endsWith(".cbz", ignoreCase = true)) {
-                android.widget.Toast.makeText(context, "仅支持导入 .cbz 或 .zip 格式的漫画文件", android.widget.Toast.LENGTH_SHORT).show()
+            if (!fileName.endsWith(".zip", ignoreCase = true) &&
+                !fileName.endsWith(".cbz", ignoreCase = true)
+            ) {
+                android.widget.Toast.makeText(
+                    context,
+                    "仅支持导入 .cbz 或 .zip 格式的漫画文件",
+                    android.widget.Toast.LENGTH_SHORT
+                ).show()
                 return@rememberLauncherForActivityResult
             }
             viewModel.importCbz(uri = uri, fileName = fileName)
         }
     }
-
-    BackHandler(enabled = currentComicId != null) {
+    // 切换漫画/返回一级时清理选择状态
+    LaunchedEffect(currentComicId) {
+        exitSelectMode()
+    }
+    // 保证多选状态始终只保留“当前详情页里仍然存在且已完成”的章节
+    LaunchedEffect(selectedComicEpisodes, isSelectMode) {
+        val validCompletedOrders = selectedComicEpisodes
+            .filter { it.task.status == DownloadStatus.COMPLETED }
+            .map { it.task.episodeOrder }
+            .toSet()
+        selectedEpisodeOrders.retainAll(validCompletedOrders)
+        if (isSelectMode && validCompletedOrders.isEmpty()) {
+            exitSelectMode()
+        }
+    }
+    BackHandler(enabled = isInDetail || isSelectMode) {
         if (isSelectMode) {
-            isSelectMode = false
-            selectedTasks.clear()
-        } else {
-            currentComicId = null
-            viewModel.selectComic(null)
+            exitSelectMode()
+        } else if (isInDetail) {
+            viewModel.navigateBack()
         }
     }
-
-
-
-    // Group tasks by comicId
-    val groupedComics = remember(tasks) {
-        tasks.groupBy { it.comicId }.map { (comicId, comicTasks) ->
-            val firstTask = comicTasks.first()
-            ComicDownloadGroup(
-                comicId = comicId,
-                comicTitle = firstTask.comicTitle,
-                coverUrl = firstTask.coverUrl,
-                tasks = comicTasks
-            )
-        }
+    if (showBatchDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showBatchDeleteDialog = false },
+            title = { Text("批量删除") },
+            text = { Text("确定要删除选中的 ${selectedCompletedTasks.size} 个章节吗？此操作不可撤销。") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteMultipleDownloads(selectedCompletedTasks)
+                        exitSelectMode()
+                    }
+                ) {
+                    Text("确定", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showBatchDeleteDialog = false }) {
+                    Text("取消")
+                }
+            }
+        )
     }
-
-    val selectedComic = remember(tasks, currentComicId) {
-        if (currentComicId != null) {
-            tasks.filter { it.comicId == currentComicId }
-                .sortedBy { it.episodeOrder }
-        } else {
-            emptyList()
-        }
-    }
-
-    // 将下载任务与阅读进度合并，实时联动
-    val selectedComicWithProgress = remember(selectedComic, chapterProgressMap) {
-        selectedComic.map { task ->
-            DownloadTaskWithProgress(
-                task = task,
-                readProgress = chapterProgressMap[task.episodeOrder]
-            )
-        }
-    }
-
-    // Auto navigate back to list if all tasks for the selected comic are deleted
-    if (currentComicId != null && selectedComic.isEmpty()) {
-        currentComicId = null
-    }
-
-    val selectedComicTitle = remember(selectedComic) {
-        selectedComic.firstOrNull()?.comicTitle ?: "作品下载详情"
-    }
-
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { 
+                title = {
                     Text(
-                        text = if (isSelectMode) "已选择 ${selectedTasks.size} 项" else if (currentComicId == null) "我的下载" else selectedComicTitle,
+                        text = when {
+                            isSelectMode -> "已选择 ${selectedCompletedTasks.size} 项"
+                            !isInDetail -> "我的下载"
+                            else -> selectedComicTitle
+                        },
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
-                    ) 
+                    )
                 },
                 navigationIcon = {
                     IconButton(
                         onClick = {
-                            if (isSelectMode) {
-                                isSelectMode = false
-                                selectedTasks.clear()
-                            } else if (currentComicId == null) {
-                                onBackClick()
-                            } else {
-                                currentComicId = null
-                                viewModel.selectComic(null)
+                            when {
+                                isSelectMode -> exitSelectMode()
+                                isInDetail -> viewModel.navigateBack()
+                                else -> onBackClick()
                             }
                         }
                     ) {
                         Icon(
-                            imageVector = if (isSelectMode) Icons.Default.Close else Icons.AutoMirrored.Rounded.ArrowBack, 
+                            imageVector = if (isSelectMode) {
+                                Icons.Default.Close
+                            } else {
+                                Icons.AutoMirrored.Rounded.ArrowBack
+                            },
                             contentDescription = "Back"
                         )
                     }
                 },
                 actions = {
-                    if (currentComicId == null) {
+                    if (!isInDetail) {
                         IconButton(onClick = { pickerLauncher.launch("*/*") }) {
                             Icon(Icons.Default.Add, contentDescription = "导入本地漫画")
                         }
                     } else {
                         if (isSelectMode) {
-                            val allCompleted = remember(selectedComic) {
-                                selectedComic.filter { it.status == DownloadStatus.COMPLETED }
-                            }
-                            val isAllSelected = selectedTasks.size == allCompleted.size && allCompleted.isNotEmpty()
+                            val isAllSelected =
+                                allCompletedTasks.isNotEmpty() &&
+                                        selectedCompletedTasks.size == allCompletedTasks.size
                             IconButton(
                                 onClick = {
                                     if (isAllSelected) {
-                                        selectedTasks.clear()
+                                        selectedEpisodeOrders.clear()
                                     } else {
-                                        selectedTasks.clear()
-                                        selectedTasks.addAll(allCompleted)
+                                        selectedEpisodeOrders.clear()
+                                        selectedEpisodeOrders.addAll(
+                                            allCompletedTasks.map { it.episodeOrder }
+                                        )
                                     }
                                 }
                             ) {
                                 Icon(Icons.Default.SelectAll, contentDescription = "全选")
                             }
                         } else {
-                            IconButton(onClick = { isSelectMode = true }) {
+                            IconButton(
+                                onClick = { isSelectMode = true },
+                                enabled = allCompletedTasks.isNotEmpty()
+                            ) {
                                 Icon(Icons.Default.Edit, contentDescription = "多选")
                             }
                         }
@@ -228,33 +239,8 @@ fun DownloadListScreen(
             )
         },
         bottomBar = {
-            if (currentComicId != null) {
+            if (isInDetail) {
                 if (isSelectMode) {
-                    var showBatchDeleteDialog by remember { mutableStateOf(false) }
-
-                    if (showBatchDeleteDialog) {
-                        AlertDialog(
-                            onDismissRequest = { showBatchDeleteDialog = false },
-                            title = { Text("批量删除") },
-                            text = { Text("确定要删除选中的 ${selectedTasks.size} 个章节吗？此操作不可撤销。") },
-                            confirmButton = {
-                                TextButton(onClick = {
-                                    viewModel.deleteMultipleDownloads(selectedTasks.toList())
-                                    selectedTasks.clear()
-                                    isSelectMode = false
-                                    showBatchDeleteDialog = false
-                                }) {
-                                    Text("确定", color = MaterialTheme.colorScheme.error)
-                                }
-                            },
-                            dismissButton = {
-                                TextButton(onClick = { showBatchDeleteDialog = false }) {
-                                    Text("取消")
-                                }
-                            }
-                        )
-                    }
-
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -263,7 +249,7 @@ fun DownloadListScreen(
                     ) {
                         Button(
                             onClick = { showBatchDeleteDialog = true },
-                            enabled = selectedTasks.isNotEmpty(),
+                            enabled = selectedCompletedTasks.isNotEmpty(),
                             colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error,
                                 contentColor = MaterialTheme.colorScheme.onError
@@ -272,19 +258,20 @@ fun DownloadListScreen(
                                 .weight(1f)
                                 .height(50.dp)
                         ) {
-                            Text("删除选中 (${selectedTasks.size})", fontWeight = FontWeight.Bold)
+                            Text(
+                                "删除选中 (${selectedCompletedTasks.size})",
+                                fontWeight = FontWeight.Bold
+                            )
                         }
-
                         Button(
                             onClick = {
                                 viewModel.exportMultipleToZip(
-                                    tasks = selectedTasks.toList(),
+                                    tasks = selectedCompletedTasks,
                                     comicTitle = selectedComicTitle
                                 )
-                                isSelectMode = false
-                                selectedTasks.clear()
+                                exitSelectMode()
                             },
-                            enabled = selectedTasks.isNotEmpty(),
+                            enabled = selectedCompletedTasks.isNotEmpty(),
                             modifier = Modifier
                                 .weight(1f)
                                 .height(50.dp)
@@ -293,10 +280,6 @@ fun DownloadListScreen(
                         }
                     }
                 } else {
-                    val firstCompletedTask = remember(selectedComic) {
-                        selectedComic.filter { it.status == DownloadStatus.COMPLETED }
-                            .minByOrNull { it.episodeOrder }
-                    }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -325,195 +308,188 @@ fun DownloadListScreen(
             }
         }
     ) { paddingValues ->
-        if (tasks.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
-            ) {
-                Text("暂无下载任务", style = MaterialTheme.typography.bodyLarge)
-            }
-        } else if (currentComicId == null) {
-            // Level 1: Grouped Comics List
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(groupedComics, key = { it.comicId }) { group ->
-                    ComicDownloadGroupItem(
-                        group = group,
-                        readSummary = allComicReadSummary[group.comicId],
-                        onClick = {
-                            currentComicId = group.comicId
-                            viewModel.selectComic(group.comicId)
-                        }
-                    )
-                }
-            }
-        } else {
-            // Level 2: Detailed Episode List for selected comic
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-            ) {
-                // Header Area with Cover and Info
-                val firstTask = selectedComic.first()
-                val totalPagesAll = selectedComic.sumOf { it.totalPages }
-                val downloadedPagesAll = selectedComic.sumOf { it.downloadedPages }
-                val completedCount = selectedComic.count { it.status == DownloadStatus.COMPLETED }
-                
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier.padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        AsyncImage(
-                            model = ImageRequest.Builder(LocalContext.current)
-                                .data(firstTask.coverUrl)
-                                .crossfade(true)
-                                .build(),
-                            contentDescription = "Cover",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .size(70.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(MaterialTheme.colorScheme.surfaceVariant)
-                        )
-                        Spacer(modifier = Modifier.width(16.dp))
-                        Column {
-                            Text(
-                                text = firstTask.comicTitle,
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "共计 ${selectedComic.size} 个下载章节",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(2.dp))
-                            Text(
-                                text = "已完成 $completedCount 个章节 · 已下载共 $downloadedPagesAll/$totalPagesAll 页",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-                
-                val failedTasks = remember(selectedComic) {
-                    selectedComic.filter { it.status == DownloadStatus.FAILED }
-                }
-                val hasFailedTasks = failedTasks.isNotEmpty()
-
+        when {
+            !isInDetail && groupedComics.isEmpty() -> {
                 Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                        .fillMaxSize()
+                        .padding(paddingValues),
                     contentAlignment = Alignment.Center
                 ) {
-                    Button(
-                        onClick = {
-                            failedTasks.forEach { task ->
-                                DownloadWorker.startDownload(
-                                    context = context,
-                                    comicId = task.comicId,
-                                    comicTitle = task.comicTitle,
-                                    coverUrl = task.coverUrl,
-                                    episodeId = task.episodeId,
-                                    episodeTitle = task.episodeTitle,
-                                    episodeOrder = task.episodeOrder
-                                )
-                            }
-                        },
-                        enabled = hasFailedTasks,
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error,
-                            contentColor = MaterialTheme.colorScheme.onError
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = if (hasFailedTasks) "重新下载" else "重新下载",
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
+                    Text("暂无下载任务", style = MaterialTheme.typography.bodyLarge)
                 }
+            }
 
+            !isInDetail -> {
                 LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(paddingValues),
                     contentPadding = PaddingValues(16.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    items(selectedComicWithProgress, key = { it.task.id }) { taskWithProgress ->
-                        val task = taskWithProgress.task
-                        DownloadTaskItem(
-                            taskWithProgress = taskWithProgress,
-                            onClick = {
-                                if (isSelectMode) {
-                                    if (task.status == DownloadStatus.COMPLETED) {
-                                        if (selectedTasks.contains(task)) {
-                                            selectedTasks.remove(task)
-                                        } else {
-                                            selectedTasks.add(task)
-                                        }
-                                    }
-                                } else {
-                                    if (task.status == DownloadStatus.COMPLETED) {
-                                        onComicClick(task.comicId, task.episodeOrder)
-                                    } else if (task.status == DownloadStatus.FAILED) {
-                                        DownloadWorker.startDownload(
-                                            context = context,
-                                            comicId = task.comicId,
-                                            comicTitle = task.comicTitle,
-                                            coverUrl = task.coverUrl,
-                                            episodeId = task.episodeId,
-                                            episodeTitle = task.episodeTitle,
-                                            episodeOrder = task.episodeOrder
-                                        )
-                                    }
-                                }
-                            },
-                            onDelete = { viewModel.deleteDownload(it.task) },
-                            onBringToTop = { viewModel.bringToTop(it) },
-                            onExport = { completedTask ->
-                                viewModel.exportToCbz(completedTask)
-                            },
-                            isSelectMode = isSelectMode,
-                            isSelected = selectedTasks.contains(task),
-                            onLongClick = {
-                                if (!isSelectMode && task.status == DownloadStatus.COMPLETED) {
-                                    isSelectMode = true
-                                    selectedTasks.add(task)
+                    items(groupedComics, key = { it.comicId }) { group ->
+                        ComicDownloadGroupItem(
+                            group = group,
+                            onClick = { viewModel.navigateToDetail(group.comicId) }
+                        )
+                    }
+                }
+            }
+
+            else -> {
+                val firstTask = selectedComicEpisodes.firstOrNull()?.task
+                if (firstTask == null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("暂无下载章节", style = MaterialTheme.typography.bodyLarge)
+                    }
+                } else {
+                    val totalPagesAll = selectedComicEpisodes.sumOf { it.task.totalPages }
+                    val downloadedPagesAll = selectedComicEpisodes.sumOf { it.task.downloadedPages }
+                    val completedCount =
+                        selectedComicEpisodes.count { it.task.status == DownloadStatus.COMPLETED }
+                    val hasFailedTasks = failedTasks.isNotEmpty()
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(paddingValues)
+                    ) {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                            )
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                AsyncImage(
+                                    model = ImageRequest.Builder(LocalContext.current)
+                                        .data(firstTask.coverUrl)
+                                        .crossfade(true)
+                                        .build(),
+                                    contentDescription = "Cover",
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .size(70.dp)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                                )
+                                Spacer(modifier = Modifier.width(16.dp))
+                                Column {
+                                    Text(
+                                        text = firstTask.comicTitle,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Text(
+                                        text = "共计 ${selectedComicEpisodes.size} 个下载章节",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "已完成 $completedCount 个章节 · 已下载共 $downloadedPagesAll/$totalPagesAll 页",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
                                 }
                             }
-                        )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Button(
+                                onClick = { failedTasks.forEach(viewModel::retryDownload) },
+                                enabled = hasFailedTasks,
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.error,
+                                    contentColor = MaterialTheme.colorScheme.onError
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(
+                                    text = if (hasFailedTasks) {
+                                        "重新下载失败章节 (${failedTasks.size})"
+                                    } else {
+                                        "暂无失败章节"
+                                    },
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(selectedComicEpisodes, key = { it.task.id }) { taskWithProgress ->
+                                val task = taskWithProgress.task
+                                val isSelected = task.episodeOrder in selectedOrderSet
+                                DownloadTaskItem(
+                                    taskWithProgress = taskWithProgress,
+                                    onClick = {
+                                        if (isSelectMode) {
+                                            if (task.status == DownloadStatus.COMPLETED) {
+                                                if (isSelected) {
+                                                    selectedEpisodeOrders.remove(task.episodeOrder)
+                                                } else {
+                                                    selectedEpisodeOrders.add(task.episodeOrder)
+                                                }
+                                            }
+                                        } else {
+                                            when (task.status) {
+                                                DownloadStatus.COMPLETED -> {
+                                                    onComicClick(task.comicId, task.episodeOrder)
+                                                }
+
+                                                DownloadStatus.FAILED -> {
+                                                    viewModel.retryDownload(task)
+                                                }
+
+                                                else -> Unit
+                                            }
+                                        }
+                                    },
+                                    onDelete = viewModel::deleteDownload,
+                                    onBringToTop = viewModel::bringToTop,
+                                    onExport = viewModel::exportToCbz,
+                                    isSelectMode = isSelectMode,
+                                    isSelected = isSelected,
+                                    onLongClick = {
+                                        if (!isSelectMode && task.status == DownloadStatus.COMPLETED) {
+                                            isSelectMode = true
+                                            if (task.episodeOrder !in selectedEpisodeOrders) {
+                                                selectedEpisodeOrders.add(task.episodeOrder)
+                                            }
+                                        }
+                                    }
+                                )
+                            }
+                        }
                     }
                 }
             }
         }
     }
 }
-
 @Composable
 fun ComicDownloadGroupItem(
     group: ComicDownloadGroup,
-    readSummary: ComicReadSummary? = null,
     onClick: () -> Unit
 ) {
     val completedCount = remember(group.tasks) {
@@ -521,10 +497,14 @@ fun ComicDownloadGroupItem(
     }
     val totalCount = group.tasks.size
     val isDownloading = remember(group.tasks) {
-        group.tasks.any { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
+        group.tasks.any {
+            it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+        }
     }
     val averageProgress = remember(group.tasks) {
-        val downloadingTasks = group.tasks.filter { it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING }
+        val downloadingTasks = group.tasks.filter {
+            it.status == DownloadStatus.DOWNLOADING || it.status == DownloadStatus.PENDING
+        }
         if (downloadingTasks.isNotEmpty()) {
             downloadingTasks.map { it.progress }.average().toInt()
         } else {
@@ -534,7 +514,6 @@ fun ComicDownloadGroupItem(
     val failedCount = remember(group.tasks) {
         group.tasks.count { it.status == DownloadStatus.FAILED }
     }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -559,9 +538,7 @@ fun ComicDownloadGroupItem(
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
-
             Spacer(modifier = Modifier.width(16.dp))
-
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = group.comicTitle,
@@ -572,12 +549,12 @@ fun ComicDownloadGroupItem(
                 )
                 Spacer(modifier = Modifier.height(6.dp))
                 Text(
-                    text = "已下载共 ${totalCount} 个章节",
+                    text = "已下载共 $totalCount 个章节",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(6.dp))
-                androidx.compose.foundation.layout.FlowRow(
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
@@ -600,8 +577,7 @@ fun ComicDownloadGroupItem(
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                         )
                     }
-                    // 阅读状态徽章
-                    readSummary?.let { summary ->
+                    group.readSummary?.let { summary ->
                         if (summary.finishedCount > 0) {
                             StatusChip(
                                 text = "已读完 ${summary.finishedCount}",
@@ -619,7 +595,6 @@ fun ComicDownloadGroupItem(
                     }
                 }
             }
-
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = "详情",
@@ -629,31 +604,32 @@ fun ComicDownloadGroupItem(
     }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun DownloadTaskItem(
     taskWithProgress: DownloadTaskWithProgress,
     onClick: () -> Unit,
-    onDelete: (DownloadTaskWithProgress) -> Unit,
-    onBringToTop: (DownloadTaskEntity) -> Unit,
-    onExport: (DownloadTaskEntity) -> Unit,
+    onDelete: (DownloadTask) -> Unit,
+    onBringToTop: (DownloadTask) -> Unit,
+    onExport: (DownloadTask) -> Unit,
     isSelectMode: Boolean,
     isSelected: Boolean,
     onLongClick: () -> Unit
 ) {
     val task = taskWithProgress.task
     var showDeleteDialog by remember { mutableStateOf(false) }
-
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
             title = { Text("删除下载") },
             text = { Text("确定要删除《${task.comicTitle}》 ${task.episodeTitle} 的下载文件吗？") },
             confirmButton = {
-                TextButton(onClick = {
-                    onDelete(taskWithProgress)
-                    showDeleteDialog = false
-                }) {
+                TextButton(
+                    onClick = {
+                        onDelete(task)
+                        showDeleteDialog = false
+                    }
+                ) {
                     Text("删除", color = MaterialTheme.colorScheme.error)
                 }
             },
@@ -664,7 +640,6 @@ fun DownloadTaskItem(
             }
         )
     }
-
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -688,7 +663,6 @@ fun DownloadTaskItem(
                     enabled = task.status == DownloadStatus.COMPLETED
                 )
             }
-            // Cover Image
             AsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(task.coverUrl)
@@ -701,10 +675,7 @@ fun DownloadTaskItem(
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant)
             )
-
             Spacer(modifier = Modifier.width(16.dp))
-
-            // Details
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = task.episodeTitle,
@@ -714,15 +685,12 @@ fun DownloadTaskItem(
                     overflow = TextOverflow.Ellipsis
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-
-                // Show page details
                 Text(
                     text = "共 ${task.totalPages} 页 (已下载 ${task.downloadedPages} 页)",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(4.dp))
-
                 when (task.status) {
                     DownloadStatus.DOWNLOADING, DownloadStatus.PENDING -> {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -741,33 +709,33 @@ fun DownloadTaskItem(
                     }
                     DownloadStatus.COMPLETED -> {
                         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            // 下载状态 + 阅读记录徽章行
-                            androidx.compose.foundation.layout.FlowRow(
+                            FlowRow(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 StatusChip(
-                                    "已完成",
-                                    MaterialTheme.colorScheme.primaryContainer,
-                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                    text = "已完成",
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
                                 when {
-                                    taskWithProgress.isFinished -> StatusChip(
-                                        "已读完",
-                                        Color(0xFF4CAF50),
-                                        Color.White
-                                    )
+                                    taskWithProgress.isFinished -> {
+                                        StatusChip(
+                                            text = "已读完",
+                                            containerColor = Color(0xFF4CAF50),
+                                            contentColor = Color.White
+                                        )
+                                    }
                                     taskWithProgress.isRead -> {
                                         val progress = taskWithProgress.readProgress!!
                                         StatusChip(
-                                            "阅读中 ${progress.currentPage}/${progress.pageCount}页",
-                                            Color(0xFFFF9800),
-                                            Color.White
+                                            text = "阅读中 ${progress.currentPage}/${progress.pageCount}页",
+                                            containerColor = Color(0xFFFF9800),
+                                            contentColor = Color.White
                                         )
                                     }
                                 }
                             }
-                            // Show completion time!
                             task.completedAt?.let { time ->
                                 Text(
                                     text = "完成时间: ${TimeUtil().getDate(time.toEpochMilliseconds())}",
@@ -778,11 +746,16 @@ fun DownloadTaskItem(
                         }
                     }
                     DownloadStatus.FAILED -> {
-                        StatusChip("下载失败 (点击重试)", MaterialTheme.colorScheme.errorContainer, MaterialTheme.colorScheme.onErrorContainer)
+                        StatusChip(
+                            text = "下载失败 (点击重试)",
+                            containerColor = MaterialTheme.colorScheme.errorContainer,
+                            contentColor = MaterialTheme.colorScheme.onErrorContainer
+                        )
                     }
+
+                    else -> {}
                 }
             }
-
             if (!isSelectMode) {
                 if (task.status != DownloadStatus.COMPLETED) {
                     IconButton(onClick = { onBringToTop(task) }) {
@@ -793,7 +766,6 @@ fun DownloadTaskItem(
                         )
                     }
                 }
-
                 if (task.status == DownloadStatus.COMPLETED) {
                     IconButton(onClick = { onExport(task) }) {
                         Icon(
@@ -803,7 +775,6 @@ fun DownloadTaskItem(
                         )
                     }
                 }
-
                 IconButton(onClick = { showDeleteDialog = true }) {
                     Icon(
                         imageVector = Icons.Default.Delete,
@@ -815,11 +786,15 @@ fun DownloadTaskItem(
         }
     }
 }
-
 @Composable
-fun StatusChip(text: String, containerColor: Color, contentColor: Color) {
+fun StatusChip(
+    text: String,
+    containerColor: Color,
+    contentColor: Color
+) {
     SuggestionChip(
         onClick = { },
+        enabled = false,
         label = { Text(text, style = MaterialTheme.typography.labelSmall) },
         colors = SuggestionChipDefaults.suggestionChipColors(
             containerColor = containerColor,
@@ -829,7 +804,6 @@ fun StatusChip(text: String, containerColor: Color, contentColor: Color) {
         modifier = Modifier.height(24.dp)
     )
 }
-
 fun getFileName(context: android.content.Context, uri: android.net.Uri): String? {
     var result: String? = null
     if (uri.scheme == "content") {

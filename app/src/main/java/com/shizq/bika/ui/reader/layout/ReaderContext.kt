@@ -1,25 +1,23 @@
 package com.shizq.bika.ui.reader.layout
 
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.paging.compose.LazyPagingItems
+import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.ReadingMode
 import com.shizq.bika.core.model.ScreenOrientation
 import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.ViewerType
 import com.shizq.bika.paging.ChapterPage
-import androidx.compose.ui.platform.LocalConfiguration
 import com.shizq.bika.ui.reader.util.preload.LazyListScrollStateProvider
 import com.shizq.bika.ui.reader.util.preload.PagerScrollStateProvider
 import com.shizq.bika.ui.reader.util.preload.ScrollStateProvider
-
-import com.shizq.bika.core.model.BookSpreadsMode
-
-import androidx.compose.foundation.lazy.LazyListState
 
 @Stable
 data class ReaderContext(

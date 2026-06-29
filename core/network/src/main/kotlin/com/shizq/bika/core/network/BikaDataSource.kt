@@ -1,8 +1,5 @@
-@file:OptIn(ExperimentalSerializationApi::class)
-
 package com.shizq.bika.core.network
 
-import kotlinx.serialization.ExperimentalSerializationApi
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.model.ActionData
 import com.shizq.bika.core.network.model.ChapterPagesData

@@ -2,7 +2,6 @@
 
 package com.shizq.bika.ui.reader
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -14,6 +13,7 @@ import androidx.paging.cachedIn
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.model.DownloadStatus
+import com.shizq.bika.core.download.repository.DownloadTaskRepository
 import com.shizq.bika.paging.Chapter
 import com.shizq.bika.paging.ChapterListPagingSource
 import com.shizq.bika.paging.ChapterMeta
@@ -27,6 +27,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
@@ -43,6 +44,7 @@ class ReaderViewModel @AssistedInject constructor(
     private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory,
     private val downloadRepository: DownloadRepository,
+    private val downloadTaskRepository: DownloadTaskRepository,
     readerStateMachine: ReaderStateMachine,
     @Assisted id: String,
     @Assisted order: Int,
@@ -68,8 +70,8 @@ class ReaderViewModel @AssistedInject constructor(
                         downloadRepository.getLocalImages(id, chapterOrder)
                     }
                     // 从下载任务记录中获取章节元信息（标题、总页数）
-                    val task = downloadRepository
-                        .getTaskById(DownloadRepository.taskId(id, chapterOrder))
+                    val task = downloadTaskRepository
+                        .observeTask("${id}_$chapterOrder")
                         .first()
                     dispatch(
                         ReaderAction.ChapterMetaLoaded(
@@ -108,7 +110,7 @@ class ReaderViewModel @AssistedInject constructor(
     // downloadedOnly=true 时只展示已下载完成的章节，限制章间导航范围
     val chapterListFlow: Flow<PagingData<Chapter>> =
         if (downloadedOnly) {
-            downloadRepository.getTasksByComic(id)
+            downloadTaskRepository.observeTasksByComic(id)
                 .map { tasks ->
                     PagingData.from(
                         tasks
