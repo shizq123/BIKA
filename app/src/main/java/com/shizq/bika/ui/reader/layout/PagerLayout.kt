@@ -1,6 +1,7 @@
 package com.shizq.bika.ui.reader.layout
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
@@ -17,9 +18,6 @@ import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.Direction
 import com.shizq.bika.paging.ChapterPage
 import kotlinx.coroutines.flow.distinctUntilChanged
-
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 
 class PagerLayout(
     private val pagerState: PagerState,

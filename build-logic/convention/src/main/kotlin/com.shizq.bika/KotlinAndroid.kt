@@ -63,56 +63,26 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
     }.apply {
         jvmTarget = JvmTarget.JVM_21
         allWarningsAsErrors = warningsAsErrors
-        freeCompilerArgs.add("-opt-in=kotlin.uuid.ExperimentalUuidApi")
-
-        // Use a static list of opt-ins if the dependency is present at configuration time.
-        // Capturing 'Project' in a provider for freeCompilerArgs breaks Configuration Cache.
-        if (hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-core") ||
-            hasDependency("org.jetbrains.kotlinx", "kotlinx-coroutines-android")
-        ) {
-            freeCompilerArgs.add("-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi")
-            freeCompilerArgs.add("-opt-in=kotlinx.coroutines.FlowPreview")
-        }
-
-        if (pluginManager.hasPlugin("org.jetbrains.kotlin.plugin.serialization") ||
-            hasDependency("org.jetbrains.kotlinx", "kotlinx-serialization-core") ||
-            hasDependency("org.jetbrains.kotlinx", "kotlinx-serialization-json")
-        ) {
-            freeCompilerArgs.add("-opt-in=kotlinx.serialization.ExperimentalSerializationApi")
-        }
-    }
-}
-
-/**
- * 递归判断项目是否直接或间接（通过一级 project 依赖）引入了特定依赖，用于延迟按需配置 opt-in
- */
-private fun Project.hasDependency(group: String, name: String): Boolean {
-    val directMatch = configurations.any { configuration ->
-        configuration.dependencies.any { dependency ->
-            dependency.group == group && dependency.name == name
-        }
-    }
-    if (directMatch) return true
-
-    return configurations.any { configuration ->
-        configuration.dependencies.any { dependency ->
-            val cls = dependency::class.java
-            if (cls.interfaces.any { it.name == "org.gradle.api.artifacts.ProjectDependency" } ||
-                cls.name.contains("ProjectDependency")) {
-                try {
-                    val getDepProjectMethod = cls.getMethod("getDependencyProject")
-                    val depProject = getDepProjectMethod.invoke(dependency) as? Project
-                    depProject?.configurations?.any { depConfig ->
-                        depConfig.dependencies.any { depDep ->
-                            depDep.group == group && depDep.name == name
-                        }
-                    } ?: false
-                } catch (e: Exception) {
-                    false
-                }
-            } else {
-                false
-            }
-        }
+        freeCompilerArgs.add(
+            "-opt-in=kotlin.uuid.ExperimentalUuidApi",
+        )
+        freeCompilerArgs.add(
+            // Enable experimental coroutines APIs, including Flow
+            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
+        )
+        freeCompilerArgs.add(
+            /**
+             * Remove this args after Phase 3.
+             * https://kotlinlang.org/api/latest/jvm/stdlib/kotlin/-consistent-copy-visibility/#deprecation-timeline
+             *
+             * Deprecation timeline
+             * Phase 3. (Supposedly Kotlin 2.2 or Kotlin 2.3).
+             * The default changes.
+             * Unless ExposedCopyVisibility is used, the generated 'copy' method has the same visibility as the primary constructor.
+             * The binary signature changes. The error on the declaration is no longer reported.
+             * '-Xconsistent-data-class-copy-visibility' compiler flag and ConsistentCopyVisibility annotation are now unnecessary.
+             */
+            "-Xconsistent-data-class-copy-visibility",
+        )
     }
 }

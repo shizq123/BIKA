@@ -31,6 +31,7 @@ import io.ktor.http.contentType
 import io.ktor.http.withCharset
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.charsets.Charsets
+import jakarta.inject.Named
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -113,5 +114,23 @@ internal object NetworkModule {
                 }
             }
             .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("github")
+    fun provideGithubHttpClient(): HttpClient = HttpClient(OkHttp) {
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    coerceInputValues = true
+                }
+            )
+        }
+        install(Logging) {
+            logger = Logger.ANDROID
+            level = LogLevel.HEADERS
+        }
     }
 }

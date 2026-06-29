@@ -16,7 +16,7 @@ data class UserProfile(
     val name: String = "",         // 昵称
     val email: String = "",        // 邮箱
     @Serializable(with = GenderSerializer::class)
-    val gender: Gender,
+    val gender: String,
     val title: String = "",        // 头衔: "萌新"
     val level: Int = 0,            // 等级
     val exp: Int = 0,              // 经验值
