@@ -11,3 +11,8 @@ plugins {
     alias(libs.plugins.baselineprofile) apply false
 }
 
+// Force disable JDK image generation at the system level to avoid jlink errors
+// from broken JREs provided by IDE extensions.
+System.setProperty("android.jdk.generate_jdk_image", "false")
+System.setProperty("android.generateJdkImage", "false")
+
