@@ -32,6 +32,7 @@ import io.ktor.client.request.setBody
 import io.ktor.client.statement.bodyAsText
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -225,6 +226,7 @@ class BikaDataSource @Inject constructor(
         }.body()
     }
 
+    @OptIn(ExperimentalSerializationApi::class)
     suspend fun advancedSearch(
         content: String,
         categories: List<String>,

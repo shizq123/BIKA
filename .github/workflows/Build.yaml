@@ -128,3 +128,38 @@ jobs:
           make_latest: true
           files: |
             app/build/outputs/apk/release/*.apk
+
+      - name: Delete Old Latest Release
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.extract_version.outputs.version != 'vunknown'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release delete latest --yes --cleanup-tag || true
+
+      - name: Create Latest Release
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.extract_version.outputs.version != 'vunknown'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: BIKA Latest Release
+          body: |
+            自动打包成功！这是最新发布的构建版本。
+            
+            ### 🏷️ 实际版本号
+            ${{ steps.extract_version.outputs.version }}
+            
+            ### 📝 最新更新内容 (Git Commit Info)
+            ${{ steps.changelog.outputs.latest_commit }}
+            
+            ---
+            ### 📜 近期提交历史 (Changelog)
+            ${{ steps.changelog.outputs.git_changelog }}
+            
+            ---
+            **构建分支**: `${{ github.ref_name }}`
+            **提交哈希**: `${{ github.sha }}`
+            **构建时间**: ${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}
+          prerelease: false
+          make_latest: false
+          files: |
+            app/build/outputs/apk/release/*.apk
