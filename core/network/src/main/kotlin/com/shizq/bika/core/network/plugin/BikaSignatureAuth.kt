@@ -88,7 +88,7 @@ val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
 
         on(Send) { request ->
             request.headers.run {
-                remove(HttpHeaders.AcceptCharset)
+                remove("Accept-Charset")
                 remove(HttpHeaders.Accept, "application/json")
             }
             proceed(request)
