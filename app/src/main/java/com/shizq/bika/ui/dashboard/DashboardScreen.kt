@@ -106,8 +106,8 @@ import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.ui.CircularProgressIndicator
+import com.shizq.bika.feature.update.ui.UpdateHost
 import com.shizq.bika.navigation.DiscoveryAction
-import com.shizq.bika.ui.dashboard.update.UpdateDialog
 import com.shizq.bika.ui.feed.FavoriteTagsDrawer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -159,7 +159,7 @@ fun DashboardScreen(
         )
     }
 
-    UpdateDialog()
+    UpdateHost()
 
     DashboardContent(
         userProfileUiState = userProfileUiState,
