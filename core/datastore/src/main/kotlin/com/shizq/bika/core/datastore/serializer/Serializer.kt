@@ -1,11 +1,9 @@
-@file:OptIn(ExperimentalSerializationApi::class)
-
 package com.shizq.bika.core.datastore.serializer
 
 import androidx.datastore.core.CorruptionException
 import androidx.datastore.core.Serializer
-import kotlinx.serialization.ExperimentalSerializationApi
 import com.shizq.bika.core.datastore.di.DataStoreModule.DataStoreJson
+import com.shizq.bika.core.datastore.model.UpdatePreference
 import com.shizq.bika.core.datastore.model.UserCredentials
 import com.shizq.bika.core.model.UserPreferences
 import kotlinx.serialization.json.decodeFromStream
@@ -51,4 +49,24 @@ internal object UserPreferencesSerializer : Serializer<UserPreferences> {
 
     override val defaultValue: UserPreferences
         get() = UserPreferences()
+}
+
+internal object UpdatePreferencesSerializer : Serializer<UpdatePreference> {
+    override suspend fun readFrom(input: InputStream): UpdatePreference {
+        try {
+            return DataStoreJson.decodeFromStream(UpdatePreference.serializer(), input)
+        } catch (e: Exception) {
+            throw CorruptionException("Failed to decode data", e)
+        }
+    }
+
+    override suspend fun writeTo(
+        t: UpdatePreference,
+        output: OutputStream
+    ) {
+        DataStoreJson.encodeToStream(UpdatePreference.serializer(), t, output)
+    }
+
+    override val defaultValue: UpdatePreference
+        get() = UpdatePreference()
 }

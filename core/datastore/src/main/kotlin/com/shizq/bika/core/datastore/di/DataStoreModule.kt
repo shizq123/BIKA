@@ -5,9 +5,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.core.DataStoreFactory
 import androidx.datastore.dataStoreFile
 import com.shizq.bika.core.coroutine.ApplicationScope
-import com.shizq.bika.core.datastore.credentialMigration
-import com.shizq.bika.core.datastore.model.UserCredentials
-import com.shizq.bika.core.datastore.serializer.UserCredentialsSerializer
 import com.shizq.bika.core.datastore.serializer.UserPreferencesSerializer
 import com.shizq.bika.core.model.UserPreferences
 import dagger.Module
@@ -41,18 +38,16 @@ object DataStoreModule {
         ) {
             context.dataStoreFile("user_preferences")
         }
-
     @Provides
     @Singleton
-    internal fun providesUserCredentialsDataStore(
+    internal fun providesUpdatePreferenceDataSource(
         @ApplicationContext context: Context,
         @ApplicationScope scope: CoroutineScope,
-    ): DataStore<UserCredentials> =
+    ): DataStore<UserPreferences> =
         DataStoreFactory.create(
-            serializer = UserCredentialsSerializer,
+            serializer = UserPreferencesSerializer,
             scope = CoroutineScope(scope.coroutineContext + Dispatchers.IO),
-            migrations = listOf(credentialMigration(context))
         ) {
-            context.dataStoreFile("user_credentials")
+            context.dataStoreFile("update_preferences")
         }
 }
