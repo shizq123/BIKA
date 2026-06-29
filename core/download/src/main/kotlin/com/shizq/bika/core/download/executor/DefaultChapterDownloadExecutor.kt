@@ -278,7 +278,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
                 )
             }
 
-            val body = response.body ?: throw IOException("响应体为空: $imageUrl")
+            val body = response.body
             val contentType = body.contentType()?.toString()
 
             val extension = storage.resolveImageExtension(

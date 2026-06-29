@@ -6,7 +6,6 @@ import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
-import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -26,7 +25,7 @@ class RegistrationViewModel @Inject constructor(
     val personalInfoState = PersonalInfoState()
 
     fun registerUser() {
-        viewModelScope.launch(NonCancellable) {
+        viewModelScope.launch {
             registrationState.update { RegistrationUiState.Loading }
 
             val basicInfoData = basicInfoState.toData()
