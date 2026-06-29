@@ -93,14 +93,6 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
             "CREATE UNIQUE INDEX IF NOT EXISTS `index_downloadTask_comicId_episodeOrder` " +
                     "ON `downloadTask`(`comicId`, `episodeOrder`)"
         )
-        db.execSQL(
-            "CREATE INDEX IF NOT EXISTS `index_downloadTask_worker_token` " +
-                    "ON `downloadTask`(`worker_token`)"
-        )
-        db.execSQL(
-            "CREATE INDEX IF NOT EXISTS `index_downloadTask_next_schedule_at` " +
-                    "ON `downloadTask`(`next_schedule_at`)"
-        )
     }
 }
 
