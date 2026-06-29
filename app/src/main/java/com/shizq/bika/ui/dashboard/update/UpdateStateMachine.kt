@@ -8,7 +8,6 @@ import com.shizq.bika.core.data.repository.AppUpdateRepository
 import jakarta.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
 
 private const val TAG = "UpdateSM"
@@ -19,40 +18,62 @@ class UpdateStateMachine @Inject constructor(
 ) : FlowReduxStateMachineFactory<UpdateUiState, UpdateAction>() {
 
     /**
-     * 下载进度单独通过 StateFlow 发射，
-     * 仅在 Downloading 状态下 collect 并同步到主状态。
+     * 下载进度单独通过 StateFlow 发射。
+     *
+     * 进入 Downloading 状态后 collectWhileInState 会监听它，
+     * 并同步到主 UI 状态。
      */
     private val downloadProgress = MutableStateFlow(0f)
+
+    /**
+     * 临时保存下载请求。
+     *
+     * 这样可以让 HasUpdate 状态只负责切换到 Downloading，
+     * 真正的下载逻辑放在 Downloading.onEnter 中执行。
+     */
+    private var pendingDownloadRequest: DownloadRequest? = null
+
+    private data class DownloadRequest(
+        val downloadUrl: String,
+        val externalFilesDir: File,
+    )
 
     init {
         initializeWith { UpdateUiState.Idle }
 
         spec {
-            // ─────────────────────────────────────────────
-            // Idle
-            // ─────────────────────────────────────────────
+            /**
+             * ─────────────────────────────────────────────
+             * Idle
+             * ─────────────────────────────────────────────
+             *
+             * Idle 只表示空闲，不自动检查更新。
+             * 检查更新必须通过 CheckUpdate 显式触发。
+             */
             inState<UpdateUiState.Idle> {
-                onEnter {
-                    val result = checkUpdate()
-                    override { result }
+                on<UpdateAction.CheckUpdate> {
+                    override { UpdateUiState.Checking }
+                }
+
+                on<UpdateAction.ShowError> { action ->
+                    override { UpdateUiState.Error(action.message) }
                 }
             }
 
-            // ─────────────────────────────────────────────
-            // Checking
-            // 一般不接 Reset，因为当前未实现“取消检查”
-            // ─────────────────────────────────────────────
+            /**
+             * ─────────────────────────────────────────────
+             * Checking
+             * ─────────────────────────────────────────────
+             */
             inState<UpdateUiState.Checking> {
-                // 如果后面你要支持取消检查，再加对应 Action
-            }
-
-            // ─────────────────────────────────────────────
-            // NoUpdate
-            // ─────────────────────────────────────────────
-            inState<UpdateUiState.NoUpdate> {
-                on<UpdateAction.CheckUpdate> { action ->
+                onEnter {
                     val result = checkUpdate()
+
                     override { result }
+                }
+
+                on<UpdateAction.ShowError> { action ->
+                    override { UpdateUiState.Error(action.message) }
                 }
 
                 on<UpdateAction.Reset> {
@@ -60,25 +81,48 @@ class UpdateStateMachine @Inject constructor(
                 }
             }
 
-            // ─────────────────────────────────────────────
-            // HasUpdate
-            // ─────────────────────────────────────────────
+            /**
+             * ─────────────────────────────────────────────
+             * NoUpdate
+             * ─────────────────────────────────────────────
+             */
+            inState<UpdateUiState.NoUpdate> {
+                on<UpdateAction.CheckUpdate> {
+                    override { UpdateUiState.Checking }
+                }
+
+                on<UpdateAction.ShowError> { action ->
+                    override { UpdateUiState.Error(action.message) }
+                }
+
+                on<UpdateAction.Reset> {
+                    override { UpdateUiState.Idle }
+                }
+            }
+
+            /**
+             * ─────────────────────────────────────────────
+             * HasUpdate
+             * ─────────────────────────────────────────────
+             */
             inState<UpdateUiState.HasUpdate> {
-                on<UpdateAction.CheckUpdate> { action ->
-                    val result = checkUpdate()
-                    override { result }
+                on<UpdateAction.CheckUpdate> {
+                    override { UpdateUiState.Checking }
                 }
 
                 on<UpdateAction.StartDownload> { action ->
-                    downloadProgress.value = 0f
-                    override { UpdateUiState.Downloading(0f) }
-
-                    val result = downloadApk(
+                    pendingDownloadRequest = DownloadRequest(
                         downloadUrl = action.downloadUrl,
                         externalFilesDir = action.externalFilesDir,
                     )
-                    Log.d(TAG, "download finished: $result")
-                    override { result }
+
+                    downloadProgress.value = 0f
+
+                    override { UpdateUiState.Downloading(progress = 0f) }
+                }
+
+                on<UpdateAction.ShowError> { action ->
+                    override { UpdateUiState.Error(action.message) }
                 }
 
                 on<UpdateAction.Reset> {
@@ -86,25 +130,58 @@ class UpdateStateMachine @Inject constructor(
                 }
             }
 
-            // ─────────────────────────────────────────────
-            // Downloading
-            // 这里只同步进度，不接 Reset
-            // 因为当前并没有真正实现“取消下载”
-            // 如果这里直接 Reset，UI 回 Idle，但下载任务可能还在跑
-            // ─────────────────────────────────────────────
+            /**
+             * ─────────────────────────────────────────────
+             * Downloading
+             * ─────────────────────────────────────────────
+             *
+             * 注意：
+             * 当前没有实现真正的取消下载，所以不接 Reset。
+             * 如果你直接 Reset 到 Idle，UI 会消失，但下载任务可能仍然在跑。
+             */
             inState<UpdateUiState.Downloading> {
-                collectWhileInState(downloadProgress.asStateFlow()) { progress ->
-                    override { UpdateUiState.Downloading(progress) }
+                onEnter {
+                    val request = pendingDownloadRequest
+
+                    if (request == null) {
+                        override { UpdateUiState.Error("下载请求不存在，请重试") }
+                    } else {
+                        try {
+                            val result = downloadApk(
+                                downloadUrl = request.downloadUrl,
+                                externalFilesDir = request.externalFilesDir,
+                            )
+
+                            Log.d(TAG, "download finished: $result")
+
+                            override { result }
+                        } finally {
+                            pendingDownloadRequest = null
+                        }
+                    }
+                }
+
+                collectWhileInState(downloadProgress) { progress ->
+                    override { UpdateUiState.Downloading(progress = progress) }
+                }
+
+                on<UpdateAction.ShowError> { action ->
+                    override { UpdateUiState.Error(action.message) }
                 }
             }
 
-            // ─────────────────────────────────────────────
-            // Success
-            // ─────────────────────────────────────────────
+            /**
+             * ─────────────────────────────────────────────
+             * Success
+             * ─────────────────────────────────────────────
+             */
             inState<UpdateUiState.Success> {
-                on<UpdateAction.CheckUpdate> { action ->
-                    val result = checkUpdate()
-                    override { result }
+                on<UpdateAction.CheckUpdate> {
+                    override { UpdateUiState.Checking }
+                }
+
+                on<UpdateAction.ShowError> { action ->
+                    override { UpdateUiState.Error(action.message) }
                 }
 
                 on<UpdateAction.Reset> {
@@ -112,13 +189,18 @@ class UpdateStateMachine @Inject constructor(
                 }
             }
 
-            // ─────────────────────────────────────────────
-            // Error
-            // ─────────────────────────────────────────────
+            /**
+             * ─────────────────────────────────────────────
+             * Error
+             * ─────────────────────────────────────────────
+             */
             inState<UpdateUiState.Error> {
-                on<UpdateAction.CheckUpdate> { action ->
-                    val result = checkUpdate()
-                    override { result }
+                on<UpdateAction.CheckUpdate> {
+                    override { UpdateUiState.Checking }
+                }
+
+                on<UpdateAction.ShowError> { action ->
+                    override { UpdateUiState.Error(action.message) }
                 }
 
                 on<UpdateAction.Reset> {
@@ -145,6 +227,7 @@ class UpdateStateMachine @Inject constructor(
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "检测版本更新失败", e)
+
             UpdateUiState.Error(
                 message = "检测更新失败: ${e.localizedMessage ?: "网络异常"}",
             )
@@ -162,6 +245,10 @@ class UpdateStateMachine @Inject constructor(
 
             val destFile = File(externalFilesDir, APK_FILE_NAME)
 
+            if (destFile.exists()) {
+                destFile.delete()
+            }
+
             appUpdateRepository.downloadApk(
                 downloadUrl = downloadUrl,
                 destFile = destFile,
@@ -170,11 +257,18 @@ class UpdateStateMachine @Inject constructor(
                 },
             )
 
-            UpdateUiState.Success(destFile.absolutePath)
+            if (!destFile.exists() || destFile.length() <= 0L) {
+                return UpdateUiState.Error("下载完成，但安装包文件异常")
+            }
+
+            downloadProgress.value = 1f
+
+            UpdateUiState.Success(apkPath = destFile.absolutePath)
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             Log.e(TAG, "下载最新版安装包失败", e)
+
             UpdateUiState.Error(
                 message = "下载更新包失败: ${e.localizedMessage ?: "网络异常"}",
             )

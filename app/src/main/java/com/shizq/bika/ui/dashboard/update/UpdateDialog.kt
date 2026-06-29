@@ -36,41 +36,78 @@ fun UpdateDialog(
     val context = LocalContext.current
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    // Screen 挂载时触发一次版本检测
+    /**
+     * 页面挂载时触发一次版本检测。
+     *
+     * 注意：
+     * 不要放在 Idle.onEnter 中自动检测，否则 Reset 回 Idle 后会再次自动检查，
+     * 导致用户点击“稍后”后弹窗马上又出现。
+     */
     LaunchedEffect(Unit) {
-//        viewModel.dispatch(UpdateAction.CheckUpdate(BuildConfig.VERSION_NAME))
+        viewModel.dispatch(UpdateAction.CheckUpdate)
     }
 
-    // 下载完成后自动触发系统安装器，然后重置状态
-    LaunchedEffect(state) {
-        if (state is UpdateUiState.Success) {
-            runCatching {
-                val apkFile = File((state as UpdateUiState.Success).apkPath)
-                val apkUri: Uri = FileProvider.getUriForFile(
-                    context,
-                    "${context.packageName}.fileprovider",
-                    apkFile,
-                )
-                val intent = Intent(Intent.ACTION_VIEW).apply {
-                    setDataAndType(apkUri, "application/vnd.android.package-archive")
-                    addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                }
-                context.startActivity(intent)
+    /**
+     * 下载成功后启动系统安装器。
+     *
+     * 使用 apkPath 作为 key，避免普通重组导致重复启动安装器。
+     */
+    val successState = state as? UpdateUiState.Success
+
+    LaunchedEffect(successState?.apkPath) {
+        val apkPath = successState?.apkPath ?: return@LaunchedEffect
+
+        runCatching {
+            val apkFile = File(apkPath)
+
+            require(apkFile.exists()) {
+                "安装包不存在"
             }
+
+            val apkUri: Uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                apkFile,
+            )
+
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(apkUri, "application/vnd.android.package-archive")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+
+            context.startActivity(intent)
+        }.onSuccess {
             viewModel.dispatch(UpdateAction.Reset)
+        }.onFailure { throwable ->
+            viewModel.dispatch(
+                UpdateAction.ShowError(
+                    message = "无法打开安装器: ${throwable.localizedMessage ?: "未知错误"}",
+                ),
+            )
         }
     }
 
     UpdateDialogContent(
         state = state,
-        onDismiss = { viewModel.dispatch(UpdateAction.Reset) },
+        onDismiss = {
+            viewModel.dispatch(UpdateAction.Reset)
+        },
         onConfirmUpdate = { downloadUrl ->
+            val externalFilesDir = context.getExternalFilesDir(null)
+
+            if (externalFilesDir == null) {
+                viewModel.dispatch(
+                    UpdateAction.ShowError("无法访问下载目录，请检查存储状态后重试"),
+                )
+                return@UpdateDialogContent
+            }
+
             viewModel.dispatch(
                 UpdateAction.StartDownload(
                     downloadUrl = downloadUrl,
-                    externalFilesDir = context.getExternalFilesDir(null)!!,
-                )
+                    externalFilesDir = externalFilesDir,
+                ),
             )
         },
     )
@@ -86,11 +123,16 @@ fun UpdateDialogContent(
         is UpdateUiState.HasUpdate -> {
             AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("发现新版本 v${state.remoteVersion}") },
+                title = {
+                    Text("发现新版本 v${state.remoteVersion}")
+                },
                 text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
                         Text("检测到有最新版可以更新，是否立即升级？")
-                        if (state.changelog.isNotEmpty()) {
+
+                        if (state.changelog.isNotBlank()) {
                             Text(
                                 text = "更新日志：\n${state.changelog}",
                                 style = MaterialTheme.typography.bodySmall,
@@ -100,12 +142,18 @@ fun UpdateDialogContent(
                     }
                 },
                 confirmButton = {
-                    Button(onClick = { onConfirmUpdate(state.downloadUrl) }) {
+                    Button(
+                        onClick = {
+                            onConfirmUpdate(state.downloadUrl)
+                        },
+                    ) {
                         Text("立即更新")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = onDismiss,
+                    ) {
                         Text("稍后")
                     }
                 },
@@ -114,8 +162,14 @@ fun UpdateDialogContent(
 
         is UpdateUiState.Downloading -> {
             AlertDialog(
-                onDismissRequest = {},
-                title = { Text("正在下载更新...") },
+                onDismissRequest = {
+                    /**
+                     * 当前没有真正实现取消下载，所以这里不允许点击外部关闭。
+                     */
+                },
+                title = {
+                    Text("正在下载更新...")
+                },
                 text = {
                     Column(
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -123,9 +177,12 @@ fun UpdateDialogContent(
                         modifier = Modifier.fillMaxWidth(),
                     ) {
                         LinearProgressIndicator(
-                            progress = { state.progress },
+                            progress = {
+                                state.progress
+                            },
                             modifier = Modifier.fillMaxWidth(),
                         )
+
                         Text(
                             text = "已下载: ${(state.progress * 100).toInt()}%",
                             style = MaterialTheme.typography.bodyMedium,
@@ -139,20 +196,32 @@ fun UpdateDialogContent(
         is UpdateUiState.Error -> {
             AlertDialog(
                 onDismissRequest = onDismiss,
-                title = { Text("更新失败") },
-                text = { Text(state.message) },
+                title = {
+                    Text("更新失败")
+                },
+                text = {
+                    Text(state.message)
+                },
                 confirmButton = {
-                    TextButton(onClick = onDismiss) {
+                    TextButton(
+                        onClick = onDismiss,
+                    ) {
                         Text("确定")
                     }
                 },
             )
         }
 
-        // Success 由上方 LaunchedEffect 处理安装，Idle 不显示任何内容
-        is UpdateUiState.Success,
-        UpdateUiState.Idle -> Unit
-
-        else -> {}
+        UpdateUiState.Idle,
+        UpdateUiState.Checking,
+        UpdateUiState.NoUpdate,
+        is UpdateUiState.Success -> {
+            /**
+             * Idle：空闲，不展示
+             * Checking：静默检查，不展示
+             * NoUpdate：没有新版本，不展示
+             * Success：由 UpdateDialog 中的 LaunchedEffect 启动安装器
+             */
+        }
     }
 }
