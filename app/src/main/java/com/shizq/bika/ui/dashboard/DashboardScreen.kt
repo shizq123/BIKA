@@ -166,7 +166,7 @@ fun DashboardScreen(
         lastReadHistory = lastReadHistory,
         onCheckInClick = { viewModel.dispatch(DashboardAction.CheckIn) },
         onUpdateSlogan = { slogan -> viewModel.dispatch(DashboardAction.UpdateSlogan(slogan)) },
-        sloganResult = OperationResult.Success,
+        sloganResult = state.sloganResult,
         onDismissSloganResult = { viewModel.dispatch(DashboardAction.DismissSloganResult) },
         onChangePassword = { old, new ->
             viewModel.dispatch(
@@ -176,7 +176,7 @@ fun DashboardScreen(
                 )
             )
         },
-        passwordResult = OperationResult.Success,
+        passwordResult = state.passwordResult,
         onDismissPasswordResult = { viewModel.dispatch(DashboardAction.DismissPasswordResult) },
         channelSettingsUiState = channelSettingsUiState,
         navigationToLeaderboard = navigationToLeaderboard,

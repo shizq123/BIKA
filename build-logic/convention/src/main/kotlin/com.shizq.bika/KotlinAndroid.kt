@@ -4,8 +4,10 @@ import com.android.build.api.dsl.CommonExtension
 import org.gradle.api.JavaVersion
 import org.gradle.api.Project
 import org.gradle.api.plugins.JavaPluginExtension
+import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.kotlin.dsl.assign
 import org.gradle.kotlin.dsl.configure
+import org.gradle.kotlin.dsl.extra
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.jetbrains.kotlin.gradle.dsl.KotlinBaseExtension
@@ -17,6 +19,11 @@ import org.jetbrains.kotlin.gradle.dsl.KotlinJvmProjectExtension
 internal fun Project.configureKotlinAndroid(
     commonExtension: CommonExtension,
 ) {
+    // Force disable JDK image generation to avoid jlink errors on some systems.
+    extra.set("android.jdk.generate_jdk_image", "false")
+    extra.set("android.generateJdkImage", "false")
+    extra.set("android.jdk.generateJdkImage", "false")
+
     commonExtension.apply {
         compileSdk = 37
 
@@ -31,6 +38,13 @@ internal fun Project.configureKotlinAndroid(
         }
     }
 
+    // Use Java Toolchain to ensure the correct JDK is used, avoiding JREs from IDE extensions.
+    extensions.configure<JavaPluginExtension> {
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(21))
+        }
+    }
+
     configureKotlin<KotlinAndroidProjectExtension>()
 }
 
@@ -42,6 +56,9 @@ internal fun Project.configureKotlinJvm() {
         // https://developer.android.com/studio/write/java11-minimal-support-table
         sourceCompatibility = JavaVersion.VERSION_21
         targetCompatibility = JavaVersion.VERSION_21
+        toolchain {
+            languageVersion.set(JavaLanguageVersion.of(21))
+        }
     }
 
     configureKotlin<KotlinJvmProjectExtension>()
@@ -65,10 +82,6 @@ private inline fun <reified T : KotlinBaseExtension> Project.configureKotlin() =
         allWarningsAsErrors = warningsAsErrors
         freeCompilerArgs.add(
             "-opt-in=kotlin.uuid.ExperimentalUuidApi",
-        )
-        freeCompilerArgs.add(
-            // Enable experimental coroutines APIs, including Flow
-            "-opt-in=kotlinx.coroutines.ExperimentalCoroutinesApi",
         )
         freeCompilerArgs.add(
             /**
