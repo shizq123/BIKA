@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalCoroutinesApi::class)
-
 package com.shizq.bika.feature.update.ui
 
 import android.util.Log
@@ -13,10 +11,12 @@ import com.shizq.bika.core.domain.ShouldShowUpdateUseCase
 import com.shizq.bika.core.network.model.AppUpdateRelease
 import jakarta.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 
 private const val TAG = "UpdateSM"
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class UpdateStateMachine @Inject constructor(
     private val checkAppUpdateUseCase: CheckAppUpdateUseCase,
     private val shouldShowUpdateUseCase: ShouldShowUpdateUseCase,
