@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalCoroutinesApi::class)
-
 package com.shizq.bika.ui.dashboard.update
 
 import android.util.Log
@@ -9,12 +7,14 @@ import com.shizq.bika.BuildConfig
 import com.shizq.bika.core.data.repository.AppUpdateRepository
 import jakarta.inject.Inject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import java.io.File
 
 private const val TAG = "UpdateSM"
 private const val APK_FILE_NAME = "BIKA_update.apk"
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class UpdateStateMachine @Inject constructor(
     private val appUpdateRepository: AppUpdateRepository,
 ) : FlowReduxStateMachineFactory<UpdateUiState, UpdateAction>() {
