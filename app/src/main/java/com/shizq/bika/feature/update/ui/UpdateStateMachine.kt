@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalCoroutinesApi::class)
+
 package com.shizq.bika.feature.update.ui
 
 import android.util.Log
