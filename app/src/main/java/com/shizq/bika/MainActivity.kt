@@ -142,8 +142,10 @@ class MainActivity : ComponentActivity() {
 
                         is Success -> {
                             val appState = rememberAppState(state.startDestination)
+                            val userData by userPreferencesDataSource.userData.collectAsStateWithLifecycle(initialValue = null)
+                            val usePredictiveBack = userData?.usePredictiveBack ?: false
 
-                            BikaApp(appState)
+                            BikaApp(appState, usePredictiveBack = usePredictiveBack)
                         }
                     }
                 }

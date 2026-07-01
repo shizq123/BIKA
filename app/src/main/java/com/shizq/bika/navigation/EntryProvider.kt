@@ -6,7 +6,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import com.shizq.bika.ui.LocalUseBackAnimation
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
@@ -38,8 +40,10 @@ import com.shizq.bika.ui.notifications.NotificationsScreen
 
 fun EntryProviderScope<NavKey>.rootSection(
     navigator: Navigator,
+    useAnimation: Boolean = true
 ) {
     entry<AuthenticationRoute> {
+        val useAnim = LocalUseBackAnimation.current
         NavDisplay(
             backStack = navigator.state.authenticationBackStack,
             entryProvider = entryProvider {
@@ -49,6 +53,7 @@ fun EntryProviderScope<NavKey>.rootSection(
                         navigator.navigate(AuthenticationRoute.RegisterRoute)
                     },
                     onBackClick = navigator::goBack,
+                    useAnimation = useAnim
                 )
             }
         )
@@ -56,10 +61,11 @@ fun EntryProviderScope<NavKey>.rootSection(
 
     entry<ConnectedRoute> {
         val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
+        val useAnim = LocalUseBackAnimation.current
         NavDisplay(
             entries = navigator.state.toEntries(
                 entryProvider = entryProvider {
-                    featureSection(navigator)
+                    featureSection(navigator, useAnimation = useAnim)
                 }
             ),
             onBack = navigator::goBack,
@@ -72,6 +78,7 @@ fun EntryProviderScope<NavKey>.authenticationSection(
     navigationToDashboard: () -> Unit,
     navigateToRegister: () -> Unit,
     onBackClick: () -> Unit,
+    useAnimation: Boolean = true
 ) {
     entry<AuthenticationRoute.LoginRoute> {
         LoginScreen(
@@ -80,41 +87,58 @@ fun EntryProviderScope<NavKey>.authenticationSection(
             onNavigateToForgotPassword = {}
         )
     }
-    entry<AuthenticationRoute.RegisterRoute> {
+    entry<AuthenticationRoute.RegisterRoute>(
+        metadata = slideTransitionMetadata(useAnimation)
+    ) {
         RegistrationScreen(
             onBackClick = onBackClick
         )
     }
 }
 
-private fun slideTransitionMetadata() = metadata {
-    put(NavDisplay.TransitionKey) {
-        slideInHorizontally(
-            initialOffsetX = { it },
-            animationSpec = tween(300)
-        ) togetherWith ExitTransition.KeepUntilTransitionsFinished
-    }
+private fun slideTransitionMetadata(useAnimation: Boolean = true) = metadata {
+    if (useAnimation) {
+        put(NavDisplay.TransitionKey) {
+            slideInHorizontally(
+                initialOffsetX = { it },
+                animationSpec = tween(300)
+            ) togetherWith ExitTransition.KeepUntilTransitionsFinished
+        }
 
-    put(NavDisplay.PopTransitionKey) {
-        EnterTransition.None togetherWith
-                slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(300)
-                )
-    }
+        put(NavDisplay.PopTransitionKey) {
+            EnterTransition.None togetherWith
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(300)
+                    )
+        }
 
-    put(NavDisplay.PredictivePopTransitionKey) {
-        EnterTransition.None togetherWith
-                slideOutHorizontally(
-                    targetOffsetX = { it },
-                    animationSpec = tween(300)
-                )
+        put(NavDisplay.PredictivePopTransitionKey) {
+            EnterTransition.None togetherWith
+                    slideOutHorizontally(
+                        targetOffsetX = { it },
+                        animationSpec = tween(300)
+                    )
+        }
+    } else {
+        put(NavDisplay.TransitionKey) {
+            EnterTransition.None togetherWith ExitTransition.None
+        }
+        put(NavDisplay.PopTransitionKey) {
+            EnterTransition.None togetherWith ExitTransition.None
+        }
+        put(NavDisplay.PredictivePopTransitionKey) {
+            EnterTransition.None togetherWith ExitTransition.None
+        }
     }
 }
 
 fun EntryProviderScope<NavKey>.featureSection(
     navigator: Navigator,
+    useAnimation: Boolean = true
 ) {
+    fun slideTransitionMetadata() = com.shizq.bika.navigation.slideTransitionMetadata(useAnimation)
+
     entry<ConnectedRoute.DashboardRoute> {
         DashboardScreen(
             navigationToLeaderboard = { navigator.navigate(ConnectedRoute.LeaderboardRoute) },

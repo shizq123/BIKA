@@ -45,6 +45,7 @@ data class UserPreferences(
     val globalExcludedTopics: List<String> = emptyList(),
     val favoriteTags: List<FavoriteTag> = emptyList(),
     val blockedTags: Set<String> = emptySet(),
+    val usePredictiveBack: Boolean = false,
 )
 
 @Serializable

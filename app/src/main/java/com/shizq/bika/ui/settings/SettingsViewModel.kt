@@ -41,7 +41,8 @@ class SettingsViewModel @Inject constructor(
             isLoggingEnabled = it.isLoggingEnabled,
             downloadOverWifiOnly = it.downloadOverWifiOnly,
             maxConcurrentDownloads = it.maxConcurrentDownloads,
-            secureScreenEnabled = it.secureScreenEnabled
+            secureScreenEnabled = it.secureScreenEnabled,
+            usePredictiveBack = it.usePredictiveBack
         )
     }.stateIn(
         viewModelScope,
@@ -167,6 +168,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateUsePredictiveBack(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setUsePredictiveBack(enabled)
+        }
+    }
+
     fun updateDownloadOverWifiOnly(enabled: Boolean) {
         viewModelScope.launch {
             userPreferencesDataSource.setDownloadOverWifiOnly(enabled)
@@ -245,7 +252,8 @@ sealed interface SettingsUiState {
         val isLoggingEnabled: Boolean,
         val downloadOverWifiOnly: Boolean,
         val maxConcurrentDownloads: Int,
-        val secureScreenEnabled: Boolean
+        val secureScreenEnabled: Boolean,
+        val usePredictiveBack: Boolean
     ) : SettingsUiState
 }
 

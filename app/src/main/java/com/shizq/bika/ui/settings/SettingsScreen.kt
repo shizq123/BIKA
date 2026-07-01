@@ -170,6 +170,7 @@ fun SettingsScreen(
         onToggleDownloadOverWifiOnly = viewModel::updateDownloadOverWifiOnly,
         onUpdateMaxConcurrentDownloads = viewModel::updateMaxConcurrentDownloads,
         onToggleSecureScreenEnabled = viewModel::updateSecureScreenEnabled,
+        onToggleUsePredictiveBack = viewModel::updateUsePredictiveBack,
         onViewLogs = {
             scope.launch {
                 logsContent = viewModel.getLogsContent()
@@ -227,6 +228,7 @@ fun SettingsContent(
     onToggleDownloadOverWifiOnly: (enabled: Boolean) -> Unit = {},
     onUpdateMaxConcurrentDownloads: (count: Int) -> Unit = {},
     onToggleSecureScreenEnabled: (enabled: Boolean) -> Unit = {},
+    onToggleUsePredictiveBack: (enabled: Boolean) -> Unit = {},
     onViewLogs: () -> Unit = {},
     onExportLogs: () -> Unit = {},
     onLogoutClicked: () -> Unit = {},
@@ -335,6 +337,13 @@ fun SettingsContent(
                                     }
                                 },
                                 onOptionSelected = onUpdateFontScale
+                            )
+                            SwitchPreference(
+                                title = "返回页面过渡动画",
+                                summary = if (settingsUiState.usePredictiveBack) "已开启（返回上一页时带滑出转场动画）" else "已关闭（无转场瞬间返回，规避手势返回与系统动画冲突）",
+                                iconVector = Icons.Default.Refresh,
+                                checked = settingsUiState.usePredictiveBack,
+                                onCheckedChange = onToggleUsePredictiveBack
                             )
                         }
                     }
