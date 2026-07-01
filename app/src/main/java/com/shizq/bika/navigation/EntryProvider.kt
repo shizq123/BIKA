@@ -30,6 +30,7 @@ import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.settings.StorageManagerScreen
 import com.shizq.bika.ui.settings.DnsSettingsScreen
+import com.shizq.bika.ui.settings.BlockedTagsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 import com.shizq.bika.ui.download.DownloadListScreen
@@ -131,6 +132,7 @@ fun EntryProviderScope<NavKey>.featureSection(
             navigationToReader = { id, order ->
                 navigator.navigate(ConnectedRoute.ReaderRoute(id, order))
             },
+            onBlockedTagsClick = { navigator.navigate(ConnectedRoute.BlockedTagsRoute) },
         )
     }
 
@@ -145,6 +147,7 @@ fun EntryProviderScope<NavKey>.featureSection(
             onNavigateToFeed = { action ->
                 navigator.navigate(ConnectedRoute.FeedRoute(action))
             },
+            onBlockedTagsClick = { navigator.navigate(ConnectedRoute.BlockedTagsRoute) },
             viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
                 key = key.toString(),
             ) { factory ->
@@ -212,6 +215,7 @@ fun EntryProviderScope<NavKey>.featureSection(
             navigationToLogin = { navigator.navigate(AuthenticationRoute) },
             navigationToStorageManager = { navigator.navigate(ConnectedRoute.StorageManagerRoute) },
             navigationToDnsSettings = { navigator.navigate(ConnectedRoute.DnsSettingsRoute) },
+            navigationToBlockedTags = { navigator.navigate(ConnectedRoute.BlockedTagsRoute) },
             onBackClick = navigator::goBack
         )
     }
@@ -226,6 +230,13 @@ fun EntryProviderScope<NavKey>.featureSection(
         metadata = slideTransitionMetadata()
     ) {
         DnsSettingsScreen(
+            onBackClick = navigator::goBack
+        )
+    }
+    entry<ConnectedRoute.BlockedTagsRoute>(
+        metadata = slideTransitionMetadata()
+    ) {
+        BlockedTagsScreen(
             onBackClick = navigator::goBack
         )
     }

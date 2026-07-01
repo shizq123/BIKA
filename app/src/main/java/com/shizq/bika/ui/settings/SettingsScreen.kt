@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Lock
@@ -64,6 +65,7 @@ fun SettingsScreen(
     navigationToLogin: () -> Unit,
     navigationToStorageManager: () -> Unit,
     navigationToDnsSettings: () -> Unit,
+    navigationToBlockedTags: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
 ) {
@@ -203,6 +205,7 @@ fun SettingsScreen(
         },
         onStorageManagerClick = navigationToStorageManager,
         onDnsSettingsClick = navigationToDnsSettings,
+        onBlockedTagsClick = navigationToBlockedTags,
         onBackClick = onBackClick,
         onCheckForUpdates = viewModel::checkForUpdates,
     )
@@ -216,6 +219,7 @@ fun SettingsContent(
     onClearCache: () -> Unit = {},
     onStorageManagerClick: () -> Unit = {},
     onDnsSettingsClick: () -> Unit = {},
+    onBlockedTagsClick: () -> Unit = {},
     onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit = {},
     onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
     onUpdateFontScale: (scale: Float) -> Unit = {},
@@ -343,6 +347,12 @@ fun SettingsContent(
                                 iconVector = Icons.Default.Lock,
                                 checked = settingsUiState.secureScreenEnabled,
                                 onCheckedChange = onToggleSecureScreenEnabled
+                            )
+                            Preference(
+                                title = "标签屏蔽管理",
+                                summary = "管理或添加已屏蔽的漫画标签",
+                                iconVector = Icons.Default.Block,
+                                onClick = onBlockedTagsClick
                             )
                         }
                     }
