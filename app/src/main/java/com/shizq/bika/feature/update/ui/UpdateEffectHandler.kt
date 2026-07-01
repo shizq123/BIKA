@@ -2,7 +2,14 @@ package com.shizq.bika.feature.update.ui
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.Lifecycle
 import com.shizq.bika.feature.update.platform.AndroidApkInstaller
 import kotlinx.coroutines.flow.Flow
 import java.io.File
@@ -13,6 +20,29 @@ fun UpdateEffectHandler(
     onError: (String) -> Unit,
 ) {
     val context = LocalContext.current
+
+    var pendingApkPath by remember { mutableStateOf<String?>(null) }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            val installer = AndroidApkInstaller(context.applicationContext)
+            val apkPath = pendingApkPath
+            if (apkPath != null && installer.canRequestPackageInstalls()) {
+                val apkFile = File(apkPath)
+                if (apkFile.exists()) {
+                    runCatching {
+                        installer.install(apkFile)
+                        pendingApkPath = null
+                    }.onFailure { throwable ->
+                        onError(
+                            throwable.localizedMessage ?: "无法打开安装器",
+                        )
+                    }
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         val installer = AndroidApkInstaller(context.applicationContext)
@@ -30,6 +60,7 @@ fun UpdateEffectHandler(
                         if (installer.canRequestPackageInstalls()) {
                             installer.install(apkFile)
                         } else {
+                            pendingApkPath = effect.apkPath
                             installer.openUnknownAppSourcesSettings()
                         }
                     }.onFailure { throwable ->
