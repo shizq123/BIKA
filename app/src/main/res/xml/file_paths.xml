@@ -2,6 +2,8 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- 允许共享外部存储专属目录 -->
     <external-path name="external_files" path="." />
+    <!-- 允许共享外部存储专属 files 目录 -->
+    <external-files-path name="external_files_dir" path="." />
     <!-- 允许共享缓存目录 -->
     <cache-path name="cache_files" path="." />
 </paths>
