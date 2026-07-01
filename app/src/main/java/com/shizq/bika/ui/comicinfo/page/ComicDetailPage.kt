@@ -2,6 +2,7 @@ package com.shizq.bika.ui.comicinfo.page
 
 import java.text.DecimalFormat
 import androidx.compose.animation.animateContentSize
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -88,7 +89,7 @@ enum class BottomBarButtonType(val id: String, val label: String) {
     READ("read", "开始阅读")
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ComicDetailPage(
     detail: ComicDetail,
@@ -102,6 +103,7 @@ fun ComicDetailPage(
     navigationToComicInfo: (String) -> Unit = {},
     navigationToFeed: (DiscoveryAction) -> Unit,
     onDownloadClick: () -> Unit = {},
+    onTagLongClick: (String) -> Unit = {},
 ) {
     Box(
         modifier = modifier
@@ -148,21 +150,27 @@ fun ComicDetailPage(
             )
             val all = detail.tags + detail.categories
             FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalArrangement = Arrangement.spacedBy((-8).dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                all.fastForEach {
-                    SuggestionChip(
-                        { navigationToFeed(DiscoveryAction.AdvancedSearch(it)) },
-                        label = {
-                            Text(
-                                it,
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(4.dp)
+                all.fastForEach { tag ->
+                    Surface(
+                        shape = MaterialTheme.shapes.small,
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                        modifier = Modifier
+                            .combinedClickable(
+                                onClick = { navigationToFeed(DiscoveryAction.AdvancedSearch(tag)) },
+                                onLongClick = { onTagLongClick(tag) }
                             )
-                        }
-                    )
+                    ) {
+                        Text(
+                            tag,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                        )
+                    }
                 }
             }
 

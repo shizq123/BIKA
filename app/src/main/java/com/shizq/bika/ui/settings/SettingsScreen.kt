@@ -17,6 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Lock
@@ -64,6 +65,7 @@ fun SettingsScreen(
     navigationToLogin: () -> Unit,
     navigationToStorageManager: () -> Unit,
     navigationToDnsSettings: () -> Unit,
+    navigationToBlockedTags: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
 ) {
@@ -168,6 +170,7 @@ fun SettingsScreen(
         onToggleDownloadOverWifiOnly = viewModel::updateDownloadOverWifiOnly,
         onUpdateMaxConcurrentDownloads = viewModel::updateMaxConcurrentDownloads,
         onToggleSecureScreenEnabled = viewModel::updateSecureScreenEnabled,
+        onToggleUsePredictiveBack = viewModel::updateUsePredictiveBack,
         onViewLogs = {
             scope.launch {
                 logsContent = viewModel.getLogsContent()
@@ -203,6 +206,7 @@ fun SettingsScreen(
         },
         onStorageManagerClick = navigationToStorageManager,
         onDnsSettingsClick = navigationToDnsSettings,
+        onBlockedTagsClick = navigationToBlockedTags,
         onBackClick = onBackClick,
         onCheckForUpdates = viewModel::checkForUpdates,
     )
@@ -216,6 +220,7 @@ fun SettingsContent(
     onClearCache: () -> Unit = {},
     onStorageManagerClick: () -> Unit = {},
     onDnsSettingsClick: () -> Unit = {},
+    onBlockedTagsClick: () -> Unit = {},
     onUpdateDarkThemeConfig: (config: DarkThemeConfig) -> Unit = {},
     onToggleAutoCheckIn: (enabled: Boolean) -> Unit = {},
     onUpdateFontScale: (scale: Float) -> Unit = {},
@@ -223,6 +228,7 @@ fun SettingsContent(
     onToggleDownloadOverWifiOnly: (enabled: Boolean) -> Unit = {},
     onUpdateMaxConcurrentDownloads: (count: Int) -> Unit = {},
     onToggleSecureScreenEnabled: (enabled: Boolean) -> Unit = {},
+    onToggleUsePredictiveBack: (enabled: Boolean) -> Unit = {},
     onViewLogs: () -> Unit = {},
     onExportLogs: () -> Unit = {},
     onLogoutClicked: () -> Unit = {},
@@ -332,6 +338,13 @@ fun SettingsContent(
                                 },
                                 onOptionSelected = onUpdateFontScale
                             )
+                            SwitchPreference(
+                                title = "返回页面过渡动画",
+                                summary = if (settingsUiState.usePredictiveBack) "已开启（返回上一页时带滑出转场动画）" else "已关闭（无转场瞬间返回，规避手势返回与系统动画冲突）",
+                                iconVector = Icons.Default.Refresh,
+                                checked = settingsUiState.usePredictiveBack,
+                                onCheckedChange = onToggleUsePredictiveBack
+                            )
                         }
                     }
 
@@ -343,6 +356,12 @@ fun SettingsContent(
                                 iconVector = Icons.Default.Lock,
                                 checked = settingsUiState.secureScreenEnabled,
                                 onCheckedChange = onToggleSecureScreenEnabled
+                            )
+                            Preference(
+                                title = "标签屏蔽管理",
+                                summary = "管理或添加已屏蔽的漫画标签",
+                                iconVector = Icons.Default.Block,
+                                onClick = onBlockedTagsClick
                             )
                         }
                     }
