@@ -39,5 +39,6 @@ internal object DatabaseModule {
             // 快捷路径：schema 3 直达 6，Room 会优先选择跨度最大的路径
             MIGRATION_3_6,
         )
+        .fallbackToDestructiveMigration(dropAllTables = true)
         .build()
 }

@@ -5,6 +5,7 @@ package com.shizq.bika.ui.comicinfo
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
@@ -48,12 +49,19 @@ class ComicInfoViewModel @AssistedInject constructor(
     private val downloadTaskRepository: DownloadTaskRepository,
     private val downloadScheduler: DownloadScheduler,
     private val historyDao: ReadingHistoryDao,
+    private val userPreferencesDataSource: UserPreferencesDataSource,
     @Assisted private val id: String,
 ) : ViewModel() {
 
     private val stateMachine = stateMachineFactory.create(id).launchIn(viewModelScope)
 
     val state = stateMachine.state
+
+    fun addBlockedTag(tag: String) {
+        viewModelScope.launch {
+            userPreferencesDataSource.addBlockedTag(tag)
+        }
+    }
 
     val downloadTasks = downloadTaskRepository.observeTasksByComic(id)
         .stateIn(

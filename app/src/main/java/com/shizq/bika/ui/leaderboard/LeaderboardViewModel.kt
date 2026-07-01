@@ -70,10 +70,22 @@ class LeaderboardViewModel @Inject constructor(
             monthly.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
         } else monthly
 
+        val finalDaily = if (prefs.blockedTags.isNotEmpty()) {
+            filteredDaily.filter { comic -> comic.tags.none { it in prefs.blockedTags } }
+        } else filteredDaily
+
+        val finalWeekly = if (prefs.blockedTags.isNotEmpty()) {
+            filteredWeekly.filter { comic -> comic.tags.none { it in prefs.blockedTags } }
+        } else filteredWeekly
+
+        val finalMonthly = if (prefs.blockedTags.isNotEmpty()) {
+            filteredMonthly.filter { comic -> comic.tags.none { it in prefs.blockedTags } }
+        } else filteredMonthly
+
         AllLeaderboards(
-            dailyComics = filteredDaily,
-            weeklyComics = filteredWeekly,
-            monthlyComics = filteredMonthly,
+            dailyComics = finalDaily,
+            weeklyComics = finalWeekly,
+            monthlyComics = finalMonthly,
             knightUsers = allData.knightUsers,
         )
     }

@@ -36,6 +36,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
@@ -89,28 +90,34 @@ class FeedViewModel @AssistedInject constructor(
     val totalPages: StateFlow<Int>
         field = MutableStateFlow(1)
 
-    // 合并 sort、page、filter、DB history 变化，构建统一的分页数据流。
+    // 合并 sort、page、filter、blockedTags 变化，构建统一的分页数据流。
     // 注意：PagingData 不能在 cachedIn 之后再次被 combine/map，否则会运行时崩溃。
     // 因此将所有 map/filter 操作放在 cachedIn 之前。
     val pagedComics: Flow<PagingData<ComicSimple>> = combine(
         currentSortOrder,
         currentPage,
-        filterSelections
-    ) { sort, page, filters ->
-        Triple(sort, page, filters)
-    }.flatMapLatest { (sort, page, filters) ->
+        filterSelections,
+        userPreferencesDataSource.userData.map { it.blockedTags }.distinctUntilChanged()
+    ) { sort, page, filters, blockedTags ->
+        BlockedFilterState(sort, page, filters, blockedTags)
+    }.flatMapLatest { state ->
         Pager(
             config = PagingConfig(
                 pageSize = 40
             ),
-            initialKey = page
+            initialKey = state.page
         ) {
-            createPagingSource(action, sort)
+            createPagingSource(action, state.sort)
         }.flow.map { pd ->
-            if (filters.isEmpty() || filters.values.all { it.isEmpty() }) {
+            val step1 = if (state.filters.isEmpty() || state.filters.values.all { it.isEmpty() }) {
                 pd
             } else {
-                pd.pagingFilter { comic -> matchesFilters(comic, filters) }
+                pd.pagingFilter { comic -> matchesFilters(comic, state.filters) }
+            }
+            if (state.blockedTags.isEmpty()) {
+                step1
+            } else {
+                step1.pagingFilter { comic -> comic.tags.none { it in state.blockedTags } }
             }
         }
     }.cachedIn(viewModelScope)
@@ -414,3 +421,10 @@ fun FavoriteTag.toAction(): DiscoveryAction {
         else -> DiscoveryAction.AdvancedSearch(name)
     }
 }
+
+private data class BlockedFilterState(
+    val sort: Sort,
+    val page: Int,
+    val filters: Map<FilterGroup, List<String>>,
+    val blockedTags: Set<String>
+)

@@ -213,4 +213,22 @@ class UserPreferencesDataSource @Inject constructor(
             it.copy(favoriteTags = tags)
         }
     }
+
+    suspend fun setUsePredictiveBack(enabled: Boolean) {
+        userPreferences.updateData {
+            it.copy(usePredictiveBack = enabled)
+        }
+    }
+
+    suspend fun addBlockedTag(tag: String) {
+        userPreferences.updateData {
+            it.copy(blockedTags = it.blockedTags + tag)
+        }
+    }
+
+    suspend fun removeBlockedTag(tag: String) {
+        userPreferences.updateData {
+            it.copy(blockedTags = it.blockedTags - tag)
+        }
+    }
 }

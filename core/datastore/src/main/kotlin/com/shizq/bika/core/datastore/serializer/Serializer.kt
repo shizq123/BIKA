@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.shizq.bika.core.datastore.serializer
 
 import androidx.datastore.core.CorruptionException
@@ -6,6 +8,7 @@ import com.shizq.bika.core.datastore.di.DataStoreModule.DataStoreJson
 import com.shizq.bika.core.datastore.model.UpdatePreference
 import com.shizq.bika.core.datastore.model.UserCredentials
 import com.shizq.bika.core.model.UserPreferences
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import java.io.InputStream

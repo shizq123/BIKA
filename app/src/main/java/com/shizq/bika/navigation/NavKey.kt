@@ -61,6 +61,9 @@ data object ConnectedRoute : Root {
 
     @Serializable
     data object DnsSettingsRoute : Connected
+
+    @Serializable
+    data object BlockedTagsRoute : Connected
 }
 
 @Serializable

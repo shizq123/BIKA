@@ -78,10 +78,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
@@ -105,6 +107,7 @@ fun FeedScreen(
     onBackClick: () -> Unit,
     onComicClick: (String) -> Unit,
     onNavigateToFeed: (DiscoveryAction) -> Unit = {},
+    onBlockedTagsClick: () -> Unit = {},
     viewModel: FeedViewModel = hiltViewModel(),
     title: String
 ) {
@@ -173,6 +176,7 @@ fun FeedScreen(
                 onUpdateName = viewModel::updateFavoriteTagName,
                 onMove = viewModel::moveFavoriteTag,
                 onAddCustom = viewModel::addCustomFavoriteTag,
+                onBlockedTagsClick = onBlockedTagsClick,
                 onClose = { showDrawer = false }
             )
         }
@@ -554,6 +558,7 @@ fun FavoriteTagsDrawer(
     onUpdateName: (FavoriteTag, String) -> Unit,
     onMove: (fromIndex: Int, toIndex: Int) -> Unit,
     onAddCustom: (String) -> Unit,
+    onBlockedTagsClick: () -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -574,6 +579,7 @@ fun FavoriteTagsDrawer(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(vertical = 16.dp)
         ) {
             // Header
@@ -589,6 +595,9 @@ fun FavoriteTagsDrawer(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.weight(1f)
                 )
+                IconButton(onClick = onBlockedTagsClick) {
+                    Icon(Icons.Rounded.Block, contentDescription = "标签屏蔽管理")
+                }
                 IconButton(onClick = { showAddCustomDialog = true }) {
                     Icon(Icons.Rounded.Add, contentDescription = "新增标签")
                 }

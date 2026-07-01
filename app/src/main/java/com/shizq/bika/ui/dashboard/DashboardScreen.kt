@@ -44,6 +44,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
+import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -124,6 +125,7 @@ fun DashboardScreen(
     onDownloadsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     navigationToReader: (String, Int) -> Unit,
+    onBlockedTagsClick: () -> Unit = {},
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -166,7 +168,7 @@ fun DashboardScreen(
         lastReadHistory = lastReadHistory,
         onCheckInClick = { viewModel.dispatch(DashboardAction.CheckIn) },
         onUpdateSlogan = { slogan -> viewModel.dispatch(DashboardAction.UpdateSlogan(slogan)) },
-        sloganResult = OperationResult.Success,
+        sloganResult = state.sloganResult,
         onDismissSloganResult = { viewModel.dispatch(DashboardAction.DismissSloganResult) },
         onChangePassword = { old, new ->
             viewModel.dispatch(
@@ -176,7 +178,7 @@ fun DashboardScreen(
                 )
             )
         },
-        passwordResult = OperationResult.Success,
+        passwordResult = state.passwordResult,
         onDismissPasswordResult = { viewModel.dispatch(DashboardAction.DismissPasswordResult) },
         channelSettingsUiState = channelSettingsUiState,
         navigationToLeaderboard = navigationToLeaderboard,
@@ -209,6 +211,7 @@ fun DashboardScreen(
             )
         },
         onAddCustomFavorite = { viewModel.dispatch(DashboardAction.AddCustomFavoriteTag(it)) },
+        onBlockedTagsClick = onBlockedTagsClick,
     )
 }
 
@@ -241,6 +244,7 @@ fun DashboardContent(
     onUpdateFavoriteName: (FavoriteTag, String) -> Unit,
     onMoveFavorite: (fromIndex: Int, toIndex: Int) -> Unit,
     onAddCustomFavorite: (String) -> Unit,
+    onBlockedTagsClick: () -> Unit = {},
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -713,6 +717,7 @@ fun DashboardContent(
                 onUpdateName = onUpdateFavoriteName,
                 onMove = onMoveFavorite,
                 onAddCustom = onAddCustomFavorite,
+                onBlockedTagsClick = onBlockedTagsClick,
                 onClose = { showBookmarkDrawer = false }
             )
         }
