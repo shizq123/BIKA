@@ -1,4 +1,4 @@
-package com.shizq.bika.core.model
+package com.shizq.bika.core.model.reader
 
 /**
  * 屏幕点击区域布局策略.
