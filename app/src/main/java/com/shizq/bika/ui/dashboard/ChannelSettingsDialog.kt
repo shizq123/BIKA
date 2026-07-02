@@ -94,10 +94,10 @@ fun ChannelSettingsDialogContent(
                 ) {
                     items(
                         items = data,
-                        key = { it.resName }
+                        key = { it.displayName }
                     ) { channel ->
                         ReorderableItem(
-                            state = state, key = channel.resName,
+                            state = state, key = channel.displayName,
                         ) { isDragging ->
                             val elevation by animateDpAsState(
                                 targetValue = if (isDragging) 8.dp else 0.dp,

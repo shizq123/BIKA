@@ -16,7 +16,7 @@ class ChannelSettingsViewModel @Inject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
 ): ViewModel() {
     val userChannelPreferences = userPreferencesDataSource.userData
-    .map { it.channels }
+        .map { it.dashboard.channels }
     .stateIn(
         viewModelScope,
         SharingStarted.WhileSubscribed(5000),
