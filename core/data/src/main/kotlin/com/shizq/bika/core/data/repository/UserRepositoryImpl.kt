@@ -21,7 +21,7 @@ class UserRepositoryImpl @Inject constructor(
             title = profile.title,
             gender = profile.gender,
             slogan = profile.slogan,
-            characters = profile.characters,
+            honorBadges = profile.characters,
         )
         return profile
     }
