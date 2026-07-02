@@ -1,4 +1,4 @@
-package com.shizq.bika.core.model
+package com.shizq.bika.core.model.reader
 
 enum class ScreenOrientation(val label: String) {
     System("跟随系统"),

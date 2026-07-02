@@ -7,7 +7,7 @@ import coil3.imageLoader
 import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.DarkThemeConfig
+import com.shizq.bika.core.model.theme.DarkThemeConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
@@ -16,14 +16,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.jsonArray
 import java.text.DecimalFormat
 
 @HiltViewModel
@@ -35,14 +35,14 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
     val settingsUiState = userPreferencesDataSource.userData.map {
         SettingsUiState.Success(
-            darkThemeConfig = it.darkThemeConfig,
-            autoCheckIn = it.autoCheckIn,
-            fontScale = it.fontScale,
-            isLoggingEnabled = it.isLoggingEnabled,
-            downloadOverWifiOnly = it.downloadOverWifiOnly,
-            maxConcurrentDownloads = it.maxConcurrentDownloads,
-            secureScreenEnabled = it.secureScreenEnabled,
-            usePredictiveBack = it.usePredictiveBack
+            darkThemeConfig = it.theme.darkThemeConfig,
+            autoCheckIn = it.app.autoCheckIn,
+            fontScale = it.app.fontScale,
+            isLoggingEnabled = it.network.isLoggingEnabled,
+            downloadOverWifiOnly = it.download.overWifiOnly,
+            maxConcurrentDownloads = it.download.maxConcurrentDownloads,
+            secureScreenEnabled = it.app.secureScreenEnabled,
+            usePredictiveBack = it.app.usePredictiveBack
         )
     }.stateIn(
         viewModelScope,
