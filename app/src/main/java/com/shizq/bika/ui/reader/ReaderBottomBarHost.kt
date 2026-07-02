@@ -1,7 +1,7 @@
 package com.shizq.bika.ui.reader
 
 import androidx.compose.runtime.Composable
-import com.shizq.bika.core.model.ReadingMode
+import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.ui.reader.bar.ReaderBottomBar
 
 @Composable

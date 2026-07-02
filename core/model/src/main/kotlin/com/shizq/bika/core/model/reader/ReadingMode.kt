@@ -1,4 +1,4 @@
-package com.shizq.bika.core.model
+package com.shizq.bika.core.model.reader
 
 /**
  * 定义阅读器的布局和行为模式.

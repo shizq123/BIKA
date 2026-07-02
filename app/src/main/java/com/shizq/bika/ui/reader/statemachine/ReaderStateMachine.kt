@@ -171,18 +171,18 @@ class ReaderStateMachine @Inject constructor(
                 }
                 collectWhileInState(userPreferencesDataSource.userData) {
                     val newConfig = ReaderConfig(
-                        volumeKeyNavigation = it.volumeKeyNavigation,
-                        readingMode = it.readingMode,
-                        screenOrientation = it.screenOrientation,
-                        tapZoneLayout = it.tapZoneLayout,
-                        preloadCount = it.preloadCount,
-                        eyeCareEnabled = it.eyeCareEnabled,
-                        eyeCareDarkness = it.eyeCareDarkness,
-                        autoScrollEnabled = it.autoScrollEnabled,
-                        autoScrollSpeed = it.autoScrollSpeed,
-                        bookSpreadsMode = it.bookSpreadsMode,
-                        magnifierEnabled = it.magnifierEnabled,
-                        statusBarCapsuleEnabled = it.statusBarCapsuleEnabled,
+                        volumeKeyNavigation = it.reader.volumeKeyNavigation,
+                        readingMode = it.reader.readingMode,
+                        screenOrientation = it.reader.screenOrientation,
+                        tapZoneLayout = it.reader.tapZoneLayout,
+                        preloadCount = it.reader.preloadCount,
+                        eyeCareEnabled = it.reader.eyeCare.enabled,
+                        eyeCareDarkness = it.reader.eyeCare.darkness,
+                        autoScrollEnabled = it.reader.autoScroll.enabled,
+                        autoScrollSpeed = it.reader.autoScroll.speed,
+                        bookSpreadsMode = it.reader.bookSpreadsMode,
+                        magnifierEnabled = it.reader.magnifierEnabled,
+                        statusBarCapsuleEnabled = it.reader.statusBarCapsuleEnabled,
                     )
                     mutate { copy(config = newConfig) }
                 }

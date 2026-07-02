@@ -2,59 +2,55 @@
 
 package com.shizq.bika.ui.reader
 
-import kotlinx.coroutines.FlowPreview
 import android.content.pm.ActivityInfo
 import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
-import com.shizq.bika.ui.reader.layout.LocalReaderConfig
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.activity.compose.BackHandler
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.Remove
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -62,9 +58,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import coil3.request.crossfade
 import com.shizq.bika.core.context.findActivity
-import com.shizq.bika.core.model.ReadingMode
-import com.shizq.bika.core.model.ScreenOrientation
+import com.shizq.bika.core.model.reader.ReadingMode
+import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.ui.FullScreenLoading
 import com.shizq.bika.core.ui.composition.LocalWindow
 import com.shizq.bika.paging.Chapter
@@ -76,9 +73,9 @@ import com.shizq.bika.ui.reader.components.ReadingModeSelectBottomSheet
 import com.shizq.bika.ui.reader.components.ReadingSettingsBottomSheet
 import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
 import com.shizq.bika.ui.reader.gesture.rememberGestureState
+import com.shizq.bika.ui.reader.layout.LocalReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.layout.ReaderController
-import com.shizq.bika.ui.reader.layout.ReaderLayout
 import com.shizq.bika.ui.reader.layout.ReaderLayoutHost
 import com.shizq.bika.ui.reader.layout.SideSheetLayout
 import com.shizq.bika.ui.reader.layout.rememberReaderContext
@@ -95,12 +92,12 @@ import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.ui.reader.util.preload.PagingPreload
+import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import coil3.request.crossfade
 
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
@@ -390,13 +387,13 @@ private fun ReaderContent(
             CompositionLocalProvider(LocalReaderConfig provides config) {
                 Box(
                     modifier = Modifier
-                    .fillMaxSize()
-                    .drawWithContent {
-                        drawContent()
-                        if (config.eyeCareEnabled) {
-                            drawRect(Color.Black.copy(alpha = config.eyeCareDarkness))
+                        .fillMaxSize()
+                        .drawWithContent {
+                            drawContent()
+                            if (config.eyeCareEnabled) {
+                                drawRect(Color.Black.copy(alpha = config.eyeCareDarkness))
+                            }
                         }
-                    }
             ) {
                 ReaderScaffold(
                     showMenu = overlayState.showSystemBars,
