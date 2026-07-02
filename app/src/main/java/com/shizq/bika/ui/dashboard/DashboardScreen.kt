@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -657,7 +656,7 @@ fun DashboardContent(
 
                 items(
                     channelSettingsUiState,
-                    key = { it.resName }
+                    key = { it.iconKey }
                 ) { item ->
                     val context = LocalContext.current
 

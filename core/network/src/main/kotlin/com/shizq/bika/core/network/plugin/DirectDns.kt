@@ -8,7 +8,6 @@ import jakarta.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import okhttp3.Dns
 import java.net.InetAddress
@@ -29,10 +28,10 @@ class DirectDns @Inject constructor(
         scope.launch(Dispatchers.IO) {
             userPreferencesDataSource.userData
                 .distinctUntilChanged { old, new ->
-                    old.apiDns == new.apiDns && old.imageDns == new.imageDns
+                    old.network.dns.apiDns == new.network.dns.apiDns && old.network.dns.imageDns == new.network.dns.imageDns
                 }
                 .collect { userData ->
-                    val apiIps = userData.apiDns.mapNotNull { ip ->
+                    val apiIps = userData.network.dns.apiDns.mapNotNull { ip ->
                         try {
                             InetAddress.getByName(ip)
                         } catch (e: UnknownHostException) {
@@ -40,7 +39,7 @@ class DirectDns @Inject constructor(
                             null
                         }
                     }
-                    val imageIps = userData.imageDns.mapNotNull { ip ->
+                    val imageIps = userData.network.dns.imageDns.mapNotNull { ip ->
                         try {
                             InetAddress.getByName(ip)
                         } catch (e: UnknownHostException) {
