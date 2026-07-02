@@ -7,9 +7,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.Lifecycle
 import com.shizq.bika.feature.update.platform.AndroidApkInstaller
 import kotlinx.coroutines.flow.Flow
 import java.io.File
@@ -26,6 +26,7 @@ fun UpdateEffectHandler(
     val lifecycleOwner = LocalLifecycleOwner.current
     LaunchedEffect(lifecycleOwner) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            // TODO: 两个 AndroidApkInstaller
             val installer = AndroidApkInstaller(context.applicationContext)
             val apkPath = pendingApkPath
             if (apkPath != null && installer.canRequestPackageInstalls()) {
