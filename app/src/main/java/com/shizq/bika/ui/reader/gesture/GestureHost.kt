@@ -5,8 +5,8 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
-import com.shizq.bika.core.model.ReaderAction
-import com.shizq.bika.core.model.TapZoneLayout
+import com.shizq.bika.core.model.reader.ReaderAction
+import com.shizq.bika.core.model.reader.TapZoneLayout
 import com.shizq.bika.ui.reader.gesture.ReadingDirection.Ltr
 import com.shizq.bika.ui.reader.gesture.ReadingDirection.Rtl
 

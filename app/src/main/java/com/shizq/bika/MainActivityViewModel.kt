@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.navigation3.runtime.NavKey
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.DarkThemeConfig
+import com.shizq.bika.core.model.theme.DarkThemeConfig
 import com.shizq.bika.navigation.AuthenticationRoute
 import com.shizq.bika.navigation.ConnectedRoute
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -25,9 +25,9 @@ class MainActivityViewModel @Inject constructor(
         .map { !it.token.isNullOrBlank() }
 
     private val themeConfigFlow = userPreferencesDataSource.userData
-        .map { it.darkThemeConfig }
+        .map { it.theme.darkThemeConfig }
     private val fontScaleFlow = userPreferencesDataSource.userData
-        .map { it.fontScale }
+        .map { it.app.fontScale }
 
     val uiState: StateFlow<MainActivityUiState> = combine(
         loginStateFlow,

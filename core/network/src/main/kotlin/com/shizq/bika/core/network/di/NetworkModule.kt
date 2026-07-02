@@ -71,7 +71,7 @@ internal object NetworkModule {
         }
         bikaAuth {
             channel {
-                val activeLine = userPreferencesDataSource.userData.first().activeDnsLine
+                val activeLine = userPreferencesDataSource.userData.first().network.dns.activeLine
                 when (activeLine.lowercase()) {
                     "telecom" -> "1"
                     "unicom" -> "2"

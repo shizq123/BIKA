@@ -15,7 +15,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
-import com.shizq.bika.core.model.Direction
+import com.shizq.bika.core.model.reader.Direction
 import com.shizq.bika.paging.ChapterPage
 import kotlinx.coroutines.flow.distinctUntilChanged
 

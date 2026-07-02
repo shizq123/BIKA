@@ -2,7 +2,6 @@
 
 package com.shizq.bika.ui.feed
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.Pager
@@ -10,11 +9,11 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
-import androidx.paging.filter as pagingFilter
-import androidx.paging.map as pagingMap
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.DetailedHistory
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.Sort
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
@@ -25,26 +24,25 @@ import com.shizq.bika.paging.RecentUpdatesPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
 import com.shizq.bika.ui.tag.FilterGroup
 import com.shizq.bika.util.computeProgressText
-import com.shizq.bika.util.injectLocalStatusFrom
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.FavoriteTag
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Provider
+import androidx.paging.filter as pagingFilter
 
 @HiltViewModel(assistedFactory = FeedViewModel.Factory::class)
 class FeedViewModel @AssistedInject constructor(
@@ -67,8 +65,8 @@ class FeedViewModel @AssistedInject constructor(
         userPreferencesDataSource.userData
     ) { local, prefs ->
         val newMap = local.toMutableMap()
-        if (prefs.excludeTopicsGlobal) {
-            newMap[FilterGroup.ExcludeTopic] = prefs.globalExcludedTopics
+        if (prefs.filter.excludeTopicsGlobal) {
+            newMap[FilterGroup.ExcludeTopic] = prefs.filter.globalExcludedTopics
         }
         newMap
     }.stateIn(
@@ -78,7 +76,7 @@ class FeedViewModel @AssistedInject constructor(
     )
 
     val excludeTopicsGlobal: StateFlow<Boolean> = userPreferencesDataSource.userData
-        .map { it.excludeTopicsGlobal }
+        .map { it.filter.excludeTopicsGlobal }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -97,7 +95,7 @@ class FeedViewModel @AssistedInject constructor(
         currentSortOrder,
         currentPage,
         filterSelections,
-        userPreferencesDataSource.userData.map { it.blockedTags }.distinctUntilChanged()
+        userPreferencesDataSource.userData.map { it.filter.blockedTags }.distinctUntilChanged()
     ) { sort, page, filters, blockedTags ->
         BlockedFilterState(sort, page, filters, blockedTags)
     }.flatMapLatest { state ->
@@ -135,7 +133,7 @@ class FeedViewModel @AssistedInject constructor(
             if (isGlobal) {
                 viewModelScope.launch {
                     val prefs = userPreferencesDataSource.userData.first()
-                    val currentList = prefs.globalExcludedTopics.toMutableList()
+                    val currentList = prefs.filter.globalExcludedTopics.toMutableList()
                     if (currentList.contains(value)) {
                         currentList.remove(value)
                     } else {
@@ -174,7 +172,8 @@ class FeedViewModel @AssistedInject constructor(
                 val localExcluded = localFilterSelections.value[FilterGroup.ExcludeTopic].orEmpty()
                 userPreferencesDataSource.setGlobalExcludedTopics(localExcluded)
             } else {
-                val globalExcluded = userPreferencesDataSource.userData.first().globalExcludedTopics
+                val globalExcluded =
+                    userPreferencesDataSource.userData.first().filter.globalExcludedTopics
                 localFilterSelections.update { currentMap ->
                     val newMap = currentMap.toMutableMap()
                     if (globalExcluded.isNotEmpty()) {
@@ -201,7 +200,7 @@ class FeedViewModel @AssistedInject constructor(
     val currentAction: DiscoveryAction = action
 
     val favoriteTags: StateFlow<List<FavoriteTag>> = userPreferencesDataSource.userData
-        .map { it.favoriteTags }
+        .map { it.filter.favoriteTags }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -210,7 +209,8 @@ class FeedViewModel @AssistedInject constructor(
 
     fun addFavoriteTag(tag: FavoriteTag) {
         viewModelScope.launch {
-            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            val currentTags =
+                userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
             if (currentTags.none { it.name == tag.name && it.actionType == tag.actionType }) {
                 currentTags.add(tag)
                 userPreferencesDataSource.updateFavoriteTags(currentTags)
@@ -220,7 +220,8 @@ class FeedViewModel @AssistedInject constructor(
 
     fun removeFavoriteTag(tag: FavoriteTag) {
         viewModelScope.launch {
-            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            val currentTags =
+                userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
             currentTags.removeAll { it.name == tag.name && it.actionType == tag.actionType }
             userPreferencesDataSource.updateFavoriteTags(currentTags)
         }
@@ -229,7 +230,8 @@ class FeedViewModel @AssistedInject constructor(
     fun updateFavoriteTagName(tag: FavoriteTag, newName: String) {
         if (newName.isBlank()) return
         viewModelScope.launch {
-            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            val currentTags =
+                userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
             val index = currentTags.indexOfFirst { it.name == tag.name && it.actionType == tag.actionType }
             if (index != -1) {
                 currentTags[index] = currentTags[index].copy(name = newName)
@@ -240,7 +242,8 @@ class FeedViewModel @AssistedInject constructor(
 
     fun moveFavoriteTag(fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {
-            val currentTags = userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+            val currentTags =
+                userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
             if (fromIndex in currentTags.indices && toIndex in currentTags.indices) {
                 val tag = currentTags.removeAt(fromIndex)
                 currentTags.add(toIndex, tag)
