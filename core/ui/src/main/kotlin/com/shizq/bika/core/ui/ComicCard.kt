@@ -36,12 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
 import coil3.compose.AsyncImage
-import com.shizq.bika.core.model.ComicSimple
-import com.shizq.bika.core.model.Image2
+import com.shizq.bika.core.model.ComicSummary
+import com.shizq.bika.core.model.RemoteImage
 
 @Composable
 fun ComicCard(
-    comic: ComicSimple,
+    comic: ComicSummary,
     modifier: Modifier = Modifier,
     onItemClick: () -> Unit = {}
 ) {
@@ -213,7 +213,7 @@ private fun Tag(text: String, modifier: Modifier = Modifier) {
 private fun ComicCardPreview() {
     MaterialTheme {
         ComicCard(
-            comic = ComicSimple(
+            comic = ComicSummary(
                 id = "1",
                 title = "葬送的芙莉莲",
                 author = "山田钟人 / 阿部司",
@@ -224,7 +224,7 @@ private fun ComicCardPreview() {
                 finished = false,
                 categories = listOf("冒险", "奇幻", "剧情"),
                 tags = listOf("魔法", "治愈", "精灵"),
-                image = Image2(
+                image = RemoteImage(
                     fileServer = "https://example.com",
                     path = "thumb.jpg"
                 )

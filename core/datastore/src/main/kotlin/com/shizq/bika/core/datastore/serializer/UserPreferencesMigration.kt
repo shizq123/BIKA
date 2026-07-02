@@ -66,8 +66,11 @@ internal object UserPreferencesMigration {
             ),
             network = NetworkPreferences(
                 dns = DnsPreferences(
-                    apiDns = root.stringSet("apiDns", setOf(DnsPreferences.DEFAULT_DNS_IP)),
-                    imageDns = root.stringSet("imageDns", setOf(DnsPreferences.DEFAULT_DNS_IP)),
+                    apiDnsHosts = root.stringSet("apiDns", setOf(DnsPreferences.DEFAULT_DNS_IP)),
+                    imageDnsHosts = root.stringSet(
+                        "imageDns",
+                        setOf(DnsPreferences.DEFAULT_DNS_IP)
+                    ),
                     activeLine = root.stringOrDefault(
                         "activeDnsLine",
                         DnsPreferences.DEFAULT_DNS_LINE
@@ -80,15 +83,15 @@ internal object UserPreferencesMigration {
                 maxConcurrentDownloads = root.intOrDefault("maxConcurrentDownloads", 3),
             ),
             filter = ContentFilterPreferences(
-                excludeTopicsGlobal = root.boolOrDefault("excludeTopicsGlobal", false),
-                globalExcludedTopics = root.stringList("globalExcludedTopics"),
+                globalTopicBlockEnabled = root.boolOrDefault("excludeTopicsGlobal", false),
+                globalBlockedTopics = root.stringList("globalExcludedTopics"),
                 favoriteTags = root.favoriteTags(json),
                 blockedTags = root.stringSet("blockedTags", emptySet()),
             ),
             app = AppPreferences(
                 autoCheckIn = root.boolOrDefault("autoCheckIn", true),
                 secureScreenEnabled = root.boolOrDefault("secureScreenEnabled", false),
-                usePredictiveBack = root.boolOrDefault("usePredictiveBack", false),
+                predictiveBackEnabled = root.boolOrDefault("usePredictiveBack", false),
                 fontScale = root.floatOrDefault("fontScale", 1.0f),
             ),
             dashboard = DashboardPreferences(
@@ -111,7 +114,7 @@ internal object UserPreferencesMigration {
         readingMode = root.enumOrDefault("readingMode", ReadingMode.WEBTOON),
         screenOrientation = root.enumOrDefault("screenOrientation", ScreenOrientation.Portrait),
         tapZoneLayout = root.enumOrDefault("tapZoneLayout", TapZoneLayout.Sides),
-        volumeKeyNavigation = root.boolOrDefault("volumeKeyNavigation", true),
+        volumeKeyNavigationEnabled = root.boolOrDefault("volumeKeyNavigation", true),
         preloadCount = root.intOrDefault("preloadCount", 2),
         eyeCare = EyeCareConfig(
             enabled = root.boolOrDefault("eyeCareEnabled", false),
@@ -173,7 +176,7 @@ internal object UserPreferencesMigration {
                     ?: return@mapNotNull null
                 if (displayName.isBlank()) return@mapNotNull null
                 Channel(
-                    displayName = displayName,
+                    label = displayName,
                     iconKey = iconKey,
                     isActive = obj.boolOrDefault("isActive", true),
                 )

@@ -22,18 +22,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.shizq.bika.core.model.Sort
+import com.shizq.bika.core.model.SortOrder
 
 @Composable
 fun SortChip(
-    currentSort: Sort,
-    onSortSelected: (Sort) -> Unit,
+    currentSort: SortOrder,
+    onSortSelected: (SortOrder) -> Unit,
     modifier: Modifier = Modifier,
-    allSortOptions: List<Sort> = listOf(
-        Sort.NEWEST,
-        Sort.MOST_VIEWED,
-        Sort.MOST_LIKED,
-        Sort.OLDEST
+    allSortOptions: List<SortOrder> = listOf(
+        SortOrder.NEWEST,
+        SortOrder.MOST_VIEWED,
+        SortOrder.MOST_LIKED,
+        SortOrder.OLDEST
     )
 ) {
     var showDropdown by rememberSaveable { mutableStateOf(false) }
@@ -87,11 +87,11 @@ fun SortChip(
 }
 
 @Composable
-private fun mapSortToDisplayName(sort: Sort): String {
+private fun mapSortToDisplayName(sort: SortOrder): String {
     return when (sort) {
-        Sort.NEWEST -> "最新排序"
-        Sort.OLDEST -> "最早发布"
-        Sort.MOST_LIKED -> "最多喜欢"
-        Sort.MOST_VIEWED -> "最多浏览"
+        SortOrder.NEWEST -> "最新排序"
+        SortOrder.OLDEST -> "最早发布"
+        SortOrder.MOST_LIKED -> "最多喜欢"
+        SortOrder.MOST_VIEWED -> "最多浏览"
     }
 }

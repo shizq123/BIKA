@@ -1,19 +1,19 @@
 package com.shizq.bika.core.network.model
 
-import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.ComicSummary
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class ComicResource(
     @SerialName("comics")
-    val comics: PageData<ComicSimple>,
+    val comics: PageData<ComicSummary>,
 )
 
 @Serializable
 data class ComicRandomData(
     @SerialName("comics")
-    val comics: List<ComicSimple>,
+    val comics: List<ComicSummary>,
 )
 
 @Serializable

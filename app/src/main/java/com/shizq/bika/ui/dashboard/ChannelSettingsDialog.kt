@@ -94,10 +94,10 @@ fun ChannelSettingsDialogContent(
                 ) {
                     items(
                         items = data,
-                        key = { it.displayName }
+                        key = { it.iconKey }
                     ) { channel ->
                         ReorderableItem(
-                            state = state, key = channel.displayName,
+                            state = state, key = channel.iconKey,
                         ) { isDragging ->
                             val elevation by animateDpAsState(
                                 targetValue = if (isDragging) 8.dp else 0.dp,
@@ -112,7 +112,7 @@ fun ChannelSettingsDialogContent(
                                 if (isDragging) MaterialTheme.colorScheme.surfaceVariant else Color.Transparent
 
                             ChannelSettingItem(
-                                name = channel.displayName,
+                                name = channel.label,
                                 isActive = channel.isActive,
                                 isDragging = isDragging,
                                 modifier = Modifier

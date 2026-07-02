@@ -1,5 +1,6 @@
 package com.shizq.bika.core.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 /** 首页频道的默认清单，作为用户未自定义时的初始值。 */
@@ -64,7 +65,8 @@ object DefaultChannels {
 
 @Serializable
 data class Channel(
-    val displayName: String,
+    @SerialName("displayName")
+    val label: String,
     /**
      * 图标的稳定逻辑键，由 [ChannelIconRegistry] 映射为实际 drawable。
      * 该值会被持久化，因此与具体资源名解耦：drawable 重命名不影响存量数据。

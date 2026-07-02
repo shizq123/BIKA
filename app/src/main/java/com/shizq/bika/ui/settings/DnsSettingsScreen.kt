@@ -147,8 +147,8 @@ class DnsSettingsViewModel @Inject constructor(
                 }
 
                 val userData = userPreferencesDataSource.userData.first()
-                val currentApiDns = userData.network.dns.apiDns
-                val currentImageDns = userData.network.dns.imageDns
+                val currentApiDns = userData.network.dns.apiDnsHosts
+                val currentImageDns = userData.network.dns.imageDnsHosts
 
                 val grouped = combined.groupBy({ it.second }) { (ip, line, domain) ->
                     IpTestResult(
@@ -272,11 +272,11 @@ class DnsSettingsViewModel @Inject constructor(
             if (domain == "picacomic.com") {
                 finalImageDns = setOf(selectedIp)
                 finalApiDns =
-                    if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().network.dns.apiDns
+                    if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().network.dns.apiDnsHosts
             } else {
                 finalApiDns = setOf(selectedIp)
                 finalImageDns =
-                    if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().network.dns.imageDns
+                    if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().network.dns.imageDnsHosts
             }
 
             userPreferencesDataSource.updateDnsSettings(
@@ -319,9 +319,9 @@ class DnsSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val currentData = userPreferencesDataSource.userData.first()
             val finalApiDns =
-                if (lowestApi != null) setOf(lowestApi) else currentData.network.dns.apiDns
+                if (lowestApi != null) setOf(lowestApi) else currentData.network.dns.apiDnsHosts
             val finalImageDns =
-                if (lowestImage != null) setOf(lowestImage) else currentData.network.dns.imageDns
+                if (lowestImage != null) setOf(lowestImage) else currentData.network.dns.imageDnsHosts
 
             val finalLineName = lowestApiResult?.lineName 
                 ?: lowestImageResult?.lineName

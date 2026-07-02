@@ -35,7 +35,7 @@ class UserPreferencesDataSource @Inject constructor(
     }
 
     suspend fun setIsVolumeKeyNavigation(enabled: Boolean) = edit {
-        it.copy(reader = it.reader.copy(volumeKeyNavigation = enabled))
+        it.copy(reader = it.reader.copy(volumeKeyNavigationEnabled = enabled))
     }
 
     suspend fun updateChannels(channels: List<Channel>) = edit {
@@ -58,8 +58,8 @@ class UserPreferencesDataSource @Inject constructor(
         it.copy(
             network = it.network.copy(
                 dns = it.network.dns.copy(
-                    apiDns = it.network.dns.apiDns + dns,
-                    imageDns = it.network.dns.imageDns + dns,
+                    apiDnsHosts = it.network.dns.apiDnsHosts + dns,
+                    imageDnsHosts = it.network.dns.imageDnsHosts + dns,
                 ),
             ),
         )
@@ -68,7 +68,7 @@ class UserPreferencesDataSource @Inject constructor(
     suspend fun overwriteDns(dns: Set<String>) = edit {
         it.copy(
             network = it.network.copy(
-                dns = it.network.dns.copy(apiDns = dns, imageDns = dns),
+                dns = it.network.dns.copy(apiDnsHosts = dns, imageDnsHosts = dns),
             ),
         )
     }
@@ -81,8 +81,8 @@ class UserPreferencesDataSource @Inject constructor(
         it.copy(
             network = it.network.copy(
                 dns = it.network.dns.copy(
-                    apiDns = apiDns,
-                    imageDns = imageDns,
+                    apiDnsHosts = apiDns,
+                    imageDnsHosts = imageDns,
                     activeLine = activeDnsLine,
                 ),
             ),
@@ -163,11 +163,11 @@ class UserPreferencesDataSource @Inject constructor(
     }
 
     suspend fun setExcludeTopicsGlobal(enabled: Boolean) = edit {
-        it.copy(filter = it.filter.copy(excludeTopicsGlobal = enabled))
+        it.copy(filter = it.filter.copy(globalTopicBlockEnabled = enabled))
     }
 
     suspend fun setGlobalExcludedTopics(topics: List<String>) = edit {
-        it.copy(filter = it.filter.copy(globalExcludedTopics = topics))
+        it.copy(filter = it.filter.copy(globalBlockedTopics = topics))
     }
 
     suspend fun updateFavoriteTags(tags: List<FavoriteTag>) = edit {
@@ -175,7 +175,7 @@ class UserPreferencesDataSource @Inject constructor(
     }
 
     suspend fun setUsePredictiveBack(enabled: Boolean) = edit {
-        it.copy(app = it.app.copy(usePredictiveBack = enabled))
+        it.copy(app = it.app.copy(predictiveBackEnabled = enabled))
     }
 
     suspend fun addBlockedTag(tag: String) = edit {

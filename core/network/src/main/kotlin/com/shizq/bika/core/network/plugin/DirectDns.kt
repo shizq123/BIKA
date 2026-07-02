@@ -28,10 +28,10 @@ class DirectDns @Inject constructor(
         scope.launch(Dispatchers.IO) {
             userPreferencesDataSource.userData
                 .distinctUntilChanged { old, new ->
-                    old.network.dns.apiDns == new.network.dns.apiDns && old.network.dns.imageDns == new.network.dns.imageDns
+                    old.network.dns.apiDnsHosts == new.network.dns.apiDnsHosts && old.network.dns.imageDnsHosts == new.network.dns.imageDnsHosts
                 }
                 .collect { userData ->
-                    val apiIps = userData.network.dns.apiDns.mapNotNull { ip ->
+                    val apiIps = userData.network.dns.apiDnsHosts.mapNotNull { ip ->
                         try {
                             InetAddress.getByName(ip)
                         } catch (e: UnknownHostException) {
@@ -39,7 +39,7 @@ class DirectDns @Inject constructor(
                             null
                         }
                     }
-                    val imageIps = userData.network.dns.imageDns.mapNotNull { ip ->
+                    val imageIps = userData.network.dns.imageDnsHosts.mapNotNull { ip ->
                         try {
                             InetAddress.getByName(ip)
                         } catch (e: UnknownHostException) {

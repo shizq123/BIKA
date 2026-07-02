@@ -1,6 +1,6 @@
 package com.shizq.bika.core.network.model
 
-import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.ComicSummary
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -11,5 +11,5 @@ data class CollectionsData(
 
 @Serializable
 data class CollectionItem(
-    @SerialName("comics") val comics: List<ComicSimple>
+    @SerialName("comics") val comics: List<ComicSummary>
 )

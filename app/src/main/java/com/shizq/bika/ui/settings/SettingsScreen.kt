@@ -318,7 +318,7 @@ fun SettingsContent(
                                 iconVector = Icons.Default.DarkMode,
                                 options = DarkThemeConfig.entries,
                                 selectedValue = settingsUiState.darkThemeConfig,
-                                optionToText = { it.title },
+                                optionToText = { it.label },
                                 onOptionSelected = onUpdateDarkThemeConfig
                             )
                             ListPreference(

@@ -42,7 +42,7 @@ class SettingsViewModel @Inject constructor(
             downloadOverWifiOnly = it.download.overWifiOnly,
             maxConcurrentDownloads = it.download.maxConcurrentDownloads,
             secureScreenEnabled = it.app.secureScreenEnabled,
-            usePredictiveBack = it.app.usePredictiveBack
+            usePredictiveBack = it.app.predictiveBackEnabled
         )
     }.stateIn(
         viewModelScope,

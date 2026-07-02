@@ -12,9 +12,9 @@ import androidx.paging.cachedIn
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
-import com.shizq.bika.core.model.Sort
+import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.paging.AdvancedSearchPagingSource
@@ -55,8 +55,8 @@ class FeedViewModel @AssistedInject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
     @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
-    val currentSortOrder: StateFlow<Sort>
-        field = MutableStateFlow(Sort.NEWEST)
+    val currentSortOrder: StateFlow<SortOrder>
+        field = MutableStateFlow(SortOrder.NEWEST)
 
     private val localFilterSelections = MutableStateFlow<Map<FilterGroup, List<String>>>(emptyMap())
 
@@ -65,8 +65,8 @@ class FeedViewModel @AssistedInject constructor(
         userPreferencesDataSource.userData
     ) { local, prefs ->
         val newMap = local.toMutableMap()
-        if (prefs.filter.excludeTopicsGlobal) {
-            newMap[FilterGroup.ExcludeTopic] = prefs.filter.globalExcludedTopics
+        if (prefs.filter.globalTopicBlockEnabled) {
+            newMap[FilterGroup.ExcludeTopic] = prefs.filter.globalBlockedTopics
         }
         newMap
     }.stateIn(
@@ -76,7 +76,7 @@ class FeedViewModel @AssistedInject constructor(
     )
 
     val excludeTopicsGlobal: StateFlow<Boolean> = userPreferencesDataSource.userData
-        .map { it.filter.excludeTopicsGlobal }
+        .map { it.filter.globalTopicBlockEnabled }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -91,7 +91,7 @@ class FeedViewModel @AssistedInject constructor(
     // 合并 sort、page、filter、blockedTags 变化，构建统一的分页数据流。
     // 注意：PagingData 不能在 cachedIn 之后再次被 combine/map，否则会运行时崩溃。
     // 因此将所有 map/filter 操作放在 cachedIn 之前。
-    val pagedComics: Flow<PagingData<ComicSimple>> = combine(
+    val pagedComics: Flow<PagingData<ComicSummary>> = combine(
         currentSortOrder,
         currentPage,
         filterSelections,
@@ -133,7 +133,7 @@ class FeedViewModel @AssistedInject constructor(
             if (isGlobal) {
                 viewModelScope.launch {
                     val prefs = userPreferencesDataSource.userData.first()
-                    val currentList = prefs.filter.globalExcludedTopics.toMutableList()
+                    val currentList = prefs.filter.globalBlockedTopics.toMutableList()
                     if (currentList.contains(value)) {
                         currentList.remove(value)
                     } else {
@@ -173,7 +173,7 @@ class FeedViewModel @AssistedInject constructor(
                 userPreferencesDataSource.setGlobalExcludedTopics(localExcluded)
             } else {
                 val globalExcluded =
-                    userPreferencesDataSource.userData.first().filter.globalExcludedTopics
+                    userPreferencesDataSource.userData.first().filter.globalBlockedTopics
                 localFilterSelections.update { currentMap ->
                     val newMap = currentMap.toMutableMap()
                     if (globalExcluded.isNotEmpty()) {
@@ -187,7 +187,7 @@ class FeedViewModel @AssistedInject constructor(
         }
     }
 
-    fun updateSortOrder(newSort: Sort) {
+    fun updateSortOrder(newSort: SortOrder) {
         currentPage.value = 1
         currentSortOrder.update { newSort }
     }
@@ -262,8 +262,8 @@ class FeedViewModel @AssistedInject constructor(
 
     private fun createPagingSource(
         action: DiscoveryAction,
-        sort: Sort
-    ): PagingSource<Int, ComicSimple> {
+        sort: SortOrder
+    ): PagingSource<Int, ComicSummary> {
         val source = when (action) {
             is DiscoveryAction.Channel -> channelPagingSourceFactory.create(action.name, sort)
             is DiscoveryAction.Knight -> advancedSearchPagingSourceFactory.create(action.name, sort)
@@ -317,10 +317,10 @@ class FeedViewModel @AssistedInject constructor(
 }
 
 /**
- * 对单个 ComicSimple 从 DetailedHistory 列表快照中注入本地状态。
+ * 对单个 ComicSummary 从 DetailedHistory 列表快照中注入本地状态。
  * 为避免重复逻辑，调用 ComicStatusInjector.kt 中的 injectLocalStatusFrom。
  */
-fun ComicSimple.injectSingleFrom(histories: List<DetailedHistory>): ComicSimple {
+fun ComicSummary.injectSingleFrom(histories: List<DetailedHistory>): ComicSummary {
     val historyMap = histories.associateBy { it.history.id }
     val detailed = historyMap[id] ?: return this
     val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
@@ -333,7 +333,7 @@ fun ComicSimple.injectSingleFrom(histories: List<DetailedHistory>): ComicSimple 
 
 
 private fun matchesFilters(
-    comic: ComicSimple,
+    comic: ComicSummary,
     filters: Map<FilterGroup, List<String>>
 ): Boolean {
     for ((group, selectedValues) in filters) {
@@ -426,7 +426,7 @@ fun FavoriteTag.toAction(): DiscoveryAction {
 }
 
 private data class BlockedFilterState(
-    val sort: Sort,
+    val sort: SortOrder,
     val page: Int,
     val filters: Map<FilterGroup, List<String>>,
     val blockedTags: Set<String>

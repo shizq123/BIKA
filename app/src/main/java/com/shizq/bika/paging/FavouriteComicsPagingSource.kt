@@ -2,8 +2,8 @@ package com.shizq.bika.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.shizq.bika.core.model.ComicSimple
-import com.shizq.bika.core.model.Sort
+import com.shizq.bika.core.model.ComicSummary
+import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -11,11 +11,11 @@ import dagger.assisted.AssistedInject
 
 class FavouriteComicsPagingSource @AssistedInject constructor(
     private val api: BikaDataSource,
-    @Assisted private val sort: Sort,
-) : PagingSource<Int, ComicSimple>() {
+    @Assisted private val sort: SortOrder,
+) : PagingSource<Int, ComicSummary>() {
     var onPageInfoLoaded: ((totalPages: Int, totalCount: Int) -> Unit)? = null
 
-    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSimple> {
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSummary> {
         val page = params.key ?: 1
 
         return try {
@@ -23,7 +23,7 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
 
             val comicsPage = response.comics
 
-            LoadResult.Page<Int, ComicSimple>(
+            LoadResult.Page<Int, ComicSummary>(
                 data = comicsPage.docs,
                 prevKey = null,
                 nextKey = if (page >= comicsPage.pages) null else page + 1
@@ -35,7 +35,7 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, ComicSimple>): Int? {
+    override fun getRefreshKey(state: PagingState<Int, ComicSummary>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
             state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
                 ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)
@@ -44,6 +44,6 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
 
     @AssistedFactory
     interface Factory {
-        fun create(sort: Sort): FavouriteComicsPagingSource
+        fun create(sort: SortOrder): FavouriteComicsPagingSource
     }
 }

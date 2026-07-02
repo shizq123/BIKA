@@ -9,7 +9,7 @@ import com.shizq.bika.core.data.model.User
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
@@ -58,18 +58,18 @@ class LeaderboardViewModel @Inject constructor(
         val monthly = allData.monthlyComics.injectLocalStatusFrom(histories)
 
         val filteredDaily =
-            if (prefs.filter.excludeTopicsGlobal && prefs.filter.globalExcludedTopics.isNotEmpty()) {
-                daily.filter { comic -> prefs.filter.globalExcludedTopics.none { it in comic.categories } }
+            if (prefs.filter.globalTopicBlockEnabled && prefs.filter.globalBlockedTopics.isNotEmpty()) {
+                daily.filter { comic -> prefs.filter.globalBlockedTopics.none { it in comic.categories } }
         } else daily
 
         val filteredWeekly =
-            if (prefs.filter.excludeTopicsGlobal && prefs.filter.globalExcludedTopics.isNotEmpty()) {
-                weekly.filter { comic -> prefs.filter.globalExcludedTopics.none { it in comic.categories } }
+            if (prefs.filter.globalTopicBlockEnabled && prefs.filter.globalBlockedTopics.isNotEmpty()) {
+                weekly.filter { comic -> prefs.filter.globalBlockedTopics.none { it in comic.categories } }
         } else weekly
 
         val filteredMonthly =
-            if (prefs.filter.excludeTopicsGlobal && prefs.filter.globalExcludedTopics.isNotEmpty()) {
-                monthly.filter { comic -> prefs.filter.globalExcludedTopics.none { it in comic.categories } }
+            if (prefs.filter.globalTopicBlockEnabled && prefs.filter.globalBlockedTopics.isNotEmpty()) {
+                monthly.filter { comic -> prefs.filter.globalBlockedTopics.none { it in comic.categories } }
         } else monthly
 
         val finalDaily = if (prefs.filter.blockedTags.isNotEmpty()) {
@@ -133,9 +133,9 @@ class LeaderboardViewModel @Inject constructor(
     }
 
     private data class AllLeaderboards(
-        val dailyComics: List<ComicSimple>,
-        val weeklyComics: List<ComicSimple>,
-        val monthlyComics: List<ComicSimple>,
+        val dailyComics: List<ComicSummary>,
+        val weeklyComics: List<ComicSummary>,
+        val monthlyComics: List<ComicSummary>,
         val knightUsers: List<User>
     )
 }
@@ -146,9 +146,9 @@ private const val TIME_D30 = "D30"
 
 sealed interface LeaderboardUiState {
     data class Success(
-        val dailyList: List<ComicSimple>,
-        val weeklyList: List<ComicSimple>,
-        val monthlyList: List<ComicSimple>,
+        val dailyList: List<ComicSummary>,
+        val weeklyList: List<ComicSummary>,
+        val monthlyList: List<ComicSummary>,
         val knightList: List<User>
     ) : LeaderboardUiState
 

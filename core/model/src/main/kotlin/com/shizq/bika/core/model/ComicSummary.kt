@@ -4,7 +4,7 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ComicSimple(
+data class ComicSummary(
     @SerialName("_id")
     val id: String = "",
     val title: String = "",
@@ -17,13 +17,13 @@ data class ComicSimple(
     val categories: List<String> = emptyList(),
     val tags: List<String> = emptyList(),
     @SerialName("thumb")
-    val image: Image2,
+    val image: RemoteImage,
     val isFavourited: Boolean = false,
     val lastReadChapterProgress: String? = null,
 )
 
 @Serializable
-data class Image2(
+data class RemoteImage(
     val originalName: String = "",
     val path: String = "",
     val fileServer: String = "",

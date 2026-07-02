@@ -2,29 +2,29 @@ package com.shizq.bika.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
-import com.shizq.bika.core.model.ComicSimple
-import com.shizq.bika.core.model.Sort
+import com.shizq.bika.core.model.ComicSummary
+import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
 import javax.inject.Inject
 
 class RecentUpdatesPagingSource @Inject constructor(
     private val api: BikaDataSource
-) : PagingSource<Int, ComicSimple>() {
+) : PagingSource<Int, ComicSummary>() {
 
     var onPageInfoLoaded: ((totalPages: Int, totalCount: Int) -> Unit)? = null
 
-    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSimple> {
+    override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSummary> {
         val page = params.key ?: 1
 
         return try {
             val response = api.searchComics(
-                sort = Sort.NEWEST,
+                sort = SortOrder.NEWEST,
                 page = page
             )
 
             val comicsPage = response.comics
 
-            LoadResult.Page<Int, ComicSimple>(
+            LoadResult.Page<Int, ComicSummary>(
                 data = comicsPage.docs,
                 prevKey = null,
                 nextKey = if (page >= comicsPage.pages) null else page + 1
@@ -36,7 +36,7 @@ class RecentUpdatesPagingSource @Inject constructor(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, ComicSimple>): Int? {
+    override fun getRefreshKey(state: PagingState<Int, ComicSummary>): Int? {
         return state.anchorPosition?.let { anchorPosition ->
             state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
                 ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)

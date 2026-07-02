@@ -171,7 +171,7 @@ class ReaderStateMachine @Inject constructor(
                 }
                 collectWhileInState(userPreferencesDataSource.userData) {
                     val newConfig = ReaderConfig(
-                        volumeKeyNavigation = it.reader.volumeKeyNavigation,
+                        volumeKeyNavigation = it.reader.volumeKeyNavigationEnabled,
                         readingMode = it.reader.readingMode,
                         screenOrientation = it.reader.screenOrientation,
                         tapZoneLayout = it.reader.tapZoneLayout,
