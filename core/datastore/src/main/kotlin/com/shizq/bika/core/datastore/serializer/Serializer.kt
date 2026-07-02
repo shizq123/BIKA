@@ -7,10 +7,11 @@ import androidx.datastore.core.Serializer
 import com.shizq.bika.core.datastore.di.DataStoreModule.DataStoreJson
 import com.shizq.bika.core.datastore.model.UpdatePreference
 import com.shizq.bika.core.datastore.model.UserCredentials
-import com.shizq.bika.core.model.UserPreferences
+import com.shizq.bika.core.model.preferences.UserPreferences
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
+import kotlinx.serialization.json.jsonObject
 import java.io.InputStream
 import java.io.OutputStream
 
@@ -37,7 +38,19 @@ internal object UserCredentialsSerializer : Serializer<UserCredentials> {
 internal object UserPreferencesSerializer : Serializer<UserPreferences> {
     override suspend fun readFrom(input: InputStream): UserPreferences {
         try {
-            return DataStoreJson.decodeFromStream(UserPreferences.serializer(), input)
+            // 先解析为 JsonElement：因为 DataStoreJson 开启了 ignoreUnknownKeys，
+            // 直接用新 serializer 解析旧扁平数据不会报错，而是静默丢弃全部旧字段。
+            // 所以必须先探测结构，命中旧结构时走迁移。
+            val element = DataStoreJson.decodeFromStream(
+                kotlinx.serialization.json.JsonElement.serializer(),
+                input,
+            )
+            val root = element.jsonObject
+            return if (UserPreferencesMigration.isLegacyFlat(root)) {
+                UserPreferencesMigration.migrate(DataStoreJson, root)
+            } else {
+                DataStoreJson.decodeFromJsonElement(UserPreferences.serializer(), element)
+            }
         } catch (e: Exception) {
             throw CorruptionException("Failed to decode data", e)
         }
