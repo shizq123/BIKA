@@ -54,7 +54,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             userPreferencesDataSource.userData
-                .map { it.isLoggingEnabled }
+                .map { it.network.isLoggingEnabled }
                 .distinctUntilChanged()
                 .collect { enabled ->
                     com.shizq.bika.core.common.BikaLog.init(applicationContext, enabled)
@@ -66,7 +66,7 @@ class MainActivity : ComponentActivity() {
 
         lifecycleScope.launch {
             userPreferencesDataSource.userData
-                .map { it.secureScreenEnabled }
+                .map { it.app.secureScreenEnabled }
                 .distinctUntilChanged()
                 .collect { enabled ->
                     if (enabled) {
@@ -143,7 +143,7 @@ class MainActivity : ComponentActivity() {
                         is Success -> {
                             val appState = rememberAppState(state.startDestination)
                             val userData by userPreferencesDataSource.userData.collectAsStateWithLifecycle(initialValue = null)
-                            val usePredictiveBack = userData?.usePredictiveBack ?: false
+                            val usePredictiveBack = userData?.app?.predictiveBackEnabled ?: false
 
                             BikaApp(appState, usePredictiveBack = usePredictiveBack)
                         }

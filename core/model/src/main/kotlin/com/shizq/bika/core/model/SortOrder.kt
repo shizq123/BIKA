@@ -1,13 +1,10 @@
 package com.shizq.bika.core.model
 
-import android.os.Parcelable
-import kotlinx.parcelize.Parcelize
 import kotlinx.serialization.Serializable
 
 //{"code":400,"error":"1002","message":"validation error","detail":"s must be one of [UA, CA, da, dd, ld, vd]"}
-// TODO: rename to SortOrder
 @Serializable
-enum class Sort(val value: String, val title: String) {
+enum class SortOrder(val value: String, val label: String) {
 
     NEWEST("dd", "最新发布"),
     OLDEST("da", "最早发布"),

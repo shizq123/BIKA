@@ -1,6 +1,6 @@
 package com.shizq.bika.core.network.model
 
-import com.shizq.bika.core.model.Image2
+import com.shizq.bika.core.model.RemoteImage
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -24,7 +24,7 @@ data class Game(
     val android: Boolean = false,
     val ios: Boolean = false,
     val picaLink: Boolean = false,
-    val icon: Image2,
+    val icon: RemoteImage,
     val androidLinks: List<String> = emptyList(),
     val iosLinks: List<String> = emptyList()
 )
@@ -42,7 +42,7 @@ data class GameDetails(
     val title: String = "",
     val description: String = "",
     val version: String = "",
-    val icon: Image2,
+    val icon: RemoteImage,
     val publisher: String = "",
     val ios: Boolean = false,
     val iosLinks: List<String> = emptyList(),
@@ -51,7 +51,7 @@ data class GameDetails(
     val adult: Boolean = false,
     val suggest: Boolean = false,
     val downloadsCount: Int = 0,
-    val screenshots: List<Image2> = emptyList(),
+    val screenshots: List<RemoteImage> = emptyList(),
     val androidSize: Long = 0,
     val iosSize: Long = 0,
     val updateContent: String = "",

@@ -17,7 +17,7 @@ class BlockedTagsViewModel @Inject constructor(
 ) : ViewModel() {
 
     val blockedTags: StateFlow<Set<String>> = userPreferencesDataSource.userData
-        .map { it.blockedTags }
+        .map { it.filter.blockedTags }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

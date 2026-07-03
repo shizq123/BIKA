@@ -166,7 +166,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
     private suspend fun loadConstraints(): DownloadConstraints {
         val userData = userPreferencesDataSource.userData.first()
         return DownloadConstraints(
-            wifiOnly = userData.downloadOverWifiOnly,
+            wifiOnly = userData.download.overWifiOnly,
         )
     }
 

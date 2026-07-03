@@ -39,7 +39,7 @@ class DashboardViewModel @Inject constructor(
         )
 
     val userChannelPreferences = userPreferencesDataSource.userData
-        .map { prefs -> prefs.channels.filter { it.isActive } }
+        .map { prefs -> prefs.dashboard.channels.filter { it.isActive } }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),
@@ -47,7 +47,7 @@ class DashboardViewModel @Inject constructor(
         )
 
     val favoriteTags: StateFlow<List<FavoriteTag>> = userPreferencesDataSource.userData
-        .map { it.favoriteTags }
+        .map { it.filter.favoriteTags }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5_000),

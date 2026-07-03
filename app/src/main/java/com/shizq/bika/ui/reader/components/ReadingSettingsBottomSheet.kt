@@ -30,9 +30,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.shizq.bika.core.model.TapZoneLayout
 import com.shizq.bika.core.model.BookSpreadsMode
-import com.shizq.bika.core.model.ReadingMode
+import com.shizq.bika.core.model.reader.ReadingMode
+import com.shizq.bika.core.model.reader.TapZoneLayout
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.state.ReaderAction
 import kotlin.math.roundToInt

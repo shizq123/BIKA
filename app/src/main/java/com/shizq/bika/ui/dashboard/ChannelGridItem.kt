@@ -120,10 +120,10 @@ object ChannelIconRegistry {
     )
 
     @DrawableRes
-    fun getIconResId(resName: String): Int {
-        return iconMap[resName] ?: R.drawable.placeholder_avatar_2
+    fun getIconResId(iconKey: String): Int {
+        return iconMap[iconKey] ?: R.drawable.placeholder_avatar_2
     }
 }
 
 val Channel.iconResId: Int
-    get() = ChannelIconRegistry.getIconResId(resName)
+    get() = ChannelIconRegistry.getIconResId(iconKey)

@@ -1,31 +1,23 @@
 package com.shizq.bika.core.model
 
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
-object ChannelDataSource {
-    private val rawData = listOf(
+/** 首页频道的默认清单，作为用户未自定义时的初始值。 */
+object DefaultChannels {
+    val all: List<Channel> = listOf(
         // --- App 功能区 ---
         Channel("推荐", "ic_bika"),
         Channel("排行榜", "ic_cat_ranking"),
-//        Channel("游戏推荐", "ic_cat_game_rec"),
-//        Channel("哔咔小程序", "ic_cat_mini_app"),
-//        Channel("哔咔聊天室", "ic_cat_chatroom"),
         Channel("留言板", "ic_cat_message_board"),
         Channel("最近更新", "ic_cat_recent"),
         Channel("随机本子", "ic_cat_random"),
 
         // --- 哔咔特有分区 ---
-//        Channel("援助嗶咔", "ic_cat_support", link = "https://donate.bidobido.xyz"),
-//        Channel("嗶咔小禮物", "ic_cat_gift", link = "https://gift-web.bidobido.xyz"),
-//        Channel("小電影", "ic_cat_movie", link = "https://adult-movie.bidobido.xyz"),
-//        Channel("小里番", "ic_cat_hanime", link = "https://adult-animate.bidobido.xyz"),
-//        Channel("嗶咔畫廊", "ic_cat_gallery", link = "https://paint-web.bidobido.xyz"),
-//        Channel("嗶咔商店", "ic_cat_store", link = "https://online-shop-web.bidobido.xyz"),
         Channel("大家都在看", "ic_cat_trending"),
         Channel("大濕推薦", "ic_cat_master_choice"),
         Channel("那年今天", "ic_cat_history"),
         Channel("官方都在看", "ic_cat_staff_pick"),
-//        Channel("嗶咔運動", "ic_cat_sport", link = "https://move-web.bidobido.xyz"),
         Channel("嗶咔漢化", "ic_cat_translated"),
 
         // --- 漫画属性 ---
@@ -67,16 +59,18 @@ object ChannelDataSource {
         Channel("SAO 刀劍神域", "ic_cat_sao"),
         Channel("Fate", "ic_cat_fate"),
         Channel("東方", "ic_cat_touhou"),
-        Channel("禁書目錄", "ic_cat_index")
+        Channel("禁書目錄", "ic_cat_index"),
     )
-
-    val allChannels: List<Channel> = rawData
-
 }
 
 @Serializable
 data class Channel(
-    val displayName: String,
-    val resName: String,
+    @SerialName("displayName")
+    val label: String,
+    /**
+     * 图标的稳定逻辑键，由 [ChannelIconRegistry] 映射为实际 drawable。
+     * 该值会被持久化，因此与具体资源名解耦：drawable 重命名不影响存量数据。
+     */
+    val iconKey: String,
     val isActive: Boolean = true,
 )

@@ -10,7 +10,7 @@ import com.shizq.bika.core.datastore.model.UserCredentials
 import com.shizq.bika.core.datastore.serializer.UpdatePreferencesSerializer
 import com.shizq.bika.core.datastore.serializer.UserCredentialsSerializer
 import com.shizq.bika.core.datastore.serializer.UserPreferencesSerializer
-import com.shizq.bika.core.model.UserPreferences
+import com.shizq.bika.core.model.preferences.UserPreferences
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

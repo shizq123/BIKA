@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Leaderboard
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
-import com.shizq.bika.core.ui.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -39,7 +38,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.ComicSummary
+import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.core.ui.ComicCard
 import kotlinx.coroutines.launch
 
@@ -172,7 +172,7 @@ private fun LeaderboardPagerContent(
 
 @Composable
 fun ComicLeaderboardPage(
-    list: List<ComicSimple>,
+    list: List<ComicSummary>,
     listState: LazyListState,
     modifier: Modifier = Modifier,
     navigationToUnitedDetail: (String) -> Unit

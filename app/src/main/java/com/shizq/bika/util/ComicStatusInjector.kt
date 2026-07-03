@@ -3,16 +3,16 @@ package com.shizq.bika.util
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.DetailedHistory
-import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.model.ComicSummary
 
 /**
  * 纯函数版本：接受已从 DB 查出的 DetailedHistory 列表（可以是实时 Flow 的最新快照），
- * 将收藏状态和阅读进度注入到 ComicSimple 列表中。
+ * 将收藏状态和阅读进度注入到 ComicSummary 列表中。
  *
  * 推荐在 ViewModel 层通过 combine(网络数据Flow, historyDao.getDetailedHistories()) 调用此函数，
  * 这样 DB 任何变化都会自动触发 UI 更新，实现真正的实时感知。
  */
-fun List<ComicSimple>.injectLocalStatusFrom(histories: List<DetailedHistory>): List<ComicSimple> {
+fun List<ComicSummary>.injectLocalStatusFrom(histories: List<DetailedHistory>): List<ComicSummary> {
     if (histories.isEmpty()) return this
     // 建立 id -> DetailedHistory 的映射，避免对每个 comic 都线性扫描
     val historyMap = histories.associateBy { it.history.id }
@@ -32,7 +32,7 @@ fun List<ComicSimple>.injectLocalStatusFrom(histories: List<DetailedHistory>): L
  * 仅在 PagingSource 的 load() 中保留，因为 PagingSource 本身不支持 Flow 响应式。
  * 对于有实时更新需求的页面，请使用 [injectLocalStatusFrom] + ViewModel combine 方案。
  */
-suspend fun List<ComicSimple>.injectLocalStatus(historyDao: ReadingHistoryDao): List<ComicSimple> {
+suspend fun List<ComicSummary>.injectLocalStatus(historyDao: ReadingHistoryDao): List<ComicSummary> {
     return this.map { comic ->
         val detailedHistory = historyDao.getDetailedHistoryById(comic.id)
         if (detailedHistory != null) {

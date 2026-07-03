@@ -34,8 +34,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.shizq.bika.core.model.ReaderAction
-import com.shizq.bika.core.model.TapZoneLayout
+import com.shizq.bika.core.model.reader.ReaderAction
+import com.shizq.bika.core.model.reader.TapZoneLayout
 import kotlin.math.roundToInt
 
 /**

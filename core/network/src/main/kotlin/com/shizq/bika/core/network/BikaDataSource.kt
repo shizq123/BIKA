@@ -1,6 +1,6 @@
 package com.shizq.bika.core.network
 
-import com.shizq.bika.core.model.Sort
+import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.model.ActionData
 import com.shizq.bika.core.network.model.ChapterPagesData
 import com.shizq.bika.core.network.model.CollectionsData
@@ -212,7 +212,7 @@ class BikaDataSource @Inject constructor(
         authorName: String? = null,
         knightId: String? = null,
         translationTeam: String? = null,
-        sort: Sort?,
+        sort: SortOrder?,
         page: Int,
     ): ComicResource {
         return client.get("comics") {
@@ -230,7 +230,7 @@ class BikaDataSource @Inject constructor(
     suspend fun advancedSearch(
         content: String,
         categories: List<String>,
-        sort: Sort,
+        sort: SortOrder,
         page: Int
     ): ComicResource {
         val processedContent = if (content.trim().equals("小學女生(JS)", ignoreCase = true) ||
@@ -254,7 +254,7 @@ class BikaDataSource @Inject constructor(
         }.body()
     }
 
-    suspend fun getFavouriteComics(sort: Sort, page: Int): ComicResource {
+    suspend fun getFavouriteComics(sort: SortOrder, page: Int): ComicResource {
         return client.get("users/favourite") {
             parameter("s", sort)
             parameter("page", page)

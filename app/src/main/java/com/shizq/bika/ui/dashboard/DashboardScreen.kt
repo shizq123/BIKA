@@ -44,7 +44,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -657,17 +656,17 @@ fun DashboardContent(
 
                 items(
                     channelSettingsUiState,
-                    key = { it.resName }
+                    key = { it.iconKey }
                 ) { item ->
                     val context = LocalContext.current
 
                     if (item.isActive) {
                         ChannelGridItem(
                             iconRes = item.iconResId,
-                            label = item.displayName,
+                            label = item.label,
                             modifier = Modifier
                                 .animateItem()
-                                .testTag("dashboard:channel:${item.displayName}"),
+                                .testTag("dashboard:channel:${item.label}"),
                         ) {
                             navigation(
                                 context = context,
@@ -787,7 +786,7 @@ private fun navigation(
 //        return
 //    }
 
-    when (channel.displayName) {
+    when (channel.label) {
         "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)
         "排行榜" -> navigationToLeaderboard()
 //            "哔咔小程序" -> start(AppsActivity::class.java)
@@ -800,7 +799,7 @@ private fun navigation(
         "随机本子" -> navigateToSearch(DiscoveryAction.ToRandom)
 
         else -> navigateToSearch(
-            DiscoveryAction.Channel(channel.displayName)
+            DiscoveryAction.Channel(channel.label)
         )
     }
 }

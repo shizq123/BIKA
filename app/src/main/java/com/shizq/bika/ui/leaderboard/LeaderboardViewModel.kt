@@ -3,25 +3,24 @@ package com.shizq.bika.ui.leaderboard
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shizq.bika.core.coroutine.FlowRestarter
+import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.data.model.User
 import com.shizq.bika.core.data.model.asExternalModel
-import com.shizq.bika.core.model.ComicSimple
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
-import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.core.database.model.DetailedHistory
-import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.util.injectLocalStatusFrom
 import dagger.hilt.android.lifecycle.HiltViewModel
-import javax.inject.Inject
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import com.shizq.bika.core.coroutine.FlowRestarter
-import com.shizq.bika.core.coroutine.restartable
+import javax.inject.Inject
 
 @HiltViewModel
 class LeaderboardViewModel @Inject constructor(
@@ -58,28 +57,31 @@ class LeaderboardViewModel @Inject constructor(
         val weekly = allData.weeklyComics.injectLocalStatusFrom(histories)
         val monthly = allData.monthlyComics.injectLocalStatusFrom(histories)
 
-        val filteredDaily = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
-            daily.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        val filteredDaily =
+            if (prefs.filter.globalTopicBlockEnabled && prefs.filter.globalBlockedTopics.isNotEmpty()) {
+                daily.filter { comic -> prefs.filter.globalBlockedTopics.none { it in comic.categories } }
         } else daily
 
-        val filteredWeekly = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
-            weekly.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        val filteredWeekly =
+            if (prefs.filter.globalTopicBlockEnabled && prefs.filter.globalBlockedTopics.isNotEmpty()) {
+                weekly.filter { comic -> prefs.filter.globalBlockedTopics.none { it in comic.categories } }
         } else weekly
 
-        val filteredMonthly = if (prefs.excludeTopicsGlobal && prefs.globalExcludedTopics.isNotEmpty()) {
-            monthly.filter { comic -> prefs.globalExcludedTopics.none { it in comic.categories } }
+        val filteredMonthly =
+            if (prefs.filter.globalTopicBlockEnabled && prefs.filter.globalBlockedTopics.isNotEmpty()) {
+                monthly.filter { comic -> prefs.filter.globalBlockedTopics.none { it in comic.categories } }
         } else monthly
 
-        val finalDaily = if (prefs.blockedTags.isNotEmpty()) {
-            filteredDaily.filter { comic -> comic.tags.none { it in prefs.blockedTags } }
+        val finalDaily = if (prefs.filter.blockedTags.isNotEmpty()) {
+            filteredDaily.filter { comic -> comic.tags.none { it in prefs.filter.blockedTags } }
         } else filteredDaily
 
-        val finalWeekly = if (prefs.blockedTags.isNotEmpty()) {
-            filteredWeekly.filter { comic -> comic.tags.none { it in prefs.blockedTags } }
+        val finalWeekly = if (prefs.filter.blockedTags.isNotEmpty()) {
+            filteredWeekly.filter { comic -> comic.tags.none { it in prefs.filter.blockedTags } }
         } else filteredWeekly
 
-        val finalMonthly = if (prefs.blockedTags.isNotEmpty()) {
-            filteredMonthly.filter { comic -> comic.tags.none { it in prefs.blockedTags } }
+        val finalMonthly = if (prefs.filter.blockedTags.isNotEmpty()) {
+            filteredMonthly.filter { comic -> comic.tags.none { it in prefs.filter.blockedTags } }
         } else filteredMonthly
 
         AllLeaderboards(
@@ -131,9 +133,9 @@ class LeaderboardViewModel @Inject constructor(
     }
 
     private data class AllLeaderboards(
-        val dailyComics: List<ComicSimple>,
-        val weeklyComics: List<ComicSimple>,
-        val monthlyComics: List<ComicSimple>,
+        val dailyComics: List<ComicSummary>,
+        val weeklyComics: List<ComicSummary>,
+        val monthlyComics: List<ComicSummary>,
         val knightUsers: List<User>
     )
 }
@@ -144,9 +146,9 @@ private const val TIME_D30 = "D30"
 
 sealed interface LeaderboardUiState {
     data class Success(
-        val dailyList: List<ComicSimple>,
-        val weeklyList: List<ComicSimple>,
-        val monthlyList: List<ComicSimple>,
+        val dailyList: List<ComicSummary>,
+        val weeklyList: List<ComicSummary>,
+        val monthlyList: List<ComicSummary>,
         val knightList: List<User>
     ) : LeaderboardUiState
 

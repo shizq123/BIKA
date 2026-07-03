@@ -37,7 +37,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -148,8 +147,8 @@ class DnsSettingsViewModel @Inject constructor(
                 }
 
                 val userData = userPreferencesDataSource.userData.first()
-                val currentApiDns = userData.apiDns
-                val currentImageDns = userData.imageDns
+                val currentApiDns = userData.network.dns.apiDnsHosts
+                val currentImageDns = userData.network.dns.imageDnsHosts
 
                 val grouped = combined.groupBy({ it.second }) { (ip, line, domain) ->
                     IpTestResult(
@@ -272,10 +271,12 @@ class DnsSettingsViewModel @Inject constructor(
 
             if (domain == "picacomic.com") {
                 finalImageDns = setOf(selectedIp)
-                finalApiDns = if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().apiDns
+                finalApiDns =
+                    if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().network.dns.apiDnsHosts
             } else {
                 finalApiDns = setOf(selectedIp)
-                finalImageDns = if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().imageDns
+                finalImageDns =
+                    if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().network.dns.imageDnsHosts
             }
 
             userPreferencesDataSource.updateDnsSettings(
@@ -317,12 +318,14 @@ class DnsSettingsViewModel @Inject constructor(
 
         viewModelScope.launch {
             val currentData = userPreferencesDataSource.userData.first()
-            val finalApiDns = if (lowestApi != null) setOf(lowestApi) else currentData.apiDns
-            val finalImageDns = if (lowestImage != null) setOf(lowestImage) else currentData.imageDns
+            val finalApiDns =
+                if (lowestApi != null) setOf(lowestApi) else currentData.network.dns.apiDnsHosts
+            val finalImageDns =
+                if (lowestImage != null) setOf(lowestImage) else currentData.network.dns.imageDnsHosts
 
             val finalLineName = lowestApiResult?.lineName 
-                ?: lowestImageResult?.lineName 
-                ?: currentData.activeDnsLine
+                ?: lowestImageResult?.lineName
+                ?: currentData.network.dns.activeLine
 
             userPreferencesDataSource.updateDnsSettings(
                 apiDns = finalApiDns,

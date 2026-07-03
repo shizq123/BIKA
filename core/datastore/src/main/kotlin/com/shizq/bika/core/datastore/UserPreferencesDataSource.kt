@@ -1,14 +1,15 @@
 package com.shizq.bika.core.datastore
 
 import androidx.datastore.core.DataStore
-import com.shizq.bika.core.model.Channel
-import com.shizq.bika.core.model.DarkThemeConfig
 import com.shizq.bika.core.model.BookSpreadsMode
-import com.shizq.bika.core.model.ReadingMode
-import com.shizq.bika.core.model.ScreenOrientation
-import com.shizq.bika.core.model.TapZoneLayout
-import com.shizq.bika.core.model.UserPreferences
+import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.FavoriteTag
+import com.shizq.bika.core.model.preferences.UserPreferences
+import com.shizq.bika.core.model.preferences.UserProfileSnapshot
+import com.shizq.bika.core.model.reader.ReadingMode
+import com.shizq.bika.core.model.reader.ScreenOrientation
+import com.shizq.bika.core.model.reader.TapZoneLayout
+import com.shizq.bika.core.model.theme.DarkThemeConfig
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.Flow
 
@@ -17,158 +18,123 @@ class UserPreferencesDataSource @Inject constructor(
 ) {
     val userData: Flow<UserPreferences> = userPreferences.data
 
-    suspend fun setReadingMode(mode: ReadingMode) {
-        userPreferences.updateData { currentPreferences ->
-            currentPreferences.copy(readingMode = mode)
-        }
+    private suspend inline fun edit(crossinline block: (UserPreferences) -> UserPreferences) {
+        userPreferences.updateData { block(it) }
     }
 
-    suspend fun setScreenOrientation(orientation: ScreenOrientation) {
-        userPreferences.updateData { currentPreferences ->
-            currentPreferences.copy(screenOrientation = orientation)
-        }
+    suspend fun setReadingMode(mode: ReadingMode) = edit {
+        it.copy(reader = it.reader.copy(readingMode = mode))
     }
 
-    suspend fun setTapZoneLayout(layout: TapZoneLayout) {
-        userPreferences.updateData { currentPreferences ->
-            currentPreferences.copy(tapZoneLayout = layout)
-        }
+    suspend fun setScreenOrientation(orientation: ScreenOrientation) = edit {
+        it.copy(reader = it.reader.copy(screenOrientation = orientation))
     }
 
-    suspend fun setIsVolumeKeyNavigation(enabled: Boolean) {
-        userPreferences.updateData { currentPreferences ->
-            currentPreferences.copy(volumeKeyNavigation = enabled)
-        }
+    suspend fun setTapZoneLayout(layout: TapZoneLayout) = edit {
+        it.copy(reader = it.reader.copy(tapZoneLayout = layout))
     }
 
-    suspend fun updateChannels(channels: List<Channel>) {
-        userPreferences.updateData { currentPreferences ->
-            currentPreferences.copy(channels = channels)
-        }
+    suspend fun setIsVolumeKeyNavigation(enabled: Boolean) = edit {
+        it.copy(reader = it.reader.copy(volumeKeyNavigationEnabled = enabled))
     }
 
-    suspend fun setPreloadCount(count: Int) {
-        userPreferences.updateData { currentPreferences ->
-            currentPreferences.copy(preloadCount = count)
-        }
+    suspend fun updateChannels(channels: List<Channel>) = edit {
+        it.copy(dashboard = it.dashboard.copy(channels = channels))
     }
 
-    suspend fun setDarkThemeConfig(config: DarkThemeConfig) {
-        userPreferences.updateData {
-            it.copy(darkThemeConfig = config)
-        }
+    suspend fun setPreloadCount(count: Int) = edit {
+        it.copy(reader = it.reader.copy(preloadCount = count))
     }
 
-
-
-    suspend fun setAutoCheckIn(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(autoCheckIn = enabled)
-        }
+    suspend fun setDarkThemeConfig(config: DarkThemeConfig) = edit {
+        it.copy(theme = it.theme.copy(darkThemeConfig = config))
     }
 
-    suspend fun setDns(dns: Set<String>) {
-        userPreferences.updateData {
-            val combined = it.dns + dns
-            it.copy(
-                dns = combined,
-                apiDns = it.apiDns + dns,
-                imageDns = it.imageDns + dns
-            )
-        }
+    suspend fun setAutoCheckIn(enabled: Boolean) = edit {
+        it.copy(app = it.app.copy(autoCheckIn = enabled))
     }
 
-    suspend fun overwriteDns(dns: Set<String>) {
-        userPreferences.updateData {
-            it.copy(
-                dns = dns,
-                apiDns = dns,
-                imageDns = dns
-            )
-        }
+    suspend fun setDns(dns: Set<String>) = edit {
+        it.copy(
+            network = it.network.copy(
+                dns = it.network.dns.copy(
+                    apiDnsHosts = it.network.dns.apiDnsHosts + dns,
+                    imageDnsHosts = it.network.dns.imageDnsHosts + dns,
+                ),
+            ),
+        )
     }
 
-    suspend fun updateDnsSettings(apiDns: Set<String>, imageDns: Set<String>, activeDnsLine: String) {
-        userPreferences.updateData {
-            it.copy(
-                apiDns = apiDns,
-                imageDns = imageDns,
-                dns = apiDns + imageDns,
-                activeDnsLine = activeDnsLine
-            )
-        }
+    suspend fun overwriteDns(dns: Set<String>) = edit {
+        it.copy(
+            network = it.network.copy(
+                dns = it.network.dns.copy(apiDnsHosts = dns, imageDnsHosts = dns),
+            ),
+        )
     }
 
-    suspend fun setFontScale(scale: Float) {
-        userPreferences.updateData {
-            it.copy(fontScale = scale)
-        }
+    suspend fun updateDnsSettings(
+        apiDns: Set<String>,
+        imageDns: Set<String>,
+        activeDnsLine: String
+    ) = edit {
+        it.copy(
+            network = it.network.copy(
+                dns = it.network.dns.copy(
+                    apiDnsHosts = apiDns,
+                    imageDnsHosts = imageDns,
+                    activeLine = activeDnsLine,
+                ),
+            ),
+        )
     }
 
-    suspend fun setIsLoggingEnabled(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(isLoggingEnabled = enabled)
-        }
+    suspend fun setFontScale(scale: Float) = edit {
+        it.copy(app = it.app.copy(fontScale = scale))
     }
 
-    suspend fun setDownloadOverWifiOnly(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(downloadOverWifiOnly = enabled)
-        }
+    suspend fun setIsLoggingEnabled(enabled: Boolean) = edit {
+        it.copy(network = it.network.copy(isLoggingEnabled = enabled))
     }
 
-    suspend fun setMaxConcurrentDownloads(count: Int) {
-        userPreferences.updateData {
-            it.copy(maxConcurrentDownloads = count)
-        }
+    suspend fun setDownloadOverWifiOnly(enabled: Boolean) = edit {
+        it.copy(download = it.download.copy(overWifiOnly = enabled))
     }
 
-    suspend fun setEyeCareEnabled(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(eyeCareEnabled = enabled)
-        }
+    suspend fun setMaxConcurrentDownloads(count: Int) = edit {
+        it.copy(download = it.download.copy(maxConcurrentDownloads = count))
     }
 
-    suspend fun setEyeCareDarkness(darkness: Float) {
-        userPreferences.updateData {
-            it.copy(eyeCareDarkness = darkness)
-        }
+    suspend fun setEyeCareEnabled(enabled: Boolean) = edit {
+        it.copy(reader = it.reader.copy(eyeCare = it.reader.eyeCare.copy(enabled = enabled)))
     }
 
-    suspend fun setAutoScrollEnabled(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(autoScrollEnabled = enabled)
-        }
+    suspend fun setEyeCareDarkness(darkness: Float) = edit {
+        it.copy(reader = it.reader.copy(eyeCare = it.reader.eyeCare.copy(darkness = darkness)))
     }
 
-    suspend fun setAutoScrollSpeed(speed: Int) {
-        userPreferences.updateData {
-            it.copy(autoScrollSpeed = speed)
-        }
+    suspend fun setAutoScrollEnabled(enabled: Boolean) = edit {
+        it.copy(reader = it.reader.copy(autoScroll = it.reader.autoScroll.copy(enabled = enabled)))
     }
 
-    suspend fun setBookSpreadsMode(mode: BookSpreadsMode) {
-        userPreferences.updateData {
-            it.copy(bookSpreadsMode = mode)
-        }
+    suspend fun setAutoScrollSpeed(speed: Int) = edit {
+        it.copy(reader = it.reader.copy(autoScroll = it.reader.autoScroll.copy(speed = speed)))
     }
 
-    suspend fun setMagnifierEnabled(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(magnifierEnabled = enabled)
-        }
+    suspend fun setBookSpreadsMode(mode: BookSpreadsMode) = edit {
+        it.copy(reader = it.reader.copy(bookSpreadsMode = mode))
     }
 
-    suspend fun setStatusBarCapsuleEnabled(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(statusBarCapsuleEnabled = enabled)
-        }
+    suspend fun setMagnifierEnabled(enabled: Boolean) = edit {
+        it.copy(reader = it.reader.copy(magnifierEnabled = enabled))
     }
 
-    suspend fun setSecureScreenEnabled(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(secureScreenEnabled = enabled)
-        }
+    suspend fun setStatusBarCapsuleEnabled(enabled: Boolean) = edit {
+        it.copy(reader = it.reader.copy(statusBarCapsuleEnabled = enabled))
+    }
+
+    suspend fun setSecureScreenEnabled(enabled: Boolean) = edit {
+        it.copy(app = it.app.copy(secureScreenEnabled = enabled))
     }
 
     /** 保存用户资料到本地，供无网时回退展示 */
@@ -180,55 +146,43 @@ class UserPreferencesDataSource @Inject constructor(
         title: String,
         gender: String,
         slogan: String,
-        characters: List<String>,
-    ) {
-        userPreferences.updateData {
-            it.copy(
-                cachedUserName = name,
-                cachedUserAvatarUrl = avatarUrl,
-                cachedUserLevel = level,
-                cachedUserExp = exp,
-                cachedUserTitle = title,
-                cachedUserGender = gender,
-                cachedUserSlogan = slogan,
-                cachedUserCharacters = characters,
-            )
-        }
+        honorBadges: List<String>,
+    ) = edit {
+        it.copy(
+            profile = UserProfileSnapshot(
+                name = name,
+                avatarUrl = avatarUrl,
+                level = level,
+                exp = exp,
+                title = title,
+                gender = gender,
+                slogan = slogan,
+                honorBadges = honorBadges,
+            ),
+        )
     }
 
-    suspend fun setExcludeTopicsGlobal(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(excludeTopicsGlobal = enabled)
-        }
+    suspend fun setExcludeTopicsGlobal(enabled: Boolean) = edit {
+        it.copy(filter = it.filter.copy(globalTopicBlockEnabled = enabled))
     }
 
-    suspend fun setGlobalExcludedTopics(topics: List<String>) {
-        userPreferences.updateData {
-            it.copy(globalExcludedTopics = topics)
-        }
+    suspend fun setGlobalExcludedTopics(topics: List<String>) = edit {
+        it.copy(filter = it.filter.copy(globalBlockedTopics = topics))
     }
 
-    suspend fun updateFavoriteTags(tags: List<FavoriteTag>) {
-        userPreferences.updateData {
-            it.copy(favoriteTags = tags)
-        }
+    suspend fun updateFavoriteTags(tags: List<FavoriteTag>) = edit {
+        it.copy(filter = it.filter.copy(favoriteTags = tags))
     }
 
-    suspend fun setUsePredictiveBack(enabled: Boolean) {
-        userPreferences.updateData {
-            it.copy(usePredictiveBack = enabled)
-        }
+    suspend fun setUsePredictiveBack(enabled: Boolean) = edit {
+        it.copy(app = it.app.copy(predictiveBackEnabled = enabled))
     }
 
-    suspend fun addBlockedTag(tag: String) {
-        userPreferences.updateData {
-            it.copy(blockedTags = it.blockedTags + tag)
-        }
+    suspend fun addBlockedTag(tag: String) = edit {
+        it.copy(filter = it.filter.copy(blockedTags = it.filter.blockedTags + tag))
     }
 
-    suspend fun removeBlockedTag(tag: String) {
-        userPreferences.updateData {
-            it.copy(blockedTags = it.blockedTags - tag)
-        }
+    suspend fun removeBlockedTag(tag: String) = edit {
+        it.copy(filter = it.filter.copy(blockedTags = it.filter.blockedTags - tag))
     }
 }

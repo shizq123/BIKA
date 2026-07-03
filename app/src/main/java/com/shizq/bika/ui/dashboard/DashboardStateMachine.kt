@@ -45,17 +45,17 @@ class DashboardStateMachine @Inject constructor(
 
                         is Result.Error -> {
                             val prefs = userPreferencesDataSource.userData.first()
-                            val fallback = if (prefs.cachedUserName.isNotEmpty()) {
+                            val fallback = if (prefs.profile.name.isNotEmpty()) {
                                 UserProfileUiState.Success(
                                     user = User(
-                                        name = prefs.cachedUserName,
-                                        avatarUrl = prefs.cachedUserAvatarUrl,
-                                        characters = prefs.cachedUserCharacters,
-                                        level = prefs.cachedUserLevel,
-                                        exp = prefs.cachedUserExp,
-                                        title = prefs.cachedUserTitle,
-                                        gender = prefs.cachedUserGender,
-                                        slogan = prefs.cachedUserSlogan,
+                                        name = prefs.profile.name,
+                                        avatarUrl = prefs.profile.avatarUrl,
+                                        characters = prefs.profile.honorBadges,
+                                        level = prefs.profile.level,
+                                        exp = prefs.profile.exp,
+                                        title = prefs.profile.title,
+                                        gender = prefs.profile.gender,
+                                        slogan = prefs.profile.slogan,
                                         hasCheckedIn = false,
                                     ),
                                     isOfflineCache = true,
@@ -78,7 +78,7 @@ class DashboardStateMachine @Inject constructor(
                                 title = user.title,
                                 gender = user.gender,
                                 slogan = user.slogan,
-                                characters = user.characters,
+                                honorBadges = user.characters,
                             )
                             mutate {
                                 copy(
@@ -183,7 +183,7 @@ class DashboardStateMachine @Inject constructor(
                 // ── 收藏标签 CRUD（纯副作用，不改 DashboardState）─────────
                 onActionEffect<DashboardAction.AddFavoriteTag> { action ->
                     val current =
-                        userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
                     val tag = action.tag
                     if (current.none { it.name == tag.name && it.actionType == tag.actionType }) {
                         current.add(tag)
@@ -193,7 +193,7 @@ class DashboardStateMachine @Inject constructor(
 
                 onActionEffect<DashboardAction.RemoveFavoriteTag> { action ->
                     val tag = action.tag
-                    val updated = userPreferencesDataSource.userData.first().favoriteTags
+                    val updated = userPreferencesDataSource.userData.first().filter.favoriteTags
                         .filterNot { it.name == tag.name && it.actionType == tag.actionType }
                     userPreferencesDataSource.updateFavoriteTags(updated)
                 }
@@ -201,7 +201,7 @@ class DashboardStateMachine @Inject constructor(
                 onActionEffect<DashboardAction.UpdateFavoriteTagName> { action ->
                     if (action.newName.isBlank()) return@onActionEffect
                     val current =
-                        userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
                     val idx = current.indexOfFirst {
                         it.name == action.tag.name && it.actionType == action.tag.actionType
                     }
@@ -213,7 +213,7 @@ class DashboardStateMachine @Inject constructor(
 
                 onActionEffect<DashboardAction.MoveFavoriteTag> { action ->
                     val current =
-                        userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
                     if (action.fromIndex in current.indices && action.toIndex in current.indices) {
                         val tag = current.removeAt(action.fromIndex)
                         current.add(action.toIndex, tag)
@@ -225,7 +225,7 @@ class DashboardStateMachine @Inject constructor(
                     if (action.name.isBlank()) return@onActionEffect
                     val tag = FavoriteTag(name = action.name, actionType = "AdvancedSearch")
                     val current =
-                        userPreferencesDataSource.userData.first().favoriteTags.toMutableList()
+                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
                     if (current.none { it.name == tag.name && it.actionType == tag.actionType }) {
                         current.add(tag)
                         userPreferencesDataSource.updateFavoriteTags(current)

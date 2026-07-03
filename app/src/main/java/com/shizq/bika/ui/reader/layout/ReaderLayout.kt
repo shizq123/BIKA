@@ -19,7 +19,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.IntSize
 import androidx.core.view.ViewCompat
 import androidx.paging.compose.LazyPagingItems
-import com.shizq.bika.core.model.ReaderAction
+import com.shizq.bika.core.model.reader.ReaderAction
 import com.shizq.bika.paging.ChapterPage
 import com.shizq.bika.ui.reader.gesture.GestureState
 import kotlinx.coroutines.launch
