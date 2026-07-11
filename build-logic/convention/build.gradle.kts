@@ -65,5 +65,13 @@ gradlePlugin {
             id = libs.plugins.bika.root.get().pluginId
             implementationClass = "RootPlugin"
         }
+        register("androidFeatureImpl") {
+            id = libs.plugins.bika.android.feature.impl.get().pluginId
+            implementationClass = "AndroidFeatureImplConventionPlugin"
+        }
+        register("androidFeatureApi") {
+            id = libs.plugins.bika.android.feature.api.get().pluginId
+            implementationClass = "AndroidFeatureApiConventionPlugin"
+        }
     }
 }
