@@ -1,4 +1,5 @@
 pluginManagement {
+    includeBuild("build-logic")
     repositories {
         gradlePluginPortal()
         google()
@@ -37,6 +38,6 @@ include(":core:network")
 include(":core:testing")
 include(":core:ui")
 
-include(":sync:work")
+include(":feature:settings")
 
-includeBuild("build-logic")
+include(":sync:work")
