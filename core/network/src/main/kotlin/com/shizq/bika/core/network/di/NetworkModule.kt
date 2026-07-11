@@ -20,6 +20,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.defaultRequest
 import io.ktor.client.plugins.logging.ANDROID
@@ -131,6 +132,31 @@ internal object NetworkModule {
         install(Logging) {
             logger = Logger.ANDROID
             level = LogLevel.HEADERS
+        }
+    }
+
+    /**
+     * DNS 解析专用 [HttpClient]：独立于主链路，不带鉴权、不走 DirectDns，
+     * 避免"解析直连 IP 却依赖直连 IP"的循环依赖。短超时快速失败。
+     */
+    @Provides
+    @Singleton
+    @Named("dns")
+    fun provideDnsHttpClient(): HttpClient = HttpClient(OkHttp) {
+        expectSuccess = false
+        install(HttpTimeout) {
+            connectTimeoutMillis = 10_000L
+            requestTimeoutMillis = 10_000L
+            socketTimeoutMillis = 10_000L
+        }
+        install(ApiEnvelopePlugin)
+        install(ContentNegotiation) {
+            json(
+                Json {
+                    ignoreUnknownKeys = true
+                    coerceInputValues = true
+                }
+            )
         }
     }
 }
