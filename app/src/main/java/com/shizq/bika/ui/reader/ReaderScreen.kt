@@ -226,25 +226,49 @@ private fun ReaderContent(
             val controller = readerContext.controller
 
             // 恢复上次阅读进度：仅在章节切换/初始页变化时启动一次。
-            // 等待分页数据加载到目标页（itemCount > initialPage）后一次性滚动。
-            // 注意：key 绝不能包含 imageList.itemCount —— 否则分页加载过程中每次
-            // itemCount 变化都会重启本 effect，取消进行中的 scrollToPage（suspend），
-            // 最终停在初始位置且无法重试。
+            // isRestoring 期间暂停自动保存，防止恢复滚动途中的错误位置被写回数据库，
+            // 造成"每次打开都停在同一页"的恶性循环。
+            var isRestoring by remember(chapterState.order) { mutableStateOf(false) }
             LaunchedEffect(chapterState.order, chapterState.initialPage) {
                 val restorePage = chapterState.initialPage
                 if (restorePage <= 0) return@LaunchedEffect
-                val loadedEnough = runCatching {
-                    withTimeoutOrNull(15_000) {
-                        snapshotFlow { imageList.itemCount }
-                            .filter { it > restorePage }
-                            .first()
+                isRestoring = true
+                try {
+                    val ready = runCatching {
+                        withTimeoutOrNull(15_000) {
+                            snapshotFlow { imageList.itemCount }
+                                .filter { it > restorePage }
+                                .first()
+                        }
+                    }.getOrNull() != null
+                    if (!ready) {
+                        android.widget.Toast.makeText(context, "恢复超时：未加载到第 ${restorePage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
+                        return@LaunchedEffect
                     }
-                }.getOrNull() != null
-                if (loadedEnough) {
-                    controller.scrollToPage(restorePage)
-                    android.widget.Toast.makeText(context, "已恢复到第 ${restorePage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
-                } else {
-                    android.widget.Toast.makeText(context, "恢复超时：未加载到第 ${restorePage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
+                    val listState = readerContext.lazyListState
+                    if (listState != null) {
+                        // 条漫：scrollToItem 在目标 item 尚未被 LazyColumn 布局时会被 clamp 到
+                        // 已布局窗口末尾。循环滚动+验证，每次重试前已布局更多 item，最终能到位。
+                        var actual = -1
+                        for (attempt in 1..10) {
+                            listState.scrollToItem(restorePage)
+                            delay(300)
+                            actual = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: restorePage
+                            if (actual >= restorePage) break
+                        }
+                        android.widget.Toast.makeText(
+                            context,
+                            "目标第 ${restorePage + 1} 页，实际停在第 ${actual + 1} 页",
+                            android.widget.Toast.LENGTH_SHORT
+                        ).show()
+                    } else {
+                        controller.scrollToPage(restorePage)
+                        android.widget.Toast.makeText(context, "已恢复到第 ${restorePage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                } finally {
+                    // 等待滚动稳定后再放开自动保存
+                    delay(2000)
+                    isRestoring = false
                 }
             }
 
@@ -357,11 +381,14 @@ private fun ReaderContent(
                 }
             }
 
-            LaunchedEffect(controller) {
+            LaunchedEffect(controller, isRestoring) {
                 controller.visibleItemIndex
                     .debounce(1000)
                     .collect { index ->
-                        dispatch(SyncReadingProgress(index))
+                        // 恢复滚动期间不自动保存，避免把恢复途中的错误位置写回数据库
+                        if (!isRestoring) {
+                            dispatch(SyncReadingProgress(index))
+                        }
                     }
             }
 
