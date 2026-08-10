@@ -3,6 +3,7 @@
 package com.shizq.bika.ui.reader
 
 import android.content.pm.ActivityInfo
+import com.shizq.bika.core.common.BikaLog
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -231,38 +232,36 @@ private fun ReaderContent(
             var isRestoring by remember(chapterState.order) { mutableStateOf(false) }
             LaunchedEffect(chapterState.order, chapterState.initialPage) {
                 val restorePage = chapterState.initialPage
+                BikaLog.d("ReaderProgress", "收到恢复请求: chapterOrder=${chapterState.order} restorePage=$restorePage")
                 if (restorePage <= 0) return@LaunchedEffect
                 isRestoring = true
                 try {
-                    // 等待 Paging 数据流至少装载了数据（itemCount > 0），避免过早调用 scrollToItem 被忽略
                     snapshotFlow { imageList.itemCount }
                         .filter { it > 0 }
                         .first()
 
+                    BikaLog.d("ReaderProgress", "数据流就位, itemCount=${imageList.itemCount}, 开始定位 restorePage=$restorePage")
+
                     val listState = readerContext.lazyListState
                     if (listState != null) {
-                        // 条漫模式：立即开始 scrollToItem 循环，不预先等 itemCount 满足。
-                        // 每次 scrollToItem 都会驱动 LazyColumn 向 Paging 申请更多数据，
-                        // 随着数据持续加载，目标 item 最终会进入已布局区域并到达正确位置。
-                        // 循环最多 20 次（每次 300ms），共约 6 秒，足够多页网络加载。
                         for (attempt in 1..20) {
                             listState.scrollToItem(restorePage)
                             delay(200)
                             val visibleIndexes = listState.layoutInfo.visibleItemsInfo.map { it.index }
-                            // 当目标 item 已经在可见范围内时，说明恢复成功
-                            if (restorePage in visibleIndexes) break
+                            BikaLog.d("ReaderProgress", "定位尝试 #$attempt: 目标=$restorePage, 当前可见=$visibleIndexes")
+                            if (restorePage in visibleIndexes) {
+                                BikaLog.d("ReaderProgress", "恢复成功! restorePage=$restorePage 已在可见索引中")
+                                break
+                            }
                         }
                     } else {
-                        // 翻页模式（Pager）：同样需要循环驱动数据加载。
-                        // Pager 的 scrollToPage 会 clamp 到已加载页数内，每次跳转后 Paging
-                        // 会预取后续页，多次循环后最终能到达目标页。
                         for (attempt in 1..20) {
                             controller.scrollToPage(restorePage)
                             delay(300)
-                            // PagerController.visibleItemIndex 返回当前页 index
                             val reachedPage = try {
                                 controller.visibleItemIndex.first()
                             } catch (_: Exception) { -1 }
+                            BikaLog.d("ReaderProgress", "Pager定位尝试 #$attempt: 目标=$restorePage, reachedPage=$reachedPage")
                             if (reachedPage >= restorePage - 1) break
                         }
                     }
@@ -344,6 +343,7 @@ private fun ReaderContent(
             ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
 
             val onBack = {
+                BikaLog.d("ReaderProgress", "用户按返回键退出, 立即落库 currentPage=$currentPage")
                 onFlushProgress(currentPage)
                 onBackClick()
             }
@@ -351,22 +351,19 @@ private fun ReaderContent(
 
             // 关键时机兜底保存：应用退到后台/被杀 (ON_STOP) 以及阅读器离开组合 (onDispose) 时，
             // 立即落库，避免 debounce 窗口内的进度丢失。
-            // 注意：ON_STOP 期间若仍在恢复滚动（isRestoring=true），说明 currentPage 是中间态，
-            // 不能写入——直接跳过，等后续正常翻页的 debounce 保存或下次 onDispose 兜底。
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_STOP && !isRestoring) {
+                        BikaLog.d("ReaderProgress", "ON_STOP 退后台落库 currentPage=$currentPage")
                         onFlushProgress(currentPage)
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
-                    // 仅在非恢复状态下离开组合时才保存 currentPage；
-                    // 若退出时仍处于 isRestoring 状态（例如刚进阅读界面就立刻退出），
-                    // 放弃用未到位的 currentPage 覆盖数据库中的正确旧进度。
                     if (!isRestoring) {
+                        BikaLog.d("ReaderProgress", "onDispose 离开阅读器落库 currentPage=$currentPage")
                         onFlushProgress(currentPage)
                     }
                 }

@@ -47,7 +47,11 @@ class WebtoonLayout(
 
 class WebtoonController(
     private val listState: LazyListState,
+    initialPageIndex: Int
 ) : ReaderController {
+    
+    private var lastValidIndex: Int = initialPageIndex
+
     override val totalPages: Int
         get() = listState.layoutInfo.totalItemsCount
     override val visibleItemIndex: Flow<Int> = snapshotFlow {
@@ -100,7 +104,7 @@ class WebtoonController(
         val layoutInfo = listState.layoutInfo
         val visibleItems = layoutInfo.visibleItemsInfo
 
-        if (visibleItems.isEmpty() || layoutInfo.totalItemsCount == 0) return 0
+        if (visibleItems.isEmpty() || layoutInfo.totalItemsCount == 0) return lastValidIndex
 
         val lastVisibleItem = visibleItems.last()
 
@@ -110,11 +114,13 @@ class WebtoonController(
             val isBottomEdgeVisible =
                 (lastVisibleItem.offset + lastVisibleItem.size) <= layoutInfo.viewportEndOffset
             if (isBottomEdgeVisible) {
-                return lastVisibleItem.index
+                lastValidIndex = lastVisibleItem.index
+                return lastValidIndex
             }
         }
 
         // 取第一个进入视口的 item（firstVisibleItemIndex）
-        return visibleItems.first().index
+        lastValidIndex = visibleItems.first().index
+        return lastValidIndex
     }
 }

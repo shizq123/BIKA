@@ -158,13 +158,20 @@ class PagerLayout(
 
 class PagerController(
     private val pagerState: PagerState,
-    private val useDoublePage: Boolean
+    private val useDoublePage: Boolean,
+    initialPageIndex: Int
 ) : ReaderController {
+
+    private var lastValidIndex: Int = initialPageIndex
+
     override val totalPages: Int
         get() = if (useDoublePage) pagerState.pageCount * 2 else pagerState.pageCount
 
     override val visibleItemIndex = snapshotFlow {
-        if (useDoublePage) pagerState.currentPage * 2 else pagerState.currentPage
+        if (pagerState.pageCount > 0) {
+            lastValidIndex = if (useDoublePage) pagerState.currentPage * 2 else pagerState.currentPage
+        }
+        lastValidIndex
     }.distinctUntilChanged()
 
     override suspend fun scrollNextPage() {

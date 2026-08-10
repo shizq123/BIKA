@@ -98,7 +98,7 @@ fun rememberReaderContext(
                         hasPageGap = readingMode.hasPageGap
                     )
                 }
-                val controller = remember(listState) { WebtoonController(listState) }
+                val controller = remember(listState) { WebtoonController(listState, initialPageIndex) }
                 val scrollProvider = remember(listState) { LazyListScrollStateProvider(listState) }
 
                 ReaderContext(
@@ -125,7 +125,7 @@ fun rememberReaderContext(
                 )
             }
 
-            val controller = remember(pagerState, useDoublePage) { PagerController(pagerState, useDoublePage) }
+            val controller = remember(pagerState, useDoublePage) { PagerController(pagerState, useDoublePage, initialPageIndex) }
             val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
 
             ReaderContext(
