@@ -72,12 +72,10 @@ class WebtoonController(
     }
 
     override suspend fun scrollToPage(index: Int) {
-        val total = listState.layoutInfo.totalItemsCount
-        if (total > 0) {
-            listState.scrollToItem(index.coerceIn(0, total - 1))
-        } else {
-            listState.scrollToItem(index.coerceAtLeast(0))
-        }
+        // 不能用 layoutInfo.totalItemsCount 做 clamp：它在布局后才会更新，可能滞后于
+        // paging 的 itemCount，导致目标页被 clamp 到已布局末尾、滚动落空。
+        // scrollToItem 对超界 index 会滚动到末尾，调用方应确保数据已加载到目标页。
+        listState.scrollToItem(index.coerceAtLeast(0))
     }
 
     override suspend fun scrollBy(value: Float) {

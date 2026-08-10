@@ -101,6 +101,7 @@ import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
@@ -224,39 +225,26 @@ private fun ReaderContent(
             )
             val controller = readerContext.controller
 
-            // 首次进入章节时，若 initialPage > 0 且数据加载完成（itemCount > 0），则自动跳转至上次进度位置。
-            // 注意：必须等 itemCount > initialPage 再跳转，否则 scrollToPage 会被 clamp 到已加载的末尾，
-            // 且过早置 hasRestoredProgress=true 会导致后续数据到达时不再恢复（续读失效）。
-            var hasRestoredProgress by remember(chapterState.order) { mutableStateOf(false) }
-            LaunchedEffect(
-                chapterState.initialPage,
-                imageList.itemCount,
-                imageList.loadState,
-                hasRestoredProgress
-            ) {
-                if (!hasRestoredProgress) {
-                    val appendLoadState = imageList.loadState.append
-                    when {
-                        chapterState.initialPage == 0 -> {
-                            hasRestoredProgress = true
-                            android.widget.Toast.makeText(context, "无历史进度（起始页=0）", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-
-                        imageList.itemCount > chapterState.initialPage -> {
-                            controller.scrollToPage(chapterState.initialPage)
-                            hasRestoredProgress = true
-                            android.widget.Toast.makeText(context, "已恢复到第 ${chapterState.initialPage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-
-                        // 章节实际页数少于历史进度（服务端章节被裁剪），回退到最后一页
-                        appendLoadState is androidx.paging.LoadState.NotLoading
-                            && appendLoadState.endOfPaginationReached
-                            && imageList.itemCount > 0 -> {
-                            controller.scrollToPage(imageList.itemCount - 1)
-                            hasRestoredProgress = true
-                            android.widget.Toast.makeText(context, "章节较短，已恢复到第 ${imageList.itemCount} 页", android.widget.Toast.LENGTH_SHORT).show()
-                        }
+            // 恢复上次阅读进度：仅在章节切换/初始页变化时启动一次。
+            // 等待分页数据加载到目标页（itemCount > initialPage）后一次性滚动。
+            // 注意：key 绝不能包含 imageList.itemCount —— 否则分页加载过程中每次
+            // itemCount 变化都会重启本 effect，取消进行中的 scrollToPage（suspend），
+            // 最终停在初始位置且无法重试。
+            LaunchedEffect(chapterState.order, chapterState.initialPage) {
+                val restorePage = chapterState.initialPage
+                if (restorePage <= 0) return@LaunchedEffect
+                val loadedEnough = runCatching {
+                    withTimeoutOrNull(15_000) {
+                        snapshotFlow { imageList.itemCount }
+                            .filter { it > restorePage }
+                            .first()
                     }
+                }.getOrNull() != null
+                if (loadedEnough) {
+                    controller.scrollToPage(restorePage)
+                    android.widget.Toast.makeText(context, "已恢复到第 ${restorePage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    android.widget.Toast.makeText(context, "恢复超时：未加载到第 ${restorePage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
                 }
             }
 
