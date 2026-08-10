@@ -237,11 +237,15 @@ private fun ReaderContent(
                 if (!hasRestoredProgress) {
                     val appendLoadState = imageList.loadState.append
                     when {
-                        chapterState.initialPage == 0 -> hasRestoredProgress = true
+                        chapterState.initialPage == 0 -> {
+                            hasRestoredProgress = true
+                            android.widget.Toast.makeText(context, "无历史进度（起始页=0）", android.widget.Toast.LENGTH_SHORT).show()
+                        }
 
                         imageList.itemCount > chapterState.initialPage -> {
                             controller.scrollToPage(chapterState.initialPage)
                             hasRestoredProgress = true
+                            android.widget.Toast.makeText(context, "已恢复到第 ${chapterState.initialPage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
                         }
 
                         // 章节实际页数少于历史进度（服务端章节被裁剪），回退到最后一页
@@ -250,6 +254,7 @@ private fun ReaderContent(
                             && imageList.itemCount > 0 -> {
                             controller.scrollToPage(imageList.itemCount - 1)
                             hasRestoredProgress = true
+                            android.widget.Toast.makeText(context, "章节较短，已恢复到第 ${imageList.itemCount} 页", android.widget.Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
