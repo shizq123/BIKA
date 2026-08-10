@@ -234,6 +234,11 @@ private fun ReaderContent(
                 if (restorePage <= 0) return@LaunchedEffect
                 isRestoring = true
                 try {
+                    // 等待 Paging 数据流至少装载了数据（itemCount > 0），避免过早调用 scrollToItem 被忽略
+                    snapshotFlow { imageList.itemCount }
+                        .filter { it > 0 }
+                        .first()
+
                     val listState = readerContext.lazyListState
                     if (listState != null) {
                         // 条漫模式：立即开始 scrollToItem 循环，不预先等 itemCount 满足。
@@ -242,10 +247,10 @@ private fun ReaderContent(
                         // 循环最多 20 次（每次 300ms），共约 6 秒，足够多页网络加载。
                         for (attempt in 1..20) {
                             listState.scrollToItem(restorePage)
-                            delay(300)
-                            val actual = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: -1
-                            // 允许 ±1 的差异：条漫模式下 scrollToItem 可能 clamp 到第一个未完全展开的 item
-                            if (actual >= restorePage - 1) break
+                            delay(200)
+                            val visibleIndexes = listState.layoutInfo.visibleItemsInfo.map { it.index }
+                            // 当目标 item 已经在可见范围内时，说明恢复成功
+                            if (restorePage in visibleIndexes) break
                         }
                     } else {
                         // 翻页模式（Pager）：同样需要循环驱动数据加载。
