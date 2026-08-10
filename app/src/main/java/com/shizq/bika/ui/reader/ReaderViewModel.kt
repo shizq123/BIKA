@@ -146,16 +146,18 @@ class ReaderViewModel @AssistedInject constructor(
     private var lastKnownPage = -1
 
     /**
-     * 立即保存当前阅读进度。写入在 ApplicationScope 中执行，不随 ViewModel 销毁取消，
+     * 立即保存当前阅读进度（同步阻塞写库，返回时已落库）。
      * 供返回、应用退到后台/被杀等关键时机调用。
+     * @return 是否保存成功
      */
-    fun saveProgress(pageIndex: Int) {
+    fun saveProgress(pageIndex: Int): Boolean {
         lastKnownPage = pageIndex
         val state = stateMachine.state.value
         BikaLog.d(TAG, "saveProgress: pageIndex=$pageIndex 状态=${state::class.simpleName}")
         if (state is ReaderUiState.Ready) {
-            progressSaver.save(state.id, state.chapter.order, state.chapter.meta, pageIndex)
+            return progressSaver.save(state.id, state.chapter.order, state.chapter.meta, pageIndex)
         }
+        return false
     }
 
     override fun onCleared() {

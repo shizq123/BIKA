@@ -115,7 +115,7 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -
         chapterList = chapterList,
         onBackClick = onBackClick,
         dispatch = viewModel::dispatch,
-        onFlushProgress = viewModel::saveProgress,
+        onFlushProgress = { viewModel.saveProgress(it) },
     )
 }
 
@@ -203,7 +203,7 @@ private fun ReaderContent(
     state: ReaderUiState,
     onBackClick: () -> Unit = {},
     dispatch: (ReaderAction) -> Unit = {},
-    onFlushProgress: (Int) -> Unit = {},
+    onFlushProgress: (Int) -> Boolean = { false },
 ) {
     when (state) {
         is ReaderUiState.Initializing -> FullScreenLoading()
@@ -328,7 +328,12 @@ private fun ReaderContent(
             ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
 
             val onBack = {
-                onFlushProgress(currentPage)
+                val saved = onFlushProgress(currentPage)
+                if (saved) {
+                    android.widget.Toast.makeText(context, "进度已保存：第 ${currentPage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
+                } else {
+                    android.widget.Toast.makeText(context, "进度保存失败，请开启日志记录后重试", android.widget.Toast.LENGTH_SHORT).show()
+                }
                 onBackClick()
             }
             BackHandler(onBack = onBack)
