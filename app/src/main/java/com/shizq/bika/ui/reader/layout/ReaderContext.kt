@@ -87,9 +87,9 @@ fun rememberReaderContext(
 
     return when (readingMode.viewerType) {
         ViewerType.Scrolling -> {
-            // 用 key(chapterOrder) 强制在章节切换时重建 listState，
-            // 确保 initialFirstVisibleItemIndex（即上次阅读位置）每次都能生效。
-            key(chapterOrder) {
+            // 用 key(chapterOrder, initialPageIndex) 强制在章节切换或初始页解析到位时重建 listState，
+            // 确保 initialFirstVisibleItemIndex（即上次阅读位置）首次组合就能生效。
+            key(chapterOrder, initialPageIndex) {
                 val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPageIndex)
 
                 val layout = remember(listState, readingMode.hasPageGap) {
@@ -112,8 +112,8 @@ fun rememberReaderContext(
         }
 
         ViewerType.Pager -> {
-            // 同理，chapter 切换时强制重建 pagerState。
-            key(chapterOrder) {
+            // 同理，chapter 或 initialPageIndex 变化时强制重建 pagerState。
+            key(chapterOrder, initialPageIndex) {
                 val pageCount = if (useDoublePage) (chapterPages.itemCount + 1) / 2 else chapterPages.itemCount
                 val pagerState =
                     rememberPagerState(initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex) { pageCount }

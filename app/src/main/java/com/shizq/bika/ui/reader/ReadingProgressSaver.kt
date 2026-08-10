@@ -67,14 +67,13 @@ class ReadingProgressSaver @Inject constructor(
             historyDao.upsertHistory(newRecord)
         }
 
-        // 如果翻到最后一页或最后2页，则直接保存当前页为总页数，反馈已经看完
+        // 如果翻到最后一页或最后2页，判定为看完了本章
         val isFinished = meta.totalImages > 0 && pageIndex >= meta.totalImages - 2
-        val savedPage = if (isFinished) meta.totalImages else pageIndex
 
         val chapterProgress = ChapterProgressEntity(
             historyId = comicId,
             chapterId = chapterOrder,
-            currentPage = savedPage,
+            currentPage = pageIndex,
             pageCount = meta.totalImages,
             lastReadAt = now
         )

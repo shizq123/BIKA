@@ -172,16 +172,7 @@ class ReaderStateMachine @Inject constructor(
             val history = historyDao.getDetailedHistoryById(historyId)
             val progress = history?.asExternalModel()?.progressList
                 ?.find { it.chapterNumber == chapterOrder }
-            val startPage = progress?.let {
-                // 与 ReadingProgressSaver 的 isFinished 阈值保持一致：
-                // 保存时看到最后 2 页（>= totalImages - 2）会将 currentPage 存为 totalImages，
-                // 恢复时若 currentPage > pageCount - 2，认为已读完，从第 0 页重新开始。
-                if (it.pageCount > 0 && it.currentPage > it.pageCount - 2) {
-                    0
-                } else {
-                    it.currentPage
-                }
-            } ?: 0
+            val startPage = progress?.currentPage ?: 0
             BikaLog.d(
                 "ReaderProgress",
                 "恢复进度: comic=$historyId 章节=$chapterOrder DB进度=${progress?.currentPage}/${progress?.pageCount} 起始页=$startPage"
