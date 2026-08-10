@@ -229,7 +229,7 @@ private fun ReaderContent(
             // isRestoring 期间暂停自动保存，防止恢复滚动途中的错误位置被写回数据库，
             // 造成"每次打开都停在同一页"的恶性循环。
             var isRestoring by remember(chapterState.order) { mutableStateOf(false) }
-            LaunchedEffect(chapterState.order, chapterState.initialPage, readerContext) {
+            LaunchedEffect(chapterState.order, chapterState.initialPage) {
                 val restorePage = chapterState.initialPage
                 if (restorePage <= 0) return@LaunchedEffect
                 isRestoring = true
