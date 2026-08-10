@@ -3,17 +3,19 @@ androidGradlePlugin = "9.1.1"
 androidTools = "32.1.1"
 androidxActivity = "1.13.0"
 androidxAppCompat = "1.7.1"
-androidxComposeBom = "2026.06.00"
+androidxComposeBom = "2026.06.01"
 androidxComposeMaterial3Adaptive = "1.2.0"
 androidxCore = "1.19.0"
 androidxCoreSplashscreen = "1.2.0"
 androidxDataStore = "1.2.1"
 androidxEspresso = "3.7.0"
-androidxHiltNavigationCompose = "1.3.0"
+androidxHiltNavigationCompose = "1.4.0"
+androidxHiltLifecycleViewModelCompose = "1.4.0"
 androidxLifecycle = "2.11.0"
+androidxLifecycleViewModelNavigation3 = "2.11.0"
 androidxMacroBenchmark = "1.5.0-alpha06"
 androidxMetrics = "1.0.0"
-androidxNavigation3 = "1.1.3"
+androidxNavigation3 = "1.1.4"
 androidxSavedStateCompose = "1.5.0"
 androidxPaging = "3.5.0"
 androidxProfileinstaller = "1.4.1"
@@ -22,14 +24,14 @@ androidxTestExt = "1.3.0"
 androidxTestRules = "1.7.0"
 androidxTestRunner = "1.7.0"
 androidxTracing = "1.3.0"
-androidxUiAutomator = "2.3.0"
+androidxUiAutomator = "2.4.0"
 androidxWindowManager = "1.5.1"
 androidxWork = "2.11.2"
 coil = "3.5.0"
 room = "2.8.4"
 flowredux = "2.1.1"
-hilt = "2.59.2"
-hiltExt = "1.3.0"
+hilt = "2.60.1"
+hiltExt = "1.4.0"
 junit4 = "4.13.2"
 kotlin = "2.4.0"
 kotlinxCoroutines = "1.11.0"
@@ -41,7 +43,7 @@ okhttp = "5.4.0"
 okio = "3.17.0"
 reorderable = "3.0.0"
 robolectric = "4.16.1"
-roborazzi = "1.64.0"
+roborazzi = "1.68.0"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
@@ -55,7 +57,6 @@ androidx-compose-material3 = { group = "androidx.compose.material3", name = "mat
 androidx-compose-material3-navigationSuite = { group = "androidx.compose.material3", name = "material3-adaptive-navigation-suite" }
 androidx-compose-material3-adaptive = { group = "androidx.compose.material3.adaptive", name = "adaptive", version.ref = "androidxComposeMaterial3Adaptive" }
 androidx-compose-material3-adaptive-layout = { group = "androidx.compose.material3.adaptive", name = "adaptive-layout", version.ref = "androidxComposeMaterial3Adaptive" }
-
 androidx-compose-material3-adaptive-navigation = { group = "androidx.compose.material3.adaptive", name = "adaptive-navigation", version.ref = "androidxComposeMaterial3Adaptive" }
 androidx-compose-material3-windowSizeClass = { group = "androidx.compose.material3", name = "material3-window-size-class" }
 androidx-compose-runtime = { group = "androidx.compose.runtime", name = "runtime" }
@@ -68,9 +69,13 @@ androidx-compose-ui-util = { group = "androidx.compose.ui", name = "ui-util" }
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "androidxCore" }
 androidx-core-splashscreen = { group = "androidx.core", name = "core-splashscreen", version.ref = "androidxCoreSplashscreen" }
 androidx-dataStore = { group = "androidx.datastore", name = "datastore", version.ref = "androidxDataStore" }
-androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "androidxHiltNavigationCompose" }
+androidx-hilt-lifecycle-viewModelCompose = { group = "androidx.hilt", name = "hilt-lifecycle-viewmodel-compose", version.ref = "androidxHiltLifecycleViewModelCompose" }
 androidx-lifecycle-runtimeCompose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
-androidx-lifecycle-viewModel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycle" }
+androidx-lifecycle-runtimeTesting = { group = "androidx.lifecycle", name = "lifecycle-runtime-testing", version.ref = "androidxLifecycle" }
+androidx-lifecycle-viewModelCompose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
+androidx-lifecycle-viewModel-testing = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-testing", version.ref = "androidxLifecycle" }
+androidx-lifecycle-viewModel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycleViewModelNavigation3" }
+androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "androidxHiltNavigationCompose" }
 androidx-metrics = { group = "androidx.metrics", name = "metrics-performance", version.ref = "androidxMetrics" }
 androidx-navigation3-runtime = { group = "androidx.navigation3", name = "navigation3-runtime", version.ref = "androidxNavigation3" }
 androidx-navigation3-ui = { group = "androidx.navigation3", name = "navigation3-ui", version.ref = "androidxNavigation3" }
@@ -93,9 +98,6 @@ coil-compose = { group = "io.coil-kt.coil3", name = "coil-compose", version.ref 
 coil-core = { group = "io.coil-kt.coil3", name = "coil-core", version.ref = "coil" }
 coil-network-okhttp = { group = "io.coil-kt.coil3", name = "coil-network-okhttp", version.ref = "coil" }
 
-androidx-lifecycle-livedata-ktx = { module = "androidx.lifecycle:lifecycle-livedata-ktx", version.ref = "androidxLifecycle" }
-androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidxLifecycle" }
-androidx-lifecycle-viewmodel-ktx = { module = "androidx.lifecycle:lifecycle-viewmodel-ktx", version.ref = "androidxLifecycle" }
 androidx-room-compiler = { module = "androidx.room:room-compiler", version.ref = "room" }
 androidx-room-ktx = { module = "androidx.room:room-ktx", version.ref = "room" }
 androidx-room-runtime = { module = "androidx.room:room-runtime", version.ref = "room" }
@@ -152,7 +154,8 @@ room = { id = "androidx.room", version.ref = "room" }
 # Plugins defined by this project
 bika-android-application = { id = "bika.android.application" }
 bika-android-application-compose = { id = "bika.android.application.compose" }
-bika-android-feature = { id = "bika.android.feature" }
+bika-android-feature-api = { id = "bika.android.feature.api" }
+bika-android-feature-impl = { id = "bika.android.feature.impl" }
 bika-android-library = { id = "bika.android.library" }
 bika-android-library-compose = { id = "bika.android.library.compose" }
 bika-android-room = { id = "bika.android.room" }

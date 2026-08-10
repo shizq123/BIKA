@@ -93,10 +93,6 @@ dependencies {
 
     implementation(libs.androidx.appcompat)
 
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.livedata.ktx)
-
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
 
