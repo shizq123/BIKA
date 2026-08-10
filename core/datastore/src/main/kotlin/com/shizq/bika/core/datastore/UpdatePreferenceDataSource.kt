@@ -31,7 +31,7 @@ class UpdatePreferenceDataSource @Inject constructor(
 
     suspend fun setLastPromptTimeMillis(timeMillis: Long) {
         updatePreferences.updateData {
-            it.copy(ignoredVersionCode = timeMillis)
+            it.copy(lastPromptTime = timeMillis)
         }
     }
 }

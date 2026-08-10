@@ -5,6 +5,7 @@ import androidx.paging.PagingState
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.network.BikaDataSource
+import kotlinx.coroutines.CancellationException
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -26,6 +27,8 @@ class ReplyPagingSource @AssistedInject constructor(
                 prevKey = null,
                 nextKey = if (page >= commentsPage.pages) null else page + 1
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             LoadResult.Error(e)
         }

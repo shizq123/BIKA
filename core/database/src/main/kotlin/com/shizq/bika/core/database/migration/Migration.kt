@@ -18,10 +18,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 // schema 7  : identityHash 与 schema 6 相同，结构无变化（no-op 升版本号）
 // ──────────────────────────────────────────────────────────────────────────
 
-// schema 1 → 2（readingHistory 无结构变化，历史占位）
+// schema 1 → 2（schema 2 新增 tags 表，其余结构不变）
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        // schema 1 与 schema 2 的 downloadTask 均不存在，readingHistory 结构相同，无需操作
+        // 与 2.json 中 tags 表 createSql 保持一致，否则迁移后 identityHash 校验失败导致启动崩溃
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `tags` (`name` TEXT NOT NULL, PRIMARY KEY(`name`))"
+        )
     }
 }
 

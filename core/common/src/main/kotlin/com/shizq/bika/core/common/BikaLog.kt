@@ -24,6 +24,7 @@ object BikaLog {
             logDir.mkdirs()
         }
         logFile = File(logDir, "app.log")
+        installCrashHandler()
     }
 
     fun setLoggingEnabled(enabled: Boolean) {
@@ -31,6 +32,32 @@ object BikaLog {
     }
 
     fun getLoggingEnabled(): Boolean = isLoggingEnabled
+
+    /**
+     * 安装全局未捕获异常处理器：把闪退堆栈同步写入日志文件。
+     * 常规日志是异步写入的，进程崩溃时未落盘的数据会丢失，
+     * 因此崩溃路径必须同步写，保证"未知条件下闪退"也能被记录。
+     */
+    private fun installCrashHandler() {
+        val current = Thread.getDefaultUncaughtExceptionHandler()
+        if (current is CrashLogHandler) return
+        Thread.setDefaultUncaughtExceptionHandler(CrashLogHandler(current))
+    }
+
+    private class CrashLogHandler(
+        private val previous: Thread.UncaughtExceptionHandler?,
+    ) : Thread.UncaughtExceptionHandler {
+        override fun uncaughtException(thread: Thread, throwable: Throwable) {
+            try {
+                val stackTrace = Log.getStackTraceString(throwable)
+                writeLogSync("FATAL", thread.name, stackTrace)
+            } catch (_: Exception) {
+                // 崩溃日志写入失败不应影响默认崩溃流程
+            } finally {
+                previous?.uncaughtException(thread, throwable)
+            }
+        }
+    }
 
     fun d(tag: String, message: String) {
         Log.d(tag, message)
@@ -57,18 +84,27 @@ object BikaLog {
         writeLog("I", tag, message)
     }
 
+    private fun now(): String = synchronized(dateFormat) { dateFormat.format(Date()) }
+
     private fun writeLog(level: String, tag: String, message: String) {
         if (!isLoggingEnabled) return
         val file = logFile ?: return
+        val logLine = "${now()} [$level] $tag: $message\n"
         scope.launch {
             try {
-                val timestamp = dateFormat.format(Date())
-                val logLine = "$timestamp [$level] $tag: $message\n"
                 file.appendText(logLine)
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to write log to file", e)
             }
         }
+    }
+
+    /** 同步写入日志文件（崩溃路径专用，保证进程死亡前落盘）。 */
+    private fun writeLogSync(level: String, tag: String, message: String) {
+        if (!isLoggingEnabled) return
+        val file = logFile ?: return
+        val logLine = "${now()} [$level] $tag: $message\n"
+        file.appendText(logLine)
     }
 
     fun getLogFile(): File? {

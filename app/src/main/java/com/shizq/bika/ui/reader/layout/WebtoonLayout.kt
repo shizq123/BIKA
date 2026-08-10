@@ -10,7 +10,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.itemKey
 import com.shizq.bika.paging.ChapterPage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -31,11 +30,16 @@ class WebtoonLayout(
         ) {
             items(
                 count = pageItems.itemCount,
-                key = pageItems.itemKey { it.id },
+                key = { index ->
+                    // 部分镜像站会返回重复的 imageId，直接用 id 作 key 会触发
+                    // "Key was already used" 崩溃，这里用 index+id 组合保证唯一性。
+                    val page = pageItems.peek(index)
+                    if (page != null) "${index}_${page.id}" else "placeholder_$index"
+                },
             ) { index ->
                 pageItems[index]?.let {
                     ComicPageItem(it, index)
-                }
+                } ?: ChapterPageLoadStateItem(pageItems, index)
             }
         }
     }

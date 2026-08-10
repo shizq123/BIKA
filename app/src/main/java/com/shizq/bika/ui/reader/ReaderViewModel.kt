@@ -45,6 +45,7 @@ class ReaderViewModel @AssistedInject constructor(
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory,
     private val downloadRepository: DownloadRepository,
     private val downloadTaskRepository: DownloadTaskRepository,
+    private val progressSaver: ReadingProgressSaver,
     readerStateMachine: ReaderStateMachine,
     @Assisted id: String,
     @Assisted order: Int,
@@ -138,6 +139,32 @@ class ReaderViewModel @AssistedInject constructor(
         viewModelScope.launch {
             stateMachine.dispatch(action)
         }
+    }
+
+    @Volatile
+    private var lastKnownPage = -1
+
+    /**
+     * 立即保存当前阅读进度。写入在 ApplicationScope 中执行，不随 ViewModel 销毁取消，
+     * 供返回、应用退到后台/被杀等关键时机调用。
+     */
+    fun saveProgress(pageIndex: Int) {
+        lastKnownPage = pageIndex
+        val state = stateMachine.state.value
+        if (state is ReaderUiState.Ready) {
+            progressSaver.save(state.id, state.chapter.order, state.chapter.meta, pageIndex)
+        }
+    }
+
+    override fun onCleared() {
+        // ViewModel 被销毁前做最后一次兜底保存（如进程被系统回收）
+        if (lastKnownPage >= 0) {
+            val state = stateMachine.state.value
+            if (state is ReaderUiState.Ready) {
+                progressSaver.save(state.id, state.chapter.order, state.chapter.meta, lastKnownPage)
+            }
+        }
+        super.onCleared()
     }
 
     @AssistedFactory

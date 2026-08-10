@@ -30,6 +30,13 @@ class TokenAuthenticator @Inject constructor(
             "authenticate: received 401, path=$path, code=${response.code}, retryCount=$retryCount"
         )
 
+        // 登录请求自身收到 401 时直接放弃，避免 authenticate 内再次发起 login
+        // 又触发 401 重入，与外层 runBlocking + Mutex 互等形成死锁。
+        if (path.contains("/auth/sign-in")) {
+            Log.w(TAG, "authenticate: login request itself returned 401, give up. path=$path")
+            return null
+        }
+
         if (retryCount > MAX_RETRY_COUNT) {
             Log.e(
                 TAG,

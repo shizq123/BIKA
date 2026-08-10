@@ -26,6 +26,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,7 +48,58 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.paging.ChapterPage
+import kotlinx.coroutines.delay
+
+/**
+ * 分页数据未就绪时的占位组件：
+ * - 加载中：显示进度条
+ * - 分页失败：显示可点击的重试按钮，并自动进行有限次退避重试
+ */
+@Composable
+fun ChapterPageLoadStateItem(
+    pageItems: LazyPagingItems<ChapterPage>,
+    index: Int,
+    modifier: Modifier = Modifier,
+) {
+    val refreshError = pageItems.loadState.refresh as? LoadState.Error
+    val appendError = pageItems.loadState.append as? LoadState.Error
+    val isError = refreshError != null || appendError != null
+
+    var autoRetryCount by remember(pageItems) { mutableIntStateOf(0) }
+    LaunchedEffect(isError, autoRetryCount) {
+        if (isError && autoRetryCount < 3) {
+            delay(2000L * (autoRetryCount + 1))
+            autoRetryCount++
+            pageItems.retry()
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(0.75f)
+            .background(if (isError) Color.LightGray else Color.Gray.copy(alpha = 0.1f))
+            .clickable(enabled = isError) { pageItems.retry() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (isError) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry")
+                Text(
+                    text = "第 ${index + 1} 页加载失败\n点击重试",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        } else {
+            CircularProgressIndicator(modifier = Modifier.size(48.dp))
+        }
+    }
+}
 
 @Composable
 fun ComicPageItem(
@@ -144,6 +196,15 @@ fun ComicPageItem(
             }
 
             is AsyncImagePainter.State.Error -> {
+                // 网络不稳定时自动有限次退避重试，避免用户必须手动点击
+                var imageRetryCount by remember(page.id) { mutableIntStateOf(0) }
+                LaunchedEffect(imageRetryCount) {
+                    if (imageRetryCount < 3) {
+                        delay(2000L * (imageRetryCount + 1))
+                        imageRetryCount++
+                        painter.restart()
+                    }
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

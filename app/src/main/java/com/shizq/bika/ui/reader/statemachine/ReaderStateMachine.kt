@@ -4,13 +4,10 @@ package com.shizq.bika.ui.reader.statemachine
 
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
-import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.core.database.model.ChapterProgressEntity
-import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.download.repository.DownloadTaskRepository
+import com.shizq.bika.ui.reader.ReadingProgressSaver
 import com.shizq.bika.ui.reader.layout.ReaderConfig
 import com.shizq.bika.ui.reader.state.ChapterState
 import com.shizq.bika.ui.reader.state.ReaderAction
@@ -19,20 +16,15 @@ import com.shizq.bika.ui.reader.state.ReaderUiState
 import com.shizq.bika.ui.reader.state.SeekState
 import com.shizq.bika.ui.reader.state.UiControlState
 import jakarta.inject.Inject
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import kotlin.time.Clock
 
 class ReaderStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
-    private val downloadTaskRepository: DownloadTaskRepository,
-    @ApplicationScope private val externalScope: CoroutineScope,
+    private val progressSaver: ReadingProgressSaver,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
     init {
         spec {
@@ -88,50 +80,7 @@ class ReaderStateMachine @Inject constructor(
                 onActionEffect<ReaderAction.SyncReadingProgress> {
                     val chapter = snapshot.chapter
                     val meta = chapter.meta
-
-                    val id = snapshot.id
-                    if (id.isNotEmpty() && meta != null) {
-                        val pageIndex = it.pageIndex
-                        externalScope.launch(Dispatchers.IO) {
-                            val now = Clock.System.now()
-                            val affectedRows = historyDao.updateLastReadAt(id, now)
-                            if (affectedRows == 0) {
-                                // 历史条目不存在（如离线直接打开下载章节），为避免外键冲突，先插入默认漫画主历史记录
-                                val task =
-                                    downloadTaskRepository.observeTask("${id}_${chapter.order}")
-                                        .first()
-                                val title = task?.comicTitle ?: meta.title.ifEmpty { "Comic $id" }
-                                val coverUrl = task?.coverUrl ?: ""
-                                val newRecord = ReadingHistoryEntity(
-                                    id = id,
-                                    title = title,
-                                    author = "未知作者",
-                                    coverUrl = coverUrl,
-                                    lastInteractionAt = now
-                                )
-                                historyDao.upsertHistory(newRecord)
-                            }
-
-                            // 如果翻到最后一页或最后2页，则直接保存当前页为总页数，反馈已经看完
-                            val isFinished = meta.totalImages > 0 && pageIndex >= meta.totalImages - 2
-                            val savedPage = if (isFinished) meta.totalImages else pageIndex
-
-                            val chapterProgress = ChapterProgressEntity(
-                                historyId = id,
-                                chapterId = chapter.order,
-                                currentPage = savedPage,
-                                pageCount = meta.totalImages,
-                                lastReadAt = now
-                            )
-                            historyDao.upsertChapterProgress(chapterProgress)
-
-                            // 如果看完，则同步将该章节的下载任务标记为已查看
-                            if (isFinished) {
-                                val taskId = "${id}_${chapter.order}"
-                                downloadTaskRepository.markAsViewed(taskId)
-                            }
-                        }
-                    }
+                    progressSaver.save(snapshot.id, chapter.order, meta, it.pageIndex)
                 }
                 onActionEffect<ReaderAction.SetReadingMode> {
                     userPreferencesDataSource.setReadingMode(it.mode)

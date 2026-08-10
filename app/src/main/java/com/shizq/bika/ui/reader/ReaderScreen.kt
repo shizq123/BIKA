@@ -42,6 +42,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -55,6 +56,9 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -112,6 +116,7 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -
         chapterList = chapterList,
         onBackClick = onBackClick,
         dispatch = viewModel::dispatch,
+        onFlushProgress = viewModel::saveProgress,
     )
 }
 
@@ -199,6 +204,7 @@ private fun ReaderContent(
     state: ReaderUiState,
     onBackClick: () -> Unit = {},
     dispatch: (ReaderAction) -> Unit = {},
+    onFlushProgress: (Int) -> Unit = {},
 ) {
     when (state) {
         is ReaderUiState.Initializing -> FullScreenLoading()
@@ -220,13 +226,33 @@ private fun ReaderContent(
             val controller = readerContext.controller
 
             // 首次进入章节时，若 initialPage > 0 且数据加载完成（itemCount > 0），则自动跳转至上次进度位置。
+            // 注意：必须等 itemCount > initialPage 再跳转，否则 scrollToPage 会被 clamp 到已加载的末尾，
+            // 且过早置 hasRestoredProgress=true 会导致后续数据到达时不再恢复（续读失效）。
             var hasRestoredProgress by remember(chapterState.order) { mutableStateOf(false) }
-            LaunchedEffect(chapterState.initialPage, imageList.itemCount, hasRestoredProgress) {
-                if (!hasRestoredProgress && chapterState.initialPage > 0 && imageList.itemCount > 0) {
-                    controller.scrollToPage(chapterState.initialPage)
-                    hasRestoredProgress = true
-                } else if (chapterState.initialPage == 0) {
-                    hasRestoredProgress = true
+            LaunchedEffect(
+                chapterState.initialPage,
+                imageList.itemCount,
+                imageList.loadState,
+                hasRestoredProgress
+            ) {
+                if (!hasRestoredProgress) {
+                    val appendLoadState = imageList.loadState.append
+                    when {
+                        chapterState.initialPage == 0 -> hasRestoredProgress = true
+
+                        imageList.itemCount > chapterState.initialPage -> {
+                            controller.scrollToPage(chapterState.initialPage)
+                            hasRestoredProgress = true
+                        }
+
+                        // 章节实际页数少于历史进度（服务端章节被裁剪），回退到最后一页
+                        appendLoadState is androidx.paging.LoadState.NotLoading
+                            && appendLoadState.endOfPaginationReached
+                            && imageList.itemCount > 0 -> {
+                            controller.scrollToPage(imageList.itemCount - 1)
+                            hasRestoredProgress = true
+                        }
+                    }
                 }
             }
 
@@ -303,10 +329,27 @@ private fun ReaderContent(
             ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
 
             val onBack = {
-                dispatch(SyncReadingProgress(currentPage))
+                onFlushProgress(currentPage)
                 onBackClick()
             }
             BackHandler(onBack = onBack)
+
+            // 关键时机兜底保存：应用退到后台/被杀 (ON_STOP) 以及阅读器离开组合 (onDispose) 时，
+            // 立即落库，避免 debounce 窗口内的进度丢失。写入在 ApplicationScope 中执行，不随 ViewModel 销毁取消。
+            val currentPageState = rememberUpdatedState(currentPage)
+            val lifecycleOwner = LocalLifecycleOwner.current
+            DisposableEffect(lifecycleOwner) {
+                val observer = LifecycleEventObserver { _, event ->
+                    if (event == Lifecycle.Event.ON_STOP) {
+                        onFlushProgress(currentPageState.value)
+                    }
+                }
+                lifecycleOwner.lifecycle.addObserver(observer)
+                onDispose {
+                    lifecycleOwner.lifecycle.removeObserver(observer)
+                    onFlushProgress(currentPageState.value)
+                }
+            }
 
             LaunchedEffect(overlayState.seekState) {
                 if (overlayState.seekState is SeekState.Seeking) {

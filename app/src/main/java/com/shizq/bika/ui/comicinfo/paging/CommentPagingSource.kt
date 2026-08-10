@@ -6,6 +6,7 @@ import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Type
+import kotlinx.coroutines.CancellationException
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -31,6 +32,8 @@ class CommentPagingSource @AssistedInject constructor(
                 prevKey = null,
                 nextKey = if (page >= commentsPage.pages) null else page + 1
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             if (page == 1) {
                 onTopCommentsLoaded(emptyList())
