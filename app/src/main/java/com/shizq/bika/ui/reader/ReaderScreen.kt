@@ -229,7 +229,7 @@ private fun ReaderContent(
             // isRestoring 期间暂停自动保存，防止恢复滚动途中的错误位置被写回数据库，
             // 造成"每次打开都停在同一页"的恶性循环。
             var isRestoring by remember(chapterState.order) { mutableStateOf(false) }
-            LaunchedEffect(chapterState.order, chapterState.initialPage) {
+            LaunchedEffect(chapterState.order, chapterState.initialPage, readerContext) {
                 val restorePage = chapterState.initialPage
                 if (restorePage <= 0) return@LaunchedEffect
                 isRestoring = true
@@ -262,8 +262,6 @@ private fun ReaderContent(
                         }
                     }
                 } finally {
-                    // 等待滚动稳定后再放开自动保存
-                    delay(2000)
                     isRestoring = false
                 }
             }
@@ -360,9 +358,12 @@ private fun ReaderContent(
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
-                    // onDispose 时恢复操作必然已结束（协程随 Composition 一起取消），
-                    // currentPage 是合法的最终值，无条件保存。
-                    onFlushProgress(currentPage)
+                    // 仅在非恢复状态下离开组合时才保存 currentPage；
+                    // 若退出时仍处于 isRestoring 状态（例如刚进阅读界面就立刻退出），
+                    // 放弃用未到位的 currentPage 覆盖数据库中的正确旧进度。
+                    if (!isRestoring) {
+                        onFlushProgress(currentPage)
+                    }
                 }
             }
 
