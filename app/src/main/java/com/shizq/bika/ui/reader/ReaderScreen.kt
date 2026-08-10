@@ -42,7 +42,6 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -336,18 +335,20 @@ private fun ReaderContent(
 
             // 关键时机兜底保存：应用退到后台/被杀 (ON_STOP) 以及阅读器离开组合 (onDispose) 时，
             // 立即落库，避免 debounce 窗口内的进度丢失。写入在 ApplicationScope 中执行，不随 ViewModel 销毁取消。
-            val currentPageState = rememberUpdatedState(currentPage)
+            // 注意：必须直接读 currentPage（collectAsState 委托的 State 实时值）。
+            // 不能经 rememberUpdatedState 中转——它只在重组时刷新，快速翻页后立即退出时
+            // 会读到最后一次重组的旧页码，导致旧进度覆盖新进度。
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_STOP) {
-                        onFlushProgress(currentPageState.value)
+                        onFlushProgress(currentPage)
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
-                    onFlushProgress(currentPageState.value)
+                    onFlushProgress(currentPage)
                 }
             }
 
@@ -380,7 +381,7 @@ private fun ReaderContent(
                             delay(300)
                             if (nextChapter != null) {
                                 // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
-                                dispatch(SyncReadingProgress(currentPage))
+                                dispatch(SyncReadingProgress(page))
                                 dispatch(JumpToChapter(nextChapter, startFromBeginning = true))
                             } else {
                                 android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show()

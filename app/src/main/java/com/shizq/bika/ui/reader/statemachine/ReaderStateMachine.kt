@@ -4,6 +4,7 @@ package com.shizq.bika.ui.reader.statemachine
 
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
+import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -167,16 +168,21 @@ class ReaderStateMachine @Inject constructor(
 
     private suspend fun getStartPage(historyId: String, chapterOrder: Int): Int {
         return withContext(Dispatchers.IO) {
-            val history = historyDao.getDetailedHistoryById(historyId) ?: return@withContext 0
-            history.asExternalModel().progressList
-                .find { it.chapterNumber == chapterOrder }
-                ?.let { progress ->
-                    if (progress.currentPage >= progress.pageCount && progress.pageCount > 0) {
-                        0
-                    } else {
-                        progress.currentPage
-                    }
-                } ?: 0
+            val history = historyDao.getDetailedHistoryById(historyId)
+            val progress = history?.asExternalModel()?.progressList
+                ?.find { it.chapterNumber == chapterOrder }
+            val startPage = progress?.let {
+                if (it.currentPage >= it.pageCount && it.pageCount > 0) {
+                    0
+                } else {
+                    it.currentPage
+                }
+            } ?: 0
+            BikaLog.d(
+                "ReaderProgress",
+                "恢复进度: comic=$historyId 章节=$chapterOrder DB进度=${progress?.currentPage}/${progress?.pageCount} 起始页=$startPage"
+            )
+            startPage
         }
     }
 }
