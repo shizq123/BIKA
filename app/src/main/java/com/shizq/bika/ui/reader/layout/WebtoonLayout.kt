@@ -83,12 +83,18 @@ class WebtoonController(
     }
 
     /**
-     * 计算当前阅读到的页码
+     * 计算当前阅读到的页码（用于进度保存）。
+     *
      * 规则：
      * 1. 如果滚动到底部，且最后一项完全可见，强制视为最后一页（解决最后一页较短时无法触发已读的问题）。
-     * 2. 否则取**视口中心线所在的项**——即用户实际正在阅读的那一页。
-     *    （不能用第一个可见项：条漫一屏常同时露出多页，顶部项会比用户正在看的页靠前，
-     *    导致保存的进度落后于实际阅读位置。）
+     * 2. 否则取**第一个已经开始进入视口的 item**（firstVisibleItemIndex），
+     *    这代表用户当前正在阅读的起始页。
+     *
+     * 为何不用视口中心线：
+     * - 条漫图片可能极高（超过屏幕高度数倍），用户已滚动到第28页顶部，
+     *   但中心线仍指向第12页，导致进度保存为第12页，与用户感知严重偏差。
+     * - 使用 firstVisibleItemIndex 可确保进度不落后于用户已看到的内容。
+     *   即使第一个可见页尚未看完，下次也只是从该页开始，不会丢失已读内容。
      */
     private fun calculateCurrentPageIndex(): Int {
         val layoutInfo = listState.layoutInfo
@@ -108,11 +114,7 @@ class WebtoonController(
             }
         }
 
-        // 视口中心线位置（与 item.offset 同一坐标系）
-        val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2
-        val centerItem = visibleItems.firstOrNull { item ->
-            item.offset <= viewportCenter && (item.offset + item.size) > viewportCenter
-        }
-        return centerItem?.index ?: lastVisibleItem.index
+        // 取第一个进入视口的 item（firstVisibleItemIndex）
+        return visibleItems.first().index
     }
 }

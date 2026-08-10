@@ -30,15 +30,18 @@ class ReadingProgressSaver @Inject constructor(
      * @return 写库是否成功
      */
     fun save(comicId: String, chapterOrder: Int, meta: ChapterMeta?, pageIndex: Int): Boolean {
-        if (comicId.isEmpty() || meta == null) {
-            BikaLog.w(TAG, "跳过保存: comicId='$comicId' 章节=$chapterOrder 页=$pageIndex meta=${meta == null}")
+        if (comicId.isEmpty()) {
+            BikaLog.w(TAG, "跳过保存: comicId 为空 章节=$chapterOrder 页=$pageIndex")
             return false
         }
+        // meta 为 null 时（ChapterMetaLoaded 还未到达），用 totalImages=0 占位保存。
+        // 恢复时 pageCount=0 → 条件 pageCount>0 为 false → 直接用 currentPage，不会误判为已看完。
+        val effectiveMeta = meta ?: ChapterMeta(title = "", totalImages = 0)
         return try {
             runBlocking(Dispatchers.IO) {
-                saveInternal(comicId, chapterOrder, meta, pageIndex)
+                saveInternal(comicId, chapterOrder, effectiveMeta, pageIndex)
             }
-            BikaLog.d(TAG, "进度已落库: comic=$comicId 章节=$chapterOrder 页=$pageIndex/${meta.totalImages}")
+            BikaLog.d(TAG, "进度已落库: comic=$comicId 章节=$chapterOrder 页=$pageIndex/${effectiveMeta.totalImages}")
             true
         } catch (e: Exception) {
             BikaLog.e(TAG, "进度落库失败: comic=$comicId 章节=$chapterOrder 页=$pageIndex", e)

@@ -234,36 +234,32 @@ private fun ReaderContent(
                 if (restorePage <= 0) return@LaunchedEffect
                 isRestoring = true
                 try {
-                    val ready = runCatching {
-                        withTimeoutOrNull(15_000) {
-                            snapshotFlow { imageList.itemCount }
-                                .filter { it > restorePage }
-                                .first()
-                        }
-                    }.getOrNull() != null
-                    if (!ready) {
-                        android.widget.Toast.makeText(context, "恢复超时：未加载到第 ${restorePage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
-                        return@LaunchedEffect
-                    }
                     val listState = readerContext.lazyListState
                     if (listState != null) {
-                        // 条漫：scrollToItem 在目标 item 尚未被 LazyColumn 布局时会被 clamp 到
-                        // 已布局窗口末尾。循环滚动+验证，每次重试前已布局更多 item，最终能到位。
-                        var actual = -1
-                        for (attempt in 1..10) {
+                        // 条漫模式：立即开始 scrollToItem 循环，不预先等 itemCount 满足。
+                        // 每次 scrollToItem 都会驱动 LazyColumn 向 Paging 申请更多数据，
+                        // 随着数据持续加载，目标 item 最终会进入已布局区域并到达正确位置。
+                        // 循环最多 20 次（每次 300ms），共约 6 秒，足够多页网络加载。
+                        for (attempt in 1..20) {
                             listState.scrollToItem(restorePage)
                             delay(300)
-                            actual = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: restorePage
-                            if (actual >= restorePage) break
+                            val actual = listState.layoutInfo.visibleItemsInfo.firstOrNull()?.index ?: -1
+                            // 允许 ±1 的差异：条漫模式下 scrollToItem 可能 clamp 到第一个未完全展开的 item
+                            if (actual >= restorePage - 1) break
                         }
-                        android.widget.Toast.makeText(
-                            context,
-                            "目标第 ${restorePage + 1} 页，实际停在第 ${actual + 1} 页",
-                            android.widget.Toast.LENGTH_SHORT
-                        ).show()
                     } else {
-                        controller.scrollToPage(restorePage)
-                        android.widget.Toast.makeText(context, "已恢复到第 ${restorePage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
+                        // 翻页模式（Pager）：同样需要循环驱动数据加载。
+                        // Pager 的 scrollToPage 会 clamp 到已加载页数内，每次跳转后 Paging
+                        // 会预取后续页，多次循环后最终能到达目标页。
+                        for (attempt in 1..20) {
+                            controller.scrollToPage(restorePage)
+                            delay(300)
+                            // PagerController.visibleItemIndex 返回当前页 index
+                            val reachedPage = try {
+                                controller.visibleItemIndex.first()
+                            } catch (_: Exception) { -1 }
+                            if (reachedPage >= restorePage - 1) break
+                        }
                     }
                 } finally {
                     // 等待滚动稳定后再放开自动保存
@@ -345,31 +341,27 @@ private fun ReaderContent(
             ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
 
             val onBack = {
-                val saved = onFlushProgress(currentPage)
-                if (saved) {
-                    android.widget.Toast.makeText(context, "进度已保存：第 ${currentPage + 1} 页", android.widget.Toast.LENGTH_SHORT).show()
-                } else {
-                    android.widget.Toast.makeText(context, "进度保存失败，请开启日志记录后重试", android.widget.Toast.LENGTH_SHORT).show()
-                }
+                onFlushProgress(currentPage)
                 onBackClick()
             }
             BackHandler(onBack = onBack)
 
             // 关键时机兜底保存：应用退到后台/被杀 (ON_STOP) 以及阅读器离开组合 (onDispose) 时，
-            // 立即落库，避免 debounce 窗口内的进度丢失。写入在 ApplicationScope 中执行，不随 ViewModel 销毁取消。
-            // 注意：必须直接读 currentPage（collectAsState 委托的 State 实时值）。
-            // 不能经 rememberUpdatedState 中转——它只在重组时刷新，快速翻页后立即退出时
-            // 会读到最后一次重组的旧页码，导致旧进度覆盖新进度。
+            // 立即落库，避免 debounce 窗口内的进度丢失。
+            // 注意：ON_STOP 期间若仍在恢复滚动（isRestoring=true），说明 currentPage 是中间态，
+            // 不能写入——直接跳过，等后续正常翻页的 debounce 保存或下次 onDispose 兜底。
             val lifecycleOwner = LocalLifecycleOwner.current
             DisposableEffect(lifecycleOwner) {
                 val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_STOP) {
+                    if (event == Lifecycle.Event.ON_STOP && !isRestoring) {
                         onFlushProgress(currentPage)
                     }
                 }
                 lifecycleOwner.lifecycle.addObserver(observer)
                 onDispose {
                     lifecycleOwner.lifecycle.removeObserver(observer)
+                    // onDispose 时恢复操作必然已结束（协程随 Composition 一起取消），
+                    // currentPage 是合法的最终值，无条件保存。
                     onFlushProgress(currentPage)
                 }
             }

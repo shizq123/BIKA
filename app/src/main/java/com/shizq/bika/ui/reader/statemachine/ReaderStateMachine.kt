@@ -80,8 +80,9 @@ class ReaderStateMachine @Inject constructor(
                 }
                 onActionEffect<ReaderAction.SyncReadingProgress> {
                     val chapter = snapshot.chapter
-                    val meta = chapter.meta
-                    progressSaver.save(snapshot.id, chapter.order, meta, it.pageIndex)
+                    // ReadingProgressSaver.save() 内部处理 meta==null（totalImages=0 占位），
+                    // 此处直接传 meta，无需在 StateMachine 层做特殊处理。
+                    progressSaver.save(snapshot.id, chapter.order, chapter.meta, it.pageIndex)
                 }
                 onActionEffect<ReaderAction.SetReadingMode> {
                     userPreferencesDataSource.setReadingMode(it.mode)
@@ -172,7 +173,10 @@ class ReaderStateMachine @Inject constructor(
             val progress = history?.asExternalModel()?.progressList
                 ?.find { it.chapterNumber == chapterOrder }
             val startPage = progress?.let {
-                if (it.currentPage >= it.pageCount && it.pageCount > 0) {
+                // 与 ReadingProgressSaver 的 isFinished 阈值保持一致：
+                // 保存时看到最后 2 页（>= totalImages - 2）会将 currentPage 存为 totalImages，
+                // 恢复时若 currentPage > pageCount - 2，认为已读完，从第 0 页重新开始。
+                if (it.pageCount > 0 && it.currentPage > it.pageCount - 2) {
                     0
                 } else {
                     it.currentPage
