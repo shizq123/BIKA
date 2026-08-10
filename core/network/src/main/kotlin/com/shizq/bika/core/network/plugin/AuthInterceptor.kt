@@ -3,6 +3,7 @@ package com.shizq.bika.core.network.plugin
 import android.util.Log
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.BuildConfig
 import dagger.Lazy
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.first
@@ -16,6 +17,7 @@ import okhttp3.Route
 
 private const val TAG = "TokenAuthenticator"
 private const val MAX_RETRY_COUNT = 2
+private val DEBUG_LOGGING = BuildConfig.DEBUG
 
 class TokenAuthenticator @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource,
@@ -25,7 +27,7 @@ class TokenAuthenticator @Inject constructor(
     override fun authenticate(route: Route?, response: Response): Request? {
         val path = response.request.url.encodedPath
         val retryCount = response.responseCount()
-        Log.i(
+        if (DEBUG_LOGGING) Log.i(
             TAG,
             "authenticate: received 401, path=$path, code=${response.code}, retryCount=$retryCount"
         )
@@ -33,12 +35,12 @@ class TokenAuthenticator @Inject constructor(
         // 登录请求自身收到 401 时直接放弃，避免 authenticate 内再次发起 login
         // 又触发 401 重入，与外层 runBlocking + Mutex 互等形成死锁。
         if (path.contains("/auth/sign-in")) {
-            Log.w(TAG, "authenticate: login request itself returned 401, give up. path=$path")
+            if (DEBUG_LOGGING) Log.w(TAG, "authenticate: login request itself returned 401, give up. path=$path")
             return null
         }
 
         if (retryCount > MAX_RETRY_COUNT) {
-            Log.e(
+            if (DEBUG_LOGGING) Log.e(
                 TAG,
                 "authenticate: max retry reached, give up. path=$path, retryCount=$retryCount"
             )
@@ -49,24 +51,24 @@ class TokenAuthenticator @Inject constructor(
             val oldToken = userData.token
             val username = userData.username
             val password = userData.password
-            Log.d(
+            if (DEBUG_LOGGING) Log.d(
                 TAG,
                 "authenticate: loaded credentials. username=${safeUsername(username)}, oldToken=${maskToken(oldToken)}"
             )
             if (oldToken == null || username.isNullOrBlank() || password.isNullOrBlank()  ) {
-                Log.e(TAG, "authenticate: username/password/token is empty, cannot re-login.")
+                if (DEBUG_LOGGING) Log.e(TAG, "authenticate: username/password/token is empty, cannot re-login.")
                 return@runBlocking null
             }
-            Log.d(TAG, "authenticate: waiting for mutex...")
+            if (DEBUG_LOGGING) Log.d(TAG, "authenticate: waiting for mutex...")
             mutex.withLock {
-                Log.d(TAG, "authenticate: mutex acquired.")
+                if (DEBUG_LOGGING) Log.d(TAG, "authenticate: mutex acquired.")
                 val latestToken = userCredentialsDataSource.userData.first().token
-                Log.d(
+                if (DEBUG_LOGGING) Log.d(
                     TAG,
                     "authenticate: latest token from storage=${maskToken(latestToken)}, oldToken=${maskToken(oldToken)}"
                 )
                 if (!latestToken.isNullOrBlank() && latestToken != oldToken) {
-                    Log.i(
+                    if (DEBUG_LOGGING) Log.i(
                         TAG,
                         "authenticate: token already refreshed by another request, reuse it."
                     )
@@ -75,29 +77,29 @@ class TokenAuthenticator @Inject constructor(
                         .build()
                 }
                 try {
-                    Log.i(TAG, "authenticate: start re-login. path=$path")
+                    if (DEBUG_LOGGING) Log.i(TAG, "authenticate: start re-login. path=$path")
                     val loginResult = authApiProvider.get().login(username, password)
                     val newToken = loginResult.token
-                    Log.i(
+                    if (DEBUG_LOGGING) Log.i(
                         TAG,
                         "authenticate: re-login finished. newToken=${maskToken(newToken)}"
                     )
                     if (newToken.isNullOrBlank()) {
-                        Log.e(TAG, "authenticate: re-login succeeded but token is null/blank.")
+                        if (DEBUG_LOGGING) Log.e(TAG, "authenticate: re-login succeeded but token is null/blank.")
                         return@withLock null
                     }
                     userCredentialsDataSource.setToken(newToken)
-                    Log.i(TAG, "authenticate: token updated in storage.")
+                    if (DEBUG_LOGGING) Log.i(TAG, "authenticate: token updated in storage.")
                     val newRequest = response.request.newBuilder()
                         .header("Authorization", newToken)
                         .build()
-                    Log.i(TAG, "authenticate: rebuilt request with new token, retrying.")
+                    if (DEBUG_LOGGING) Log.i(TAG, "authenticate: rebuilt request with new token, retrying.")
                     newRequest
                 } catch (e: Exception) {
-                    Log.e(TAG, "authenticate: re-login failed.", e)
+                    if (DEBUG_LOGGING) Log.e(TAG, "authenticate: re-login failed.", e)
                     null
                 } finally {
-                    Log.d(TAG, "authenticate: leaving mutex block.")
+                    if (DEBUG_LOGGING) Log.d(TAG, "authenticate: leaving mutex block.")
                 }
             }
         }

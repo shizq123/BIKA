@@ -2,6 +2,7 @@ package com.shizq.bika.core.network.plugin
 
 import android.util.Log
 import coil3.intercept.Interceptor
+import com.shizq.bika.core.network.BuildConfig
 import coil3.request.ErrorResult
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
@@ -20,6 +21,7 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 
 private const val TAG = "DomainFallbackCoil"
+private val DEBUG_LOGGING = BuildConfig.DEBUG
 
 private class FallbackMarker : AbstractCoroutineContextElement(FallbackMarker) {
     companion object Key : CoroutineContext.Key<FallbackMarker>
@@ -31,7 +33,7 @@ class DomainFallbackInterceptor : Interceptor {
 
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult = coroutineScope {
         if (coroutineContext[FallbackMarker] != null) {
-            Log.d(TAG, "Skipping fallback race for fallback request: ${chain.request.data}")
+            if (DEBUG_LOGGING) Log.d(TAG, "Skipping fallback race for fallback request: ${chain.request.data}")
             return@coroutineScope chain.proceed()
         }
 
@@ -76,9 +78,9 @@ class DomainFallbackInterceptor : Interceptor {
                 }
 
                 if (mainJob.isActive) {
-                    Log.w(TAG, "Main request for '$failedHost' is too slow (>2.5s). Starting fallback race.")
+                    if (DEBUG_LOGGING) Log.w(TAG, "Main request for '$failedHost' is too slow (>2.5s). Starting fallback race.")
                 } else {
-                    Log.w(TAG, "Main request for '$failedHost' failed quickly. Starting fallback race immediately.")
+                    if (DEBUG_LOGGING) Log.w(TAG, "Main request for '$failedHost' failed quickly. Starting fallback race immediately.")
                 }
 
                 val raceResult = performFallbackRace(chain, httpUrl, failedHost)
@@ -127,13 +129,13 @@ class DomainFallbackInterceptor : Interceptor {
         // 如果有已知的最佳域名，先单独尝试它，避免并发风暴
         val currentOptimal = optimalFallbackHost
         if (currentOptimal != null && currentOptimal in fallbackHosts) {
-            Log.d(TAG, "Trying fast path with known optimal host: $currentOptimal")
+            if (DEBUG_LOGGING) Log.d(TAG, "Trying fast path with known optimal host: $currentOptimal")
             val fastResult = tryFallbackHost(chain, httpUrl, currentOptimal)
             if (fastResult != null) {
-                Log.i(TAG, "Fast path successful with: $currentOptimal")
+                if (DEBUG_LOGGING) Log.i(TAG, "Fast path successful with: $currentOptimal")
                 return fastResult
             }
-            Log.d(TAG, "Fast path failed. Falling back to race.")
+            if (DEBUG_LOGGING) Log.d(TAG, "Fast path failed. Falling back to race.")
         }
 
         // 去除刚才已经试过的最佳域名，剩下的一起竞速
@@ -152,7 +154,7 @@ class DomainFallbackInterceptor : Interceptor {
         originalHttpUrl: HttpUrl,
         hostsToRace: List<String>
     ): SuccessResult? = coroutineScope {
-        Log.i(TAG, "Racing remaining hosts: $hostsToRace")
+        if (DEBUG_LOGGING) Log.i(TAG, "Racing remaining hosts: $hostsToRace")
 
         val resultChannel = Channel<Pair<String, SuccessResult>>(1)
 
@@ -175,14 +177,14 @@ class DomainFallbackInterceptor : Interceptor {
         for (msg in resultChannel) {
             optimalFallbackHost = msg.first
             winnerResult = msg.second
-            Log.i(TAG, "Race won by host: '${msg.first}'")
+            if (DEBUG_LOGGING) Log.i(TAG, "Race won by host: '${msg.first}'")
             break
         }
 
         jobs.forEach { it.cancel() }
 
         if (winnerResult == null) {
-            Log.e(TAG, "All fallback attempts failed for: $originalHttpUrl")
+            if (DEBUG_LOGGING) Log.e(TAG, "All fallback attempts failed for: $originalHttpUrl")
         }
 
         winnerResult

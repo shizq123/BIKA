@@ -132,9 +132,11 @@ internal object NetworkModule {
                 }
             )
         }
-        install(Logging) {
-            logger = Logger.ANDROID
-            level = LogLevel.HEADERS
+        if (BuildConfig.DEBUG) {
+            install(Logging) {
+                logger = Logger.ANDROID
+                level = LogLevel.HEADERS
+            }
         }
     }
 }
