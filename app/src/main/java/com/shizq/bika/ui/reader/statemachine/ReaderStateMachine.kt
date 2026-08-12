@@ -82,7 +82,9 @@ class ReaderStateMachine @Inject constructor(
                     val chapter = snapshot.chapter
                     // ReadingProgressSaver.save() 内部处理 meta==null（totalImages=0 占位），
                     // 此处直接传 meta，无需在 StateMachine 层做特殊处理。
-                    progressSaver.save(snapshot.id, chapter.order, chapter.meta, it.pageIndex)
+                    // 用异步版 saveSuspend：这是翻页 debounce 的常规保存，不阻塞主线程；
+                    // 返回/退后台等关键时机由 ReaderViewModel.saveProgress 同步落库兜底。
+                    progressSaver.saveSuspend(snapshot.id, chapter.order, chapter.meta, it.pageIndex)
                 }
                 onActionEffect<ReaderAction.SetReadingMode> {
                     userPreferencesDataSource.setReadingMode(it.mode)

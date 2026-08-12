@@ -47,11 +47,37 @@ import kotlinx.serialization.json.putJsonArray
 class BikaDataSource @Inject constructor(
     private val client: HttpClient,
 ) {
-    suspend fun getNetworkConfig(): NetworkBootstrapConfig {
-        return client.get("http://68.183.234.72/init") {
-            attributes.put(ExpectRawResponse, Unit)
-        }.body()
+    private companion object {
+        const val BOOTSTRAP_HOST = "68.183.234.72"
+        // 引导接口可能走明文 HTTP 回退，响应内容必须严格校验：
+        // 仅接受合法 IP/主机名，防止中间人篡改注入恶意地址
+        private val ADDRESS_PATTERN = Regex("^[0-9a-zA-Z.\\-:\\[\\]]{1,255}$")
     }
+
+    suspend fun getNetworkConfig(): NetworkBootstrapConfig {
+        val config = fetchBootstrapConfig()
+        // 明文通道下的响应校验：过滤非法地址，全部非法时返回空列表（调用方不会更新 DNS）
+        val validated = config.addresses.filter { it.isValidAddress() }
+        if (validated.size != config.addresses.size) {
+            android.util.Log.w("BikaNetwork", "引导配置包含非法地址，已过滤: ${config.addresses.filterNot { it.isValidAddress() }}")
+        }
+        return config.copy(addresses = validated)
+    }
+
+    private suspend fun fetchBootstrapConfig(): NetworkBootstrapConfig {
+        return try {
+            // 优先 HTTPS（防篡改）；服务器不支持时回退明文通道
+            client.get("https://$BOOTSTRAP_HOST/init") {
+                attributes.put(ExpectRawResponse, Unit)
+            }.body()
+        } catch (_: Exception) {
+            client.get("http://$BOOTSTRAP_HOST/init") {
+                attributes.put(ExpectRawResponse, Unit)
+            }.body()
+        }
+    }
+
+    private fun String.isValidAddress(): Boolean = ADDRESS_PATTERN.matches(this)
 
     suspend fun login(username: String, password: String): LoginData {
         return try {

@@ -39,6 +39,8 @@ internal object DatabaseModule {
             // 快捷路径：schema 3 直达 6，Room 会优先选择跨度最大的路径
             MIGRATION_3_6,
         )
-        .fallbackToDestructiveMigration(dropAllTables = true)
+        // 不注册 fallbackToDestructiveMigration：一旦触发会静默清空下载任务、
+        // 阅读历史等全部用户数据。升级路径缺失时宁可抛异常崩溃（数据保留在磁盘，
+        // 修复迁移路径后即可恢复），也不能无声无息丢数据。每次升级必须补全迁移路径。
         .build()
 }
