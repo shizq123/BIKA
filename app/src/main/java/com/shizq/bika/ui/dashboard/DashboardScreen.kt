@@ -776,15 +776,6 @@ private fun navigation(
     navigationToLeaderboard: () -> Unit,
     navigateToSearch: (DiscoveryAction) -> Unit,
 ) {
-//    if (channel.link != null) {
-//        val token = SPUtil.get("token", "")
-//        val secret = "pb6XkQ94iBBny1WUAxY0dY5fksexw0dt"
-//        val fullUrl = "${channel.link}/?token=$token&secret=$secret"
-//
-//        val intent = Intent(Intent.ACTION_VIEW, fullUrl.toUri())
-//        context.startActivity(intent)
-//        return
-//    }
 
     when (channel.label) {
         "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)

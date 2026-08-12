@@ -68,6 +68,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
+import com.shizq.bika.core.common.BikaLog
 
 @Serializable
 data class DnsResolveResponse(
@@ -199,7 +200,7 @@ class DnsSettingsViewModel @Inject constructor(
                 resultList
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            com.shizq.bika.core.common.BikaLog.e("DnsSettings", "获取 DNS 配置失败", e)
             emptyList()
         }
     }
@@ -262,7 +263,7 @@ class DnsSettingsViewModel @Inject constructor(
             // 挑选另一个域名的最佳（延迟低/有效）IP，或者默认取第一个
             val bestOtherIp = otherDomainIpsInSameLine
                 .filter { it.latency != null && it.latency != Long.MAX_VALUE }
-                .minByOrNull { it.latency!! }
+                .minByOrNull { it.latency ?: Long.MAX_VALUE }
                 ?.ip
                 ?: otherDomainIpsInSameLine.firstOrNull()?.ip
 
@@ -308,12 +309,12 @@ class DnsSettingsViewModel @Inject constructor(
         val allResults = _uiState.value.lines.values.flatten()
         val lowestApiResult = allResults
             .filter { it.domain == "picaapi.picacomic.com" && it.latency != null && it.latency != Long.MAX_VALUE }
-            .minByOrNull { it.latency!! }
+            .minByOrNull { it.latency ?: Long.MAX_VALUE }
         val lowestApi = lowestApiResult?.ip
 
         val lowestImageResult = allResults
             .filter { it.domain == "picacomic.com" && it.latency != null && it.latency != Long.MAX_VALUE }
-            .minByOrNull { it.latency!! }
+            .minByOrNull { it.latency ?: Long.MAX_VALUE }
         val lowestImage = lowestImageResult?.ip
 
         viewModelScope.launch {

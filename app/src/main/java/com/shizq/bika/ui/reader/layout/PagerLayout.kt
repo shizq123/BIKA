@@ -14,7 +14,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.itemKey
 import com.shizq.bika.core.model.reader.Direction
 import com.shizq.bika.paging.ChapterPage
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -44,7 +43,7 @@ class PagerLayout(
             VerticalPager(
                 state = pagerState,
                 modifier = modifier,
-                key = if (useDoublePage) null else pageItems.itemKey { it.id },
+                key = if (useDoublePage) null else uniquePageKey(pageItems),
                 pageContent = { pageContent(it) }
             )
         } else {
@@ -53,10 +52,21 @@ class PagerLayout(
                 HorizontalPager(
                     state = pagerState,
                     modifier = modifier,
-                    key = if (useDoublePage) null else pageItems.itemKey { it.id },
+                    key = if (useDoublePage) null else uniquePageKey(pageItems),
                     pageContent = { pageContent(it) }
                 )
             }
+        }
+    }
+
+    /**
+     * 部分镜像站会返回重复的 imageId，直接用 id 作 key 会触发
+     * "Key was already used" 崩溃，这里用 index+id 组合保证唯一性。
+     */
+    private fun uniquePageKey(pageItems: LazyPagingItems<ChapterPage>): (Int) -> Any {
+        return { index ->
+            val page = pageItems.peek(index)
+            if (page != null) "${index}_${page.id}" else "placeholder_$index"
         }
     }
 
@@ -66,7 +76,7 @@ class PagerLayout(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.Center
         ) {
-            pages[index]?.let { ComicPageItem(it, index) }
+            pages[index]?.let { ComicPageItem(it, index) } ?: ChapterPageLoadStateItem(pages, index)
         }
     }
 
@@ -148,13 +158,20 @@ class PagerLayout(
 
 class PagerController(
     private val pagerState: PagerState,
-    private val useDoublePage: Boolean
+    private val useDoublePage: Boolean,
+    initialPageIndex: Int
 ) : ReaderController {
+
+    private var lastValidIndex: Int = initialPageIndex
+
     override val totalPages: Int
         get() = if (useDoublePage) pagerState.pageCount * 2 else pagerState.pageCount
 
     override val visibleItemIndex = snapshotFlow {
-        if (useDoublePage) pagerState.currentPage * 2 else pagerState.currentPage
+        if (pagerState.pageCount > 0) {
+            lastValidIndex = if (useDoublePage) pagerState.currentPage * 2 else pagerState.currentPage
+        }
+        lastValidIndex
     }.distinctUntilChanged()
 
     override suspend fun scrollNextPage() {

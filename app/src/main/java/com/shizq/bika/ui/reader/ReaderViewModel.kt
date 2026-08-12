@@ -11,6 +11,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.freeletics.flowredux2.initializeWith
+import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
@@ -45,6 +46,7 @@ class ReaderViewModel @AssistedInject constructor(
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory,
     private val downloadRepository: DownloadRepository,
     private val downloadTaskRepository: DownloadTaskRepository,
+    private val progressSaver: ReadingProgressSaver,
     readerStateMachine: ReaderStateMachine,
     @Assisted id: String,
     @Assisted order: Int,
@@ -138,6 +140,36 @@ class ReaderViewModel @AssistedInject constructor(
         viewModelScope.launch {
             stateMachine.dispatch(action)
         }
+    }
+
+    @Volatile
+    private var lastKnownPage = -1
+
+    /**
+     * 立即保存当前阅读进度（同步阻塞写库，返回时已落库）。
+     * 供返回、应用退到后台/被杀等关键时机调用。
+     * @return 是否保存成功
+     */
+    fun saveProgress(pageIndex: Int): Boolean {
+        lastKnownPage = pageIndex
+        val state = stateMachine.state.value
+        BikaLog.d(TAG, "saveProgress: pageIndex=$pageIndex 状态=${state::class.simpleName}")
+        if (state is ReaderUiState.Ready) {
+            return progressSaver.save(state.id, state.chapter.order, state.chapter.meta, pageIndex)
+        }
+        return false
+    }
+
+    override fun onCleared() {
+        // ViewModel 被销毁前做最后一次兜底保存（如进程被系统回收）
+        if (lastKnownPage >= 0) {
+            val state = stateMachine.state.value
+            BikaLog.d(TAG, "onCleared 兜底保存: lastKnownPage=$lastKnownPage 状态=${state::class.simpleName}")
+            if (state is ReaderUiState.Ready) {
+                progressSaver.save(state.id, state.chapter.order, state.chapter.meta, lastKnownPage)
+            }
+        }
+        super.onCleared()
     }
 
     @AssistedFactory

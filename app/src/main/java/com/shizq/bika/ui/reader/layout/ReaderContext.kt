@@ -87,10 +87,10 @@ fun rememberReaderContext(
 
     return when (readingMode.viewerType) {
         ViewerType.Scrolling -> {
-            // 用 key(chapterOrder) 强制在章节切换时重建 listState，
-            // 确保 initialFirstVisibleItemIndex（即上次阅读位置）每次都能生效。
             key(chapterOrder) {
-                val listState = rememberLazyListState(initialFirstVisibleItemIndex = initialPageIndex)
+                val listState = rememberLazyListState(
+                    initialFirstVisibleItemIndex = initialPageIndex
+                )
 
                 val layout = remember(listState, readingMode.hasPageGap) {
                     WebtoonLayout(
@@ -98,7 +98,7 @@ fun rememberReaderContext(
                         hasPageGap = readingMode.hasPageGap
                     )
                 }
-                val controller = remember(listState) { WebtoonController(listState) }
+                val controller = remember(listState) { WebtoonController(listState, initialPageIndex) }
                 val scrollProvider = remember(listState) { LazyListScrollStateProvider(listState) }
 
                 ReaderContext(
@@ -112,31 +112,28 @@ fun rememberReaderContext(
         }
 
         ViewerType.Pager -> {
-            // 同理，chapter 切换时强制重建 pagerState。
-            key(chapterOrder) {
-                val pageCount = if (useDoublePage) (chapterPages.itemCount + 1) / 2 else chapterPages.itemCount
-                val pagerState =
-                    rememberPagerState(initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex) { pageCount }
+            val pageCount = if (useDoublePage) (chapterPages.itemCount + 1) / 2 else chapterPages.itemCount
+            val pagerState =
+                rememberPagerState(initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex) { pageCount }
 
-                val layout = remember(pagerState, readingMode.direction, readingMode.isRtl, useDoublePage) {
-                    PagerLayout(
-                        pagerState = pagerState,
-                        direction = readingMode.direction,
-                        isRtl = readingMode.isRtl,
-                        useDoublePage = useDoublePage
-                    )
-                }
-
-                val controller = remember(pagerState, useDoublePage) { PagerController(pagerState, useDoublePage) }
-                val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
-
-                ReaderContext(
-                    layout = layout,
-                    controller = controller,
-                    scrollStateProvider = scrollProvider,
-                    config = config
+            val layout = remember(pagerState, readingMode.direction, readingMode.isRtl, useDoublePage) {
+                PagerLayout(
+                    pagerState = pagerState,
+                    direction = readingMode.direction,
+                    isRtl = readingMode.isRtl,
+                    useDoublePage = useDoublePage
                 )
             }
+
+            val controller = remember(pagerState, useDoublePage) { PagerController(pagerState, useDoublePage, initialPageIndex) }
+            val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
+
+            ReaderContext(
+                layout = layout,
+                controller = controller,
+                scrollStateProvider = scrollProvider,
+                config = config
+            )
         }
     }
 }

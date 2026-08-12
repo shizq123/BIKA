@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -67,6 +68,7 @@ import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
 import com.shizq.bika.core.designsystem.theme.BikaTheme
 import kotlinx.coroutines.flow.flowOf
+import com.shizq.bika.core.ui.RetryableAsyncImage
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -160,7 +162,8 @@ fun CommentList(
     onExpandReplies: (comment: Comment) -> Unit
 ) {
     LazyColumn(modifier = modifier) {
-        items(pinnedComments, key = { it.id }) { comment ->
+        // 置顶评论：服务端可能返回重复 id，key 组合 index 保证唯一
+        itemsIndexed(pinnedComments, key = { index, comment -> "${index}_${comment.id}" }) { _, comment ->
             CommentItem(
                 comment = comment,
                 onToggleLike = { onToggleLike(comment.id) },
@@ -172,7 +175,10 @@ fun CommentList(
 
         items(
             count = regularComments.itemCount,
-            key = regularComments.itemKey { it.id }
+            key = { index ->
+                val comment = regularComments.peek(index)
+                if (comment != null) "${index}_${comment.id}" else "placeholder_$index"
+            }
         ) { index ->
             regularComments[index]?.let { comment ->
                 CommentItem(
@@ -274,8 +280,8 @@ fun CommentItem(
                 indication = null
             ) { onReplyClick(comment.id) },
     ) {
-        // 头像
-        AsyncImage(
+        // 头像：失败自动重试
+        RetryableAsyncImage(
             model = comment.user.avatar,
             contentDescription = "用户头像",
             modifier = Modifier
@@ -378,7 +384,13 @@ fun ReplySheetContent(
                 )
                 HorizontalDivider(thickness = 8.dp)
             }
-            items(replyList.itemCount, key = replyList.itemKey { it.id }) { index ->
+            items(
+                replyList.itemCount,
+                key = { index ->
+                    val reply = replyList.peek(index)
+                    if (reply != null) "${index}_${reply.id}" else "placeholder_$index"
+                }
+            ) { index ->
                 replyList[index]?.let { reply ->
                     CommentItem(
                         comment = reply,

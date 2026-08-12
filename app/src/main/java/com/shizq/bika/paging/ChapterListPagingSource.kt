@@ -3,6 +3,7 @@ package com.shizq.bika.paging
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
+import kotlinx.coroutines.CancellationException
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -26,6 +27,8 @@ class ChapterListPagingSource @AssistedInject constructor(
                 prevKey = null,
                 nextKey = if (currentPage < data.pages) currentPage + 1 else null
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             LoadResult.Error(e)
         }

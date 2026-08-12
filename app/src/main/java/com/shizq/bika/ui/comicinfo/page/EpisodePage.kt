@@ -48,6 +48,7 @@ import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.network.model.Episode
 import kotlinx.coroutines.flow.flowOf
+import com.shizq.bika.core.common.BikaLog
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,7 +72,7 @@ fun EpisodesPage(
             try {
                 allEpisodes = onFetchAllEpisodes()
             } catch (e: Exception) {
-                e.printStackTrace()
+                com.shizq.bika.core.common.BikaLog.e("EpisodePage", "获取全部章节失败", e)
             } finally {
                 isLoadingEpisodes = false
             }
@@ -93,7 +94,11 @@ fun EpisodesPage(
         ) {
             items(
                 count = episodes.itemCount,
-                key = episodes.itemKey { it.id }
+                // 服务端分页可能返回重复 id，key 组合 index 保证唯一，避免 "Key was already used" 崩溃
+                key = { index ->
+                    val episode = episodes.peek(index)
+                    if (episode != null) "${index}_${episode.id}" else "placeholder_$index"
+                }
             ) { index ->
                 episodes[index]?.let { episode ->
                     val progress = chapterProgress.find { it.chapterId == episode.order }

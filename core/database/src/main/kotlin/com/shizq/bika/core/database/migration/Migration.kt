@@ -18,10 +18,13 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 // schema 7  : identityHash 与 schema 6 相同，结构无变化（no-op 升版本号）
 // ──────────────────────────────────────────────────────────────────────────
 
-// schema 1 → 2（readingHistory 无结构变化，历史占位）
+// schema 1 → 2（schema 2 新增 tags 表，其余结构不变）
 val MIGRATION_1_2 = object : Migration(1, 2) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        // schema 1 与 schema 2 的 downloadTask 均不存在，readingHistory 结构相同，无需操作
+        // 与 2.json 中 tags 表 createSql 保持一致，否则迁移后 identityHash 校验失败导致启动崩溃
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `tags` (`name` TEXT NOT NULL, PRIMARY KEY(`name`))"
+        )
     }
 }
 
@@ -99,13 +102,16 @@ val MIGRATION_5_6 = object : Migration(5, 6) {
 // schema 6 → 7：补齐防护，应对历史残留的不完整 schema 6 结构
 val MIGRATION_6_7 = object : Migration(6, 7) {
     override fun migrate(db: SupportSQLiteDatabase) {
-        try { db.execSQL("ALTER TABLE downloadTask ADD COLUMN `priority` INTEGER NOT NULL DEFAULT 0") } catch (_: Exception) {}
-        try { db.execSQL("ALTER TABLE downloadTask ADD COLUMN `worker_token` TEXT") } catch (_: Exception) {}
-        try { db.execSQL("ALTER TABLE downloadTask ADD COLUMN `next_schedule_at` INTEGER NOT NULL DEFAULT 0") } catch (_: Exception) {}
-        try { db.execSQL("ALTER TABLE downloadTask ADD COLUMN `errorCode` TEXT NOT NULL DEFAULT 'NONE'") } catch (_: Exception) {}
-        try { db.execSQL("ALTER TABLE downloadTask ADD COLUMN `errorMessage` TEXT NOT NULL DEFAULT ''") } catch (_: Exception) {}
-        try { db.execSQL("ALTER TABLE downloadTask ADD COLUMN `retryCount` INTEGER NOT NULL DEFAULT 0") } catch (_: Exception) {}
-        try { db.execSQL("ALTER TABLE downloadTask ADD COLUMN `updatedAt` INTEGER NOT NULL DEFAULT 0") } catch (_: Exception) {}
+        // 列可能已存在于历史残留的 schema 6 中，仅忽略"重复列"错误；
+        // 其他真实错误（类型不匹配、锁冲突等）必须抛出，否则迁移后
+        // identityHash 与导出 schema 不一致会导致启动崩溃。
+        addColumnIfMissing(db, "ALTER TABLE downloadTask ADD COLUMN `priority` INTEGER NOT NULL DEFAULT 0")
+        addColumnIfMissing(db, "ALTER TABLE downloadTask ADD COLUMN `worker_token` TEXT")
+        addColumnIfMissing(db, "ALTER TABLE downloadTask ADD COLUMN `next_schedule_at` INTEGER NOT NULL DEFAULT 0")
+        addColumnIfMissing(db, "ALTER TABLE downloadTask ADD COLUMN `errorCode` TEXT NOT NULL DEFAULT 'NONE'")
+        addColumnIfMissing(db, "ALTER TABLE downloadTask ADD COLUMN `errorMessage` TEXT NOT NULL DEFAULT ''")
+        addColumnIfMissing(db, "ALTER TABLE downloadTask ADD COLUMN `retryCount` INTEGER NOT NULL DEFAULT 0")
+        addColumnIfMissing(db, "ALTER TABLE downloadTask ADD COLUMN `updatedAt` INTEGER NOT NULL DEFAULT 0")
 
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_downloadTask_status` ON `downloadTask`(`status`)")
         db.execSQL("CREATE INDEX IF NOT EXISTS `index_downloadTask_priority` ON `downloadTask`(`priority`)")
@@ -114,6 +120,16 @@ val MIGRATION_6_7 = object : Migration(6, 7) {
             "CREATE UNIQUE INDEX IF NOT EXISTS `index_downloadTask_comicId_episodeOrder` " +
                     "ON `downloadTask`(`comicId`, `episodeOrder`)"
         )
+    }
+
+    private fun addColumnIfMissing(db: SupportSQLiteDatabase, sql: String) {
+        try {
+            db.execSQL(sql)
+        } catch (e: android.database.sqlite.SQLiteException) {
+            if (!(e.message?.contains("duplicate column name") == true)) {
+                throw e
+            }
+        }
     }
 }
 

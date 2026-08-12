@@ -28,7 +28,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import androidx.compose.foundation.background
@@ -51,6 +50,7 @@ import kotlin.time.Duration.Companion.days
 import kotlin.time.Duration.Companion.hours
 import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Instant
+import com.shizq.bika.core.ui.RetryableAsyncImage
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -75,7 +75,8 @@ fun ComicCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(contentAlignment = Alignment.TopStart) {
-                AsyncImage(
+                // 封面图：失败自动退避重试 + 点击重试（网络不稳定时不静默失败）
+                RetryableAsyncImage(
                     model = ImageRequest.Builder(LocalContext.current)
                         .data(detailedReadingHistory.history.coverUrl)
                         .crossfade(true)

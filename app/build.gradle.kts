@@ -15,8 +15,8 @@ android {
 
     defaultConfig {
         applicationId = "com.shizq.bika"
-        versionCode = 60
-        versionName = "1.11.17"
+        versionCode = 70
+        versionName = "1.11.20"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -105,10 +105,11 @@ dependencies {
 
     implementation(libs.flowredux)
 
-    implementation(kotlin("test"))
-    implementation(kotlin("test-junit"))
+    // 测试框架依赖：仅测试作用域，避免打进 release APK
+    testImplementation(kotlin("test"))
+    testImplementation(kotlin("test-junit"))
 
-    implementation("me.saket.telephoto:zoomable:0.18.0")
+    implementation(libs.telephoto)
 }
 
 baselineProfile {

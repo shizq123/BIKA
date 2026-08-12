@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import com.shizq.bika.core.ui.CircularProgressIndicator
+import com.shizq.bika.core.ui.isRetryableError
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -26,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,7 +49,71 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.paging.ChapterPage
+import kotlinx.coroutines.delay
+
+/**
+ * 分页数据未就绪时的占位组件：
+ * - 加载中：显示进度条
+ * - 分页失败：显示可点击的重试按钮，并持续退避重试（间隔 2s/4s/8s/16s/30s 封顶），
+ *   网络恢复后无需手动操作即可重新获取数据；首次失败记录原因日志
+ */
+@Composable
+fun ChapterPageLoadStateItem(
+    pageItems: LazyPagingItems<ChapterPage>,
+    index: Int,
+    modifier: Modifier = Modifier,
+) {
+    val refreshError = pageItems.loadState.refresh as? LoadState.Error
+    val appendError = pageItems.loadState.append as? LoadState.Error
+    val isError = refreshError != null || appendError != null
+
+    var autoRetryCount by remember(pageItems) { mutableIntStateOf(0) }
+    LaunchedEffect(isError, autoRetryCount) {
+        if (isError) {
+            val error = refreshError?.error ?: appendError?.error
+            if (autoRetryCount == 0) {
+                if (error.isRetryableError()) {
+                    com.shizq.bika.core.common.BikaLog.e("ReaderPaging", "章节分页加载失败: 第 ${index + 1} 页", error)
+                } else {
+                    // 404 等永久失败：提示后不再自动重试
+                    com.shizq.bika.core.common.BikaLog.w("ReaderPaging", "章节分页永久不可用(不重试): 第 ${index + 1} 页", error)
+                }
+            }
+            if (error.isRetryableError()) {
+                val delayMs = (2000L shl autoRetryCount).coerceAtMost(30_000L)
+                autoRetryCount++
+                delay(delayMs)
+                pageItems.retry()
+            }
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(0.75f)
+            .background(if (isError) Color.LightGray else Color.Gray.copy(alpha = 0.1f))
+            .clickable(enabled = isError) { pageItems.retry() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (isError) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry")
+                Text(
+                    text = "第 ${index + 1} 页加载失败\n点击重试",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        } else {
+            CircularProgressIndicator(modifier = Modifier.size(48.dp))
+        }
+    }
+}
 
 @Composable
 fun ComicPageItem(
@@ -144,6 +210,27 @@ fun ComicPageItem(
             }
 
             is AsyncImagePainter.State.Error -> {
+                // 网络不稳定时持续退避重试（2s/4s/8s/16s/30s 封顶），网络恢复后图片自动重新获取；
+                // 首次失败记录原因日志，便于排查"图片无法重新获取"
+                var imageRetryCount by remember(page.id) { mutableIntStateOf(0) }
+                LaunchedEffect(imageRetryCount) {
+                    // state 是委托属性，闭包内无法 smart cast，显式转换后取失败原因
+                    val error = (state as? AsyncImagePainter.State.Error)?.result?.throwable
+                    if (imageRetryCount == 0) {
+                        if (error.isRetryableError()) {
+                            com.shizq.bika.core.common.BikaLog.e("ReaderImage", "图片加载失败: 第 ${index + 1} 页 url=${page.url}", error)
+                        } else {
+                            // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
+                            com.shizq.bika.core.common.BikaLog.w("ReaderImage", "图片永久不可用(不重试): 第 ${index + 1} 页 url=${page.url}", error)
+                        }
+                    }
+                    if (error.isRetryableError()) {
+                        val delayMs = (2000L shl imageRetryCount).coerceAtMost(30_000L)
+                        imageRetryCount++
+                        delay(delayMs)
+                        painter.restart()
+                    }
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxSize()

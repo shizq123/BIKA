@@ -57,7 +57,8 @@ class TimeUtil {
     fun time(stringDate: String): String {
         val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
         simpleDateFormat.timeZone = TimeZone.getTimeZone("UTC")
-        return getDate(simpleDateFormat.parse(stringDate)!!)
+        // 解析失败时原样返回，避免 NPE 崩溃
+        return simpleDateFormat.parse(stringDate)?.let { getDate(it) } ?: stringDate
     }
 
     fun getDate(milSecond: Long): String {
@@ -68,24 +69,16 @@ class TimeUtil {
     //2000-01-01T00:00:00+00:00 转换成 2000-01-01 00:00:00
     fun getDate(StringDate: String): String {
         val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssXXX")
-        val date = simpleDateFormat.parse(StringDate)
+        val date = simpleDateFormat.parse(StringDate) ?: return StringDate
         val simpleDateFormat2 = SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
-        return simpleDateFormat2.format(date!!)
+        return simpleDateFormat2.format(date)
     }
 
     //2000-01-01T00:00:00.000Z 转换成 2000-01-01
     fun getBirthday(StringDate: String): String {
         val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-        val date = simpleDateFormat.parse(StringDate)
+        val date = simpleDateFormat.parse(StringDate) ?: return StringDate
         val simpleDateFormat2 = SimpleDateFormat("yyyy-MM-dd")
-        return simpleDateFormat2.format(date!!)
-    }
-
-    fun registerDays(day: Int): Boolean {
-//        val createdAt = SPUtil.get("user_created_at", "") as String
-        val simpleDateFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'")
-        val time = simpleDateFormat.parse("")!!.time
-        val currentTime = System.currentTimeMillis()
-        return (currentTime - time) / (1000 * 60 * 60 * 24) >= day
+        return simpleDateFormat2.format(date)
     }
 }

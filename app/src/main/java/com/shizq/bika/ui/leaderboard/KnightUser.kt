@@ -54,7 +54,8 @@ fun KnightLeaderboardPage(
             state = listState,
             contentPadding = PaddingValues(vertical = 8.dp)
         ) {
-            itemsIndexed(knightList, key = { _, user -> user.id }) { index, user ->
+            // 用户列表可能包含重复 id，key 组合 index 保证唯一
+            itemsIndexed(knightList, key = { index, user -> "${index}_${user.id}" }) { index, user ->
                 KnightCard(
                     user = user,
                     rank = index + 1

@@ -5,6 +5,7 @@ import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
+import kotlinx.coroutines.CancellationException
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -30,6 +31,8 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
             ).also {
                 onPageInfoLoaded?.invoke(comicsPage.pages, comicsPage.total)
             }
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             LoadResult.Error(e)
         }

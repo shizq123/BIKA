@@ -1,5 +1,6 @@
 package com.shizq.bika.paging
 
+import kotlinx.coroutines.CancellationException
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
@@ -25,6 +26,8 @@ class EpisodePagingSource(
                 prevKey = null,
                 nextKey = nextKey
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             LoadResult.Error(e)
         }
