@@ -13,6 +13,7 @@ dependencies {
     api(projects.core.model)
 
     implementation(libs.coil.compose)
+    implementation(libs.coil.network.okhttp)
     implementation(projects.core.common)
 
     androidTestImplementation(libs.bundles.androidx.compose.ui.test)

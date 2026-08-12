@@ -80,9 +80,14 @@ object BikaLog {
         writeLog("E", tag, fullMessage)
     }
 
-    fun w(tag: String, message: String) {
-        Log.w(tag, message)
-        writeLog("W", tag, message)
+    fun w(tag: String, message: String, throwable: Throwable? = null) {
+        Log.w(tag, message, throwable)
+        val fullMessage = if (throwable != null) {
+            "$message\n${Log.getStackTraceString(throwable)}"
+        } else {
+            message
+        }
+        writeLog("W", tag, fullMessage)
     }
 
     fun i(tag: String, message: String) {

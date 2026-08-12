@@ -32,9 +32,18 @@ import com.shizq.bika.core.common.BikaLog
 import kotlinx.coroutines.delay
 
 /**
+ * 判断加载失败是否值得自动重试：
+ * - HTTP 4xx（404 资源不存在/403 无权限等）是永久性失败，重试无意义，不自动重试；
+ * - 其余（网络抖动、超时、DNS 失败、5xx 服务器错误）属于临时性失败，持续退避重试。
+ */
+fun Throwable?.isRetryableError(): Boolean =
+    this !is coil3.network.HttpException || response.code >= 500
+
+/**
  * 网络不稳定的图片加载组件：
- * - 失败后自动退避重试（2s/4s/8s/16s/30s 封顶，无限次），网络恢复后自动重新获取；
- * - 失败时显示可点击的重试占位，点击立即重试；
+ * - 临时性失败（网络抖动/5xx）后自动退避重试（2s/4s/8s/16s/30s 封顶，无限次），
+ *   网络恢复后自动重新获取；
+ * - 永久性失败（404 等 4xx）不自动重试，显示可点击的重试占位；
  * - 首次失败记录原因日志，便于排查。
  *
  * 替代裸 [coil3.compose.AsyncImage]：后者加载失败后静默空白，没有任何重试入口。
@@ -53,14 +62,21 @@ fun RetryableAsyncImage(
     var retryCount by remember(model) { mutableIntStateOf(0) }
     LaunchedEffect(state is AsyncImagePainter.State.Error, retryCount) {
         if (state is AsyncImagePainter.State.Error) {
+            val error = (state as AsyncImagePainter.State.Error).result.throwable
             if (retryCount == 0) {
-                val error = (state as AsyncImagePainter.State.Error).result.throwable
-                BikaLog.e("RetryableImage", "图片加载失败: $model", error)
+                if (error.isRetryableError()) {
+                    BikaLog.e("RetryableImage", "图片加载失败: $model", error)
+                } else {
+                    // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
+                    BikaLog.w("RetryableImage", "图片永久不可用(不重试): $model", error)
+                }
             }
-            val delayMs = (2000L shl retryCount).coerceAtMost(30_000L)
-            retryCount++
-            delay(delayMs)
-            painter.restart()
+            if (error.isRetryableError()) {
+                val delayMs = (2000L shl retryCount).coerceAtMost(30_000L)
+                retryCount++
+                delay(delayMs)
+                painter.restart()
+            }
         }
     }
 

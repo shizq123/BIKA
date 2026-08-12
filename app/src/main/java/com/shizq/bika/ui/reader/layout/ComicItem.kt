@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import com.shizq.bika.core.ui.CircularProgressIndicator
+import com.shizq.bika.core.ui.isRetryableError
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -72,14 +73,21 @@ fun ChapterPageLoadStateItem(
     var autoRetryCount by remember(pageItems) { mutableIntStateOf(0) }
     LaunchedEffect(isError, autoRetryCount) {
         if (isError) {
+            val error = refreshError?.error ?: appendError?.error
             if (autoRetryCount == 0) {
-                val error = refreshError?.error ?: appendError?.error
-                com.shizq.bika.core.common.BikaLog.e("ReaderPaging", "章节分页加载失败: 第 ${index + 1} 页", error)
+                if (error.isRetryableError()) {
+                    com.shizq.bika.core.common.BikaLog.e("ReaderPaging", "章节分页加载失败: 第 ${index + 1} 页", error)
+                } else {
+                    // 404 等永久失败：提示后不再自动重试
+                    com.shizq.bika.core.common.BikaLog.w("ReaderPaging", "章节分页永久不可用(不重试): 第 ${index + 1} 页", error)
+                }
             }
-            val delayMs = (2000L shl autoRetryCount).coerceAtMost(30_000L)
-            autoRetryCount++
-            delay(delayMs)
-            pageItems.retry()
+            if (error.isRetryableError()) {
+                val delayMs = (2000L shl autoRetryCount).coerceAtMost(30_000L)
+                autoRetryCount++
+                delay(delayMs)
+                pageItems.retry()
+            }
         }
     }
 
@@ -206,15 +214,22 @@ fun ComicPageItem(
                 // 首次失败记录原因日志，便于排查"图片无法重新获取"
                 var imageRetryCount by remember(page.id) { mutableIntStateOf(0) }
                 LaunchedEffect(imageRetryCount) {
+                    // state 是委托属性，闭包内无法 smart cast，显式转换后取失败原因
+                    val error = (state as? AsyncImagePainter.State.Error)?.result?.throwable
                     if (imageRetryCount == 0) {
-                        // state 是委托属性，闭包内无法 smart cast，显式转换后取失败原因
-                        val error = (state as? AsyncImagePainter.State.Error)?.result?.throwable
-                        com.shizq.bika.core.common.BikaLog.e("ReaderImage", "图片加载失败: 第 ${index + 1} 页 url=${page.url}", error)
+                        if (error.isRetryableError()) {
+                            com.shizq.bika.core.common.BikaLog.e("ReaderImage", "图片加载失败: 第 ${index + 1} 页 url=${page.url}", error)
+                        } else {
+                            // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
+                            com.shizq.bika.core.common.BikaLog.w("ReaderImage", "图片永久不可用(不重试): 第 ${index + 1} 页 url=${page.url}", error)
+                        }
                     }
-                    val delayMs = (2000L shl imageRetryCount).coerceAtMost(30_000L)
-                    imageRetryCount++
-                    delay(delayMs)
-                    painter.restart()
+                    if (error.isRetryableError()) {
+                        val delayMs = (2000L shl imageRetryCount).coerceAtMost(30_000L)
+                        imageRetryCount++
+                        delay(delayMs)
+                        painter.restart()
+                    }
                 }
                 Box(
                     modifier = Modifier
