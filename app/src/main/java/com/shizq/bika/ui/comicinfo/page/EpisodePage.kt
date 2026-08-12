@@ -93,7 +93,11 @@ fun EpisodesPage(
         ) {
             items(
                 count = episodes.itemCount,
-                key = episodes.itemKey { it.id }
+                // 服务端分页可能返回重复 id，key 组合 index 保证唯一，避免 "Key was already used" 崩溃
+                key = { index ->
+                    val episode = episodes.peek(index)
+                    if (episode != null) "${index}_${episode.id}" else "placeholder_$index"
+                }
             ) { index ->
                 episodes[index]?.let { episode ->
                     val progress = chapterProgress.find { it.chapterId == episode.order }

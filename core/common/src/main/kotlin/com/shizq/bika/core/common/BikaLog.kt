@@ -12,14 +12,20 @@ import java.util.Locale
 
 object BikaLog {
     private const val TAG = "BikaLog"
+
+    // 崩溃可能发生在任意线程（网络/IO 线程），开关与文件引用必须可见
+    @Volatile
     private var isLoggingEnabled = false
+
+    @Volatile
     private var logFile: File? = null
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS", Locale.getDefault())
     private val scope = CoroutineScope(Dispatchers.IO)
 
     fun init(context: Context, enabled: Boolean) {
         isLoggingEnabled = enabled
-        val logDir = File(context.cacheDir, "logs")
+        // 存 filesDir 而非 cacheDir：系统可能在存储压力大时清理 cache，导致日志丢失
+        val logDir = File(context.filesDir, "logs")
         if (!logDir.exists()) {
             logDir.mkdirs()
         }
@@ -99,12 +105,15 @@ object BikaLog {
         }
     }
 
-    /** 同步写入日志文件（崩溃路径专用，保证进程死亡前落盘）。 */
+    /** 同步写入日志文件（崩溃路径专用，保证进程死亡前落盘）。
+     *  崩溃日志无条件写入：用户最需要日志的正是闪退场景，不依赖日志开关。 */
     private fun writeLogSync(level: String, tag: String, message: String) {
-        if (!isLoggingEnabled) return
         val file = logFile ?: return
         val logLine = "${now()} [$level] $tag: $message\n"
-        file.appendText(logLine)
+        try {
+            file.appendText(logLine)
+        } catch (_: Exception) {
+        }
     }
 
     fun getLogFile(): File? {

@@ -56,7 +56,8 @@ import kotlinx.coroutines.delay
 /**
  * 分页数据未就绪时的占位组件：
  * - 加载中：显示进度条
- * - 分页失败：显示可点击的重试按钮，并自动进行有限次退避重试
+ * - 分页失败：显示可点击的重试按钮，并持续退避重试（间隔 2s/4s/8s/16s/30s 封顶），
+ *   网络恢复后无需手动操作即可重新获取数据；首次失败记录原因日志
  */
 @Composable
 fun ChapterPageLoadStateItem(
@@ -70,9 +71,14 @@ fun ChapterPageLoadStateItem(
 
     var autoRetryCount by remember(pageItems) { mutableIntStateOf(0) }
     LaunchedEffect(isError, autoRetryCount) {
-        if (isError && autoRetryCount < 3) {
-            delay(2000L * (autoRetryCount + 1))
+        if (isError) {
+            if (autoRetryCount == 0) {
+                val error = refreshError?.error ?: appendError?.error
+                com.shizq.bika.core.common.BikaLog.e("ReaderPaging", "章节分页加载失败: 第 ${index + 1} 页", error)
+            }
+            val delayMs = (2000L shl autoRetryCount).coerceAtMost(30_000L)
             autoRetryCount++
+            delay(delayMs)
             pageItems.retry()
         }
     }
@@ -196,14 +202,19 @@ fun ComicPageItem(
             }
 
             is AsyncImagePainter.State.Error -> {
-                // 网络不稳定时自动有限次退避重试，避免用户必须手动点击
+                // 网络不稳定时持续退避重试（2s/4s/8s/16s/30s 封顶），网络恢复后图片自动重新获取；
+                // 首次失败记录原因日志，便于排查"图片无法重新获取"
                 var imageRetryCount by remember(page.id) { mutableIntStateOf(0) }
                 LaunchedEffect(imageRetryCount) {
-                    if (imageRetryCount < 3) {
-                        delay(2000L * (imageRetryCount + 1))
-                        imageRetryCount++
-                        painter.restart()
+                    if (imageRetryCount == 0) {
+                        // state 是委托属性，闭包内无法 smart cast，显式转换后取失败原因
+                        val error = (state as? AsyncImagePainter.State.Error)?.result?.throwable
+                        com.shizq.bika.core.common.BikaLog.e("ReaderImage", "图片加载失败: 第 ${index + 1} 页 url=${page.url}", error)
                     }
+                    val delayMs = (2000L shl imageRetryCount).coerceAtMost(30_000L)
+                    imageRetryCount++
+                    delay(delayMs)
+                    painter.restart()
                 }
                 Box(
                     modifier = Modifier

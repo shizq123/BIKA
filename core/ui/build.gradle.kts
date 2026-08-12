@@ -13,6 +13,7 @@ dependencies {
     api(projects.core.model)
 
     implementation(libs.coil.compose)
+    implementation(projects.core.common)
 
     androidTestImplementation(libs.bundles.androidx.compose.ui.test)
     androidTestImplementation(projects.core.testing)

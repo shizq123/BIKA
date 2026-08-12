@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
@@ -187,7 +188,8 @@ fun ComicLeaderboardPage(
             state = listState,
             contentPadding = PaddingValues(vertical = 8.dp),
         ) {
-            items(list, key = { it.id }) { item ->
+            // 排行榜数据可能包含重复 id，key 组合 index 保证唯一
+            itemsIndexed(list, key = { index, item -> "${index}_${item.id}" }) { _, item ->
                 ComicCard(
                     item,
                     onItemClick = { navigationToUnitedDetail(item.id) },

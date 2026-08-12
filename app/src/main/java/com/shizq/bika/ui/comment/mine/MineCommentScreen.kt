@@ -89,7 +89,11 @@ private fun MineCommentContent(
         ) {
             items(
                 comments.itemCount,
-                key = comments.itemKey { comment -> comment.id }) { index ->
+                // 服务端分页可能返回重复 id，key 组合 index 保证唯一，避免 "Key was already used" 崩溃
+                key = { index ->
+                    val comment = comments.peek(index)
+                    if (comment != null) "${index}_${comment.id}" else "placeholder_$index"
+                }) { index ->
                 comments[index]?.let {
                     MyCommentItem(
                         comment = it,

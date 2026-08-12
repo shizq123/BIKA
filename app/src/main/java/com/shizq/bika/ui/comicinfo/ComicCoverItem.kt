@@ -17,9 +17,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.shizq.bika.core.ui.RetryableAsyncImage
 
 @Composable
 fun ComicCoverItem(
@@ -37,7 +37,7 @@ fun ComicCoverItem(
                 .aspectRatio(3f / 4f)
                 .clip(RoundedCornerShape(8.dp))
         ) {
-            AsyncImage(
+            RetryableAsyncImage(
                 model = ImageRequest.Builder(LocalContext.current)
                     .data(imageUrl)
                     .crossfade(true)
