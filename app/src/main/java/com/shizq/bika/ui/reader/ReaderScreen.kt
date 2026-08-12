@@ -244,28 +244,37 @@ private fun ReaderContent(
 
                     val listState = readerContext.lazyListState
                     if (listState != null) {
-                        for (attempt in 1..20) {
+                        // 条漫模式：
+                        // 1. 立即 scrollToItem(restorePage)，即使 Paging 数据不足导致被 clamp 到末尾，
+                        //    LazyColumn 滚到末尾会自动触发 Paging 加载下一批数据。
+                        // 2. 每次循环检查 imageList.itemCount > restorePage：
+                        //    一旦数据批次覆盖了目标页，最后一次 scrollToItem 必然精准落位，退出循环。
+                        // 3. 最多重试 150 次（每次 100ms），共 15 秒，足够慢速网络多批加载。
+                        val deadline = System.currentTimeMillis() + 15_000L
+                        while (System.currentTimeMillis() < deadline) {
                             listState.scrollToItem(restorePage)
-                            delay(200)
-                            val visibleIndexes = listState.layoutInfo.visibleItemsInfo.map { it.index }
-                            BikaLog.d("ReaderProgress", "定位尝试 #$attempt: 目标=$restorePage, 当前可见=$visibleIndexes")
-                            if (restorePage in visibleIndexes) {
-                                BikaLog.d("ReaderProgress", "恢复成功! restorePage=$restorePage 已在可见索引中")
-                                break
-                            }
+                            if (imageList.itemCount > restorePage) break  // 数据已到位，本次 scroll 已精准
+                            delay(100)
                         }
+                        val visibleIndexes = listState.layoutInfo.visibleItemsInfo.map { it.index }
+                        BikaLog.d("ReaderProgress", "条漫恢复完成: 目标=$restorePage, 当前可见=$visibleIndexes")
+                        delay(300)  // 等待布局稳定
                     } else {
-                        for (attempt in 1..20) {
+                        // 翻页模式（Pager）：
+                        // 同理：先 scrollToPage 触发 Paging 加载，itemCount 到位后退出。
+                        // PagerController.scrollToPage 内部已做 clamp 保护（pageCount=0 时跳过）。
+                        val deadline = System.currentTimeMillis() + 15_000L
+                        while (System.currentTimeMillis() < deadline) {
                             controller.scrollToPage(restorePage)
-                            delay(300)
-                            val reachedPage = try {
-                                controller.visibleItemIndex.first()
-                            } catch (_: Exception) { -1 }
-                            BikaLog.d("ReaderProgress", "Pager定位尝试 #$attempt: 目标=$restorePage, reachedPage=$reachedPage")
-                            if (reachedPage >= restorePage - 1) break
+                            if (imageList.itemCount > restorePage) break
+                            delay(100)
                         }
+                        delay(300)
                     }
                 } finally {
+                    // 额外等待，确保 debounce(1000ms) 的自动保存协程感知到 isRestoring=true
+                    // 后再释放，防止恢复滚动结束前的中间帧被当作有效进度写回 DB。
+                    delay(1500)
                     isRestoring = false
                 }
             }
