@@ -36,8 +36,24 @@ class UserCredentialsDataSource @Inject constructor(
     private fun String.encrypt(cipher: CredentialsCipher): String = cipher.encrypt(this)
 
     private fun UserCredentials.decrypt(cipher: CredentialsCipher): UserCredentials = copy(
-        token = token?.let { cipher.decrypt(it) ?: it },
-        username = username?.let { cipher.decrypt(it) ?: it },
-        password = password?.let { cipher.decrypt(it) ?: it },
+        token = token?.let { decryptWithLog(it, "token", cipher) },
+        username = username?.let { decryptWithLog(it, "username", cipher) },
+        password = password?.let { decryptWithLog(it, "password", cipher) },
     )
+
+    /**
+     * 解密凭证；历史明文（无 enc: 前缀）原样透传；
+     * 密文解密失败（Keystore 密钥随备份恢复丢失、数据损坏）时记录告警，
+     * 避免用户遇到"token 乱串导致登录失败"却无从排查。
+     */
+    private fun decryptWithLog(value: String, name: String, cipher: CredentialsCipher): String {
+        val plain = cipher.decrypt(value)
+        if (plain == null && cipher.isEncrypted(value)) {
+            com.shizq.bika.core.common.BikaLog.e(
+                "Credentials",
+                "凭证 $name 解密失败（密钥丢失或数据损坏），将原样透传；建议重新登录"
+            )
+        }
+        return plain ?: value
+    }
 }

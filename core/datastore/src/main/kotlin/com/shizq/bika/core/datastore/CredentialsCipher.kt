@@ -46,6 +46,9 @@ class CredentialsCipher @Inject constructor() {
         return PREFIX + Base64.encodeToString(iv + encrypted, Base64.NO_WRAP)
     }
 
+    /** 是否为密文格式（enc: 前缀）；用于区分"历史明文"与"解密失败" */
+    fun isEncrypted(value: String): Boolean = value.startsWith(PREFIX)
+
     /**
      * @return 明文；若密文无效或值为历史明文（无前缀），返回 null
      */

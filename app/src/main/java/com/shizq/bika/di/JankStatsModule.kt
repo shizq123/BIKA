@@ -5,6 +5,7 @@ import android.util.Log
 import android.view.Window
 import androidx.metrics.performance.JankStats
 import androidx.metrics.performance.JankStats.OnFrameListener
+import com.shizq.bika.BuildConfig
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -18,7 +19,10 @@ object JankStatsModule {
         // Make sure to only log janky frames.
         if (frameData.isJank) {
             // We're currently logging this but would better report it to a backend.
-            Log.v("Bika Jank", frameData.toString())
+            // 仅 debug 构建输出，避免 release 包持续打点
+            if (BuildConfig.DEBUG) {
+                Log.v("Bika Jank", frameData.toString())
+            }
         }
     }
 

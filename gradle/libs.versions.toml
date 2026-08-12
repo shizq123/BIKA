@@ -43,6 +43,7 @@ ktor = "3.5.1"
 okhttp = "5.4.0"
 okio = "3.17.0"
 reorderable = "3.0.0"
+telephoto = "0.18.0"
 robolectric = "4.16.1"
 roborazzi = "1.68.0"
 
@@ -74,7 +75,6 @@ androidx-hilt-lifecycle-viewModelCompose = { group = "androidx.hilt", name = "hi
 androidx-lifecycle-runtimeCompose = { group = "androidx.lifecycle", name = "lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
 androidx-lifecycle-runtimeTesting = { group = "androidx.lifecycle", name = "lifecycle-runtime-testing", version.ref = "androidxLifecycle" }
 androidx-lifecycle-viewModelCompose = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-compose", version.ref = "androidxLifecycle" }
-androidx-lifecycle-viewModel-testing = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-testing", version.ref = "androidxLifecycle" }
 androidx-lifecycle-viewModel-navigation3 = { group = "androidx.lifecycle", name = "lifecycle-viewmodel-navigation3", version.ref = "androidxLifecycleViewModelNavigation3" }
 androidx-hilt-navigation-compose = { group = "androidx.hilt", name = "hilt-navigation-compose", version.ref = "androidxHiltNavigationCompose" }
 androidx-metrics = { group = "androidx.metrics", name = "metrics-performance", version.ref = "androidxMetrics" }
@@ -129,6 +129,7 @@ ktor-client-logging = { group = "io.ktor", name = "ktor-client-logging", version
 okhttp = { module = "com.squareup.okhttp3:okhttp", version.ref = "okhttp" }
 okio = { module = "com.squareup.okio:okio", version.ref = "okio" }
 reorderable = { module = "sh.calvin.reorderable:reorderable", version.ref = "reorderable" }
+telephoto = { module = "me.saket.telephoto:zoomable", version.ref = "telephoto" }
 robolectric = { group = "org.robolectric", name = "robolectric", version.ref = "robolectric" }
 roborazzi = { group = "io.github.takahirom.roborazzi", name = "roborazzi", version.ref = "roborazzi" }
 

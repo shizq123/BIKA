@@ -46,8 +46,7 @@ fun ComicCard(
     onItemClick: () -> Unit = {}
 ) {
     ListItem(
-        modifier = modifier.clickable(onClick = onItemClick),
-        headlineContent = {
+        {
             Column {
                 // 标题上方流式状态徽章墙
                 FlowRow(
@@ -169,7 +168,8 @@ fun ComicCard(
         colors = ListItemDefaults.colors(
             containerColor = Color.Transparent,
             headlineColor = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        ),
+        modifier = modifier.clickable(onClick = onItemClick)
     )
 }
 

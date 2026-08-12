@@ -101,6 +101,9 @@ class BikaDataSource @Inject constructor(
                 val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
                 LoginData(token = null, message = msg)
             }
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            // 协程取消必须透传，不能转为"登录失败"错误提示
+            throw e
         } catch (e: Exception) {
             LoginData(token = null, message = e.message ?: "登录失败")
         }
