@@ -269,6 +269,11 @@ private fun FeedContent(
 
     val totalCount = pagedComics.itemCount
 
+    // 阅读历史 id 映射只构建一次，滚动时每个列表项 O(1) 查找本地状态
+    val historyMap = remember(detailedHistories) {
+        detailedHistories.associateBy { it.history.id }
+    }
+
     // 动态计算当前可视项所属的页码
     val visiblePage by remember(currentPage, totalPages) {
         derivedStateOf {
@@ -405,8 +410,8 @@ private fun FeedContent(
                             }
                         ) { index ->
                             pagedComics[index]?.let { item ->
-                                val enrichedItem = remember(item, detailedHistories) {
-                                    item.injectSingleFrom(detailedHistories)
+                                val enrichedItem = remember(item, historyMap) {
+                                    item.injectFromHistoryMap(historyMap)
                                 }
                                 ComicCard(comic = enrichedItem) {
                                     onComicClick(item.id)
