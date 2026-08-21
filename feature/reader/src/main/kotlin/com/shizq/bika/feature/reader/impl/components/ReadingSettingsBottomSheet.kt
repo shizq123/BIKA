@@ -33,8 +33,8 @@ import androidx.compose.ui.unit.dp
 import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.TapZoneLayout
-import com.shizq.bika.ui.reader.layout.ReaderConfig
-import com.shizq.bika.ui.reader.state.ReaderAction
+import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
+import com.shizq.bika.feature.reader.impl.state.ReaderAction
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)

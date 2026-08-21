@@ -1,5 +1,3 @@
-@file:OptIn(FlowPreview::class)
-
 package com.shizq.bika.feature.reader.impl.util.preload
 
 import androidx.compose.runtime.Composable
@@ -7,7 +5,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.paging.compose.LazyPagingItems
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.debounce
 
 @Composable

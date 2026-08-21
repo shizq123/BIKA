@@ -5,7 +5,7 @@ import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
 import coil3.size.Size
-import com.shizq.bika.paging.ChapterPage
+import com.shizq.bika.core.data.paging.ChapterPage
 
 class ChapterPagePreloadProvider(private val context: Context) : PreloadModelProvider<ChapterPage> {
     override fun getPreloadRequest(item: ChapterPage): ImageRequest {

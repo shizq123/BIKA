@@ -2,15 +2,12 @@ package com.shizq.bika.feature.reader.impl
 
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.Composable
-import com.shizq.bika.ui.reader.components.ReadingModeSelectBottomSheet
-import com.shizq.bika.ui.reader.components.ReadingSettingsBottomSheet
-import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
-import com.shizq.bika.ui.reader.layout.ReaderConfig
-import com.shizq.bika.ui.reader.state.ReaderAction
-import com.shizq.bika.ui.reader.state.ReaderAction.HideSheet
-import com.shizq.bika.ui.reader.state.ReaderAction.SetOrientation
-import com.shizq.bika.ui.reader.state.ReaderAction.SetReadingMode
-import com.shizq.bika.ui.reader.state.ReaderSheet
+import com.shizq.bika.feature.reader.impl.components.ReadingModeSelectBottomSheet
+import com.shizq.bika.feature.reader.impl.components.ReadingSettingsBottomSheet
+import com.shizq.bika.feature.reader.impl.components.ScreenOrientationSelectBottomSheet
+import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
+import com.shizq.bika.feature.reader.impl.state.ReaderAction
+import com.shizq.bika.feature.reader.impl.state.ReaderSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -19,12 +16,12 @@ internal fun ReaderSheetHost(
     config: ReaderConfig,
     dispatch: (ReaderAction) -> Unit,
 ) {
-    val onClose = { dispatch(HideSheet) }
+    val onClose = { dispatch(ReaderAction.HideSheet) }
     when (sheet) {
         ReaderSheet.ReadingMode -> {
             ReadingModeSelectBottomSheet(
                 activeMode = config.readingMode,
-                onReadingModeChanged = { dispatch(SetReadingMode(it)) },
+                onReadingModeChanged = { dispatch(ReaderAction.SetReadingMode(it)) },
                 onDismissRequest = onClose,
             )
         }
@@ -32,7 +29,7 @@ internal fun ReaderSheetHost(
         ReaderSheet.Orientation -> {
             ScreenOrientationSelectBottomSheet(
                 orientation = config.screenOrientation,
-                onOrientationChange = { dispatch(SetOrientation(it)) },
+                onOrientationChange = { dispatch(ReaderAction.SetOrientation(it)) },
                 onDismissRequest = onClose,
             )
         }

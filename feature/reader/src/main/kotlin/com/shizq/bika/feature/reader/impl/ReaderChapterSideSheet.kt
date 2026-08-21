@@ -14,15 +14,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
-import com.shizq.bika.paging.Chapter
-import com.shizq.bika.ui.reader.components.ChapterList
-import com.shizq.bika.ui.reader.layout.SideSheetLayout
-import com.shizq.bika.ui.reader.state.ChapterState
-import com.shizq.bika.ui.reader.state.ReaderAction
-import com.shizq.bika.ui.reader.state.ReaderAction.HideSheet
-import com.shizq.bika.ui.reader.state.ReaderAction.JumpToChapter
-import com.shizq.bika.ui.reader.state.ReaderSheet
-import com.shizq.bika.ui.reader.state.UiControlState
+import com.shizq.bika.core.data.paging.Chapter
+import com.shizq.bika.feature.reader.impl.components.ChapterList
+import com.shizq.bika.feature.reader.impl.layout.SideSheetLayout
+import com.shizq.bika.feature.reader.impl.state.ChapterState
+import com.shizq.bika.feature.reader.impl.state.ReaderAction
+import com.shizq.bika.feature.reader.impl.state.ReaderSheet
+import com.shizq.bika.feature.reader.impl.state.UiControlState
 
 @Composable
 internal fun ReaderChapterSideSheet(
@@ -39,9 +37,9 @@ internal fun ReaderChapterSideSheet(
     ) {
         SideSheetLayout(
             title = { Text("目录") },
-            onDismissRequest = { dispatch(HideSheet) },
+            onDismissRequest = { dispatch(ReaderAction.HideSheet) },
             closeButton = {
-                IconButton(onClick = { dispatch(HideSheet) }) {
+                IconButton(onClick = { dispatch(ReaderAction.HideSheet) }) {
                     Icon(Icons.Rounded.Close, contentDescription = "关闭目录")
                 }
             },
@@ -49,7 +47,7 @@ internal fun ReaderChapterSideSheet(
             ChapterList(
                 chapters = chapterItems,
                 currentChapterOrder = chapterState.order,
-                onChapterClick = { newChapter -> dispatch(JumpToChapter(newChapter)) },
+                onChapterClick = { newChapter -> dispatch(ReaderAction.JumpToChapter(newChapter)) },
                 modifier = Modifier.padding(top = 8.dp),
             )
         }

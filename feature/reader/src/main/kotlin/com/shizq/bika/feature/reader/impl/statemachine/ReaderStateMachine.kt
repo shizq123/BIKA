@@ -1,26 +1,21 @@
-@file:OptIn(ExperimentalCoroutinesApi::class)
-
 package com.shizq.bika.feature.reader.impl.statemachine
 
-import android.R.attr.order
-import android.widget.GridLayout.spec
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.ui.reader.ReadingProgressSaver
-import com.shizq.bika.ui.reader.layout.ReaderConfig
-import com.shizq.bika.ui.reader.state.ChapterState
-import com.shizq.bika.ui.reader.state.ReaderAction
-import com.shizq.bika.ui.reader.state.ReaderSheet
-import com.shizq.bika.ui.reader.state.ReaderUiState
-import com.shizq.bika.ui.reader.state.SeekState
-import com.shizq.bika.ui.reader.state.UiControlState
+import com.shizq.bika.feature.reader.impl.ReadingProgressSaver
+import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
+import com.shizq.bika.feature.reader.impl.state.ChapterState
+import com.shizq.bika.feature.reader.impl.state.ReaderAction
+import com.shizq.bika.feature.reader.impl.state.ReaderSheet
+import com.shizq.bika.feature.reader.impl.state.ReaderUiState
+import com.shizq.bika.feature.reader.impl.state.SeekState
+import com.shizq.bika.feature.reader.impl.state.UiControlState
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.withContext
 
 class ReaderStateMachine @Inject constructor(

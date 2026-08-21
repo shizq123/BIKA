@@ -1,11 +1,11 @@
 package com.shizq.bika.feature.reader.impl
 
 import com.shizq.bika.core.common.BikaLog
+import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
-import com.shizq.bika.paging.ChapterMeta
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import kotlinx.coroutines.Dispatchers

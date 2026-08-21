@@ -37,14 +37,14 @@ kotlin = "2.4.0"
 kotlinxCoroutines = "1.11.0"
 kotlinxDatetime = "0.8.0"
 kotlinxSerialization = "1.11.0"
-ksp = "2.3.9"
+ksp = "2.3.11"
 ktor = "3.5.2"
 okhttp = "5.5.0"
 okio = "3.18.1"
 reorderable = "3.1.0"
 telephoto = "0.19.0"
 robolectric = "4.16.1"
-roborazzi = "1.70.0"
+roborazzi = "1.72.0"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }

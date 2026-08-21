@@ -7,8 +7,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
 import com.shizq.bika.core.model.reader.ReaderAction
 import com.shizq.bika.core.model.reader.TapZoneLayout
-import com.shizq.bika.ui.reader.gesture.ReadingDirection.Ltr
-import com.shizq.bika.ui.reader.gesture.ReadingDirection.Rtl
 
 /**
  * 阅读方向
@@ -24,7 +22,7 @@ class GestureState(
     private val readingDirection: ReadingDirection,
 ) {
     fun calculateAction(offset: Offset, size: IntSize): ReaderAction {
-        val isRtl = readingDirection == Rtl
+        val isRtl = readingDirection == ReadingDirection.Rtl
 
         return tapZoneLayout.resolve(
             x = offset.x,
@@ -39,7 +37,7 @@ class GestureState(
 @Composable
 fun rememberGestureState(
     layout: TapZoneLayout = TapZoneLayout.Sides,
-    direction: ReadingDirection = Ltr,
+    direction: ReadingDirection = ReadingDirection.Ltr,
 ): GestureState {
     return remember(layout, direction) {
         GestureState(

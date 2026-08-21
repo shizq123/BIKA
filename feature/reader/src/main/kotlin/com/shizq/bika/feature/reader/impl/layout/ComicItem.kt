@@ -48,9 +48,9 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.core.ui.isRetryableError
-import com.shizq.bika.paging.ChapterPage
 import kotlinx.coroutines.delay
 
 /**

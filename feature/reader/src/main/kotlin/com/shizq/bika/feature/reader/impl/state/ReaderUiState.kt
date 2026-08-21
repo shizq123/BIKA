@@ -1,13 +1,13 @@
 package com.shizq.bika.feature.reader.impl.state
 
 import androidx.compose.runtime.Immutable
+import com.shizq.bika.core.data.paging.Chapter
+import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.model.reader.TapZoneLayout
-import com.shizq.bika.paging.Chapter
-import com.shizq.bika.paging.ChapterMeta
-import com.shizq.bika.ui.reader.layout.ReaderConfig
+import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
 
 sealed interface ReaderUiState {
     @Immutable

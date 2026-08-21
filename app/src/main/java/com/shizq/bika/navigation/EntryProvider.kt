@@ -6,9 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import com.shizq.bika.ui.LocalUseBackAnimation
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
@@ -16,27 +14,27 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
+import com.shizq.bika.feature.reader.impl.ReaderScreen
+import com.shizq.bika.feature.reader.impl.ReaderViewModel
+import com.shizq.bika.ui.LocalUseBackAnimation
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
 import com.shizq.bika.ui.dashboard.DashboardScreen
+import com.shizq.bika.ui.download.DownloadListScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
-
 import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
-import com.shizq.bika.ui.reader.ReaderScreen
-import com.shizq.bika.ui.reader.ReaderViewModel
+import com.shizq.bika.ui.notifications.NotificationsScreen
 import com.shizq.bika.ui.search.SearchScreen
+import com.shizq.bika.ui.settings.BlockedTagsScreen
+import com.shizq.bika.ui.settings.DnsSettingsScreen
 import com.shizq.bika.ui.settings.SettingsScreen
 import com.shizq.bika.ui.settings.StorageManagerScreen
-import com.shizq.bika.ui.settings.DnsSettingsScreen
-import com.shizq.bika.ui.settings.BlockedTagsScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
-import com.shizq.bika.ui.download.DownloadListScreen
-import com.shizq.bika.ui.notifications.NotificationsScreen
 
 fun EntryProviderScope<NavKey>.rootSection(
     navigator: Navigator,

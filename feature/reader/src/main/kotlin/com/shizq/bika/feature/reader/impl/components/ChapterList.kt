@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
-import com.shizq.bika.paging.Chapter
+import com.shizq.bika.core.data.paging.Chapter
 
 @Composable
 fun ChapterList(

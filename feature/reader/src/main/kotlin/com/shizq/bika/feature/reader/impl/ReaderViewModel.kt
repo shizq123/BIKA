@@ -1,5 +1,3 @@
-@file:OptIn(ExperimentalCoroutinesApi::class)
-
 package com.shizq.bika.feature.reader.impl
 
 import android.net.Uri
@@ -12,23 +10,22 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.common.BikaLog
+import com.shizq.bika.core.data.paging.Chapter
+import com.shizq.bika.core.data.paging.ChapterListPagingSource
+import com.shizq.bika.core.data.paging.ChapterMeta
+import com.shizq.bika.core.data.paging.ChapterPage
+import com.shizq.bika.core.data.paging.ChapterPagesPagingSource
 import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
-import com.shizq.bika.paging.Chapter
-import com.shizq.bika.paging.ChapterListPagingSource
-import com.shizq.bika.paging.ChapterMeta
-import com.shizq.bika.paging.ChapterPage
-import com.shizq.bika.paging.ChapterPagesPagingSource
-import com.shizq.bika.ui.reader.state.ReaderAction
-import com.shizq.bika.ui.reader.state.ReaderUiState
-import com.shizq.bika.ui.reader.statemachine.ReaderStateMachine
+import com.shizq.bika.feature.reader.impl.state.ReaderAction
+import com.shizq.bika.feature.reader.impl.state.ReaderUiState
+import com.shizq.bika.feature.reader.impl.statemachine.ReaderStateMachine
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest

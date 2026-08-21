@@ -1,12 +1,12 @@
-package com.shizq.bika.paging
+package com.shizq.bika.core.data.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
-import kotlinx.coroutines.CancellationException
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 
 class ChapterListPagingSource @AssistedInject constructor(
     @Assisted private val id: String,

@@ -1,34 +1,42 @@
-@file:OptIn(FlowPreview::class)
-
 package com.shizq.bika.feature.reader.impl
 
+import android.content.Context
 import android.content.pm.ActivityInfo
+import android.os.BatteryManager
+import android.os.Build
 import android.view.WindowManager
-import androidx.activity.compose.BackHandler
+import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Remove
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -48,6 +56,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -61,47 +70,51 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.context.findActivity
+import com.shizq.bika.core.data.paging.Chapter
+import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.ui.FullScreenLoading
 import com.shizq.bika.core.ui.composition.LocalWindow
-import com.shizq.bika.paging.Chapter
-import com.shizq.bika.paging.ChapterPage
-import com.shizq.bika.ui.reader.bar.ReaderBottomBar
-import com.shizq.bika.ui.reader.bar.TopBar
-import com.shizq.bika.ui.reader.components.ChapterList
-import com.shizq.bika.ui.reader.components.ReadingModeSelectBottomSheet
-import com.shizq.bika.ui.reader.components.ReadingSettingsBottomSheet
-import com.shizq.bika.ui.reader.components.ScreenOrientationSelectBottomSheet
-import com.shizq.bika.ui.reader.gesture.rememberGestureState
-import com.shizq.bika.ui.reader.layout.LocalReaderConfig
-import com.shizq.bika.ui.reader.layout.ReaderConfig
-import com.shizq.bika.ui.reader.layout.ReaderController
-import com.shizq.bika.ui.reader.layout.ReaderLayoutHost
-import com.shizq.bika.ui.reader.layout.SideSheetLayout
-import com.shizq.bika.ui.reader.layout.rememberReaderContext
-import com.shizq.bika.ui.reader.state.ReaderAction
-import com.shizq.bika.ui.reader.state.ReaderAction.HideSheet
-import com.shizq.bika.ui.reader.state.ReaderAction.JumpToChapter
-import com.shizq.bika.ui.reader.state.ReaderAction.SetOrientation
-import com.shizq.bika.ui.reader.state.ReaderAction.SetReadingMode
-import com.shizq.bika.ui.reader.state.ReaderAction.ShowSheet
-import com.shizq.bika.ui.reader.state.ReaderAction.SyncReadingProgress
-import com.shizq.bika.ui.reader.state.ReaderAction.ToggleBarsVisibility
-import com.shizq.bika.ui.reader.state.ReaderSheet
-import com.shizq.bika.ui.reader.state.ReaderUiState
-import com.shizq.bika.ui.reader.state.SeekState
-import com.shizq.bika.ui.reader.util.preload.ChapterPagePreloadProvider
-import com.shizq.bika.ui.reader.util.preload.PagingPreload
-import kotlinx.coroutines.FlowPreview
+import com.shizq.bika.feature.reader.impl.bar.ReaderBottomBar
+import com.shizq.bika.feature.reader.impl.bar.TopBar
+import com.shizq.bika.feature.reader.impl.components.ChapterList
+import com.shizq.bika.feature.reader.impl.components.ReadingModeSelectBottomSheet
+import com.shizq.bika.feature.reader.impl.components.ReadingSettingsBottomSheet
+import com.shizq.bika.feature.reader.impl.components.ScreenOrientationSelectBottomSheet
+import com.shizq.bika.feature.reader.impl.gesture.rememberGestureState
+import com.shizq.bika.feature.reader.impl.layout.LocalReaderConfig
+import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
+import com.shizq.bika.feature.reader.impl.layout.ReaderController
+import com.shizq.bika.feature.reader.impl.layout.ReaderLayoutHost
+import com.shizq.bika.feature.reader.impl.layout.SideSheetLayout
+import com.shizq.bika.feature.reader.impl.layout.rememberReaderContext
+import com.shizq.bika.feature.reader.impl.state.ReaderAction
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.HideSheet
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.JumpToChapter
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetAutoScrollEnabled
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetAutoScrollSpeed
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetOrientation
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetReadingMode
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.ShowSheet
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.SyncReadingProgress
+import com.shizq.bika.feature.reader.impl.state.ReaderAction.ToggleBarsVisibility
+import com.shizq.bika.feature.reader.impl.state.ReaderSheet
+import com.shizq.bika.feature.reader.impl.state.ReaderUiState
+import com.shizq.bika.feature.reader.impl.state.SeekState
+import com.shizq.bika.feature.reader.impl.util.preload.ChapterPagePreloadProvider
+import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
@@ -130,15 +143,15 @@ fun AutoScrollOverlay(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.material3.Surface(
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp),
+    Surface(
+        shape = RoundedCornerShape(24.dp),
         color = Color.Black.copy(alpha = 0.75f),
         contentColor = Color.White,
         modifier = modifier
             .padding(16.dp)
             .width(56.dp)
     ) {
-        androidx.compose.foundation.layout.Column(
+        Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(vertical = 12.dp)
@@ -180,7 +193,7 @@ fun AutoScrollOverlay(
                 )
             }
 
-            androidx.compose.material3.HorizontalDivider(
+            HorizontalDivider(
                 color = Color.White.copy(alpha = 0.3f),
                 modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
             )
@@ -331,8 +344,8 @@ private fun ReaderContent(
                         } else {
                             if (nextChapter == null) {
                                 isAutoScrolling = false
-                                dispatch(ReaderAction.SetAutoScrollEnabled(false))
-                                android.widget.Toast.makeText(context, "已到达全书底部", android.widget.Toast.LENGTH_SHORT).show()
+                                dispatch(SetAutoScrollEnabled(false))
+                                Toast.makeText(context, "已到达全书底部", Toast.LENGTH_SHORT).show()
                                 break
                             } else {
                                 delay(200)
@@ -355,7 +368,8 @@ private fun ReaderContent(
                 onFlushProgress(currentPage)
                 onBackClick()
             }
-            BackHandler(onBack = onBack)
+            // TODO: 暂时移除
+//            BackHandler(onBack = onBack)
 
             // 关键时机兜底保存：应用退到后台/被杀 (ON_STOP) 以及阅读器离开组合 (onDispose) 时，
             // 立即落库，避免 debounce 窗口内的进度丢失。
@@ -390,7 +404,7 @@ private fun ReaderContent(
                     .collect { index ->
                         // 恢复滚动期间不自动保存，避免把恢复途中的错误位置写回数据库
                         if (!isRestoring) {
-                            dispatch(SyncReadingProgress(index))
+                            dispatch(ReaderAction.SyncReadingProgress(index))
                         }
                     }
             }
@@ -412,7 +426,7 @@ private fun ReaderContent(
                                 dispatch(SyncReadingProgress(page))
                                 dispatch(JumpToChapter(nextChapter, startFromBeginning = true))
                             } else {
-                                android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "后面没有内容了", Toast.LENGTH_SHORT).show()
                             }
                         }
                     }
@@ -494,7 +508,10 @@ private fun ReaderContent(
                                 dispatch(SyncReadingProgress(currentPage))
                                 dispatch(JumpToChapter(ch))
                             } }
-                                ?: { android.widget.Toast.makeText(context, "后面没有内容了", android.widget.Toast.LENGTH_SHORT).show() },
+                                ?: {
+                                    Toast.makeText(context, "后面没有内容了", Toast.LENGTH_SHORT)
+                                        .show()
+                                },
                             onSeeking = { draggedPage = it },
                             onSeekingFinished = { draggedPage = null }
                         )
@@ -565,16 +582,16 @@ private fun ReaderContent(
                         onPlayPauseToggle = { isAutoScrolling = !isAutoScrolling },
                         onSpeedUp = {
                             if (config.autoScrollSpeed < 10) {
-                                dispatch(ReaderAction.SetAutoScrollSpeed(config.autoScrollSpeed + 1))
+                                dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
                             }
                         },
                         onSpeedDown = {
                             if (config.autoScrollSpeed > 1) {
-                                dispatch(ReaderAction.SetAutoScrollSpeed(config.autoScrollSpeed - 1))
+                                dispatch(SetAutoScrollSpeed(config.autoScrollSpeed - 1))
                             }
                         },
                         onClose = {
-                            dispatch(ReaderAction.SetAutoScrollEnabled(false))
+                            dispatch(SetAutoScrollEnabled(false))
                         },
                         modifier = Modifier.align(Alignment.CenterEnd)
                     )
@@ -720,17 +737,17 @@ private fun StatusBarCapsule(
     var isCharging by remember { mutableStateOf(false) }
 
     val batteryManager = remember(context) {
-        context.getSystemService(android.content.Context.BATTERY_SERVICE) as android.os.BatteryManager
+        context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
     }
 
     fun updateStatus() {
-        val calendar = java.util.Calendar.getInstance()
-        val hour = String.format("%02d", calendar.get(java.util.Calendar.HOUR_OF_DAY))
-        val minute = String.format("%02d", calendar.get(java.util.Calendar.MINUTE))
+        val calendar = Calendar.getInstance()
+        val hour = String.format("%02d", calendar.get(Calendar.HOUR_OF_DAY))
+        val minute = String.format("%02d", calendar.get(Calendar.MINUTE))
         clockTime = "$hour:$minute"
 
-        batteryPct = batteryManager.getIntProperty(android.os.BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        isCharging = if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+        batteryPct = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        isCharging = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             batteryManager.isCharging
         } else {
             false
@@ -745,16 +762,16 @@ private fun StatusBarCapsule(
         }
     }
 
-    androidx.compose.material3.Surface(
+    Surface(
         shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
         color = Color.Black.copy(alpha = 0.55f),
-        border = androidx.compose.foundation.BorderStroke(
+        border = BorderStroke(
             0.5.dp,
             Color.White.copy(alpha = 0.15f)
         ),
         modifier = modifier
     ) {
-        androidx.compose.foundation.layout.Row(
+        Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
@@ -772,7 +789,7 @@ private fun StatusBarCapsule(
                 else -> Color.White.copy(alpha = 0.8f)
             }
 
-            androidx.compose.foundation.layout.Row(
+            Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
@@ -801,7 +818,7 @@ private fun ScrubPreviewCard(
     totalPages: Int,
     modifier: Modifier = Modifier
 ) {
-    androidx.compose.material3.Surface(
+    Surface(
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         color = Color.Black.copy(alpha = 0.75f),
         border = androidx.compose.foundation.BorderStroke(
@@ -815,13 +832,13 @@ private fun ScrubPreviewCard(
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             if (!pageUrl.isNullOrEmpty()) {
-                coil3.compose.AsyncImage(
-                    model = coil3.request.ImageRequest.Builder(LocalContext.current)
+                AsyncImage(
+                    model = ImageRequest.Builder(LocalContext.current)
                         .data(pageUrl)
                         .crossfade(true)
                         .build(),
                     contentDescription = "Preview Page ${currentPage + 1}",
-                    contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                    contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
             } else {
@@ -831,7 +848,7 @@ private fun ScrubPreviewCard(
                         .background(Color.DarkGray.copy(alpha = 0.3f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    androidx.compose.material3.CircularProgressIndicator(
+                    CircularProgressIndicator(
                         modifier = Modifier.size(24.dp),
                         strokeWidth = 2.dp
                     )
