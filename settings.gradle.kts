@@ -38,6 +38,7 @@ include(":core:network")
 include(":core:testing")
 include(":core:ui")
 
+include(":feature:reader")
 include(":feature:settings")
 
 include(":sync:work")
