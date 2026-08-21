@@ -1,0 +1,314 @@
+package com.shizq.bika.feature.reader.impl.layout
+
+import android.content.res.Configuration
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.magnifier
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import coil3.compose.AsyncImagePainter
+import coil3.compose.LocalPlatformContext
+import coil3.compose.rememberAsyncImagePainter
+import coil3.request.CachePolicy
+import coil3.request.ImageRequest
+import coil3.request.crossfade
+import com.shizq.bika.core.ui.CircularProgressIndicator
+import com.shizq.bika.core.ui.isRetryableError
+import com.shizq.bika.paging.ChapterPage
+import kotlinx.coroutines.delay
+
+/**
+ * 分页数据未就绪时的占位组件：
+ * - 加载中：显示进度条
+ * - 分页失败：显示可点击的重试按钮，并持续退避重试（间隔 2s/4s/8s/16s/30s 封顶），
+ *   网络恢复后无需手动操作即可重新获取数据；首次失败记录原因日志
+ */
+@Composable
+fun ChapterPageLoadStateItem(
+    pageItems: LazyPagingItems<ChapterPage>,
+    index: Int,
+    modifier: Modifier = Modifier,
+) {
+    val refreshError = pageItems.loadState.refresh as? LoadState.Error
+    val appendError = pageItems.loadState.append as? LoadState.Error
+    val isError = refreshError != null || appendError != null
+
+    var autoRetryCount by remember(pageItems) { mutableIntStateOf(0) }
+    LaunchedEffect(isError, autoRetryCount) {
+        if (isError) {
+            val error = refreshError?.error ?: appendError?.error
+            if (autoRetryCount == 0) {
+                if (error.isRetryableError()) {
+                    com.shizq.bika.core.common.BikaLog.e("ReaderPaging", "章节分页加载失败: 第 ${index + 1} 页", error)
+                } else {
+                    // 404 等永久失败：提示后不再自动重试
+                    com.shizq.bika.core.common.BikaLog.w("ReaderPaging", "章节分页永久不可用(不重试): 第 ${index + 1} 页", error)
+                }
+            }
+            if (error.isRetryableError()) {
+                val delayMs = (2000L shl autoRetryCount).coerceAtMost(30_000L)
+                autoRetryCount++
+                delay(delayMs)
+                pageItems.retry()
+            }
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(0.75f)
+            .background(if (isError) Color.LightGray else Color.Gray.copy(alpha = 0.1f))
+            .clickable(enabled = isError) { pageItems.retry() },
+        contentAlignment = Alignment.Center
+    ) {
+        if (isError) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry")
+                Text(
+                    text = "第 ${index + 1} 页加载失败\n点击重试",
+                    textAlign = TextAlign.Center,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+        } else {
+            CircularProgressIndicator(modifier = Modifier.size(48.dp))
+        }
+    }
+}
+
+@Composable
+fun ComicPageItem(
+    page: ChapterPage,
+    index: Int,
+    modifier: Modifier = Modifier,
+    onSizeLoaded: ((width: Float, height: Float) -> Unit)? = null
+) {
+    val config = LocalReaderConfig.current
+    var magnifierCenter by remember { androidx.compose.runtime.mutableStateOf(Offset.Unspecified) }
+
+    val magnifierModifier = if (config.magnifierEnabled) {
+        Modifier
+            .pointerInput(Unit) {
+                detectDragGesturesAfterLongPress(
+                    onDragStart = { offset ->
+                        magnifierCenter = offset
+                    },
+                    onDrag = { change, dragAmount ->
+                        change.consume()
+                        magnifierCenter = if (magnifierCenter != Offset.Unspecified) {
+                            magnifierCenter + dragAmount
+                        } else {
+                            magnifierCenter
+                        }
+                    },
+                    onDragEnd = {
+                        magnifierCenter = Offset.Unspecified
+                    },
+                    onDragCancel = {
+                        magnifierCenter = Offset.Unspecified
+                    }
+                )
+            }
+            .magnifier(
+                sourceCenter = { magnifierCenter },
+                magnifierCenter = {
+                    if (magnifierCenter != Offset.Unspecified) {
+                        magnifierCenter - Offset(0f, 150f)
+                    } else {
+                        Offset.Unspecified
+                    }
+                },
+                zoom = 1.8f
+            )
+    } else {
+        Modifier
+    }
+
+    val configuration = LocalConfiguration.current
+    val platformContext = LocalPlatformContext.current
+    val contentScale = if (configuration.orientation == Configuration.ORIENTATION_LANDSCAPE) {
+        ContentScale.Fit
+    } else {
+        ContentScale.FillWidth
+    }
+    var imageAspectRatio by remember(page.id) { mutableFloatStateOf(0.75f) }
+    val imageRequest = remember(platformContext, page.url) {
+        ImageRequest.Builder(platformContext)
+            .data(page.url)
+            .crossfade(false)
+            .diskCacheKey(page.url)
+            .diskCachePolicy(CachePolicy.ENABLED)
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .build()
+    }
+
+    val painter = rememberAsyncImagePainter(model = imageRequest)
+
+    val state by painter.state.collectAsState()
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(imageAspectRatio)
+            .animateContentSize(animationSpec = tween(durationMillis = 200))
+            .then(magnifierModifier),
+    ) {
+        Image(
+            painter = painter,
+            contentDescription = "Page ${index + 1}",
+            contentScale = contentScale,
+            modifier = Modifier.fillMaxSize()
+        )
+        when (state) {
+            is AsyncImagePainter.State.Loading -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Gray.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(48.dp))
+                }
+            }
+
+            is AsyncImagePainter.State.Error -> {
+                // 网络不稳定时持续退避重试（2s/4s/8s/16s/30s 封顶），网络恢复后图片自动重新获取；
+                // 首次失败记录原因日志，便于排查"图片无法重新获取"
+                var imageRetryCount by remember(page.id) { mutableIntStateOf(0) }
+                LaunchedEffect(imageRetryCount) {
+                    // state 是委托属性，闭包内无法 smart cast，显式转换后取失败原因
+                    val error = (state as? AsyncImagePainter.State.Error)?.result?.throwable
+                    if (imageRetryCount == 0) {
+                        if (error.isRetryableError()) {
+                            com.shizq.bika.core.common.BikaLog.e("ReaderImage", "图片加载失败: 第 ${index + 1} 页 url=${page.url}", error)
+                        } else {
+                            // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
+                            com.shizq.bika.core.common.BikaLog.w("ReaderImage", "图片永久不可用(不重试): 第 ${index + 1} 页 url=${page.url}", error)
+                        }
+                    }
+                    if (error.isRetryableError()) {
+                        val delayMs = (2000L shl imageRetryCount).coerceAtMost(30_000L)
+                        imageRetryCount++
+                        delay(delayMs)
+                        painter.restart()
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.LightGray)
+                        .clickable { painter.restart() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Icon(imageVector = Icons.Default.Refresh, contentDescription = "Retry")
+                        Text(
+                            text = "加载失败\n点击重试",
+                            textAlign = TextAlign.Center,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                }
+            }
+
+            is AsyncImagePainter.State.Success -> {
+                val intrinsicSize = state.painter?.intrinsicSize
+
+                LaunchedEffect(intrinsicSize) {
+                    if (intrinsicSize != null && intrinsicSize.width > 0 && intrinsicSize.height > 0) {
+                        val newRatio = intrinsicSize.width / intrinsicSize.height
+                        if (imageAspectRatio != newRatio) {
+                            imageAspectRatio = newRatio
+                        }
+                        onSizeLoaded?.invoke(intrinsicSize.width, intrinsicSize.height)
+                    }
+                }
+            }
+
+            else -> {}
+        }
+    }
+}
+
+@Preview(
+    name = "单个条目预览 (Light)",
+    showBackground = true,
+    backgroundColor = 0xFFFFFFFF
+)
+@Composable
+private fun PreviewComicPageItem() {
+    MaterialTheme {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text("模拟加载中/失败状态：", modifier = Modifier.padding(bottom = 8.dp))
+            ComicPageItem(
+                page = ChapterPage(id = "1", url = "http://fake.url"),
+                index = 4
+            )
+        }
+    }
+}
+
+@Preview(
+    name = "列表模拟预览",
+    showSystemUi = true
+)
+@Composable
+private fun PreviewComicList() {
+    MaterialTheme {
+        Surface {
+            LazyColumn {
+                item {
+                    Text(
+                        "漫画阅读器示例",
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                items(3) { index ->
+                    ComicPageItem(
+                        page = ChapterPage(id = "$index", url = "http://fake.url"),
+                        index = index
+                    )
+                }
+            }
+        }
+    }
+}
