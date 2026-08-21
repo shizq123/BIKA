@@ -49,11 +49,35 @@ internal object UserPreferencesMigration {
         "reader", "theme", "network", "download", "filter", "app", "dashboard", "cachedProfile",
     )
 
-    /** 顶层是否为需要迁移的旧扁平结构。 */
+    /**
+     * 顶层是否为需要迁移的旧扁平结构。
+     *
+     * 旧版 DataStore Json 序列化未开启 encodeDefaults，文件里只包含被自定义过的非默认字段。
+     * 因此不能只靠少数几个"标志性键"探测——若用户仅改过 favoriteTags/blockedTags/
+     * darkThemeConfig 等而未碰上述标志键，会被误判为新结构导致设置静默全量丢失。
+     * 改为反向判定：顶层不含任何嵌套聚合键、且出现任意已知旧字段即视为旧结构。
+     */
     fun isLegacyFlat(root: JsonObject): Boolean {
         if (root.keys.any { it in NESTED_KEYS }) return false
-        return root.keys.any { it in LEGACY_MARKER_KEYS }
+        return root.keys.any { it in ALL_LEGACY_KEYS }
     }
+
+    /** 旧扁平结构的全部已知字段（含迁移函数中使用的所有键）。 */
+    private val ALL_LEGACY_KEYS = setOf(
+        // reader
+        "readingMode", "screenOrientation", "tapZoneLayout", "volumeKeyNavigation",
+        "preloadCount", "eyeCareEnabled", "eyeCareDarkness",
+        "autoScrollEnabled", "autoScrollSpeed", "bookSpreadsMode",
+        "magnifierEnabled", "statusBarCapsuleEnabled",
+        // theme / network / download / filter / app / dashboard / profile
+        "darkThemeConfig", "isLoggingEnabled", "apiDns", "imageDns", "activeDnsLine",
+        "downloadOverWifiOnly", "maxConcurrentDownloads",
+        "excludeTopicsGlobal", "globalExcludedTopics", "favoriteTags", "blockedTags",
+        "autoCheckIn", "secureScreenEnabled", "usePredictiveBack", "fontScale",
+        "cachedUserName", "cachedUserAvatarUrl", "cachedUserLevel", "cachedUserExp",
+        "cachedUserTitle", "cachedUserGender", "cachedUserSlogan", "cachedUserCharacters",
+        "channels",
+    )
 
     fun migrate(json: Json, root: JsonObject): UserPreferences {
         return UserPreferences(

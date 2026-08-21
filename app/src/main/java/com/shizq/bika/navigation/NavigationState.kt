@@ -16,6 +16,7 @@ import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.runtime.serialization.NavKeySerializer
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.savedstate.compose.serialization.serializers.MutableStateSerializer
 /**
  * Create a navigation state that persists config changes and process death.
@@ -100,8 +101,13 @@ class NavigationState(
         // the entries from that stack. When backStacks changes, `rememberDecoratedNavEntries` will
         // be recomposed and a new list of decorated entries is returned.
         val decoratedEntries = backStacks.mapValues { (_, stack) ->
+            // 必须同时注册 ViewModelStore 装饰器：否则 entry 内的 hiltViewModel 会向上解析到
+            // Activity 级 ViewModelStore，导航返回（pop）后 ViewModel 不销毁。再次进入相同
+            // 路由（如阅读器）时会复用旧 ViewModel 和旧状态，导致进度恢复失效。
+            // 顺序：SaveableStateHolder 在最外层，为 ViewModelStore 装饰器提供 SavedStateRegistryOwner。
             val decorators = listOf(
                 rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
+                rememberViewModelStoreNavEntryDecorator<NavKey>(),
             )
             rememberDecoratedNavEntries(
                 backStack = stack,

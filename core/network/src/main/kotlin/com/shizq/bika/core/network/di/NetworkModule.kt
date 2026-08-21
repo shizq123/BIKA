@@ -66,9 +66,13 @@ internal object NetworkModule {
                 }
             )
         }
-        Logging {
-            logger = Logger.ANDROID
-            level = LogLevel.ALL
+        // 仅 DEBUG 开启请求日志：LogLevel.ALL 会打印 Authorization token 与签名头，
+        // 无条件启用会导致 release 包凭据泄露到 logcat
+        if (BuildConfig.DEBUG) {
+            Logging {
+                logger = Logger.ANDROID
+                level = LogLevel.ALL
+            }
         }
         bikaAuth {
             channel {
@@ -129,9 +133,11 @@ internal object NetworkModule {
                 }
             )
         }
-        install(Logging) {
-            logger = Logger.ANDROID
-            level = LogLevel.HEADERS
+        if (BuildConfig.DEBUG) {
+            install(Logging) {
+                logger = Logger.ANDROID
+                level = LogLevel.HEADERS
+            }
         }
     }
 

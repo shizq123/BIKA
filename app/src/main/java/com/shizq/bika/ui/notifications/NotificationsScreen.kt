@@ -153,7 +153,11 @@ private fun NotificationsContent(
                     ) {
                         items(
                             count = notifications.itemCount,
-                            key = notifications.itemKey { it.id }
+                            // 服务端分页可能返回重复 id，key 组合 index 保证唯一，避免 "Key was already used" 崩溃
+                            key = { index ->
+                                val item = notifications.peek(index)
+                                if (item != null) "${index}_${item.id}" else "placeholder_$index"
+                            }
                         ) { index ->
                             notifications[index]?.let { item ->
                                 NotificationItem(

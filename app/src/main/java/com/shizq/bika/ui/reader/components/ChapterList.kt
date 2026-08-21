@@ -23,7 +23,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.itemKey
 import com.shizq.bika.paging.Chapter
 
 @Composable
@@ -49,7 +48,11 @@ fun ChapterList(
 
         items(
             count = chapters.itemCount,
-            key = chapters.itemKey { it.id }
+            key = { index ->
+                // 与阅读页一致：index+id 组合 key，避免服务端返回重复 id 导致崩溃
+                val chapter = chapters.peek(index)
+                if (chapter != null) "${index}_${chapter.id}" else "placeholder_$index"
+            }
         ) { index ->
             chapters[index]?.let { chapter ->
                 val isCurrent = chapter.order == currentChapterOrder

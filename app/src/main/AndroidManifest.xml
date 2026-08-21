@@ -4,26 +4,9 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-    <uses-permission
-        android:name="android.permission.WRITE_MEDIA_STORAGE"
-        tools:ignore="ProtectedPermissions" />
-    <uses-permission
-        android:name="android.permission.WRITE_SETTINGS"
-        tools:ignore="ProtectedPermissions" />
-    <uses-permission
-        android:name="android.permission.MANAGE_EXTERNAL_STORAGE"
-        tools:ignore="ScopedStorage" />
+    <!-- 存储均使用应用专属目录 (getExternalFilesDir)，无需外部存储权限 -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission
-        android:name="android.permission.CAMERA"
-        tools:ignore="PermissionImpliesUnsupportedChromeOsHardware" />
-
-    <!--Android 13版本适配，细化存储权限-->
-    <uses-permission
-        android:name="android.permission.READ_MEDIA_IMAGES"
-        tools:ignore="SelectedPhotoAccess" />
+    <!-- APK 更新安装（Android 8.0+ 需用户授权"安装未知应用"） -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <application

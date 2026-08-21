@@ -396,7 +396,14 @@ private fun FeedContent(
                         state = listState,
                         modifier = Modifier.weight(1f)
                     ) {
-                        items(pagedComics.itemCount, key = pagedComics.itemKey { it.id }) { index ->
+                        items(
+                            count = pagedComics.itemCount,
+                            // 网络重试/镜像站分页可能返回重复 id，key 组合 index 保证唯一，避免 "Key was already used" 崩溃
+                            key = { index ->
+                                val item = pagedComics.peek(index)
+                                if (item != null) "${index}_${item.id}" else "placeholder_$index"
+                            }
+                        ) { index ->
                             pagedComics[index]?.let { item ->
                                 val enrichedItem = remember(item, detailedHistories) {
                                     item.injectSingleFrom(detailedHistories)

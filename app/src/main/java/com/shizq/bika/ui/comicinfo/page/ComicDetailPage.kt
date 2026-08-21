@@ -82,6 +82,7 @@ import com.shizq.bika.R
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
+import com.shizq.bika.core.ui.RetryableAsyncImage
 
 enum class BottomBarButtonType(val id: String, val label: String) {
     FAVORITE("favorite", "收藏"),
@@ -185,7 +186,7 @@ fun ComicDetailPage(
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) { i ->
                 val item = recommendations[i]
-                AsyncImage(
+                RetryableAsyncImage(
                     item.coverUrl,
                     modifier = Modifier
                         .height(205.dp)
@@ -230,7 +231,7 @@ fun MediaSummary(
             .fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        AsyncImage(
+        RetryableAsyncImage(
             model = coverUrl,
             contentDescription = title,
             contentScale = ContentScale.Crop,
@@ -372,8 +373,8 @@ fun ContentSummary(
                 verticalAlignment = Alignment.Top,
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 头像保持不变
-                AsyncImage(
+                // 头像：失败自动重试
+                RetryableAsyncImage(
                     model = avatarUrl,
                     contentDescription = null,
                     modifier = Modifier

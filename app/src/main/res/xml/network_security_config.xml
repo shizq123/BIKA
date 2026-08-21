@@ -15,5 +15,9 @@
   -->
 
 <network-security-config>
-    <base-config cleartextTrafficPermitted="true" />
+    <!-- 默认禁止明文流量；仅对 bootstrap 服务端放行（该端点暂不支持 HTTPS） -->
+    <base-config cleartextTrafficPermitted="false" />
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">68.183.234.72</domain>
+    </domain-config>
 </network-security-config>

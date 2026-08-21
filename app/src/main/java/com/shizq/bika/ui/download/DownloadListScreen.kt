@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -437,7 +438,8 @@ fun DownloadListScreen(
                             contentPadding = PaddingValues(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            items(selectedComicEpisodes, key = { it.task.id }) { taskWithProgress ->
+                            // 下载任务按章节展示，task.id 可能重复，key 组合 index 保证唯一
+                            itemsIndexed(selectedComicEpisodes, key = { index, twp -> "${index}_${twp.task.id}" }) { _, taskWithProgress ->
                                 val task = taskWithProgress.task
                                 val isSelected = task.episodeOrder in selectedOrderSet
                                 DownloadTaskItem(

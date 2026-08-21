@@ -1,5 +1,6 @@
 package com.shizq.bika.paging
 
+import kotlinx.coroutines.CancellationException
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
@@ -22,6 +23,8 @@ class MineCommentPagingSource @Inject constructor(
                 prevKey = null,
                 nextKey = if (page >= comments.pages) null else page + 1
             )
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
             LoadResult.Error(e)
         }
