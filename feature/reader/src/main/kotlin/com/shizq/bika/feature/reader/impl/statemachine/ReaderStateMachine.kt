@@ -6,7 +6,7 @@ import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.feature.reader.impl.ReadingProgressSaver
+import com.shizq.bika.feature.reader.impl.ReadingProgressStore
 import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
 import com.shizq.bika.feature.reader.impl.state.ChapterState
 import com.shizq.bika.feature.reader.impl.state.ReaderAction
@@ -22,7 +22,7 @@ class ReaderStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
-    private val progressSaver: ReadingProgressSaver,
+    private val progressSaver: ReadingProgressStore,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
     init {
         spec {

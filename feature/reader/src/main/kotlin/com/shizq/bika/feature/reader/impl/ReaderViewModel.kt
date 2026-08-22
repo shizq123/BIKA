@@ -43,7 +43,7 @@ class ReaderViewModel @AssistedInject constructor(
     private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory,
     private val downloadRepository: DownloadRepository,
     private val downloadTaskRepository: DownloadTaskRepository,
-    private val progressSaver: ReadingProgressSaver,
+    private val readingProgressStore: ReadingProgressStore,
     readerStateMachine: ReaderStateMachine,
     @Assisted id: String,
     @Assisted order: Int,
@@ -152,7 +152,7 @@ class ReaderViewModel @AssistedInject constructor(
         val state = stateMachine.state.value
         BikaLog.d(TAG, "saveProgress: pageIndex=$pageIndex 状态=${state::class.simpleName}")
         if (state is ReaderUiState.Ready) {
-            return progressSaver.save(state.id, state.chapter.order, state.chapter.meta, pageIndex)
+            return readingProgressStore.save(state.id, state.chapter.order, state.chapter.meta, pageIndex)
         }
         return false
     }
@@ -163,10 +163,9 @@ class ReaderViewModel @AssistedInject constructor(
             val state = stateMachine.state.value
             BikaLog.d(TAG, "onCleared 兜底保存: lastKnownPage=$lastKnownPage 状态=${state::class.simpleName}")
             if (state is ReaderUiState.Ready) {
-                progressSaver.save(state.id, state.chapter.order, state.chapter.meta, lastKnownPage)
+                readingProgressStore.save(state.id, state.chapter.order, state.chapter.meta, lastKnownPage)
             }
         }
-        super.onCleared()
     }
 
     @AssistedFactory

@@ -25,7 +25,7 @@ import kotlin.time.Clock
  * 仅在返回、退后台、销毁等关键时机使用同步 [save]。
  */
 @Singleton
-class ReadingProgressSaver @Inject constructor(
+class ReadingProgressStore @Inject constructor(
     private val historyDao: ReadingHistoryDao,
     private val downloadTaskRepository: DownloadTaskRepository,
 ) {
