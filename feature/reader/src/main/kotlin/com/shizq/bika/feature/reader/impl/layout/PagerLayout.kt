@@ -8,6 +8,8 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,7 +32,7 @@ class PagerLayout(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
     ) {
-        val widePages = androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateMapOf<String, Boolean>() }
+        val widePages = remember { mutableStateMapOf<String, Boolean>() }
         val pageContent: @Composable (Int) -> Unit = { pageIndex ->
             if (useDoublePage) {
                 DoublePageItem(pageItems, pageIndex, widePages)
