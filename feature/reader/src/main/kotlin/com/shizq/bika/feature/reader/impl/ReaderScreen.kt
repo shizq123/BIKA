@@ -64,9 +64,6 @@ import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -94,6 +91,8 @@ import com.shizq.bika.feature.reader.impl.layout.ReaderController
 import com.shizq.bika.feature.reader.impl.layout.ReaderLayoutHost
 import com.shizq.bika.feature.reader.impl.layout.SideSheetLayout
 import com.shizq.bika.feature.reader.impl.layout.rememberReaderContext
+import com.shizq.bika.feature.reader.impl.progress.ProgressState
+import com.shizq.bika.feature.reader.impl.progress.rememberReadingProgressManager
 import com.shizq.bika.feature.reader.impl.state.ReaderAction
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.HideSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.JumpToChapter
@@ -238,56 +237,30 @@ private fun ReaderContent(
             )
             val controller = readerContext.controller
 
-            // 恢复上次阅读进度：仅在章节切换/初始页变化时启动一次。
-            // isRestoring 期间暂停自动保存，防止恢复滚动途中的错误位置被写回数据库，
-            // 造成"每次打开都停在同一页"的恶性循环。
-            var isRestoring by remember(chapterState.order) { mutableStateOf(false) }
-            LaunchedEffect(chapterState.order, chapterState.initialPage) {
-                val restorePage = chapterState.initialPage
-                BikaLog.d("ReaderProgress", "收到恢复请求: chapterOrder=${chapterState.order} restorePage=$restorePage")
-                if (restorePage <= 0) return@LaunchedEffect
-                isRestoring = true
-                try {
-                    snapshotFlow { imageList.itemCount }
-                        .filter { it > 0 }
-                        .first()
+            val progressManager = rememberReadingProgressManager(
+                controller = controller,
+                imageList = imageList,
+                initialPage = chapterState.initialPage,
+                onPersist = onFlushProgress
+            )
 
-                    BikaLog.d("ReaderProgress", "数据流就位, itemCount=${imageList.itemCount}, 开始定位 restorePage=$restorePage")
-
-                    val listState = readerContext.lazyListState
-                    if (listState != null) {
-                        // 条漫模式：
-                        // 1. 立即 scrollToItem(restorePage)，即使 Paging 数据不足导致被 clamp 到末尾，
-                        //    LazyColumn 滚到末尾会自动触发 Paging 加载下一批数据。
-                        // 2. 每次循环检查 imageList.itemCount > restorePage：
-                        //    一旦数据批次覆盖了目标页，最后一次 scrollToItem 必然精准落位，退出循环。
-                        // 3. 最多重试 150 次（每次 100ms），共 15 秒，足够慢速网络多批加载。
-                        val deadline = System.currentTimeMillis() + 15_000L
-                        while (System.currentTimeMillis() < deadline) {
-                            listState.scrollToItem(restorePage)
-                            if (imageList.itemCount > restorePage) break  // 数据已到位，本次 scroll 已精准
-                            delay(100)
-                        }
-                        val visibleIndexes = listState.layoutInfo.visibleItemsInfo.map { it.index }
-                        BikaLog.d("ReaderProgress", "条漫恢复完成: 目标=$restorePage, 当前可见=$visibleIndexes")
-                        delay(300)  // 等待布局稳定
-                    } else {
-                        // 翻页模式（Pager）：
-                        // 同理：先 scrollToPage 触发 Paging 加载，itemCount 到位后退出。
-                        // PagerController.scrollToPage 内部已做 clamp 保护（pageCount=0 时跳过）。
-                        val deadline = System.currentTimeMillis() + 15_000L
-                        while (System.currentTimeMillis() < deadline) {
-                            controller.scrollToPage(restorePage)
-                            if (imageList.itemCount > restorePage) break
-                            delay(100)
-                        }
-                        delay(300)
+            // 监听进度恢复状态（用于调试和日志）
+            val progressState by progressManager.state.collectAsStateWithLifecycle()
+            LaunchedEffect(progressState) {
+                when (val state = progressState) {
+                    is ProgressState.Restoring -> {
+                        BikaLog.d("ReaderScreen", "正在恢复进度到第 ${state.targetPage} 页")
                     }
-                } finally {
-                    // 额外等待，确保 debounce(1000ms) 的自动保存协程感知到 isRestoring=true
-                    // 后再释放，防止恢复滚动结束前的中间帧被当作有效进度写回 DB。
-                    delay(1500)
-                    isRestoring = false
+                    is ProgressState.Restored -> {
+                        BikaLog.d("ReaderScreen", "进度已恢复到第 ${state.actualPage} 页")
+                    }
+                    is ProgressState.RestoreFailed -> {
+                        BikaLog.w("ReaderScreen", "进度恢复失败: ${state.reason}")
+                    }
+                    is ProgressState.Tracking -> {
+                        // 正在跟踪页面变化，不需要日志（太频繁）
+                    }
+                    else -> {}
                 }
             }
 
@@ -364,49 +337,17 @@ private fun ReaderContent(
             ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
 
             val onBack = {
-                BikaLog.d("ReaderProgress", "用户按返回键退出, 立即落库 currentPage=$currentPage")
-                onFlushProgress(currentPage)
+                // 进度管理器会在 onDispose 时自动保存，这里只需退出
                 onBackClick()
             }
             // TODO: 暂时移除
 //            BackHandler(onBack = onBack)
-
-            // 关键时机兜底保存：应用退到后台/被杀 (ON_STOP) 以及阅读器离开组合 (onDispose) 时，
-            // 立即落库，避免 debounce 窗口内的进度丢失。
-            val lifecycleOwner = LocalLifecycleOwner.current
-            DisposableEffect(lifecycleOwner) {
-                val observer = LifecycleEventObserver { _, event ->
-                    if (event == Lifecycle.Event.ON_STOP && !isRestoring) {
-                        BikaLog.d("ReaderProgress", "ON_STOP 退后台落库 currentPage=$currentPage")
-                        onFlushProgress(currentPage)
-                    }
-                }
-                lifecycleOwner.lifecycle.addObserver(observer)
-                onDispose {
-                    lifecycleOwner.lifecycle.removeObserver(observer)
-                    if (!isRestoring) {
-                        BikaLog.d("ReaderProgress", "onDispose 离开阅读器落库 currentPage=$currentPage")
-                        onFlushProgress(currentPage)
-                    }
-                }
-            }
 
             LaunchedEffect(overlayState.seekState) {
                 if (overlayState.seekState is SeekState.Seeking) {
                     controller.scrollToPage(overlayState.seekState.targetPage.toInt())
                     dispatch(ReaderAction.SeekConsumed)
                 }
-            }
-
-            LaunchedEffect(controller, isRestoring) {
-                controller.visibleItemIndex
-                    .debounce(1000)
-                    .collect { index ->
-                        // 恢复滚动期间不自动保存，避免把恢复途中的错误位置写回数据库
-                        if (!isRestoring) {
-                            dispatch(ReaderAction.SyncReadingProgress(index))
-                        }
-                    }
             }
 
             // 自动衔接：到达当前章节最后一页时，自动跳转到下一章。如果是最后一章，提示后面没有内容了。
@@ -489,7 +430,6 @@ private fun ReaderContent(
                     },
                     bottomBar = {
                         LiveReaderBottomBar(
-                            controller = controller,
                             currentPage = currentPage,
                             totalPages = chapterState.totalPages,
                             readingMode = config.readingMode,
@@ -821,7 +761,7 @@ private fun ScrubPreviewCard(
     Surface(
         shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
         color = Color.Black.copy(alpha = 0.75f),
-        border = androidx.compose.foundation.BorderStroke(
+        border = BorderStroke(
             0.5.dp,
             Color.White.copy(alpha = 0.15f)
         ),
@@ -876,7 +816,6 @@ private fun ScrubPreviewCard(
 
 @Composable
 private fun LiveReaderBottomBar(
-    controller: ReaderController,
     currentPage: Int,
     totalPages: Int,
     readingMode: ReadingMode,
