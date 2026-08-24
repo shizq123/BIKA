@@ -30,6 +30,8 @@ class AndroidLibraryConventionPlugin : Plugin<Project> {
                 "testImplementation"(libs.findLibrary("junit").get())
 
                 "implementation"(libs.findLibrary("androidx.tracing.ktx").get())
+
+                "implementation"(libs.findLibrary("kotlin.logging").get())
             }
         }
     }
