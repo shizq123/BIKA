@@ -9,7 +9,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-
+@Deprecated("建议使用 KotlinLogging", ReplaceWith("io.github.oshai.kotlinlogging.KotlinLogging"))
 object BikaLog {
     private const val TAG = "BikaLog"
 
