@@ -65,6 +65,7 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.download)
     implementation(projects.core.domain)
+    implementation(projects.core.logging)
     implementation(projects.core.ui)
     implementation(projects.sync.work)
 
