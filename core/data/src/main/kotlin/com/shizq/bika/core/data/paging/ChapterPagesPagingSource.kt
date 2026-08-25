@@ -7,11 +7,12 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class ChapterPagesPagingSource @AssistedInject constructor(
     @Assisted private val id: String,
     @Assisted private val order: Int,
-    @Assisted private val onMetadataUpdated: (ChapterMeta) -> Unit,
+    @Assisted private val metadata: MutableStateFlow<ChapterMeta?>,
     private val dataSource: BikaDataSource
 ) : PagingSource<Int, ChapterPage>() {
     override suspend fun load(
@@ -24,11 +25,9 @@ class ChapterPagesPagingSource @AssistedInject constructor(
 
             val paginationData = response.paginationData
 
-            onMetadataUpdated(
-                ChapterMeta(
-                    title = response.chapterInfo.title,
-                    totalImages = response.paginationData.total
-                )
+            metadata.value = ChapterMeta(
+                title = response.chapterInfo.title,
+                totalImages = response.paginationData.total
             )
 
             LoadResult.Page(
@@ -57,7 +56,7 @@ class ChapterPagesPagingSource @AssistedInject constructor(
         fun create(
             id: String,
             order: Int,
-            onMetadataUpdated: (ChapterMeta) -> Unit,
+            metadata: MutableStateFlow<ChapterMeta?>,
         ): ChapterPagesPagingSource
     }
 }

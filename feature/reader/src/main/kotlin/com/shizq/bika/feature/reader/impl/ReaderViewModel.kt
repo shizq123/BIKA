@@ -4,17 +4,14 @@ import android.net.Uri
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.data.model.Chapter
-import com.shizq.bika.core.data.paging.ChapterListPagingSource
 import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.data.paging.ChapterPage
-import com.shizq.bika.core.data.paging.ChapterPagesPagingSource
+import com.shizq.bika.core.data.repository.ChapterRepository
 import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
@@ -27,10 +24,14 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -39,8 +40,7 @@ private const val TAG = "ReaderViewModel"
 @HiltViewModel(assistedFactory = ReaderViewModel.Factory::class)
 class ReaderViewModel @AssistedInject constructor(
     savedStateHandle: SavedStateHandle,
-    private val chapterPagesPagingSourceFactory: ChapterPagesPagingSource.Factory,
-    private val chapterListPagingSourceFactory: ChapterListPagingSource.Factory,
+    private val chapterRepository: ChapterRepository,
     private val downloadRepository: DownloadRepository,
     private val downloadTaskRepository: DownloadTaskRepository,
     private val readingProgressStore: ReadingProgressStore,
@@ -57,6 +57,12 @@ class ReaderViewModel @AssistedInject constructor(
 
     private val stateMachine = readerStateMachine.launchIn(viewModelScope)
     val stateFlow = stateMachine.state
+
+    // 在线模式下，每次章节变化只调用一次 getChapterPages，pages 和 meta 共享同一个结果，
+    // 用 shareIn 转为热流，避免 meta/pages 各自订阅时分别触发一次网络请求。
+    private val chapterPagesResultFlow = currentChapterOrder
+        .map { chapterOrder -> chapterRepository.getChapterPages(id, chapterOrder) }
+        .shareIn(viewModelScope, SharingStarted.Lazily, replay = 1)
 
     // 图片列表流：下载模式读取本地文件，在线模式从网络加载
     val imageListFlow: Flow<PagingData<ChapterPage>> =
@@ -93,15 +99,15 @@ class ReaderViewModel @AssistedInject constructor(
                 }
             }.cachedIn(viewModelScope)
         } else {
-            // 在线模式：从网络加载图片
-            currentChapterOrder
-                .flatMapLatest { chapterOrder ->
-                    Pager(PagingConfig(40)) {
-                        chapterPagesPagingSourceFactory.create(id, chapterOrder) { meta ->
-                            dispatch(ReaderAction.ChapterMetaLoaded(meta))
-                        }
-                    }.flow
-                }
+            // 在线模式：从网络加载图片。章节元信息（标题、总页数）随图片分页请求一并返回，
+            // 与图片流分开订阅：meta 只需消费一次副作用（dispatch），pages 交给 UI 层分页展示。
+            chapterPagesResultFlow
+                .flatMapLatest { it.meta }
+                .onEach { meta -> dispatch(ReaderAction.ChapterMetaLoaded(meta)) }
+                .launchIn(viewModelScope)
+
+            chapterPagesResultFlow
+                .flatMapLatest { it.pages }
                 .cachedIn(viewModelScope)
         }
 
@@ -127,9 +133,7 @@ class ReaderViewModel @AssistedInject constructor(
                 }
                 .cachedIn(viewModelScope)
         } else {
-            Pager(config = PagingConfig(pageSize = 20)) {
-                chapterListPagingSourceFactory.create(id)
-            }.flow
+            chapterRepository.getChapterList(id)
                 .cachedIn(viewModelScope)
         }
 
