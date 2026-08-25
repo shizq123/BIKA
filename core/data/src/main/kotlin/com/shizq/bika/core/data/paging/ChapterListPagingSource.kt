@@ -2,6 +2,7 @@ package com.shizq.bika.core.data.paging
 
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
+import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.network.BikaDataSource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
@@ -18,14 +19,14 @@ class ChapterListPagingSource @AssistedInject constructor(
             val currentPage = params.key ?: 1
 
             val response = network.getComicEpisodes(id, currentPage)
-            val data = response.eps
+            val epsResponse = response.eps
 
             LoadResult.Page(
-                data = data.docs.map { doc ->
+                data = epsResponse.docs.map { doc ->
                     Chapter(doc.id, doc.order, doc.title, doc.updatedAt)
                 }.sortedBy { it.order },
                 prevKey = null,
-                nextKey = if (currentPage < data.pages) currentPage + 1 else null
+                nextKey = if (currentPage < epsResponse.pages) currentPage + 1 else null
             )
         } catch (e: CancellationException) {
             throw e
@@ -47,10 +48,3 @@ class ChapterListPagingSource @AssistedInject constructor(
         fun create(id: String): ChapterListPagingSource
     }
 }
-
-data class Chapter(
-    val id: String,
-    val order: Int,
-    val title: String,
-    val updatedAt: String
-)

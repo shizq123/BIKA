@@ -10,7 +10,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.common.BikaLog
-import com.shizq.bika.core.data.paging.Chapter
+import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.paging.ChapterListPagingSource
 import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.data.paging.ChapterPage
