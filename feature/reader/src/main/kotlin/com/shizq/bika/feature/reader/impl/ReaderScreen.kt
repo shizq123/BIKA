@@ -72,7 +72,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.context.findActivity
-import com.shizq.bika.core.data.paging.Chapter
+import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.ScreenOrientation

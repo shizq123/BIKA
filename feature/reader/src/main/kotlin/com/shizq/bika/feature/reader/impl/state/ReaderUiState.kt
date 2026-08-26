@@ -1,7 +1,7 @@
 package com.shizq.bika.feature.reader.impl.state
 
 import androidx.compose.runtime.Immutable
-import com.shizq.bika.core.data.paging.Chapter
+import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.reader.ReadingMode
