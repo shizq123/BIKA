@@ -4,6 +4,10 @@ plugins {
 
 android {
     namespace = "com.shizq.bika.core.logging"
+
+    defaultConfig {
+        consumerProguardFiles("consumer-rules.pro")
+    }
 }
 
 dependencies {
