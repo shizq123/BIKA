@@ -46,7 +46,7 @@ okio = "3.18.1"
 reorderable = "3.1.0"
 telephoto = "0.19.0"
 robolectric = "4.16.1"
-roborazzi = "1.72.0"
+roborazzi = "1.70.0"
 
 [libraries]
 androidx-activity-compose = { group = "androidx.activity", name = "activity-compose", version.ref = "androidxActivity" }
