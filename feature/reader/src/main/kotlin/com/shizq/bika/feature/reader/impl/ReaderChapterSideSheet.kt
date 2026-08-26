@@ -14,7 +14,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
-import com.shizq.bika.core.data.paging.Chapter
+import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.feature.reader.impl.components.ChapterList
 import com.shizq.bika.feature.reader.impl.layout.SideSheetLayout
 import com.shizq.bika.feature.reader.impl.state.ChapterState
