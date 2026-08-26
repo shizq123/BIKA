@@ -9,12 +9,16 @@ android {
 }
 
 dependencies {
-    implementation(libs.kotlinx.serialization.core)
     api(projects.core.common)
     api(projects.core.database)
     api(projects.core.datastore)
     api(projects.core.network)
+
     implementation(projects.core.download)
+
+    implementation(libs.kotlinx.serialization.core)
+
+    implementation(libs.androidx.paging.runtime)
 
     testImplementation(libs.kotlinx.coroutines.test)
     testImplementation(libs.kotlinx.serialization.json)

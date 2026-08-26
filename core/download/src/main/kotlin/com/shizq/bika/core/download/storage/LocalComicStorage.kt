@@ -39,4 +39,27 @@ interface LocalComicStorage {
 
     /** 删除整章目录 */
     fun deleteEpisodeDir(dir: File): Boolean
+
+    /**
+     * 扫描离线漫画根目录，返回每个已下载漫画目录的占用信息。
+     * 目录布局是本模块的内部知识，调用方无需感知磁盘路径。
+     */
+    fun listDownloadedComics(): List<ComicStorageUsage>
+
+    /**
+     * 删除某个漫画的整个离线目录。
+     * @return 是否删除成功（目录本就不存在也视为成功）
+     */
+    fun deleteComicDir(comicId: String): Boolean
 }
+
+/**
+ * 单个离线漫画在磁盘上的占用信息。
+ *
+ * @param comicId 漫画目录名（即漫画 id）
+ * @param sizeInBytes 该漫画目录递归统计的总字节数
+ */
+data class ComicStorageUsage(
+    val comicId: String,
+    val sizeInBytes: Long,
+)

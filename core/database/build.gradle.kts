@@ -13,5 +13,7 @@ dependencies {
 
     implementation(libs.kotlinx.datetime)
 
+    implementation("org.jetbrains.kotlin:kotlin-reflect:2.4.0")
+
     androidTestImplementation(libs.kotlinx.coroutines.test)
 }

@@ -65,8 +65,11 @@ dependencies {
     implementation(projects.core.data)
     implementation(projects.core.download)
     implementation(projects.core.domain)
+    implementation(projects.core.logging)
     implementation(projects.core.ui)
     implementation(projects.sync.work)
+
+    implementation(projects.feature.reader)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.foundation.layout)
@@ -108,8 +111,6 @@ dependencies {
     // 测试框架依赖：仅测试作用域，避免打进 release APK
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit"))
-
-    implementation(libs.telephoto)
 }
 
 baselineProfile {

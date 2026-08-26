@@ -1,0 +1,28 @@
+package com.shizq.bika.feature.reader.impl
+
+import androidx.compose.runtime.Composable
+import com.shizq.bika.core.model.reader.ReadingMode
+import com.shizq.bika.feature.reader.impl.bar.ReaderBottomBar
+
+@Composable
+internal fun ReaderBottomBarHost(
+    currentPage: Int,
+    totalPages: Int,
+    readingMode: ReadingMode,
+    onSeekToPage: (Int) -> Unit,
+    onToggleChapterList: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenReadingMode: () -> Unit,
+    onOpenOrientation: () -> Unit,
+) {
+    ReaderBottomBar(
+        currentPage = currentPage,
+        totalPages = totalPages,
+        readingMode = readingMode,
+        onSeekToPage = onSeekToPage,
+        onToggleChapterList = onToggleChapterList,
+        onOpenSettings = onOpenSettings,
+        onOpenReadingMode = onOpenReadingMode,
+        onOpenOrientation = onOpenOrientation,
+    )
+}

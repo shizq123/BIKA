@@ -240,6 +240,39 @@ class DefaultLocalComicStorage @Inject constructor(
             .toList()
     }
 
+    override fun listDownloadedComics(): List<ComicStorageUsage> {
+        val rootDir = getRootDir()
+        if (!rootDir.exists() || !rootDir.isDirectory) return emptyList()
+
+        return rootDir.listFiles()
+            ?.asSequence()
+            ?.filter { it.isDirectory }
+            ?.map { folder -> ComicStorageUsage(folder.name, computeDirSize(folder)) }
+            ?.toList()
+            .orEmpty()
+    }
+
+    override fun deleteComicDir(comicId: String): Boolean {
+        val comicDir = File(getRootDir(), sanitizePathSegment(comicId))
+        if (!comicDir.exists()) return true
+        val deleted = deleteRecursivelySafely(comicDir)
+        if (deleted) {
+            pruneEmptyAncestorDirs(
+                start = comicDir.parentFile,
+                stopBefore = getRootDir(),
+            )
+        }
+        return deleted
+    }
+
+    private fun computeDirSize(file: File): Long {
+        if (!file.exists()) return 0L
+        if (file.isFile) return file.length()
+        var size = 0L
+        file.listFiles()?.forEach { child -> size += computeDirSize(child) }
+        return size
+    }
+
     private fun getRootDir(): File {
         val baseDir = context.getExternalFilesDir(null) ?: context.filesDir
         return File(baseDir, ROOT_DIR_NAME)

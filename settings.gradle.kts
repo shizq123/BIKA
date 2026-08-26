@@ -33,11 +33,13 @@ include(":core:datastore")
 include(":core:designsystem")
 include(":core:domain")
 include(":core:download")
+include(":core:logging")
 include(":core:model")
 include(":core:network")
 include(":core:testing")
 include(":core:ui")
 
+include(":feature:reader")
 include(":feature:settings")
 
 include(":sync:work")
