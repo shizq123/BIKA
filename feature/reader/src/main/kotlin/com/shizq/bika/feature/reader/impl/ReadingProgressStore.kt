@@ -78,8 +78,8 @@ class ReadingProgressStore @Inject constructor(
             historyDao.upsertHistory(newRecord)
         }
 
-        // 如果翻到最后一页或最后2页，判定为看完了本章
-        val isFinished = meta.totalImages > 0 && pageIndex >= meta.totalImages - 2
+        // 如果翻到最后 3 页（即 pageIndex >= totalImages - 3 或 totalImages <= 3 时），判定为看完了本章
+        val isFinished = meta.totalImages > 0 && pageIndex >= (meta.totalImages - 3).coerceAtLeast(0)
 
         val chapterProgress = ChapterProgressEntity(
             historyId = comicId,

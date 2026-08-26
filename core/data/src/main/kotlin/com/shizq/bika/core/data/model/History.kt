@@ -43,6 +43,13 @@ data class ChapterProgress(
     val lastReadAt: Instant
 )
 
+/**
+ * 是否判定为已读完该章节（当总页数 > 0 且阅读至最后 3 页或以上时）。
+ */
+val ChapterProgress.isCompleted: Boolean
+    get() = pageCount > 0 && currentPage >= (pageCount - 3).coerceAtLeast(0)
+
+
 fun ReadingHistoryEntity.asExternalModel(): ReadingHistory {
     return ReadingHistory(
         id = this.id,

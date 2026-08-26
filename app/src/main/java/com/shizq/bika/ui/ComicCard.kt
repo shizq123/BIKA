@@ -28,6 +28,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.request.ImageRequest
+import com.shizq.bika.core.data.model.isCompleted
 import coil3.request.crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -124,7 +125,7 @@ fun ComicCard(
                             val epsCount = detailedReadingHistory.history.epsCount
                             if (epsCount > lastProgress.chapterNumber) {
                                 Badge(text = "有更新", containerColor = androidx.compose.ui.graphics.Color(0xFFFF9800))
-                            } else if (lastProgress.chapterNumber >= epsCount && lastProgress.currentPage >= lastProgress.pageCount && lastProgress.pageCount > 0) {
+                            } else if (lastProgress.chapterNumber >= epsCount && lastProgress.isCompleted) {
                                 Badge(text = "已读完", containerColor = androidx.compose.ui.graphics.Color(0xFF4CAF50))
                             } else {
                                 Badge(text = "已阅读", containerColor = MaterialTheme.colorScheme.secondary)

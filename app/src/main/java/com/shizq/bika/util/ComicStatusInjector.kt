@@ -3,6 +3,7 @@ package com.shizq.bika.util
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.DetailedHistory
+import com.shizq.bika.core.database.model.isCompleted
 import com.shizq.bika.core.model.ComicSummary
 
 /**
@@ -52,9 +53,8 @@ internal fun computeProgressText(lastProgress: ChapterProgressEntity?, epsCount:
     if (lastProgress == null) return null
     return when {
         epsCount > lastProgress.chapterId -> "有更新"
-        lastProgress.chapterId >= epsCount
-                && lastProgress.currentPage >= lastProgress.pageCount
-                && lastProgress.pageCount > 0 -> "已读完"
+        lastProgress.chapterId >= epsCount && lastProgress.isCompleted -> "已读完"
         else -> "已阅读"
     }
 }
+

@@ -8,13 +8,13 @@ android {
 }
 
 dependencies {
+    implementation(projects.core.common)
+    implementation(projects.core.datastore)
     implementation(projects.core.domain)
-//    implementation(projects.feature.interests.api)
-//    implementation(projects.feature.search.api)
-//    implementation(projects.feature.topic.api)
-//
-//    testImplementation(projects.core.testing)
-//
-//    androidTestImplementation(libs.bundles.androidx.compose.ui.test)
-//    androidTestImplementation(projects.core.testing)
+    implementation(projects.core.download)
+    implementation(projects.core.model)
+    implementation(projects.core.network)
+    implementation(projects.core.ui)
+
+    implementation(libs.coil.compose)
 }

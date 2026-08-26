@@ -31,3 +31,9 @@ data class ChapterProgressEntity(
     // 该章节的最后阅读时间
     val lastReadAt: Instant
 )
+
+/**
+ * 是否判定为已读完该章节（当总页数 > 0 且阅读至最后 3 页或以上时）。
+ */
+val ChapterProgressEntity.isCompleted: Boolean
+    get() = pageCount > 0 && currentPage >= (pageCount - 3).coerceAtLeast(0)

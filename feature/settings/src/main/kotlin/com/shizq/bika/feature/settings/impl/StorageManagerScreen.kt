@@ -53,6 +53,7 @@ import coil3.request.crossfade
 import com.shizq.bika.core.download.domain.DeleteDownloadTaskUseCase
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
+import com.shizq.bika.core.network.image.ImageCacheManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -86,6 +87,7 @@ class StorageManagerViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val downloadTaskRepository: DownloadTaskRepository,
     private val deleteDownloadTaskUseCase: DeleteDownloadTaskUseCase,
+    private val imageCacheManager: ImageCacheManager,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(StorageState())
@@ -107,10 +109,7 @@ class StorageManagerViewModel @Inject constructor(
         }
     }
 
-    private suspend fun getCoilCacheSize(): Long = withContext(Dispatchers.IO) {
-        val imageLoader = SingletonImageLoader.get(context)
-        imageLoader.diskCache?.size ?: 0L
-    }
+    private suspend fun getCoilCacheSize(): Long = imageCacheManager.diskCacheSize()
 
     private suspend fun getDownloadsInfo(): Pair<Long, List<OfflineComicItem>> =
         withContext(Dispatchers.IO) {
@@ -168,11 +167,7 @@ class StorageManagerViewModel @Inject constructor(
     fun clearCoilCache() {
         viewModelScope.launch {
             _state.value = _state.value.copy(isClearing = true)
-            withContext(Dispatchers.IO) {
-                val imageLoader = SingletonImageLoader.get(context)
-                imageLoader.diskCache?.clear()
-                imageLoader.memoryCache?.clear()
-            }
+            imageCacheManager.clear()
             _state.value = _state.value.copy(
                 coilCacheSize = 0L,
                 isClearing = false

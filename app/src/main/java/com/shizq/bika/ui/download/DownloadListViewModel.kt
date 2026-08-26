@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.model.ChapterProgressEntity
+import com.shizq.bika.core.database.model.isCompleted
 import com.shizq.bika.core.download.domain.DeleteDownloadTaskUseCase
 import com.shizq.bika.core.download.domain.MoveDownloadTaskToFrontUseCase
 import com.shizq.bika.core.download.model.DownloadTask
@@ -64,10 +65,8 @@ class DownloadListViewModel @Inject constructor(
                 allProgress
                     .groupBy { it.historyId }
                     .mapValues { (_, progressList) ->
-                        val finished =
-                            progressList.count { it.pageCount > 0 && it.currentPage >= it.pageCount }
-                        val reading =
-                            progressList.count { it.pageCount > 0 && it.currentPage < it.pageCount }
+                        val finished = progressList.count { it.isCompleted }
+                        val reading = progressList.count { !it.isCompleted }
                         ComicReadSummary(
                             finishedCount = finished,
                             readingCount = reading,
@@ -195,9 +194,9 @@ data class DownloadTaskWithProgress(
 ) {
     val isRead: Boolean get() = readProgress != null
 
-    /** 是否已读完该章节（当前页 >= 总页数） */
+    /** 是否已读完该章节（总页数 > 0 且阅读至最后 3 页或以上） */
     val isFinished: Boolean
-        get() = readProgress?.let { it.pageCount > 0 && it.currentPage >= it.pageCount } ?: false
+        get() = readProgress?.isCompleted ?: false
 }
 
 /**
