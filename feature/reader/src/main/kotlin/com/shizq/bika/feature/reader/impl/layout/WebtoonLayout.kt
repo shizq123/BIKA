@@ -2,6 +2,7 @@ package com.shizq.bika.feature.reader.impl.layout
 
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -54,6 +55,15 @@ class WebtoonController(
 
     override val totalPages: Int
         get() = listState.layoutInfo.totalItemsCount
+
+    override val supportsContinuousScroll: Boolean = true
+
+    override val canScrollForward: Boolean
+        get() = listState.canScrollForward
+
+    override val interactionSource: InteractionSource
+        get() = listState.interactionSource
+
     override val visibleItemIndex: Flow<Int> = snapshotFlow {
         calculateCurrentPageIndex()
     }.distinctUntilChanged()

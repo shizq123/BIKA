@@ -8,41 +8,32 @@ import androidx.compose.ui.unit.IntSize
 import com.shizq.bika.core.model.reader.ReaderAction
 import com.shizq.bika.core.model.reader.TapZoneLayout
 
-/**
- * 阅读方向
- */
-enum class ReadingDirection {
-    Ltr, // 从左往右 (漫/韩漫)
-    Rtl, // 从右往左 (日漫)
-}
-
 @Stable
 class GestureState(
     private val tapZoneLayout: TapZoneLayout,
-    private val readingDirection: ReadingDirection,
+    private val isRtl: Boolean,
 ) {
-    fun calculateAction(offset: Offset, size: IntSize): ReaderAction {
-        val isRtl = readingDirection == ReadingDirection.Rtl
-
-        return tapZoneLayout.resolve(
-            x = offset.x,
-            y = offset.y,
-            width = size.width,
-            height = size.height,
-            isRtl = isRtl
-        )
-    }
+    fun calculateAction(offset: Offset, size: IntSize): ReaderAction = tapZoneLayout.resolve(
+        x = offset.x,
+        y = offset.y,
+        width = size.width,
+        height = size.height,
+        isRtl = isRtl,
+    )
 }
 
+/**
+ * [isRtl] 没有默认值：漏传会让 RTL（日漫）模式的点击方向反向，
+ * 这类缺陷在运行时不会报错，只能靠强制显式传入来防。
+ * 调用方应直接传 [com.shizq.bika.core.model.reader.ReadingMode.isRtl]。
+ */
 @Composable
 fun rememberGestureState(
-    layout: TapZoneLayout = TapZoneLayout.Sides,
-    direction: ReadingDirection = ReadingDirection.Ltr,
-): GestureState {
-    return remember(layout, direction) {
-        GestureState(
-            tapZoneLayout = layout,
-            readingDirection = direction,
-        )
-    }
+    layout: TapZoneLayout,
+    isRtl: Boolean,
+): GestureState = remember(layout, isRtl) {
+    GestureState(
+        tapZoneLayout = layout,
+        isRtl = isRtl,
+    )
 }

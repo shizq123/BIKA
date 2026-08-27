@@ -1,5 +1,7 @@
 package com.shizq.bika.feature.reader.impl.layout
 
+import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -169,6 +171,15 @@ class PagerController(
     override val totalPages: Int
         get() = if (useDoublePage) pagerState.pageCount * 2 else pagerState.pageCount
 
+    /** Pager 按页吸附，无法平滑推进偏移量。 */
+    override val supportsContinuousScroll: Boolean = false
+
+    override val canScrollForward: Boolean
+        get() = pagerState.canScrollForward
+
+    /** Pager 不产生拖动交互语义，给一个永不发射的空 source。 */
+    override val interactionSource: InteractionSource = MutableInteractionSource()
+
     override val visibleItemIndex = snapshotFlow {
         if (pagerState.pageCount > 0) {
             lastValidIndex = if (useDoublePage) pagerState.currentPage * 2 else pagerState.currentPage
@@ -191,4 +202,10 @@ class PagerController(
             pagerState.scrollToPage(clampedTarget)
         }
     }
+
+    /**
+     * 显式拒绝：Pager 按页吸附，像素级推进没有意义。
+     * 调用方应先查 [supportsContinuousScroll] 而不是依赖这里静默什么都不做。
+     */
+    override suspend fun scrollBy(value: Float) = Unit
 }

@@ -1,6 +1,5 @@
 package com.shizq.bika.feature.reader.impl.layout
 
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -19,13 +18,17 @@ import com.shizq.bika.feature.reader.impl.util.preload.LazyListScrollStateProvid
 import com.shizq.bika.feature.reader.impl.util.preload.PagerScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.ScrollStateProvider
 
+/**
+ * 不再暴露 LazyListState：那会绕过 [ReaderController] 的抽象，
+ * 让调用方用 `lazyListState != null` 反推「是不是条漫模式」。
+ * 滚动能力查询走 [ReaderController.supportsContinuousScroll]。
+ */
 @Stable
-data class ReaderContext(
+class ReaderContext(
     val layout: ReaderLayout,
     val controller: ReaderController,
     val scrollStateProvider: ScrollStateProvider,
     val config: ReaderConfig = ReaderConfig.Default,
-    val lazyListState: LazyListState? = null
 )
 
 data class ReaderConfig(
@@ -106,34 +109,42 @@ fun rememberReaderContext(
                     controller = controller,
                     scrollStateProvider = scrollProvider,
                     config = config,
-                    lazyListState = listState
                 )
             }
         }
 
         ViewerType.Pager -> {
-            val pageCount = if (useDoublePage) (chapterPages.itemCount + 1) / 2 else chapterPages.itemCount
-            val pagerState =
-                rememberPagerState(initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex) { pageCount }
+            // key(chapterOrder) 与 Scrolling 分支对齐：不加的话切章时 pagerState 被复用，
+            // initialPage 只在首次创建生效，新章节会停在旧页码上。
+            key(chapterOrder) {
+                val pageCount =
+                    if (useDoublePage) (chapterPages.itemCount + 1) / 2 else chapterPages.itemCount
+                val pagerState = rememberPagerState(
+                    initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex
+                ) { pageCount }
 
-            val layout = remember(pagerState, readingMode.direction, readingMode.isRtl, useDoublePage) {
-                PagerLayout(
-                    pagerState = pagerState,
-                    direction = readingMode.direction,
-                    isRtl = readingMode.isRtl,
-                    useDoublePage = useDoublePage
+                val layout =
+                    remember(pagerState, readingMode.direction, readingMode.isRtl, useDoublePage) {
+                        PagerLayout(
+                            pagerState = pagerState,
+                            direction = readingMode.direction,
+                            isRtl = readingMode.isRtl,
+                            useDoublePage = useDoublePage
+                        )
+                    }
+
+                val controller = remember(pagerState, useDoublePage) {
+                    PagerController(pagerState, useDoublePage, initialPageIndex)
+                }
+                val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
+
+                ReaderContext(
+                    layout = layout,
+                    controller = controller,
+                    scrollStateProvider = scrollProvider,
+                    config = config,
                 )
             }
-
-            val controller = remember(pagerState, useDoublePage) { PagerController(pagerState, useDoublePage, initialPageIndex) }
-            val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
-
-            ReaderContext(
-                layout = layout,
-                controller = controller,
-                scrollStateProvider = scrollProvider,
-                config = config
-            )
         }
     }
 }

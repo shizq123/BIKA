@@ -275,24 +275,29 @@ private fun ReaderContent(
                 isAutoScrolling = config.autoScrollEnabled
             }
 
-            val listState = readerContext.lazyListState
-            if (listState != null) {
-                val isDragged by listState.interactionSource.collectIsDraggedAsState()
-                LaunchedEffect(isDragged) {
-                    if (isDragged) {
-                        isUserInteracting = true
-                    } else {
-                        delay(1500)
-                        isUserInteracting = false
-                    }
+            // 自动滚动依赖像素级连续滚动，只有条漫模式支持
+            val supportsAutoScroll = controller.supportsContinuousScroll
+
+            val isDragged by controller.interactionSource.collectIsDraggedAsState()
+            LaunchedEffect(isDragged) {
+                if (isDragged) {
+                    isUserInteracting = true
+                } else {
+                    delay(1500)
+                    isUserInteracting = false
                 }
             }
 
-            LaunchedEffect(isAutoScrolling, isUserInteracting, config.autoScrollSpeed, listState, hasNextChapter) {
-                if (isAutoScrolling && !isUserInteracting && listState != null) {
+            LaunchedEffect(
+                isAutoScrolling,
+                isUserInteracting,
+                config.autoScrollSpeed,
+                supportsAutoScroll,
+                hasNextChapter,
+            ) {
+                if (isAutoScrolling && !isUserInteracting && supportsAutoScroll) {
                     while (true) {
-                        val canScroll = listState.canScrollForward
-                        if (canScroll) {
+                        if (controller.canScrollForward) {
                             controller.scrollBy(config.autoScrollSpeed.toFloat())
                             delay(16)
                         } else {
@@ -481,7 +486,10 @@ private fun ReaderContent(
                         }
                     },
                     content = {
-                        val gestureState = rememberGestureState(config.tapZoneLayout)
+                        val gestureState = rememberGestureState(
+                            layout = config.tapZoneLayout,
+                            isRtl = config.readingMode.isRtl,
+                        )
                         ReaderLayoutHost(
                             readerContext = readerContext,
                             gestureState = gestureState,
@@ -496,7 +504,8 @@ private fun ReaderContent(
                     }
                 )
 
-                if (config.autoScrollEnabled) {
+                // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
+                if (config.autoScrollEnabled && supportsAutoScroll) {
                     AutoScrollOverlay(
                         isScrolling = isAutoScrolling,
                         speed = config.autoScrollSpeed,
