@@ -2,6 +2,7 @@ package com.shizq.bika.core.data.repository
 
 import androidx.paging.PagingData
 import com.shizq.bika.core.data.model.Chapter
+import com.shizq.bika.core.data.model.ChapterCatalog
 import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.data.paging.ChapterPage
 import kotlinx.coroutines.flow.Flow
@@ -11,6 +12,16 @@ interface ChapterRepository {
      * 获取指定漫画的章节列表（分页）。
      */
     fun getChapterList(comicId: String): Flow<PagingData<Chapter>>
+
+    /**
+     * 获取指定漫画的完整章节目录（非分页，全量）。
+     *
+     * 用于上下章导航：导航需要随机访问任意章节的相邻项，分页窗口无法满足
+     * （例如从历史记录直接进入第 35 话时，分页首屏只有前 20 条）。
+     * 内部按页循环拉取直至拉全，每拉完一页即发射一次当前已知目录，
+     * [ChapterCatalog.isComplete] 标记是否已拉取完毕。
+     */
+    fun getChapterCatalog(comicId: String): Flow<ChapterCatalog>
 
     /**
      * 获取指定章节的图片列表（分页），以及随分页请求一并返回的章节元信息。

@@ -43,13 +43,25 @@ class ReaderStateMachine @Inject constructor(
                 }
             }
             inState<ReaderUiState.Ready> {
-                on<ReaderAction.JumpToChapter> { chapter ->
-                    val newOrder = chapter.chapter.order
+                on<ReaderAction.JumpToChapter> { action ->
+                    val previousChapter = snapshot.chapter
+                    val newOrder = action.chapter.order
                     savedStateHandle["order"] = newOrder
+
+                    // 用跳转前的 snapshot 保存旧章节的阅读进度，与切换章节合并成同一次 dispatch，
+                    // 天然保证顺序正确：不再依赖调用方额外 dispatch 一个“保存进度”的 action，
+                    // 也不存在两个 action 并发执行导致进度写错章节的竞态。
+                    // saveSuspend 内部处理 meta==null（totalImages=0 占位）。
+                    progressSaver.saveSuspend(
+                        snapshot.id,
+                        previousChapter.order,
+                        previousChapter.meta,
+                        action.currentPage
+                    )
 
                     // startFromBeginning=true：自动跳转到下一章，始终从第 0 页开始。
                     // startFromBeginning=false（默认）：手动跳章，恢复该章节上次阅读位置。
-                    val startPage = if (chapter.startFromBeginning) 0 else getStartPage(snapshot.id, newOrder)
+                    val startPage = if (action.startFromBeginning) 0 else getStartPage(snapshot.id, newOrder)
                     mutate {
                         val newChapterState = ChapterState(
                             order = newOrder,
@@ -75,13 +87,8 @@ class ReaderStateMachine @Inject constructor(
                         )
                     }
                 }
-                onActionEffect<ReaderAction.SyncReadingProgress> {
-                    val chapter = snapshot.chapter
-                    // ReadingProgressSaver.save() 内部处理 meta==null（totalImages=0 占位），
-                    // 此处直接传 meta，无需在 StateMachine 层做特殊处理。
-                    // 用异步版 saveSuspend：这是翻页 debounce 的常规保存，不阻塞主线程；
-                    // 返回/退后台等关键时机由 ReaderViewModel.saveProgress 同步落库兜底。
-                    progressSaver.saveSuspend(snapshot.id, chapter.order, chapter.meta, it.pageIndex)
+                on<ReaderAction.ChapterCatalogLoaded> {
+                    mutate { copy(catalog = it.catalog) }
                 }
                 onActionEffect<ReaderAction.SetReadingMode> {
                     userPreferencesDataSource.setReadingMode(it.mode)

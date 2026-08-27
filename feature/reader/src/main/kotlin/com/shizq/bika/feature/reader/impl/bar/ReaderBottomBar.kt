@@ -36,8 +36,10 @@ fun ReaderBottomBar(
     onOpenSettings: () -> Unit,
     onOpenReadingMode: () -> Unit,
     onOpenOrientation: () -> Unit,
-    onPrevChapter: (() -> Unit)? = null,
-    onNextChapter: (() -> Unit)? = null,
+    hasPrevChapter: Boolean = false,
+    hasNextChapter: Boolean = false,
+    onPrevChapter: () -> Unit = {},
+    onNextChapter: () -> Unit = {},
     onSeeking: ((Int) -> Unit)? = null,
     onSeekingFinished: (() -> Unit)? = null,
 ) {
@@ -78,13 +80,13 @@ fun ReaderBottomBar(
             ) {
                 // 上一章
                 IconButton(
-                    onClick = { onPrevChapter?.invoke() },
-                    enabled = onPrevChapter != null
+                    onClick = onPrevChapter,
+                    enabled = hasPrevChapter
                 ) {
                     Icon(
                         Icons.Rounded.SkipPrevious,
                         contentDescription = "上一章",
-                        tint = if (onPrevChapter != null) LocalContentColor.current
+                        tint = if (hasPrevChapter) LocalContentColor.current
                                else LocalContentColor.current.copy(alpha = 0.38f)
                     )
                 }
@@ -101,13 +103,13 @@ fun ReaderBottomBar(
                 }
                 // 下一章
                 IconButton(
-                    onClick = { onNextChapter?.invoke() },
-                    enabled = onNextChapter != null
+                    onClick = onNextChapter,
+                    enabled = hasNextChapter
                 ) {
                     Icon(
                         Icons.Rounded.SkipNext,
                         contentDescription = "下一章",
-                        tint = if (onNextChapter != null) LocalContentColor.current
+                        tint = if (hasNextChapter) LocalContentColor.current
                                else LocalContentColor.current.copy(alpha = 0.38f)
                     )
                 }

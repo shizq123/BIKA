@@ -2,6 +2,9 @@ package com.shizq.bika.feature.reader.impl.state
 
 import androidx.compose.runtime.Immutable
 import com.shizq.bika.core.data.model.Chapter
+import com.shizq.bika.core.data.model.ChapterCatalog
+import com.shizq.bika.core.data.model.ChapterNavigation
+import com.shizq.bika.core.data.model.navigationAt
 import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.reader.ReadingMode
@@ -17,10 +20,15 @@ sealed interface ReaderUiState {
     data class Ready(
         val id: String,
         val chapter: ChapterState,
+        val catalog: ChapterCatalog = ChapterCatalog.Empty,
         val config: ReaderConfig = ReaderConfig.Default,
         val uiControl: UiControlState = UiControlState(),
         val error: Throwable? = null
-    ) : ReaderUiState
+    ) : ReaderUiState {
+        // 派生值：由 catalog + chapter.order 完全决定，不作为独立字段存储，
+        // 避免 JumpToChapter / catalog 更新两处 handler 各自维护一份、彼此漂移。
+        val navigation: ChapterNavigation get() = catalog.navigationAt(chapter.order)
+    }
 }
 
 @Immutable
@@ -50,8 +58,16 @@ sealed interface SeekState {
 }
 
 sealed interface ReaderAction {
-    data class JumpToChapter(val chapter: Chapter, val startFromBeginning: Boolean = false) : ReaderAction
-    data class SyncReadingProgress(val pageIndex: Int) : ReaderAction
+    /**
+     * 跳转到指定章节。调用方无需再额外 dispatch 保存进度的 action：
+     * handler 内部会用跳转前的 snapshot 保存旧章节的阅读进度，
+     * 消除了“保存进度”与“切换章节”两个独立 action 之间的顺序竞态。
+     */
+    data class JumpToChapter(
+        val chapter: Chapter,
+        val startFromBeginning: Boolean = false,
+        val currentPage: Int = 0,
+    ) : ReaderAction
 
     data object ToggleBarsVisibility : ReaderAction
     data class SetBarsVisibility(val visible: Boolean) : ReaderAction
@@ -72,6 +88,7 @@ sealed interface ReaderAction {
     data class SetStatusBarCapsuleEnabled(val enable: Boolean) : ReaderAction
 
     data class ChapterMetaLoaded(val meta: ChapterMeta) : ReaderAction
+    data class ChapterCatalogLoaded(val catalog: ChapterCatalog) : ReaderAction
 
     data object SeekConsumed : ReaderAction
 }

@@ -51,7 +51,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
@@ -101,7 +100,6 @@ import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetAutoScrollSpeed
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetOrientation
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetReadingMode
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.ShowSheet
-import com.shizq.bika.feature.reader.impl.state.ReaderAction.SyncReadingProgress
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.ToggleBarsVisibility
 import com.shizq.bika.feature.reader.impl.state.ReaderSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderUiState
@@ -110,8 +108,6 @@ import com.shizq.bika.feature.reader.impl.util.preload.ChapterPagePreloadProvide
 import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
@@ -264,28 +260,13 @@ private fun ReaderContent(
                 }
             }
 
-            // 根据当前章节 order 从列表中找出相邻章节
-            val currentChapterIndex = remember(chapterState.order, chapterList.itemCount) {
-                (0 until chapterList.itemCount).firstOrNull {
-                    chapterList.peek(it)?.order == chapterState.order
-                }
-            }
-            val prevChapter: Chapter? = remember(currentChapterIndex, chapterList.itemCount, chapterState.order) {
-                currentChapterIndex?.let { idx ->
-                    if (idx > 0) chapterList.peek(idx - 1) else null
-                } ?: if (chapterList.itemCount == 0 && chapterState.order > 1) {
-                    // 章节列表还未加载完成时，用 order 推断前一章（兼容首次进入）
-                    Chapter(id = "", order = chapterState.order - 1, title = "", updatedAt = "")
-                } else null
-            }
-            val nextChapter: Chapter? = remember(currentChapterIndex, chapterList.itemCount, chapterState.order) {
-                currentChapterIndex?.let { idx ->
-                    if (idx < chapterList.itemCount - 1) chapterList.peek(idx + 1) else null
-                } ?: if (chapterList.itemCount == 0) {
-                    // 章节列表还未加载完成时，用 order 推断后一章（兼容首次进入）
-                    Chapter(id = "", order = chapterState.order + 1, title = "", updatedAt = "")
-                } else null
-            }
+            // 上下章导航：由 StateMachine 根据完整目录（state.catalog）解析出相邻章节，
+            // 不再在 UI 层用 chapterList.peek() 推算——分页窗口只加载了首屏，
+            // 当前章不在窗口内时 peek() 会永久找不到相邻章节。
+            val navigation = state.navigation
+            val prevChapter = navigation.prev
+            val nextChapter = navigation.next
+            val hasNextChapter = nextChapter != null
 
             var isAutoScrolling by remember { mutableStateOf(false) }
             var isUserInteracting by remember { mutableStateOf(false) }
@@ -307,7 +288,7 @@ private fun ReaderContent(
                 }
             }
 
-            LaunchedEffect(isAutoScrolling, isUserInteracting, config.autoScrollSpeed, listState, nextChapter) {
+            LaunchedEffect(isAutoScrolling, isUserInteracting, config.autoScrollSpeed, listState, hasNextChapter) {
                 if (isAutoScrolling && !isUserInteracting && listState != null) {
                     while (true) {
                         val canScroll = listState.canScrollForward
@@ -315,7 +296,7 @@ private fun ReaderContent(
                             controller.scrollBy(config.autoScrollSpeed.toFloat())
                             delay(16)
                         } else {
-                            if (nextChapter == null) {
+                            if (!hasNextChapter) {
                                 isAutoScrolling = false
                                 dispatch(SetAutoScrollEnabled(false))
                                 Toast.makeText(context, "已到达全书底部", Toast.LENGTH_SHORT).show()
@@ -351,11 +332,13 @@ private fun ReaderContent(
             }
 
             // 自动衔接：到达当前章节最后一页时，自动跳转到下一章。如果是最后一章，提示后面没有内容了。
-            LaunchedEffect(chapterState.order, nextChapter) {
-                // 等待章节加载完成（totalPages > 0）
-                val total = snapshotFlow { chapterState.totalPages }
-                    .filter { it > 0 }
-                    .first()
+            // 用 chapterState.totalPages 作为 key 而非 snapshotFlow { chapterState.totalPages }：
+            // chapterState 是普通局部值不是 Compose State，snapshotFlow 无依赖可订阅，
+            // totalPages 初始为 0 时 first() 会永久挂起。改为 key 后，totalPages 从 0 变为非零值
+            // 会触发 recomposition 重启这个 effect，天然实现“等待章节加载完成后再监听”。
+            LaunchedEffect(chapterState.order, chapterState.totalPages, hasNextChapter) {
+                val total = chapterState.totalPages
+                if (total <= 0) return@LaunchedEffect
                 // 监听页面到达末尾（停留 800ms 确认用户确实看到最后一页）
                 controller.visibleItemIndex
                     .debounce(800)
@@ -364,8 +347,7 @@ private fun ReaderContent(
                             delay(300)
                             if (nextChapter != null) {
                                 // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
-                                dispatch(SyncReadingProgress(page))
-                                dispatch(JumpToChapter(nextChapter, startFromBeginning = true))
+                                dispatch(JumpToChapter(nextChapter, startFromBeginning = true, currentPage = page))
                             } else {
                                 Toast.makeText(context, "后面没有内容了", Toast.LENGTH_SHORT).show()
                             }
@@ -440,18 +422,18 @@ private fun ReaderContent(
                             onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
                             onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
                             onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
-                            onPrevChapter = prevChapter?.let { ch -> {
-                                dispatch(SyncReadingProgress(currentPage))
-                                dispatch(JumpToChapter(ch))
-                            } },
-                            onNextChapter = nextChapter?.let { ch -> {
-                                dispatch(SyncReadingProgress(currentPage))
-                                dispatch(JumpToChapter(ch))
-                            } }
-                                ?: {
-                                    Toast.makeText(context, "后面没有内容了", Toast.LENGTH_SHORT)
-                                        .show()
-                                },
+                            hasPrevChapter = prevChapter != null,
+                            hasNextChapter = hasNextChapter,
+                            onPrevChapter = {
+                                prevChapter?.let { dispatch(JumpToChapter(it, currentPage = currentPage)) }
+                            },
+                            onNextChapter = {
+                                if (nextChapter != null) {
+                                    dispatch(JumpToChapter(nextChapter, currentPage = currentPage))
+                                } else {
+                                    Toast.makeText(context, "后面没有内容了", Toast.LENGTH_SHORT).show()
+                                }
+                            },
                             onSeeking = { draggedPage = it },
                             onSeekingFinished = { draggedPage = null }
                         )
@@ -491,8 +473,7 @@ private fun ReaderContent(
                                     chapters = chapterList,
                                     currentChapterOrder = chapterState.order,
                                     onChapterClick = { newChapter ->
-                                        dispatch(SyncReadingProgress(currentPage))
-                                        dispatch(JumpToChapter(newChapter))
+                                        dispatch(JumpToChapter(newChapter, currentPage = currentPage))
                                     },
                                     modifier = Modifier.padding(top = 8.dp)
                                 )
@@ -824,8 +805,10 @@ private fun LiveReaderBottomBar(
     onOpenSettings: () -> Unit,
     onOpenReadingMode: () -> Unit,
     onOpenOrientation: () -> Unit,
-    onPrevChapter: (() -> Unit)? = null,
-    onNextChapter: (() -> Unit)? = null,
+    hasPrevChapter: Boolean = false,
+    hasNextChapter: Boolean = false,
+    onPrevChapter: () -> Unit = {},
+    onNextChapter: () -> Unit = {},
     onSeeking: ((Int) -> Unit)? = null,
     onSeekingFinished: (() -> Unit)? = null,
 ) {
@@ -838,6 +821,8 @@ private fun LiveReaderBottomBar(
         onOpenSettings = onOpenSettings,
         onOpenReadingMode = onOpenReadingMode,
         onOpenOrientation = onOpenOrientation,
+        hasPrevChapter = hasPrevChapter,
+        hasNextChapter = hasNextChapter,
         onPrevChapter = onPrevChapter,
         onNextChapter = onNextChapter,
         onSeeking = onSeeking,

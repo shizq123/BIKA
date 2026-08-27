@@ -9,6 +9,7 @@ import androidx.paging.cachedIn
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.data.model.Chapter
+import com.shizq.bika.core.data.model.ChapterCatalog
 import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.data.repository.ChapterRepository
@@ -115,26 +116,43 @@ class ReaderViewModel @AssistedInject constructor(
     // downloadedOnly=true 时只展示已下载完成的章节，限制章间导航范围
     val chapterListFlow: Flow<PagingData<Chapter>> =
         if (downloadedOnly) {
-            downloadTaskRepository.observeTasksByComic(id)
-                .map { tasks ->
-                    PagingData.from(
-                        tasks
-                            .filter { it.status == DownloadStatus.COMPLETED }
-                            .sortedBy { it.episodeOrder }
-                            .map { task ->
-                                Chapter(
-                                    id = task.episodeId,
-                                    order = task.episodeOrder,
-                                    title = task.episodeTitle,
-                                    updatedAt = ""
-                                )
-                            }
-                    )
-                }
-                .cachedIn(viewModelScope)
+            downloadedChapters(id).map { PagingData.from(it) }.cachedIn(viewModelScope)
         } else {
             chapterRepository.getChapterList(id)
                 .cachedIn(viewModelScope)
+        }
+
+    // 章节目录流（全量、非分页，用于上下章导航）。
+    // downloadedOnly=true 时目录来源与 chapterListFlow 一致（仅已下载完成的章节，视为“已拉全”）；
+    // 在线模式复用 ChapterRepository.getChapterCatalog，内部循环拉取直至拉全。
+    init {
+        val catalogFlow: Flow<ChapterCatalog> = if (downloadedOnly) {
+            downloadedChapters(id).map { ChapterCatalog(chapters = it, isComplete = true) }
+        } else {
+            chapterRepository.getChapterCatalog(id)
+        }
+        catalogFlow
+            .onEach { dispatch(ReaderAction.ChapterCatalogLoaded(it)) }
+            .launchIn(viewModelScope)
+    }
+
+    /**
+     * 下载模式下，从下载任务记录派生出“已下载完成”的章节列表（按 order 升序）。
+     * [chapterListFlow]（分页展示）与目录流（上下章导航）共用同一份数据来源。
+     */
+    private fun downloadedChapters(comicId: String): Flow<List<Chapter>> =
+        downloadTaskRepository.observeTasksByComic(comicId).map { tasks ->
+            tasks
+                .filter { it.status == DownloadStatus.COMPLETED }
+                .sortedBy { it.episodeOrder }
+                .map { task ->
+                    Chapter(
+                        id = task.episodeId,
+                        order = task.episodeOrder,
+                        title = task.episodeTitle,
+                        updatedAt = ""
+                    )
+                }
         }
 
     fun dispatch(action: ReaderAction) {
