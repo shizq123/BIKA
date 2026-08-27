@@ -4,11 +4,6 @@ plugins {
 
 android {
     namespace = "com.shizq.bika.core.logging"
-    packagingOptions {
-        resources {
-            excludes += setOf("META-INF/DEPENDENCIES")
-        }
-    }
 }
 
 dependencies {
