@@ -1,9 +1,6 @@
 package com.shizq.bika.feature.reader.impl
 
-import android.content.Context
 import android.content.pm.ActivityInfo
-import android.os.BatteryManager
-import android.os.Build
 import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -16,7 +13,6 @@ import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -83,6 +79,7 @@ import com.shizq.bika.feature.reader.impl.components.ChapterList
 import com.shizq.bika.feature.reader.impl.components.ReadingModeSelectBottomSheet
 import com.shizq.bika.feature.reader.impl.components.ReadingSettingsBottomSheet
 import com.shizq.bika.feature.reader.impl.components.ScreenOrientationSelectBottomSheet
+import com.shizq.bika.feature.reader.impl.components.StatusBarCapsule
 import com.shizq.bika.feature.reader.impl.gesture.rememberGestureState
 import com.shizq.bika.feature.reader.impl.layout.LocalReaderConfig
 import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
@@ -106,10 +103,10 @@ import com.shizq.bika.feature.reader.impl.state.ReaderUiState
 import com.shizq.bika.feature.reader.impl.state.SeekState
 import com.shizq.bika.feature.reader.impl.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
+import com.shizq.bika.feature.reader.impl.util.rememberTopEndSystemAwarePadding
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
-import java.util.Calendar
 
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
@@ -528,10 +525,18 @@ private fun ReaderContent(
                 }
 
                 if (config.statusBarCapsuleEnabled && !overlayState.showSystemBars) {
+                    val padding = rememberTopEndSystemAwarePadding(
+                        includeStatusBarInset = false,
+                        extraTop = 2.dp,
+                        extraEnd = 2.dp
+                    )
                     StatusBarCapsule(
                         modifier = Modifier
                             .align(Alignment.TopEnd)
-                            .padding(top = 10.dp, end = 12.dp)
+                            .padding(
+                                top = padding.top,
+                                end = padding.end
+                            )
                     )
                 }
 
@@ -655,90 +660,6 @@ private fun SystemUiController(showSystemUI: Boolean) {
 private fun LivePageIndicatorBadge(controller: ReaderController, total: Int) {
     val current by controller.visibleItemIndex.collectAsState(0)
     PageIndicatorBadge(current = current + 1, total = total)
-}
-
-@Composable
-private fun StatusBarCapsule(
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    var clockTime by remember { mutableStateOf("") }
-    var batteryPct by remember { mutableStateOf(100) }
-    var isCharging by remember { mutableStateOf(false) }
-
-    val batteryManager = remember(context) {
-        context.getSystemService(Context.BATTERY_SERVICE) as BatteryManager
-    }
-
-    fun updateStatus() {
-        val calendar = Calendar.getInstance()
-        val hour = String.format("%02d", calendar.get(Calendar.HOUR_OF_DAY))
-        val minute = String.format("%02d", calendar.get(Calendar.MINUTE))
-        clockTime = "$hour:$minute"
-
-        batteryPct = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
-        isCharging = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            batteryManager.isCharging
-        } else {
-            false
-        }
-    }
-
-    LaunchedEffect(Unit) {
-        updateStatus()
-        while (true) {
-            delay(15000)
-            updateStatus()
-        }
-    }
-
-    Surface(
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
-        color = Color.Black.copy(alpha = 0.55f),
-        border = BorderStroke(
-            0.5.dp,
-            Color.White.copy(alpha = 0.15f)
-        ),
-        modifier = modifier
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
-        ) {
-            Text(
-                text = clockTime,
-                style = MaterialTheme.typography.labelSmall,
-                color = Color.White.copy(alpha = 0.9f),
-                fontWeight = FontWeight.Medium
-            )
-
-            val batteryColor = when {
-                isCharging -> Color(0xFF4CAF50)
-                batteryPct <= 20 -> Color(0xFFF44336)
-                else -> Color.White.copy(alpha = 0.8f)
-            }
-
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp)
-            ) {
-                if (isCharging) {
-                    Text(
-                        text = "⚡",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = batteryColor
-                    )
-                }
-                Text(
-                    text = "$batteryPct%",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = batteryColor,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
 }
 
 @Composable
