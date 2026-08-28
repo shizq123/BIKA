@@ -2,26 +2,36 @@ package com.shizq.bika.core.network.plugin
 
 import android.util.Log
 import coil3.intercept.Interceptor
-import com.shizq.bika.core.network.BuildConfig
 import coil3.request.ErrorResult
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
-import kotlin.coroutines.AbstractCoroutineContextElement
-import kotlin.coroutines.CoroutineContext
-import kotlin.coroutines.coroutineContext
+import com.shizq.bika.core.network.BuildConfig
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
+import kotlin.coroutines.AbstractCoroutineContextElement
+import kotlin.coroutines.CoroutineContext
 
 private const val TAG = "DomainFallbackCoil"
 private val DEBUG_LOGGING = BuildConfig.DEBUG
+
+/** 主请求慢于此值就启动降级竞速。 */
+private const val SLOW_MAIN_THRESHOLD_MS = 2500L
+
+/**
+ * 4xx 是永久性失败：资源在这个 path 上就是不存在（404）或无权限（403），
+ * 换域名重试同一个 path 不会有不同结果，只会放大成 N 倍无效请求。
+ * 只有 5xx 与传输层异常（超时、DNS、连接失败）才值得换域名。
+ */
+private fun Throwable?.isWorthFallback(): Boolean =
+    this !is coil3.network.HttpException || response.code >= 500
 
 private class FallbackMarker : AbstractCoroutineContextElement(FallbackMarker) {
     companion object Key : CoroutineContext.Key<FallbackMarker>
@@ -53,65 +63,57 @@ class DomainFallbackInterceptor : Interceptor {
             return@coroutineScope chain.proceed()
         }
 
-        val resultChannel = Channel<ImageResult>(1)
-
-        // 1. 启动主域名图片下载请求
-        val mainJob = launch {
+        // 主域名请求。异常在内部收成 ErrorResult，避免抛出去连带取消整个 coroutineScope。
+        val mainRequest = async {
             try {
-                val result = chain.proceed()
-                resultChannel.trySend(result)
+                chain.proceed()
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
-                resultChannel.trySend(ErrorResult(null, chain.request, e))
+                ErrorResult(null, chain.request, e)
             }
         }
 
-        // 2. 启动慢速检测协程：如果 2.5 秒后主请求没完，或者 2.5 秒内主请求挂了，启动并发竞速
-        val fallbackJob = launch {
-            try {
-                val start = System.currentTimeMillis()
-                while (System.currentTimeMillis() - start < 2500L) {
-                    if (!mainJob.isActive) {
-                        break
-                    }
-                    delay(100L)
-                }
+        // 等一小会儿：主请求可能很快成功，也可能很快失败。
+        val earlyResult = withTimeoutOrNull(SLOW_MAIN_THRESHOLD_MS) { mainRequest.await() }
 
-                if (mainJob.isActive) {
-                    if (DEBUG_LOGGING) Log.w(TAG, "Main request for '$failedHost' is too slow (>2.5s). Starting fallback race.")
-                } else {
-                    if (DEBUG_LOGGING) Log.w(TAG, "Main request for '$failedHost' failed quickly. Starting fallback race immediately.")
-                }
+        if (earlyResult is SuccessResult) {
+            return@coroutineScope earlyResult
+        }
 
-                val raceResult = performFallbackRace(chain, httpUrl, failedHost)
-                if (raceResult != null) {
-                    resultChannel.trySend(raceResult)
+        // 主请求已经失败：只有值得降级的错误才换域名。404/403 直接返回，
+        // 否则一个必然失败的 path 会被放大成 7 个请求（fast path + 5 竞速 + 收尾 proceed）。
+        if (earlyResult is ErrorResult) {
+            if (!earlyResult.throwable.isWorthFallback()) {
+                if (DEBUG_LOGGING) {
+                    Log.w(TAG, "Permanent failure, skipping fallback: ${chain.request.data}", earlyResult.throwable)
                 }
-            } catch (e: Exception) {
-                if (e is CancellationException) throw e
-            } finally {
-                resultChannel.close()
+                return@coroutineScope earlyResult
+            }
+            if (DEBUG_LOGGING) Log.w(TAG, "Main request for '$failedHost' failed. Starting fallback race.")
+        } else {
+            if (DEBUG_LOGGING) {
+                Log.w(TAG, "Main request for '$failedHost' is too slow (>${SLOW_MAIN_THRESHOLD_MS}ms). Starting fallback race.")
             }
         }
 
-        var finalResult: ImageResult? = null
-
-        for (result in resultChannel) {
-            if (result is SuccessResult) {
-                finalResult = result
-                break
-            } else if (result is ErrorResult) {
-                if (!mainJob.isActive && !fallbackJob.isActive) {
-                    finalResult = result
-                    break
-                }
-            }
+        val raceResult = performFallbackRace(chain, httpUrl, failedHost)
+        if (raceResult != null) {
+            mainRequest.cancel()
+            return@coroutineScope raceResult
         }
 
-        mainJob.cancel()
-        fallbackJob.cancel()
-
-        finalResult ?: chain.proceed()
+        // 竞速全败。主请求可能还在跑（慢速分支），等它的真实结果，
+        // 而不是再发一次 chain.proceed()。
+        val mainResult = try {
+            mainRequest.await()
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            ErrorResult(null, chain.request, e)
+        }
+        if (DEBUG_LOGGING && mainResult is ErrorResult) {
+            Log.e(TAG, "All attempts failed for: $originalUrl")
+        }
+        mainResult
     }
 
     /**
@@ -135,7 +137,11 @@ class DomainFallbackInterceptor : Interceptor {
                 if (DEBUG_LOGGING) Log.i(TAG, "Fast path successful with: $currentOptimal")
                 return fastResult
             }
-            if (DEBUG_LOGGING) Log.d(TAG, "Fast path failed. Falling back to race.")
+            // 失效即清空：否则这个域名一旦挂掉，后续每张图都要先白等它 3 秒超时。
+            if (optimalFallbackHost == currentOptimal) {
+                optimalFallbackHost = null
+            }
+            if (DEBUG_LOGGING) Log.d(TAG, "Fast path failed, cleared optimal host. Falling back to race.")
         }
 
         // 去除刚才已经试过的最佳域名，剩下的一起竞速

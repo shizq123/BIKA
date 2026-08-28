@@ -749,7 +749,7 @@ private fun ScrubPreviewCard(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+        shape = RoundedCornerShape(8.dp),
         color = Color.Black.copy(alpha = 0.75f),
         border = BorderStroke(
             0.5.dp,

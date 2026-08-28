@@ -19,10 +19,14 @@ class WebtoonLayout(
     private val listState: LazyListState,
     private val hasPageGap: Boolean
 ) : ReaderLayout {
+    /** 条漫由容器整体缩放：连续滚动下逐页缩放没有意义。 */
+    override val ownsPageGestures: Boolean = false
+
     @Composable
     override fun Content(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
+        onPageTap: (PageTapContext) -> Unit,
     ) {
         LazyColumn(
             state = listState,
@@ -39,6 +43,7 @@ class WebtoonLayout(
                 },
             ) { index ->
                 pageItems[index]?.let {
+                    // 缩放与点击都由容器处理，这里不传 onTap
                     ComicPageItem(it, index)
                 } ?: ChapterPageLoadStateItem(pageItems, index)
             }
