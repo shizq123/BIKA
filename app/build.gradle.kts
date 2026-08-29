@@ -53,7 +53,7 @@ android {
     }
     packaging {
         resources {
-            excludes += "META-INF/DEPENDENCIES"
+            merges += "META-INF/DEPENDENCIES"
         }
     }
 }
