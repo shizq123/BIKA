@@ -22,7 +22,7 @@ object LoggingConfigurator {
     private const val FILE_PATTERN =
         "%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%t] %c: %msg%n%throwable"
     fun configureLogging(logsFolder: File) {
-        ensureDirectory(logsFolder)
+        ensureLogsFolder(logsFolder)
         val builder = ConfigurationBuilderFactory.newConfigurationBuilder().apply {
             setStatusLevel(Level.WARN)
             setConfigurationName(APP_NAME)
@@ -31,49 +31,60 @@ object LoggingConfigurator {
             add(rootLogger())
             add(ktorClientLogger())
         }
-        val context = LogManager.getContext(false) as LoggerContext
-        context.stop()
-        context.start(builder.build())
-        context.updateLoggers()
-    }
-    private fun ensureDirectory(folder: File) {
-        if (!folder.exists() && !folder.mkdirs()) {
-            throw IllegalStateException("Failed to create log directory: ${folder.absolutePath}")
+        (LogManager.getContext(false) as LoggerContext).apply {
+            stop()
+            start(builder.build())
+            updateLoggers()
         }
     }
-    private fun ConfigurationBuilder<BuiltConfiguration>.consoleAppender(): AppenderComponentBuilder =
-        newAppender(CONSOLE_APPENDER, "Console")
-            .add(patternLayout(CONSOLE_PATTERN))
-    private fun ConfigurationBuilder<BuiltConfiguration>.fileAppender(logsFolder: File): AppenderComponentBuilder =
-        newAppender(FILE_APPENDER, "RollingFile")
-            .addAttribute("fileName", File(logsFolder, LOG_FILE_NAME).absolutePath)
-            .addAttribute("filePattern", File(logsFolder, LOG_FILE_PATTERN).absolutePath)
-            .add(patternLayout(FILE_PATTERN))
-            .addComponent(
-                newComponent("Policies")
-                    .addComponent(
-                        newComponent("TimeBasedTriggeringPolicy")
-                            .addAttribute("interval", 1)
-                            .addAttribute("modulate", true),
-                    ),
+    private fun ensureLogsFolder(folder: File) {
+        require(folder.exists() || folder.mkdirs()) {
+            "Failed to create log directory: ${folder.absolutePath}"
+        }
+    }
+    private fun ConfigurationBuilder<BuiltConfiguration>.consoleAppender() =
+        newAppender(CONSOLE_APPENDER, "Console").apply {
+            add(patternLayout(CONSOLE_PATTERN))
+        }
+    private fun ConfigurationBuilder<BuiltConfiguration>.fileAppender(
+        logsFolder: File,
+    ): AppenderComponentBuilder =
+        newAppender(FILE_APPENDER, "RollingFile").apply {
+            addAttribute("fileName", File(logsFolder, LOG_FILE_NAME).absolutePath)
+            addAttribute("filePattern", File(logsFolder, LOG_FILE_PATTERN).absolutePath)
+            add(patternLayout(FILE_PATTERN))
+            addComponent(
+                newComponent("Policies").apply {
+                    addComponent(
+                        newComponent("TimeBasedTriggeringPolicy").apply {
+                            addAttribute("interval", 1)
+                            addAttribute("modulate", true)
+                        },
+                    )
+                },
             )
-            .addComponent(
-                newComponent("DefaultRolloverStrategy")
-                    .addAttribute("max", 7),
+            addComponent(
+                newComponent("DefaultRolloverStrategy").apply {
+                    addAttribute("max", 7)
+                },
             )
+        }
     private fun ConfigurationBuilder<BuiltConfiguration>.rootLogger() =
-        newRootLogger(Level.ALL)
-            .add(newAppenderRef(CONSOLE_APPENDER))
-            .add(newAppenderRef(FILE_APPENDER))
+        newRootLogger(Level.ALL).apply {
+            add(newAppenderRef(CONSOLE_APPENDER))
+            add(newAppenderRef(FILE_APPENDER))
+        }
     private fun ConfigurationBuilder<BuiltConfiguration>.ktorClientLogger() =
-        newLogger(KTOR_CLIENT_LOGGER, Level.DEBUG)
-            .addAttribute("additivity", false)
-            .add(newAppenderRef(CONSOLE_APPENDER))
-            .add(newAppenderRef(FILE_APPENDER))
+        newLogger(KTOR_CLIENT_LOGGER, Level.DEBUG).apply {
+            addAttribute("additivity", false)
+            add(newAppenderRef(CONSOLE_APPENDER))
+            add(newAppenderRef(FILE_APPENDER))
+        }
     private fun ConfigurationBuilder<BuiltConfiguration>.patternLayout(
         pattern: String,
     ): LayoutComponentBuilder =
-        newLayout("PatternLayout")
-            .addAttribute("pattern", pattern)
-            .addAttribute("charset", CHARSET)
+        newLayout("PatternLayout").apply {
+            addAttribute("pattern", pattern)
+            addAttribute("charset", CHARSET)
+        }
 }
