@@ -61,13 +61,15 @@ class WebtoonController(
     override val totalPages: Int
         get() = listState.layoutInfo.totalItemsCount
 
-    override val supportsContinuousScroll: Boolean = true
+    override val continuousScroller: ContinuousScroller = object : ContinuousScroller {
+        override suspend fun scrollBy(pixels: Float): Float = listState.scrollBy(pixels)
 
-    override val canScrollForward: Boolean
-        get() = listState.canScrollForward
+        override val isScrollInProgress: Boolean
+            get() = listState.isScrollInProgress
 
-    override val interactionSource: InteractionSource
+        override val interactionSource: InteractionSource
         get() = listState.interactionSource
+    }
 
     override val visibleItemIndex: Flow<Int> = snapshotFlow {
         calculateCurrentPageIndex()
@@ -95,10 +97,6 @@ class WebtoonController(
         // paging 的 itemCount，导致目标页被 clamp 到已布局末尾、滚动落空。
         // scrollToItem 对超界 index 会滚动到末尾，调用方应确保数据已加载到目标页。
         listState.scrollToItem(index.coerceAtLeast(0))
-    }
-
-    override suspend fun scrollBy(value: Float) {
-        listState.scrollBy(value)
     }
 
     /**

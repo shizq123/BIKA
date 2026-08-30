@@ -9,7 +9,6 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -73,6 +72,7 @@ import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.ui.FullScreenLoading
 import com.shizq.bika.core.ui.composition.LocalWindow
+import com.shizq.bika.feature.reader.impl.autoscroll.rememberAutoScrollController
 import com.shizq.bika.feature.reader.impl.bar.ReaderBottomBar
 import com.shizq.bika.feature.reader.impl.bar.TopBar
 import com.shizq.bika.feature.reader.impl.components.ChapterList
@@ -265,51 +265,18 @@ private fun ReaderContent(
             val nextChapter = navigation.next
             val hasNextChapter = nextChapter != null
 
-            var isAutoScrolling by remember { mutableStateOf(false) }
-            var isUserInteracting by remember { mutableStateOf(false) }
-
-            LaunchedEffect(config.autoScrollEnabled) {
-                isAutoScrolling = config.autoScrollEnabled
-            }
-
-            // 自动滚动依赖像素级连续滚动，只有条漫模式支持
-            val supportsAutoScroll = controller.supportsContinuousScroll
-
-            val isDragged by controller.interactionSource.collectIsDraggedAsState()
-            LaunchedEffect(isDragged) {
-                if (isDragged) {
-                    isUserInteracting = true
-                } else {
-                    delay(1500)
-                    isUserInteracting = false
-                }
-            }
-
-            LaunchedEffect(
-                isAutoScrolling,
-                isUserInteracting,
-                config.autoScrollSpeed,
-                supportsAutoScroll,
-                hasNextChapter,
-            ) {
-                if (isAutoScrolling && !isUserInteracting && supportsAutoScroll) {
-                    while (true) {
-                        if (controller.canScrollForward) {
-                            controller.scrollBy(config.autoScrollSpeed.toFloat())
-                            delay(16)
-                        } else {
-                            if (!hasNextChapter) {
-                                isAutoScrolling = false
-                                dispatch(SetAutoScrollEnabled(false))
-                                Toast.makeText(context, "已到达全书底部", Toast.LENGTH_SHORT).show()
-                                break
-                            } else {
-                                delay(200)
-                            }
-                        }
-                    }
-                }
-            }
+            // 自动滚动依赖像素级连续滚动能力（controller.continuousScroller），
+            // Pager 模式下该值为 null，AutoScrollController 会据此保持不可用状态。
+            val autoScroll = rememberAutoScrollController(
+                scroller = controller.continuousScroller,
+                enabled = config.autoScrollEnabled,
+                speed = config.autoScrollSpeed,
+                hasNextChapter = hasNextChapter,
+                onReachEnd = {
+                    Toast.makeText(context, "已到达全书底部", Toast.LENGTH_SHORT).show()
+                },
+                onSettingChanged = { dispatch(SetAutoScrollEnabled(it)) },
+            )
 
             // 当前页（提升到此层级，用于自动衔接检测）
             val currentPage by controller.visibleItemIndex.collectAsState(0)
@@ -502,11 +469,11 @@ private fun ReaderContent(
                 )
 
                 // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
-                if (config.autoScrollEnabled && supportsAutoScroll) {
+                    if (config.autoScrollEnabled && autoScroll.isSupported) {
                     AutoScrollOverlay(
-                        isScrolling = isAutoScrolling,
+                        isScrolling = autoScroll.isScrolling,
                         speed = config.autoScrollSpeed,
-                        onPlayPauseToggle = { isAutoScrolling = !isAutoScrolling },
+                        onPlayPauseToggle = { autoScroll.togglePause() },
                         onSpeedUp = {
                             if (config.autoScrollSpeed < 10) {
                                 dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
@@ -518,7 +485,7 @@ private fun ReaderContent(
                             }
                         },
                         onClose = {
-                            dispatch(SetAutoScrollEnabled(false))
+                            autoScroll.disableAndPersist()
                         },
                         modifier = Modifier.align(Alignment.CenterEnd)
                     )

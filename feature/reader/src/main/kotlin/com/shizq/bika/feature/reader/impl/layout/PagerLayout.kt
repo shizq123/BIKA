@@ -1,7 +1,5 @@
 package com.shizq.bika.feature.reader.impl.layout
 
-import androidx.compose.foundation.interaction.InteractionSource
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -157,14 +155,11 @@ class PagerController(
     override val totalPages: Int
         get() = spreadState.pageCount
 
-    /** Pager 按页吸附，无法平滑推进偏移量。 */
-    override val supportsContinuousScroll: Boolean = false
-
-    override val canScrollForward: Boolean
-        get() = pagerState.canScrollForward
-
-    /** Pager 不产生拖动交互语义，给一个永不发射的空 source。 */
-    override val interactionSource: InteractionSource = MutableInteractionSource()
+    /**
+     * Pager 按页吸附，无法平滑推进偏移量，不具备连续滚动能力。
+     * 调用方（自动滚动）据此判断入口是否展示，不存在"点了没反应"的静默失效。
+     */
+    override val continuousScroller: ContinuousScroller? = null
 
     /**
      * 当前页码取所在翻页单位的首页。
@@ -196,12 +191,6 @@ class PagerController(
         val target = spreads.spreadIndexOfPage(index)
         pagerState.scrollToPage(target.coerceIn(0, pagerState.pageCount - 1))
     }
-
-    /**
-     * 显式拒绝：Pager 按页吸附，像素级推进没有意义。
-     * 调用方应先查 [supportsContinuousScroll] 而不是依赖这里静默什么都不做。
-     */
-    override suspend fun scrollBy(value: Float) = Unit
 }
 
 /** Pager 的可见页范围：跨页模式下一屏包含两页，预载需要知道真实页码。 */
