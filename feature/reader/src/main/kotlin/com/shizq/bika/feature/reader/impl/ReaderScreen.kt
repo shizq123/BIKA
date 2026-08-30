@@ -9,9 +9,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,14 +18,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -72,6 +65,7 @@ import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.ui.FullScreenLoading
 import com.shizq.bika.core.ui.composition.LocalWindow
+import com.shizq.bika.feature.reader.impl.autoscroll.AutoScrollControlPanel
 import com.shizq.bika.feature.reader.impl.autoscroll.rememberAutoScrollController
 import com.shizq.bika.feature.reader.impl.bar.ReaderBottomBar
 import com.shizq.bika.feature.reader.impl.bar.TopBar
@@ -125,81 +119,6 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -
     )
 }
 
-@Composable
-fun AutoScrollOverlay(
-    isScrolling: Boolean,
-    speed: Int,
-    onPlayPauseToggle: () -> Unit,
-    onSpeedUp: () -> Unit,
-    onSpeedDown: () -> Unit,
-    onClose: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = Color.Black.copy(alpha = 0.75f),
-        contentColor = Color.White,
-        modifier = modifier
-            .padding(16.dp)
-            .width(56.dp)
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(vertical = 12.dp)
-        ) {
-            IconButton(onClick = onPlayPauseToggle) {
-                Icon(
-                    imageVector = if (isScrolling) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                    contentDescription = if (isScrolling) "暂停" else "开始",
-                    tint = Color.White
-                )
-            }
-
-            IconButton(
-                onClick = onSpeedDown,
-                enabled = speed > 1
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Remove,
-                    contentDescription = "减速",
-                    tint = if (speed > 1) Color.White else Color.Gray
-                )
-            }
-
-            Text(
-                text = "v$speed",
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
-                color = Color.White
-            )
-
-            IconButton(
-                onClick = onSpeedUp,
-                enabled = speed < 10
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Add,
-                    contentDescription = "加速",
-                    tint = if (speed < 10) Color.White else Color.Gray
-                )
-            }
-
-            HorizontalDivider(
-                color = Color.White.copy(alpha = 0.3f),
-                modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-            )
-
-            IconButton(onClick = onClose) {
-                Icon(
-                    imageVector = Icons.Rounded.Close,
-                    contentDescription = "退出自动滚动",
-                    tint = Color.Red
-                )
-            }
-        }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -244,15 +163,19 @@ private fun ReaderContent(
                     is ProgressState.Restoring -> {
                         BikaLog.d("ReaderScreen", "正在恢复进度到第 ${state.targetPage} 页")
                     }
+
                     is ProgressState.Restored -> {
                         BikaLog.d("ReaderScreen", "进度已恢复到第 ${state.actualPage} 页")
                     }
+
                     is ProgressState.RestoreFailed -> {
                         BikaLog.w("ReaderScreen", "进度恢复失败: ${state.reason}")
                     }
+
                     is ProgressState.Tracking -> {
                         // 正在跟踪页面变化，不需要日志（太频繁）
                     }
+
                     else -> {}
                 }
             }
@@ -316,7 +239,13 @@ private fun ReaderContent(
                             delay(300)
                             if (nextChapter != null) {
                                 // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
-                                dispatch(JumpToChapter(nextChapter, startFromBeginning = true, currentPage = page))
+                                dispatch(
+                                    JumpToChapter(
+                                        nextChapter,
+                                        startFromBeginning = true,
+                                        currentPage = page
+                                    )
+                                )
                             } else {
                                 Toast.makeText(context, "后面没有内容了", Toast.LENGTH_SHORT).show()
                             }
@@ -372,152 +301,179 @@ private fun ReaderContent(
                                 drawRect(Color.Black.copy(alpha = config.eyeCareDarkness))
                             }
                         }
-            ) {
-                ReaderScaffold(
-                    showMenu = overlayState.showSystemBars,
-                    topBar = {
-                        val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
-                        TopBar(title = { Text(title) }, onBackClick = onBack)
-                    },
-                    bottomBar = {
-                        LiveReaderBottomBar(
-                            currentPage = currentPage,
-                            totalPages = chapterState.totalPages,
-                            readingMode = config.readingMode,
-                            onSeekToPage = {
-                                scope.launch { controller.scrollToPage(it) }
-                            },
-                            onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
-                            onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
-                            onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
-                            onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
-                            hasPrevChapter = prevChapter != null,
-                            hasNextChapter = hasNextChapter,
-                            onPrevChapter = {
-                                prevChapter?.let { dispatch(JumpToChapter(it, currentPage = currentPage)) }
-                            },
-                            onNextChapter = {
-                                if (nextChapter != null) {
-                                    dispatch(JumpToChapter(nextChapter, currentPage = currentPage))
-                                } else {
-                                    Toast.makeText(context, "后面没有内容了", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            onSeeking = { draggedPage = it },
-                            onSeekingFinished = { draggedPage = null }
-                        )
-                    },
-                    floatingMessage = {
-                        if (chapterState.totalPages > 0) {
-                            LivePageIndicatorBadge(
-                                controller = controller,
-                                total = chapterState.totalPages
-                            )
-                        }
-                    },
-                    sideSheet = {
-                        val isChapterListVisible =
-                            overlayState.readerSheet is ReaderSheet.ChapterList
-                        AnimatedVisibility(
-                            visible = isChapterListVisible,
-                            enter = slideInHorizontally(
-                                animationSpec = tween(),
-                                initialOffsetX = { -it }
-                            ),
-                            exit = slideOutHorizontally(
-                                animationSpec = tween(),
-                                targetOffsetX = { -it }
-                            ),
-                        ) {
-                            SideSheetLayout(
-                                title = { Text("目录") },
-                                onDismissRequest = { dispatch(HideSheet) },
-                                closeButton = {
-                                    IconButton(onClick = { dispatch(HideSheet) }) {
-                                        Icon(Icons.Rounded.Close, contentDescription = "关闭目录")
+                ) {
+                    ReaderScaffold(
+                        showMenu = overlayState.showSystemBars,
+                        topBar = {
+                            val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
+                            TopBar(title = { Text(title) }, onBackClick = onBack)
+                        },
+                        bottomBar = {
+                            LiveReaderBottomBar(
+                                currentPage = currentPage,
+                                totalPages = chapterState.totalPages,
+                                readingMode = config.readingMode,
+                                onSeekToPage = {
+                                    scope.launch { controller.scrollToPage(it) }
+                                },
+                                onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
+                                onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
+                                onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
+                                onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
+                                hasPrevChapter = prevChapter != null,
+                                hasNextChapter = hasNextChapter,
+                                onPrevChapter = {
+                                    prevChapter?.let {
+                                        dispatch(
+                                            JumpToChapter(
+                                                it,
+                                                currentPage = currentPage
+                                            )
+                                        )
                                     }
-                                }
-                            ) {
-                                ChapterList(
-                                    chapters = chapterList,
-                                    currentChapterOrder = chapterState.order,
-                                    onChapterClick = { newChapter ->
-                                        dispatch(JumpToChapter(newChapter, currentPage = currentPage))
-                                    },
-                                    modifier = Modifier.padding(top = 8.dp)
+                                },
+                                onNextChapter = {
+                                    if (nextChapter != null) {
+                                        dispatch(
+                                            JumpToChapter(
+                                                nextChapter,
+                                                currentPage = currentPage
+                                            )
+                                        )
+                                    } else {
+                                        Toast.makeText(
+                                            context,
+                                            "后面没有内容了",
+                                            Toast.LENGTH_SHORT
+                                        ).show()
+                                    }
+                                },
+                                onSeeking = { draggedPage = it },
+                                onSeekingFinished = { draggedPage = null }
+                            )
+                        },
+                        floatingMessage = {
+                            if (chapterState.totalPages > 0) {
+                                LivePageIndicatorBadge(
+                                    controller = controller,
+                                    total = chapterState.totalPages
                                 )
                             }
-                        }
-                    },
-                    content = {
-                        val gestureState = rememberGestureState(
-                            layout = config.tapZoneLayout,
-                            isRtl = config.readingMode.isRtl,
-                        )
-                        ReaderLayoutHost(
-                            readerContext = readerContext,
-                            gestureState = gestureState,
-                            pageItems = imageList,
-                            toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
-                            onHideMenu = {
-                                if (overlayState.showSystemBars) {
-                                    dispatch(ToggleBarsVisibility)
+                        },
+                        sideSheet = {
+                            val isChapterListVisible =
+                                overlayState.readerSheet is ReaderSheet.ChapterList
+                            AnimatedVisibility(
+                                visible = isChapterListVisible,
+                                enter = slideInHorizontally(
+                                    animationSpec = tween(),
+                                    initialOffsetX = { -it }
+                                ),
+                                exit = slideOutHorizontally(
+                                    animationSpec = tween(),
+                                    targetOffsetX = { -it }
+                                ),
+                            ) {
+                                SideSheetLayout(
+                                    title = { Text("目录") },
+                                    onDismissRequest = { dispatch(HideSheet) },
+                                    closeButton = {
+                                        IconButton(onClick = { dispatch(HideSheet) }) {
+                                            Icon(
+                                                Icons.Rounded.Close,
+                                                contentDescription = "关闭目录"
+                                            )
+                                        }
+                                    }
+                                ) {
+                                    ChapterList(
+                                        chapters = chapterList,
+                                        currentChapterOrder = chapterState.order,
+                                        onChapterClick = { newChapter ->
+                                            dispatch(
+                                                JumpToChapter(
+                                                    newChapter,
+                                                    currentPage = currentPage
+                                                )
+                                            )
+                                        },
+                                        modifier = Modifier.padding(top = 8.dp)
+                                    )
                                 }
                             }
+                        },
+                        content = {
+                            val gestureState = rememberGestureState(
+                                layout = config.tapZoneLayout,
+                                isRtl = config.readingMode.isRtl,
+                            )
+                            ReaderLayoutHost(
+                                readerContext = readerContext,
+                                gestureState = gestureState,
+                                pageItems = imageList,
+                                toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
+                                onHideMenu = {
+                                    if (overlayState.showSystemBars) {
+                                        dispatch(ToggleBarsVisibility)
+                                    }
+                                }
+                            )
+                        }
+                    )
+
+                    // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
+                    if (config.autoScrollEnabled && autoScroll.isSupported) {
+                        AutoScrollControlPanel(
+                            isScrolling = autoScroll.isScrolling,
+                            speed = config.autoScrollSpeed,
+                            onPlayPauseToggle = { autoScroll.togglePause() },
+                            onSpeedUp = {
+                                if (config.autoScrollSpeed < 10) {
+                                    dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
+                                }
+                            },
+                            onSpeedDown = {
+                                if (config.autoScrollSpeed > 1) {
+                                    dispatch(SetAutoScrollSpeed(config.autoScrollSpeed - 1))
+                                }
+                            },
+                            onClose = {
+                                autoScroll.disableAndPersist()
+                            },
+                            modifier = Modifier.align(Alignment.CenterEnd)
                         )
                     }
-                )
 
-                // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
-                    if (config.autoScrollEnabled && autoScroll.isSupported) {
-                    AutoScrollOverlay(
-                        isScrolling = autoScroll.isScrolling,
-                        speed = config.autoScrollSpeed,
-                        onPlayPauseToggle = { autoScroll.togglePause() },
-                        onSpeedUp = {
-                            if (config.autoScrollSpeed < 10) {
-                                dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
-                            }
-                        },
-                        onSpeedDown = {
-                            if (config.autoScrollSpeed > 1) {
-                                dispatch(SetAutoScrollSpeed(config.autoScrollSpeed - 1))
-                            }
-                        },
-                        onClose = {
-                            autoScroll.disableAndPersist()
-                        },
-                        modifier = Modifier.align(Alignment.CenterEnd)
-                    )
-                }
+                    if (config.statusBarCapsuleEnabled && !overlayState.showSystemBars) {
+                        val padding = rememberTopEndSystemAwarePadding(
+                            includeStatusBarInset = false,
+                            extraTop = 2.dp,
+                            extraEnd = 2.dp
+                        )
+                        StatusBarCapsule(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(
+                                    top = padding.top,
+                                    end = padding.end
+                                )
+                        )
+                    }
 
-                if (config.statusBarCapsuleEnabled && !overlayState.showSystemBars) {
-                    val padding = rememberTopEndSystemAwarePadding(
-                        includeStatusBarInset = false,
-                        extraTop = 2.dp,
-                        extraEnd = 2.dp
-                    )
-                    StatusBarCapsule(
-                        modifier = Modifier
-                            .align(Alignment.TopEnd)
-                            .padding(
-                                top = padding.top,
-                                end = padding.end
-                            )
-                    )
+                    if (draggedPage != null) {
+                        val previewPage = draggedPage!!
+                        val pageUrl =
+                            if (previewPage in 0 until imageList.itemCount) imageList.peek(
+                                previewPage
+                            )?.url else null
+                        ScrubPreviewCard(
+                            pageUrl = pageUrl,
+                            currentPage = previewPage,
+                            totalPages = chapterState.totalPages,
+                            modifier = Modifier.align(Alignment.Center)
+                        )
+                    }
                 }
-
-                if (draggedPage != null) {
-                    val previewPage = draggedPage!!
-                    val pageUrl = if (previewPage in 0 until imageList.itemCount) imageList.peek(previewPage)?.url else null
-                    ScrubPreviewCard(
-                        pageUrl = pageUrl,
-                        currentPage = previewPage,
-                        totalPages = chapterState.totalPages,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
-                }
-            }
             }
         }
     }
