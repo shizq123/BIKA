@@ -34,7 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.shizq.bika.core.model.reader.ReaderAction
+import com.shizq.bika.core.model.reader.TapAction
 import com.shizq.bika.core.model.reader.TapZoneLayout
 import kotlin.math.roundToInt
 
@@ -49,7 +49,7 @@ fun DebugTouchAreaOverlay(
 ) {
     // 用于记录手指在屏幕上滑动的实时位置
     var touchPoint by remember { mutableStateOf<Offset?>(null) }
-    var currentAction by remember { mutableStateOf(ReaderAction.None) }
+    var currentAction by remember { mutableStateOf(TapAction.None) }
 
     Box(
         modifier = modifier
@@ -176,12 +176,12 @@ fun DebugTouchAreaOverlay(
     }
 }
 
-private fun getDebugColorForAction(action: ReaderAction): Color {
+private fun getDebugColorForAction(action: TapAction): Color {
     return when (action) {
-        ReaderAction.NextPage -> Color(0xFF4CAF50).copy(alpha = 0.3f)
-        ReaderAction.PrevPage -> Color(0xFFF44336).copy(alpha = 0.3f)
-        ReaderAction.ToggleMenu -> Color(0xFF2196F3).copy(alpha = 0.3f)
-        ReaderAction.None -> Color.Gray.copy(alpha = 0.2f)
+        TapAction.NextPage -> Color(0xFF4CAF50).copy(alpha = 0.3f)
+        TapAction.PrevPage -> Color(0xFFF44336).copy(alpha = 0.3f)
+        TapAction.ToggleMenu -> Color(0xFF2196F3).copy(alpha = 0.3f)
+        TapAction.None -> Color.Gray.copy(alpha = 0.2f)
     }
 }
 
@@ -190,9 +190,9 @@ private fun DebugLegend(modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
         Text("Touch Debugger", color = Color.White, style = MaterialTheme.typography.labelMedium)
         Spacer(modifier = Modifier.size(4.dp))
-        LegendItem(color = getDebugColorForAction(ReaderAction.NextPage), label = "Next Page")
-        LegendItem(color = getDebugColorForAction(ReaderAction.PrevPage), label = "Prev Page")
-        LegendItem(color = getDebugColorForAction(ReaderAction.ToggleMenu), label = "Menu")
+        LegendItem(color = getDebugColorForAction(TapAction.NextPage), label = "Next Page")
+        LegendItem(color = getDebugColorForAction(TapAction.PrevPage), label = "Prev Page")
+        LegendItem(color = getDebugColorForAction(TapAction.ToggleMenu), label = "Menu")
     }
 }
 

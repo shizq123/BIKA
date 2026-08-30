@@ -16,7 +16,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.unit.IntSize
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
-import com.shizq.bika.core.model.reader.ReaderAction
+import com.shizq.bika.core.model.reader.TapAction
 import com.shizq.bika.feature.reader.impl.gesture.GestureState
 import com.shizq.bika.feature.reader.impl.gesture.VolumeKeyNavigation
 import kotlinx.coroutines.launch
@@ -92,18 +92,18 @@ fun ReaderLayoutHost(
     val onPageTap: (PageTapContext) -> Unit = remember {
         { tap ->
             when (currentGestureState.calculateAction(tap.position, tap.viewportSize)) {
-                ReaderAction.NextPage -> scope.launch {
+                TapAction.NextPage -> scope.launch {
                     currentOnHideMenu()
                     currentReaderContext.controller.scrollNextPage()
                 }
 
-                ReaderAction.PrevPage -> scope.launch {
+                TapAction.PrevPage -> scope.launch {
                     currentOnHideMenu()
                     currentReaderContext.controller.scrollPrevPage()
                 }
 
-                ReaderAction.ToggleMenu -> currentToggleMenu()
-                ReaderAction.None -> Unit
+                TapAction.ToggleMenu -> currentToggleMenu()
+                TapAction.None -> Unit
             }
         }
     }

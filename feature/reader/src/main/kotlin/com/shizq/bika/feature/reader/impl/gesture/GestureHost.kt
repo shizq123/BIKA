@@ -5,7 +5,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.IntSize
-import com.shizq.bika.core.model.reader.ReaderAction
+import com.shizq.bika.core.model.reader.TapAction
 import com.shizq.bika.core.model.reader.TapZoneLayout
 
 @Stable
@@ -13,7 +13,7 @@ class GestureState(
     private val tapZoneLayout: TapZoneLayout,
     private val isRtl: Boolean,
 ) {
-    fun calculateAction(offset: Offset, size: IntSize): ReaderAction = tapZoneLayout.resolve(
+    fun calculateAction(offset: Offset, size: IntSize): TapAction = tapZoneLayout.resolve(
         x = offset.x,
         y = offset.y,
         width = size.width,
