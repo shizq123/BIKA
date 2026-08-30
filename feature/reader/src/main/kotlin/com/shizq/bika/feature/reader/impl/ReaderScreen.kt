@@ -33,8 +33,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableLongStateOf
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -60,6 +58,7 @@ import coil3.request.crossfade
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.data.model.Chapter
+import com.shizq.bika.core.data.model.ChapterNavigation
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.ScreenOrientation
@@ -95,6 +94,8 @@ import com.shizq.bika.feature.reader.impl.state.ReaderAction.ToggleBarsVisibilit
 import com.shizq.bika.feature.reader.impl.state.ReaderSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderUiState
 import com.shizq.bika.feature.reader.impl.state.SeekState
+import com.shizq.bika.feature.reader.impl.util.ChapterAdvancePolicy
+import com.shizq.bika.feature.reader.impl.util.preload.AdaptivePreloadTracker
 import com.shizq.bika.feature.reader.impl.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
 import com.shizq.bika.feature.reader.impl.util.rememberTopEndSystemAwarePadding
@@ -106,16 +107,16 @@ import kotlinx.coroutines.launch
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
     val uiState by viewModel.stateFlow.collectAsStateWithLifecycle()
 
-    val imageList = viewModel.imageListFlow.collectAsLazyPagingItems()
-    val chapterList = viewModel.chapterListFlow.collectAsLazyPagingItems()
+    val pageItems = viewModel.imageListFlow.collectAsLazyPagingItems()
+    val chapterItems = viewModel.chapterListFlow.collectAsLazyPagingItems()
 
     ReaderContent(
         state = uiState,
-        imageList = imageList,
-        chapterList = chapterList,
+        pageItems = pageItems,
+        chapterItems = chapterItems,
         onBackClick = onBackClick,
         dispatch = viewModel::dispatch,
-        onFlushProgress = { viewModel.saveProgress(it) },
+        persistProgressBlocking = { viewModel.saveProgress(it) },
     )
 }
 
@@ -123,366 +124,429 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ReaderContent(
-    imageList: LazyPagingItems<ChapterPage>,
-    chapterList: LazyPagingItems<Chapter>,
     state: ReaderUiState,
+    pageItems: LazyPagingItems<ChapterPage>,
+    chapterItems: LazyPagingItems<Chapter>,
     onBackClick: () -> Unit = {},
     dispatch: (ReaderAction) -> Unit = {},
-    onFlushProgress: (Int) -> Boolean = { false },
+    persistProgressBlocking: (Int) -> Boolean = { false },
 ) {
     when (state) {
         is ReaderUiState.Initializing -> FullScreenLoading()
-        is ReaderUiState.Ready -> {
-            val context = LocalContext.current
-            val scope = rememberCoroutineScope()
+        is ReaderUiState.Ready -> ReaderReadyContent(
+            state = state,
+            pageItems = pageItems,
+            chapterItems = chapterItems,
+            onBackClick = onBackClick,
+            dispatch = dispatch,
+            persistProgressBlocking = persistProgressBlocking,
+        )
+    }
+}
 
-            val config = state.config
-            val chapterState = state.chapter
-            val overlayState = state.uiControl
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReaderReadyContent(
+    state: ReaderUiState.Ready,
+    pageItems: LazyPagingItems<ChapterPage>,
+    chapterItems: LazyPagingItems<Chapter>,
+    onBackClick: () -> Unit,
+    dispatch: (ReaderAction) -> Unit,
+    persistProgressBlocking: (Int) -> Boolean,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-            val readerContext = rememberReaderContext(
-                readingMode = config.readingMode,
-                chapterPages = imageList,
-                config = config,
-                initialPageIndex = chapterState.initialPage,
-                chapterOrder = chapterState.order,
-            )
-            val controller = readerContext.controller
+    val config = state.config
+    val chapterState = state.chapter
+    val overlayState = state.uiControl
 
-            val progressManager = rememberReadingProgressManager(
-                controller = controller,
-                imageList = imageList,
-                initialPage = chapterState.initialPage,
-                onPersist = onFlushProgress
-            )
+    val readerContext = rememberReaderContext(
+        readingMode = config.readingMode,
+        chapterPages = pageItems,
+        config = config,
+        initialPageIndex = chapterState.initialPage,
+        chapterOrder = chapterState.order,
+    )
+    val controller = readerContext.controller
 
-            // 监听进度恢复状态（用于调试和日志）
-            val progressState by progressManager.state.collectAsStateWithLifecycle()
-            LaunchedEffect(progressState) {
-                when (val state = progressState) {
-                    is ProgressState.Restoring -> {
-                        BikaLog.d("ReaderScreen", "正在恢复进度到第 ${state.targetPage} 页")
-                    }
+    val progressManager = rememberReadingProgressManager(
+        controller = controller,
+        imageList = pageItems,
+        initialPage = chapterState.initialPage,
+        onPersist = persistProgressBlocking
+    )
 
-                    is ProgressState.Restored -> {
-                        BikaLog.d("ReaderScreen", "进度已恢复到第 ${state.actualPage} 页")
-                    }
-
-                    is ProgressState.RestoreFailed -> {
-                        BikaLog.w("ReaderScreen", "进度恢复失败: ${state.reason}")
-                    }
-
-                    is ProgressState.Tracking -> {
-                        // 正在跟踪页面变化，不需要日志（太频繁）
-                    }
-
-                    else -> {}
-                }
+    // 监听进度恢复状态（用于调试和日志）
+    val progressState by progressManager.state.collectAsStateWithLifecycle()
+    LaunchedEffect(progressState) {
+        when (val restoreState = progressState) {
+            is ProgressState.Restoring -> {
+                BikaLog.d("ReaderScreen", "正在恢复进度到第 ${restoreState.targetPage} 页")
             }
 
-            // 上下章导航：由 StateMachine 根据完整目录（state.catalog）解析出相邻章节，
-            // 不再在 UI 层用 chapterList.peek() 推算——分页窗口只加载了首屏，
-            // 当前章不在窗口内时 peek() 会永久找不到相邻章节。
-            val navigation = state.navigation
-            val prevChapter = navigation.prev
-            val nextChapter = navigation.next
-            val hasNextChapter = nextChapter != null
+            is ProgressState.Restored -> {
+                BikaLog.d("ReaderScreen", "进度已恢复到第 ${restoreState.actualPage} 页")
+            }
 
-            // 自动滚动依赖像素级连续滚动能力（controller.continuousScroller），
-            // Pager 模式下该值为 null，AutoScrollController 会据此保持不可用状态。
-            val autoScroll = rememberAutoScrollController(
-                scroller = controller.continuousScroller,
-                enabled = config.autoScrollEnabled,
-                speed = config.autoScrollSpeed,
-                hasNextChapter = hasNextChapter,
-                onReachEnd = {
-                    Toast.makeText(context, "已到达全书底部", Toast.LENGTH_SHORT).show()
+            is ProgressState.RestoreFailed -> {
+                BikaLog.w("ReaderScreen", "进度恢复失败: ${restoreState.reason}")
+            }
+
+            is ProgressState.Tracking -> {
+                // 正在跟踪页面变化，不需要日志（太频繁）
+            }
+
+            else -> {}
+        }
+    }
+
+    // 上下章导航：由 StateMachine 根据完整目录（state.catalog）解析出相邻章节，
+    // 不再在 UI 层用 chapterList.peek() 推算——分页窗口只加载了首屏，
+    // 当前章不在窗口内时 peek() 会永久找不到相邻章节。
+    val navigation = state.navigation
+    val hasNextChapter = navigation.next != null
+
+    // 自动滚动依赖像素级连续滚动能力（controller.continuousScroller），
+    // Pager 模式下该值为 null，AutoScrollController 会据此保持不可用状态。
+    val autoScroll = rememberAutoScrollController(
+        scroller = controller.continuousScroller,
+        enabled = config.autoScrollEnabled,
+        speed = config.autoScrollSpeed,
+        hasNextChapter = hasNextChapter,
+        onReachEnd = {
+            Toast.makeText(context, ReaderScreenMessages.NoMoreContent, Toast.LENGTH_SHORT).show()
+        },
+        onSettingChanged = { dispatch(SetAutoScrollEnabled(it)) },
+    )
+
+    // 当前页（提升到此层级，用于自动衔接检测）
+    val currentPage by controller.visibleItemIndex.collectAsState(0)
+
+    ReaderSystemEffects(
+        showSystemBars = overlayState.showSystemBars,
+        screenOrientation = config.screenOrientation,
+    )
+    ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
+
+    // TODO: 暂时移除
+//            BackHandler(onBack = onBackClick)
+
+    LaunchedEffect(overlayState.seekState) {
+        if (overlayState.seekState is SeekState.Seeking) {
+            controller.scrollToPage(overlayState.seekState.targetPage.toInt())
+            dispatch(ReaderAction.SeekConsumed)
+        }
+    }
+
+    ChapterAutoAdvanceEffect(
+        chapterOrder = chapterState.order,
+        totalPages = chapterState.totalPages,
+        visibleItemIndex = controller.visibleItemIndex,
+        navigation = navigation,
+        onAdvance = { nextChapter, page ->
+            dispatch(JumpToChapter(nextChapter, startFromBeginning = true, currentPage = page))
+        },
+        onNoMoreContent = {
+            Toast.makeText(context, ReaderScreenMessages.NoMoreContent, Toast.LENGTH_SHORT).show()
+        },
+    )
+
+    val preloadCount = rememberAdaptivePreloadCount(
+        currentPage = currentPage,
+        baselineCount = config.preloadCount,
+    )
+
+    var draggedPage by remember { mutableStateOf<Int?>(null) }
+
+    val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
+    PagingPreload(
+        pagingItems = pageItems,
+        scrollStateProvider = readerContext.scrollStateProvider,
+        modelProvider = preloadModelProvider,
+        preloadCount = preloadCount
+    )
+
+    CompositionLocalProvider(LocalReaderConfig provides config) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .drawWithContent {
+                    drawContent()
+                    if (config.eyeCareEnabled) {
+                        drawRect(Color.Black.copy(alpha = config.eyeCareDarkness))
+                    }
+                }
+        ) {
+            ReaderScaffold(
+                showMenu = overlayState.showSystemBars,
+                topBar = {
+                    val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
+                    TopBar(title = { Text(title) }, onBackClick = onBackClick)
                 },
-                onSettingChanged = { dispatch(SetAutoScrollEnabled(it)) },
-            )
-
-            // 当前页（提升到此层级，用于自动衔接检测）
-            val currentPage by controller.visibleItemIndex.collectAsState(0)
-
-            SystemUiController(showSystemUI = overlayState.showSystemBars)
-            KeepScreenOnEffect()
-            OrientationEffect(config.screenOrientation)
-            ReaderBottomSheet(overlayState.readerSheet, config, dispatch)
-
-            val onBack = {
-                // 进度管理器会在 onDispose 时自动保存，这里只需退出
-                onBackClick()
-            }
-            // TODO: 暂时移除
-//            BackHandler(onBack = onBack)
-
-            LaunchedEffect(overlayState.seekState) {
-                if (overlayState.seekState is SeekState.Seeking) {
-                    controller.scrollToPage(overlayState.seekState.targetPage.toInt())
-                    dispatch(ReaderAction.SeekConsumed)
-                }
-            }
-
-            // 自动衔接：到达当前章节最后一页时，自动跳转到下一章。如果是最后一章，提示后面没有内容了。
-            // 用 chapterState.totalPages 作为 key 而非 snapshotFlow { chapterState.totalPages }：
-            // chapterState 是普通局部值不是 Compose State，snapshotFlow 无依赖可订阅，
-            // totalPages 初始为 0 时 first() 会永久挂起。改为 key 后，totalPages 从 0 变为非零值
-            // 会触发 recomposition 重启这个 effect，天然实现“等待章节加载完成后再监听”。
-            LaunchedEffect(chapterState.order, chapterState.totalPages, hasNextChapter) {
-                val total = chapterState.totalPages
-                if (total <= 0) return@LaunchedEffect
-                // 监听页面到达末尾（停留 800ms 确认用户确实看到最后一页）
-                controller.visibleItemIndex
-                    .debounce(800)
-                    .collect { page ->
-                        if (page >= total - 1) {
-                            delay(300)
-                            if (nextChapter != null) {
-                                // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
-                                dispatch(
-                                    JumpToChapter(
-                                        nextChapter,
-                                        startFromBeginning = true,
-                                        currentPage = page
-                                    )
-                                )
-                            } else {
-                                Toast.makeText(context, "后面没有内容了", Toast.LENGTH_SHORT).show()
-                            }
-                        }
+                bottomBar = {
+                    ReaderBottomBarSection(
+                        currentPage = currentPage,
+                        totalPages = chapterState.totalPages,
+                        readingMode = config.readingMode,
+                        navigation = navigation,
+                        dispatch = dispatch,
+                        onSeekToPage = { scope.launch { controller.scrollToPage(it) } },
+                        onSeeking = { draggedPage = it },
+                        onSeekingFinished = { draggedPage = null },
+                        onNoMoreContent = {
+                            Toast.makeText(
+                                context,
+                                ReaderScreenMessages.NoMoreContent,
+                                Toast.LENGTH_SHORT
+                            ).show()
+                        },
+                    )
+                },
+                floatingMessage = {
+                    if (chapterState.totalPages > 0) {
+                        CurrentPageBadge(
+                            controller = controller,
+                            totalPages = chapterState.totalPages
+                        )
                     }
-            }
-
-            // 智适应翻页速率预载计算
-            var lastPageChangeTime by remember { mutableLongStateOf(0L) }
-            val pageTimes = remember { mutableStateListOf<Long>() }
-            var smartPreloadCount by remember(config.preloadCount) { mutableIntStateOf(config.preloadCount) }
-
-            var draggedPage by remember { mutableStateOf<Int?>(null) }
-
-            LaunchedEffect(currentPage) {
-                val now = System.currentTimeMillis()
-                if (lastPageChangeTime > 0) {
-                    val diff = now - lastPageChangeTime
-                    if (diff in 100..10000) { // 剔除异常值或跳章等耗时
-                        pageTimes.add(diff)
-                        if (pageTimes.size > 3) {
-                            pageTimes.removeAt(0)
-                        }
-                        if (pageTimes.size == 3) {
-                            val avg = pageTimes.average()
-                            smartPreloadCount = when {
-                                config.preloadCount == 0 -> 0
-                                avg < 1500 -> 6 // 快速扫读
-                                avg > 3200 -> 2 // 慢速精读
-                                else -> config.preloadCount
+                },
+                sideSheet = {
+                    ReaderChapterListSheet(
+                        visible = overlayState.readerSheet is ReaderSheet.ChapterList,
+                        chapterItems = chapterItems,
+                        currentChapterOrder = chapterState.order,
+                        currentPage = currentPage,
+                        dispatch = dispatch,
+                    )
+                },
+                content = {
+                    val gestureState = rememberGestureState(
+                        layout = config.tapZoneLayout,
+                        isRtl = config.readingMode.isRtl,
+                    )
+                    ReaderLayoutHost(
+                        readerContext = readerContext,
+                        gestureState = gestureState,
+                        pageItems = pageItems,
+                        toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
+                        onHideMenu = {
+                            if (overlayState.showSystemBars) {
+                                dispatch(ToggleBarsVisibility)
                             }
-                        }
-                    }
-                }
-                lastPageChangeTime = now
-            }
-
-            val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
-            PagingPreload(
-                pagingItems = imageList,
-                scrollStateProvider = readerContext.scrollStateProvider,
-                modelProvider = preloadModelProvider,
-                preloadCount = smartPreloadCount
-            )
-
-            CompositionLocalProvider(LocalReaderConfig provides config) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .drawWithContent {
-                            drawContent()
-                            if (config.eyeCareEnabled) {
-                                drawRect(Color.Black.copy(alpha = config.eyeCareDarkness))
-                            }
-                        }
-                ) {
-                    ReaderScaffold(
-                        showMenu = overlayState.showSystemBars,
-                        topBar = {
-                            val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
-                            TopBar(title = { Text(title) }, onBackClick = onBack)
-                        },
-                        bottomBar = {
-                            LiveReaderBottomBar(
-                                currentPage = currentPage,
-                                totalPages = chapterState.totalPages,
-                                readingMode = config.readingMode,
-                                onSeekToPage = {
-                                    scope.launch { controller.scrollToPage(it) }
-                                },
-                                onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
-                                onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
-                                onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
-                                onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
-                                hasPrevChapter = prevChapter != null,
-                                hasNextChapter = hasNextChapter,
-                                onPrevChapter = {
-                                    prevChapter?.let {
-                                        dispatch(
-                                            JumpToChapter(
-                                                it,
-                                                currentPage = currentPage
-                                            )
-                                        )
-                                    }
-                                },
-                                onNextChapter = {
-                                    if (nextChapter != null) {
-                                        dispatch(
-                                            JumpToChapter(
-                                                nextChapter,
-                                                currentPage = currentPage
-                                            )
-                                        )
-                                    } else {
-                                        Toast.makeText(
-                                            context,
-                                            "后面没有内容了",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                },
-                                onSeeking = { draggedPage = it },
-                                onSeekingFinished = { draggedPage = null }
-                            )
-                        },
-                        floatingMessage = {
-                            if (chapterState.totalPages > 0) {
-                                LivePageIndicatorBadge(
-                                    controller = controller,
-                                    total = chapterState.totalPages
-                                )
-                            }
-                        },
-                        sideSheet = {
-                            val isChapterListVisible =
-                                overlayState.readerSheet is ReaderSheet.ChapterList
-                            AnimatedVisibility(
-                                visible = isChapterListVisible,
-                                enter = slideInHorizontally(
-                                    animationSpec = tween(),
-                                    initialOffsetX = { -it }
-                                ),
-                                exit = slideOutHorizontally(
-                                    animationSpec = tween(),
-                                    targetOffsetX = { -it }
-                                ),
-                            ) {
-                                SideSheetLayout(
-                                    title = { Text("目录") },
-                                    onDismissRequest = { dispatch(HideSheet) },
-                                    closeButton = {
-                                        IconButton(onClick = { dispatch(HideSheet) }) {
-                                            Icon(
-                                                Icons.Rounded.Close,
-                                                contentDescription = "关闭目录"
-                                            )
-                                        }
-                                    }
-                                ) {
-                                    ChapterList(
-                                        chapters = chapterList,
-                                        currentChapterOrder = chapterState.order,
-                                        onChapterClick = { newChapter ->
-                                            dispatch(
-                                                JumpToChapter(
-                                                    newChapter,
-                                                    currentPage = currentPage
-                                                )
-                                            )
-                                        },
-                                        modifier = Modifier.padding(top = 8.dp)
-                                    )
-                                }
-                            }
-                        },
-                        content = {
-                            val gestureState = rememberGestureState(
-                                layout = config.tapZoneLayout,
-                                isRtl = config.readingMode.isRtl,
-                            )
-                            ReaderLayoutHost(
-                                readerContext = readerContext,
-                                gestureState = gestureState,
-                                pageItems = imageList,
-                                toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
-                                onHideMenu = {
-                                    if (overlayState.showSystemBars) {
-                                        dispatch(ToggleBarsVisibility)
-                                    }
-                                }
-                            )
                         }
                     )
-
-                    // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
-                    if (config.autoScrollEnabled && autoScroll.isSupported) {
-                        AutoScrollControlPanel(
-                            isScrolling = autoScroll.isScrolling,
-                            speed = config.autoScrollSpeed,
-                            onPlayPauseToggle = { autoScroll.togglePause() },
-                            onSpeedUp = {
-                                if (config.autoScrollSpeed < 10) {
-                                    dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
-                                }
-                            },
-                            onSpeedDown = {
-                                if (config.autoScrollSpeed > 1) {
-                                    dispatch(SetAutoScrollSpeed(config.autoScrollSpeed - 1))
-                                }
-                            },
-                            onClose = {
-                                autoScroll.disableAndPersist()
-                            },
-                            modifier = Modifier.align(Alignment.CenterEnd)
-                        )
-                    }
-
-                    if (config.statusBarCapsuleEnabled && !overlayState.showSystemBars) {
-                        val padding = rememberTopEndSystemAwarePadding(
-                            includeStatusBarInset = false,
-                            extraTop = 2.dp,
-                            extraEnd = 2.dp
-                        )
-                        StatusBarCapsule(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .padding(
-                                    top = padding.top,
-                                    end = padding.end
-                                )
-                        )
-                    }
-
-                    if (draggedPage != null) {
-                        val previewPage = draggedPage!!
-                        val pageUrl =
-                            if (previewPage in 0 until imageList.itemCount) imageList.peek(
-                                previewPage
-                            )?.url else null
-                        ScrubPreviewCard(
-                            pageUrl = pageUrl,
-                            currentPage = previewPage,
-                            totalPages = chapterState.totalPages,
-                            modifier = Modifier.align(Alignment.Center)
-                        )
-                    }
                 }
+            )
+
+            // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
+            if (config.autoScrollEnabled && autoScroll.isSupported) {
+                AutoScrollControlPanel(
+                    isScrolling = autoScroll.isScrolling,
+                    speed = config.autoScrollSpeed,
+                    onPlayPauseToggle = { autoScroll.togglePause() },
+                    onSpeedUp = {
+                        if (config.autoScrollSpeed < AutoScrollSpeedRange.last) {
+                            dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
+                        }
+                    },
+                    onSpeedDown = {
+                        if (config.autoScrollSpeed > AutoScrollSpeedRange.first) {
+                            dispatch(SetAutoScrollSpeed(config.autoScrollSpeed - 1))
+                        }
+                    },
+                    onClose = {
+                        autoScroll.disableAndPersist()
+                    },
+                    modifier = Modifier.align(Alignment.CenterEnd)
+                )
+            }
+
+            if (config.statusBarCapsuleEnabled && !overlayState.showSystemBars) {
+                val padding = rememberTopEndSystemAwarePadding(
+                    includeStatusBarInset = false,
+                    extraTop = 2.dp,
+                    extraEnd = 2.dp
+                )
+                StatusBarCapsule(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(
+                            top = padding.top,
+                            end = padding.end
+                        )
+                )
+            }
+
+            draggedPage?.let { previewPage ->
+                val pageUrl = if (previewPage in 0 until pageItems.itemCount) {
+                    pageItems.peek(previewPage)?.url
+                } else {
+                    null
+                }
+                ScrubPreviewCard(
+                    pageUrl = pageUrl,
+                    previewPageIndex = previewPage,
+                    totalPages = chapterState.totalPages,
+                    modifier = Modifier.align(Alignment.Center)
+                )
             }
         }
     }
 }
 
+/** 自动滚动速度可调范围（含端点），对应设置面板中的加速/减速按钮。 */
+private val AutoScrollSpeedRange = 1..10
+
+private object ReaderScreenMessages {
+    const val NoMoreContent = "后面没有内容了"
+}
+
+/**
+ * 章节自动衔接：到达当前章节最后一页时自动跳转到下一章；已是最后一章则回调 [onNoMoreContent]。
+ *
+ * 用 totalPages 作为 key 而非 snapshotFlow { totalPages }：totalPages 不是 Compose State，
+ * snapshotFlow 无依赖可订阅，初始为 0 时 first() 会永久挂起。改为 key 后，totalPages 从 0
+ * 变为非零值会触发 recomposition 重启这个 effect，天然实现“等待章节加载完成后再监听”。
+ */
 @Composable
-fun PageIndicatorBadge(current: Int, total: Int) {
+private fun ChapterAutoAdvanceEffect(
+    chapterOrder: Int,
+    totalPages: Int,
+    visibleItemIndex: kotlinx.coroutines.flow.Flow<Int>,
+    navigation: ChapterNavigation,
+    onAdvance: (nextChapter: Chapter, page: Int) -> Unit,
+    onNoMoreContent: () -> Unit,
+    policy: ChapterAdvancePolicy = remember { ChapterAdvancePolicy() },
+) {
+    val nextChapter = navigation.next
+    LaunchedEffect(chapterOrder, totalPages, nextChapter) {
+        if (totalPages <= 0) return@LaunchedEffect
+        // 监听页面到达末尾（停留一段时间确认用户确实看到最后一页）
+        visibleItemIndex
+            .debounce(policy.endOfChapterDebounce)
+            .collect { page ->
+                if (policy.isAtLastPage(page, totalPages)) {
+                    delay(policy.advanceDelay)
+                    if (nextChapter != null) {
+                        // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
+                        onAdvance(nextChapter, page)
+                    } else {
+                        onNoMoreContent()
+                    }
+                }
+            }
+    }
+}
+
+/**
+ * 根据翻页速率动态调整预载张数：扫读时提高预载数量，精读时降低，参见 [AdaptivePreloadTracker]。
+ */
+@Composable
+private fun rememberAdaptivePreloadCount(currentPage: Int, baselineCount: Int): Int {
+    val tracker = remember { AdaptivePreloadTracker() }
+    var preloadCount by remember(baselineCount) { mutableIntStateOf(baselineCount) }
+
+    LaunchedEffect(currentPage) {
+        preloadCount = tracker.onPageChanged(System.currentTimeMillis(), baselineCount)
+    }
+
+    return preloadCount
+}
+
+@Composable
+private fun ReaderBottomBarSection(
+    currentPage: Int,
+    totalPages: Int,
+    readingMode: ReadingMode,
+    navigation: ChapterNavigation,
+    dispatch: (ReaderAction) -> Unit,
+    onSeekToPage: (Int) -> Unit,
+    onSeeking: (Int) -> Unit,
+    onSeekingFinished: () -> Unit,
+    onNoMoreContent: () -> Unit,
+) {
+    val prevChapter = navigation.prev
+    val nextChapter = navigation.next
+
+    ReaderBottomBar(
+        currentPage = currentPage,
+        totalPages = totalPages,
+        readingMode = readingMode,
+        onSeekToPage = onSeekToPage,
+        onToggleChapterList = { dispatch(ShowSheet(ReaderSheet.ChapterList)) },
+        onOpenSettings = { dispatch(ShowSheet(ReaderSheet.Settings)) },
+        onOpenReadingMode = { dispatch(ShowSheet(ReaderSheet.ReadingMode)) },
+        onOpenOrientation = { dispatch(ShowSheet(ReaderSheet.Orientation)) },
+        hasPrevChapter = prevChapter != null,
+        hasNextChapter = nextChapter != null,
+        onPrevChapter = {
+            prevChapter?.let {
+                dispatch(JumpToChapter(it, currentPage = currentPage))
+            }
+        },
+        onNextChapter = {
+            if (nextChapter != null) {
+                dispatch(JumpToChapter(nextChapter, currentPage = currentPage))
+            } else {
+                onNoMoreContent()
+            }
+        },
+        onSeeking = onSeeking,
+        onSeekingFinished = onSeekingFinished,
+    )
+}
+
+@Composable
+private fun ReaderChapterListSheet(
+    visible: Boolean,
+    chapterItems: LazyPagingItems<Chapter>,
+    currentChapterOrder: Int,
+    currentPage: Int,
+    dispatch: (ReaderAction) -> Unit,
+) {
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInHorizontally(
+            animationSpec = tween(),
+            initialOffsetX = { -it }
+        ),
+        exit = slideOutHorizontally(
+            animationSpec = tween(),
+            targetOffsetX = { -it }
+        ),
+    ) {
+        SideSheetLayout(
+            title = { Text("目录") },
+            onDismissRequest = { dispatch(HideSheet) },
+            closeButton = {
+                IconButton(onClick = { dispatch(HideSheet) }) {
+                    Icon(
+                        Icons.Rounded.Close,
+                        contentDescription = "关闭目录"
+                    )
+                }
+            }
+        ) {
+            ChapterList(
+                chapters = chapterItems,
+                currentChapterOrder = currentChapterOrder,
+                onChapterClick = { newChapter ->
+                    dispatch(JumpToChapter(newChapter, currentPage = currentPage))
+                },
+                modifier = Modifier.padding(top = 8.dp)
+            )
+        }
+    }
+}
+
+/**
+ * @param pageNumber 用于展示的页码，1-based（即 index + 1）
+ */
+@Composable
+fun PageIndicatorBadge(pageNumber: Int, total: Int) {
     Text(
-        text = "$current / $total",
+        text = "$pageNumber / $total",
         style = MaterialTheme.typography.labelMedium,
         color = Color.White,
         modifier = Modifier
@@ -530,6 +594,19 @@ fun ReaderBottomSheet(
     }
 }
 
+/**
+ * 阅读器所需的系统级副作用集合：屏幕方向锁定、常亮、系统栏显隐。
+ */
+@Composable
+private fun ReaderSystemEffects(
+    showSystemBars: Boolean,
+    screenOrientation: ScreenOrientation,
+) {
+    SystemBarsEffect(showSystemBars = showSystemBars)
+    KeepScreenOnEffect()
+    OrientationEffect(screenOrientation)
+}
+
 @Composable
 fun OrientationEffect(orientation: ScreenOrientation) {
     val context = LocalContext.current
@@ -559,15 +636,15 @@ fun KeepScreenOnEffect() {
 }
 
 @Composable
-private fun SystemUiController(showSystemUI: Boolean) {
+private fun SystemBarsEffect(showSystemBars: Boolean) {
     val window = LocalWindow.current
 
-    DisposableEffect(window, showSystemUI) {
+    DisposableEffect(window, showSystemBars) {
         val controller = WindowCompat.getInsetsController(window, window.decorView)
         controller.systemBarsBehavior =
             WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
 
-        if (showSystemUI) {
+        if (showSystemBars) {
             controller.show(WindowInsetsCompat.Type.systemBars())
         } else {
             controller.hide(WindowInsetsCompat.Type.systemBars())
@@ -580,15 +657,18 @@ private fun SystemUiController(showSystemUI: Boolean) {
 }
 
 @Composable
-private fun LivePageIndicatorBadge(controller: ReaderController, total: Int) {
-    val current by controller.visibleItemIndex.collectAsState(0)
-    PageIndicatorBadge(current = current + 1, total = total)
+private fun CurrentPageBadge(controller: ReaderController, totalPages: Int) {
+    val currentPageIndex by controller.visibleItemIndex.collectAsState(0)
+    PageIndicatorBadge(pageNumber = currentPageIndex + 1, total = totalPages)
 }
 
+/**
+ * @param previewPageIndex 拖动进度条时预览的目标页（0-based），不代表当前实际停留的页
+ */
 @Composable
 private fun ScrubPreviewCard(
     pageUrl: String?,
-    currentPage: Int,
+    previewPageIndex: Int,
     totalPages: Int,
     modifier: Modifier = Modifier
 ) {
@@ -611,7 +691,7 @@ private fun ScrubPreviewCard(
                         .data(pageUrl)
                         .crossfade(true)
                         .build(),
-                    contentDescription = "Preview Page ${currentPage + 1}",
+                    contentDescription = "Preview Page ${previewPageIndex + 1}",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier.fillMaxSize()
                 )
@@ -638,7 +718,7 @@ private fun ScrubPreviewCard(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${currentPage + 1} / $totalPages",
+                    text = "${previewPageIndex + 1} / $totalPages",
                     style = MaterialTheme.typography.labelSmall,
                     color = Color.White,
                     fontWeight = FontWeight.Bold
@@ -646,39 +726,4 @@ private fun ScrubPreviewCard(
             }
         }
     }
-}
-
-@Composable
-private fun LiveReaderBottomBar(
-    currentPage: Int,
-    totalPages: Int,
-    readingMode: ReadingMode,
-    onSeekToPage: (Int) -> Unit,
-    onToggleChapterList: () -> Unit,
-    onOpenSettings: () -> Unit,
-    onOpenReadingMode: () -> Unit,
-    onOpenOrientation: () -> Unit,
-    hasPrevChapter: Boolean = false,
-    hasNextChapter: Boolean = false,
-    onPrevChapter: () -> Unit = {},
-    onNextChapter: () -> Unit = {},
-    onSeeking: ((Int) -> Unit)? = null,
-    onSeekingFinished: (() -> Unit)? = null,
-) {
-    ReaderBottomBar(
-        currentPage = currentPage,
-        totalPages = totalPages,
-        readingMode = readingMode,
-        onSeekToPage = onSeekToPage,
-        onToggleChapterList = onToggleChapterList,
-        onOpenSettings = onOpenSettings,
-        onOpenReadingMode = onOpenReadingMode,
-        onOpenOrientation = onOpenOrientation,
-        hasPrevChapter = hasPrevChapter,
-        hasNextChapter = hasNextChapter,
-        onPrevChapter = onPrevChapter,
-        onNextChapter = onNextChapter,
-        onSeeking = onSeeking,
-        onSeekingFinished = onSeekingFinished,
-    )
 }
