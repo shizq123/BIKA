@@ -95,11 +95,14 @@ import com.shizq.bika.feature.reader.impl.state.ReaderSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderUiState
 import com.shizq.bika.feature.reader.impl.state.SeekState
 import com.shizq.bika.feature.reader.impl.util.ChapterAdvancePolicy
+import com.shizq.bika.feature.reader.impl.util.ScrubState
 import com.shizq.bika.feature.reader.impl.util.preload.AdaptivePreloadTracker
 import com.shizq.bika.feature.reader.impl.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
+import com.shizq.bika.feature.reader.impl.util.rememberScrubState
 import com.shizq.bika.feature.reader.impl.util.rememberTopEndSystemAwarePadding
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
 
@@ -257,7 +260,8 @@ private fun ReaderReadyContent(
         baselineCount = config.preloadCount,
     )
 
-    var draggedPage by remember { mutableStateOf<Int?>(null) }
+    val scrubState = rememberScrubState(chapterState.initialPage)
+    LaunchedEffect(currentPage) { scrubState.syncToPage(currentPage) }
 
     val preloadModelProvider = remember(context) { ChapterPagePreloadProvider(context) }
     PagingPreload(
@@ -291,9 +295,8 @@ private fun ReaderReadyContent(
                         readingMode = config.readingMode,
                         navigation = navigation,
                         dispatch = dispatch,
+                        scrubState = scrubState,
                         onSeekToPage = { scope.launch { controller.scrollToPage(it) } },
-                        onSeeking = { draggedPage = it },
-                        onSeekingFinished = { draggedPage = null },
                         onNoMoreContent = {
                             Toast.makeText(
                                 context,
@@ -378,19 +381,12 @@ private fun ReaderReadyContent(
                 )
             }
 
-            draggedPage?.let { previewPage ->
-                val pageUrl = if (previewPage in 0 until pageItems.itemCount) {
-                    pageItems.peek(previewPage)?.url
-                } else {
-                    null
-                }
-                ScrubPreviewCard(
-                    pageUrl = pageUrl,
-                    previewPageIndex = previewPage,
-                    totalPages = chapterState.totalPages,
-                    modifier = Modifier.align(Alignment.Center)
-                )
-            }
+            ScrubPreviewOverlay(
+                scrubState = scrubState,
+                pageItems = pageItems,
+                totalPages = chapterState.totalPages,
+                modifier = Modifier.align(Alignment.Center),
+            )
         }
     }
 }
@@ -413,7 +409,7 @@ private object ReaderScreenMessages {
 private fun ChapterAutoAdvanceEffect(
     chapterOrder: Int,
     totalPages: Int,
-    visibleItemIndex: kotlinx.coroutines.flow.Flow<Int>,
+    visibleItemIndex: Flow<Int>,
     navigation: ChapterNavigation,
     onAdvance: (nextChapter: Chapter, page: Int) -> Unit,
     onNoMoreContent: () -> Unit,
@@ -461,9 +457,8 @@ private fun ReaderBottomBarSection(
     readingMode: ReadingMode,
     navigation: ChapterNavigation,
     dispatch: (ReaderAction) -> Unit,
+    scrubState: ScrubState,
     onSeekToPage: (Int) -> Unit,
-    onSeeking: (Int) -> Unit,
-    onSeekingFinished: () -> Unit,
     onNoMoreContent: () -> Unit,
 ) {
     val prevChapter = navigation.prev
@@ -492,8 +487,7 @@ private fun ReaderBottomBarSection(
                 onNoMoreContent()
             }
         },
-        onSeeking = onSeeking,
-        onSeekingFinished = onSeekingFinished,
+        scrubState = scrubState,
     )
 }
 
@@ -660,6 +654,50 @@ private fun SystemBarsEffect(showSystemBars: Boolean) {
 private fun CurrentPageBadge(controller: ReaderController, totalPages: Int) {
     val currentPageIndex by controller.visibleItemIndex.collectAsState(0)
     PageIndicatorBadge(pageNumber = currentPageIndex + 1, total = totalPages)
+}
+
+/** 拖动中命中未加载页时，停留超过这个时长才触发真实加载，避免快速划过时刷屏式请求。 */
+private const val ScrubPreviewLoadDebounceMillis = 200L
+
+/**
+ * 拖动预览浮层：读取 [ScrubState.previewPageIndex]，独立成一个非 inline 的 Composable，
+ * 使拖动过程中的重组只发生在这里，不波及 ReaderReadyContent 整个函数体。
+ *
+ * 取图优先用 [LazyPagingItems.peek]：它只读已加载缓存，不会把 index 记为“已访问”。
+ * pageItems 同时被 [rememberReaderContext]（取 itemCount）、[PagingPreload]（预载）、
+ * 实际渲染层（WebtoonLayout/PagerLayout）共享，而 `get()`（即 `pageItems[index]`）会
+ * 把 index 写入 Paging 内部的访问记录——[ChapterPagesPagingSource.getRefreshKey] 靠它
+ * 算下次刷新的锚点，Paging 自身的 prefetch 也会围绕它触发加载。拖动时 onScrub 每帧调用，
+ * 手指划过的每个索引都调 get() 等于每帧一次“污染访问记录 + 可能触发网络请求”，而其中
+ * 绝大多数页用户根本不会真的停留。因此只在同一页停留超过 [ScrubPreviewLoadDebounceMillis]
+ * 后才退到 get()，此时用户大概率真的要去这一页，触发一次真实加载是合理的。
+ */
+@Composable
+private fun ScrubPreviewOverlay(
+    scrubState: ScrubState,
+    pageItems: LazyPagingItems<ChapterPage>,
+    totalPages: Int,
+    modifier: Modifier = Modifier,
+) {
+    val pageIndex = scrubState.previewPageIndex ?: return
+    val cachedUrl = pageItems.peek(pageIndex)?.url
+
+    var settledUrl by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(pageIndex) {
+        settledUrl = null
+        if (cachedUrl == null) {
+            delay(ScrubPreviewLoadDebounceMillis)
+            settledUrl = pageIndex.takeIf { it in 0 until pageItems.itemCount }
+                ?.let { pageItems[it]?.url }
+        }
+    }
+
+    ScrubPreviewCard(
+        pageUrl = cachedUrl ?: settledUrl,
+        previewPageIndex = pageIndex,
+        totalPages = totalPages,
+        modifier = modifier,
+    )
 }
 
 /**
