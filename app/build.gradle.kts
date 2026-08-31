@@ -126,6 +126,10 @@ dependencies {
     // 测试框架依赖：仅测试作用域，避免打进 release APK
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit"))
+
+    // Compose UI 交互测试（instrumented）
+    androidTestImplementation(libs.androidx.compose.ui.test)
+    debugImplementation(libs.androidx.compose.ui.testManifest)
 }
 
 baselineProfile {

@@ -6,7 +6,6 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -186,20 +185,29 @@ fun ComicDetailPage(
                 contentPadding = PaddingValues(horizontal = 16.dp)
             ) { i ->
                 val item = recommendations[i]
-                RetryableAsyncImage(
-                    item.coverUrl,
-                    modifier = Modifier
-                        .height(205.dp)
-                        .maskClip(MaterialTheme.shapes.extraLarge)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null
-                        ) {
-                            navigationToComicInfo(item.id)
-                        },
-                    contentDescription = item.title,
-                    contentScale = ContentScale.Crop
-                )
+                Column(
+                    // 整卡可点（封面 + 名称），默认水波反馈提示可交互
+                    modifier = Modifier.clickable {
+                        navigationToComicInfo(item.id)
+                    }
+                ) {
+                    RetryableAsyncImage(
+                        item.coverUrl,
+                        modifier = Modifier
+                            .height(205.dp)
+                            .maskClip(MaterialTheme.shapes.extraLarge),
+                        contentDescription = item.title,
+                        contentScale = ContentScale.Crop
+                    )
+                    Text(
+                        text = item.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
             }
             Spacer(modifier = Modifier.height(20.dp))
         }

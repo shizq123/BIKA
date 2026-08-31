@@ -81,9 +81,12 @@ fun RetryableAsyncImage(
     }
 
     val isError = state is AsyncImagePainter.State.Error
+    // 注意：不要在正常态挂 clickable(enabled = isError)。
+    // enabled=false 的 clickable 仍会参与 hit test 并消费 down 事件，
+    // 导致外层卡片（如漫画详情页的推荐卡片、阅读历史的 ComicCard）的
+    // 点击被静默吞掉，表现为“点击无反应”。只有错误态才需要拦截点击。
     Box(
-        modifier = modifier
-            .clickable(enabled = isError) { painter.restart() },
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -97,7 +100,8 @@ fun RetryableAsyncImage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.LightGray.copy(alpha = 0.6f)),
+                    .background(Color.LightGray.copy(alpha = 0.6f))
+                    .clickable { painter.restart() },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
