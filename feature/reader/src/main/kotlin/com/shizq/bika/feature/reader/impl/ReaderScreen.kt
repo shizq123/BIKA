@@ -172,7 +172,7 @@ private fun ReaderReadyContent(
         chapterOrder = chapterState.order,
     )
     val controller = readerContext.controller
-
+    // TODO: remove persistProgressBlocking
     val progressManager = rememberReadingProgressManager(
         controller = controller,
         imageList = pageItems,
