@@ -75,6 +75,7 @@ dependencies {
     implementation(projects.sync.work)
 
     implementation(projects.feature.reader)
+    implementation(projects.feature.settings)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.foundation.layout)

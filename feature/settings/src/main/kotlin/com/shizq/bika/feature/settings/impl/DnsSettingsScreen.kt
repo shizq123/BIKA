@@ -51,20 +51,42 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.network.dns.BikaDnsDomains
-import com.shizq.bika.core.network.dns.DnsHostResolver
-import com.shizq.bika.core.network.dns.HostLatencyProbe
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import okhttp3.OkHttpClient
+import okhttp3.Request
 import javax.inject.Inject
+
+@Serializable
+data class DnsResolveResponse(
+    val code: Int,
+    val message: String,
+    val data: DnsResolveData? = null
+)
+
+@Serializable
+data class DnsResolveData(
+    val domain: String,
+    val lines: Map<String, DnsLine>? = null
+)
+
+@Serializable
+data class DnsLine(
+    val ips: List<String> = emptyList(),
+    val status: String = ""
+)
 
 data class IpTestResult(
     val ip: String,
@@ -85,13 +107,21 @@ data class DnsSettingsUiState(
 
 @HiltViewModel
 class DnsSettingsViewModel @Inject constructor(
-    private val userPreferencesDataSource: UserPreferencesDataSource,
-    private val dnsHostResolver: DnsHostResolver,
-    private val hostLatencyProbe: HostLatencyProbe,
+    private val userPreferencesDataSource: UserPreferencesDataSource
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DnsSettingsUiState())
     val uiState: StateFlow<DnsSettingsUiState> = _uiState.asStateFlow()
+
+    private val client = OkHttpClient.Builder()
+        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
+        .build()
+
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+    }
 
     init {
         loadAndTest()
@@ -99,53 +129,97 @@ class DnsSettingsViewModel @Inject constructor(
 
     fun loadAndTest() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isFetching = true, error = null) }
-
-            val resolved = dnsHostResolver.resolveHosts()
-            if (resolved.isEmpty()) {
-                _uiState.update {
-                    it.copy(
-                        isFetching = false,
-                        error = "未能通过 API 获取到任何 IP，请检查您的网络连接。",
+            _uiState.value = _uiState.value.copy(isFetching = true, error = null)
+            try {
+                val deferred1 = async {
+                    fetchIpsForDomain(
+                        "https://macapi1.com/app/picacomic/dns/resolve?domain=picacomic.com",
+                        "picacomic.com"
                     )
                 }
-                return@launch
-            }
+                val deferred2 = async {
+                    fetchIpsForDomain(
+                        "https://macapi2.com/app/picacomic/dns/resolve?domain=picaapi.picacomic.com",
+                        "picaapi.picacomic.com"
+                    )
+                }
 
-            val userData = userPreferencesDataSource.userData.first()
-            val currentApiDns = userData.network.dns.apiDnsHosts
-            val currentImageDns = userData.network.dns.imageDnsHosts
+                val ips1 = deferred1.await()
+                val ips2 = deferred2.await()
 
-            val grouped = resolved.groupBy({ it.lineName }) { host ->
-                IpTestResult(
-                    ip = host.ip,
-                    lineName = host.lineName,
-                    domain = host.domain,
-                    latency = null,
-                    isSelected = if (host.domain == BikaDnsDomains.IMAGE) {
-                        currentImageDns.contains(host.ip)
-                    } else {
-                        currentApiDns.contains(host.ip)
-                    },
-                )
-            }
+                val combined = (ips1 + ips2).distinctBy { it.first }
+                if (combined.isEmpty()) {
+                    _uiState.value = _uiState.value.copy(
+                        isFetching = false,
+                        error = "未能通过 API 获取到任何 IP，请检查您的网络连接。"
+                    )
+                    return@launch
+                }
 
-            _uiState.update {
-                it.copy(
+                val userData = userPreferencesDataSource.userData.first()
+                val currentApiDns = userData.network.dns.apiDnsHosts
+                val currentImageDns = userData.network.dns.imageDnsHosts
+
+                val grouped = combined.groupBy({ it.second }) { (ip, line, domain) ->
+                    IpTestResult(
+                        ip = ip,
+                        lineName = line,
+                        domain = domain,
+                        latency = null,
+                        isSelected = if (domain == "picacomic.com") {
+                            currentImageDns.contains(ip)
+                        } else {
+                            currentApiDns.contains(ip)
+                        }
+                    )
+                }
+
+                _uiState.value = _uiState.value.copy(
                     isFetching = false,
                     lines = grouped,
                     currentApiDnsSet = currentApiDns,
-                    currentImageDnsSet = currentImageDns,
+                    currentImageDnsSet = currentImageDns
+                )
+
+                startLatencyTest()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isFetching = false,
+                    error = e.localizedMessage ?: "拉取 IP 列表失败"
                 )
             }
+        }
+    }
 
-            startLatencyTest()
+    private suspend fun fetchIpsForDomain(
+        url: String,
+        domain: String
+    ): List<Triple<String, String, String>> = withContext(Dispatchers.IO) {
+        val request = Request.Builder()
+            .url(url)
+            .build()
+        try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return@withContext emptyList()
+                val body = response.body.string()
+                val parsed = json.decodeFromString<DnsResolveResponse>(body)
+                val resultList = mutableListOf<Triple<String, String, String>>()
+                parsed.data?.lines?.forEach { (lineName, dnsLine) ->
+                    dnsLine.ips.forEach { ip ->
+                        resultList.add(Triple(ip, lineName, domain))
+                    }
+                }
+                resultList
+            }
+        } catch (e: Exception) {
+            com.shizq.bika.core.common.BikaLog.e("DnsSettings", "获取 DNS 配置失败", e)
+            emptyList()
         }
     }
 
     fun startLatencyTest() {
         if (_uiState.value.isTesting) return
-        _uiState.update { it.copy(isTesting = true) }
+        _uiState.value = _uiState.value.copy(isTesting = true)
 
         viewModelScope.launch {
             val semaphore = Semaphore(6) // limit concurrent test requests
@@ -153,32 +227,46 @@ class DnsSettingsViewModel @Inject constructor(
             val jobs = allResults.map { result ->
                 launch {
                     semaphore.withPermit {
-                        val latency = hostLatencyProbe.measureLatency(result.ip)
+                        val latency = testIpLatency(result.ip)
                         updateIpLatency(result.ip, latency)
                     }
                 }
             }
             jobs.joinAll()
-            _uiState.update { it.copy(isTesting = false) }
+            _uiState.value = _uiState.value.copy(isTesting = false)
+        }
+    }
+
+    private suspend fun testIpLatency(ip: String): Long = withContext(Dispatchers.IO) {
+        val start = System.currentTimeMillis()
+        try {
+            java.net.Socket().use { socket ->
+                socket.connect(java.net.InetSocketAddress(ip, 443), 2000)
+            }
+            System.currentTimeMillis() - start
+        } catch (e: Exception) {
+            Long.MAX_VALUE
         }
     }
 
     private fun updateIpLatency(ip: String, latency: Long) {
-        _uiState.update { state ->
-            state.copy(
-                lines = state.lines.mapValues { (_, list) ->
-                    list.map { item ->
-                        if (item.ip == ip) item.copy(latency = latency) else item
-                    }
-                },
-            )
+        val currentLines = _uiState.value.lines.mapValues { (_, list) ->
+            list.map { item ->
+                if (item.ip == ip) {
+                    item.copy(latency = latency)
+                } else {
+                    item
+                }
+            }
         }
+        _uiState.value = _uiState.value.copy(lines = currentLines)
     }
 
     fun selectIp(ip: String, domain: String, lineName: String) {
         viewModelScope.launch {
+            val selectedIp = ip
             val otherDomain =
-                if (domain == BikaDnsDomains.IMAGE) BikaDnsDomains.API else BikaDnsDomains.IMAGE
+                if (domain == "picacomic.com") "picaapi.picacomic.com" else "picacomic.com"
 
             // 寻找同线路下另一个域名的 IP 列表
             val otherDomainIpsInSameLine = _uiState.value.lines[lineName]
@@ -187,20 +275,20 @@ class DnsSettingsViewModel @Inject constructor(
 
             // 挑选另一个域名的最佳（延迟低/有效）IP，或者默认取第一个
             val bestOtherIp = otherDomainIpsInSameLine
-                .filter { it.latency != null && it.latency != HostLatencyProbe.UNREACHABLE }
-                .minByOrNull { it.latency!! }
+                .filter { it.latency != null && it.latency != Long.MAX_VALUE }
+                .minByOrNull { it.latency ?: Long.MAX_VALUE }
                 ?.ip
                 ?: otherDomainIpsInSameLine.firstOrNull()?.ip
 
             val finalApiDns: Set<String>
             val finalImageDns: Set<String>
 
-            if (domain == BikaDnsDomains.IMAGE) {
-                finalImageDns = setOf(ip)
+            if (domain == "picacomic.com") {
+                finalImageDns = setOf(selectedIp)
                 finalApiDns =
                     if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().network.dns.apiDnsHosts
             } else {
-                finalApiDns = setOf(ip)
+                finalApiDns = setOf(selectedIp)
                 finalImageDns =
                     if (bestOtherIp != null) setOf(bestOtherIp) else userPreferencesDataSource.userData.first().network.dns.imageDnsHosts
             }
@@ -208,23 +296,38 @@ class DnsSettingsViewModel @Inject constructor(
             userPreferencesDataSource.updateDnsSettings(
                 apiDns = finalApiDns,
                 imageDns = finalImageDns,
-                activeDnsLine = lineName,
+                activeDnsLine = lineName
             )
 
-            applySelection(finalApiDns, finalImageDns)
+            val updatedLines = _uiState.value.lines.mapValues { (_, list) ->
+                list.map { item ->
+                    val isSel = if (item.domain == "picacomic.com") {
+                        finalImageDns.contains(item.ip)
+                    } else {
+                        finalApiDns.contains(item.ip)
+                    }
+                    item.copy(isSelected = isSel)
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                lines = updatedLines,
+                currentApiDnsSet = finalApiDns,
+                currentImageDnsSet = finalImageDns
+            )
         }
     }
 
     fun applyLowestLatencyIp() {
         val allResults = _uiState.value.lines.values.flatten()
         val lowestApiResult = allResults
-            .filter { it.domain == BikaDnsDomains.API && it.latency != null && it.latency != HostLatencyProbe.UNREACHABLE }
-            .minByOrNull { it.latency!! }
+            .filter { it.domain == "picaapi.picacomic.com" && it.latency != null && it.latency != Long.MAX_VALUE }
+            .minByOrNull { it.latency ?: Long.MAX_VALUE }
         val lowestApi = lowestApiResult?.ip
 
         val lowestImageResult = allResults
-            .filter { it.domain == BikaDnsDomains.IMAGE && it.latency != null && it.latency != HostLatencyProbe.UNREACHABLE }
-            .minByOrNull { it.latency!! }
+            .filter { it.domain == "picacomic.com" && it.latency != null && it.latency != Long.MAX_VALUE }
+            .minByOrNull { it.latency ?: Long.MAX_VALUE }
         val lowestImage = lowestImageResult?.ip
 
         viewModelScope.launch {
@@ -234,59 +337,50 @@ class DnsSettingsViewModel @Inject constructor(
             val finalImageDns =
                 if (lowestImage != null) setOf(lowestImage) else currentData.network.dns.imageDnsHosts
 
-            val finalLineName = lowestApiResult?.lineName
+            val finalLineName = lowestApiResult?.lineName 
                 ?: lowestImageResult?.lineName
                 ?: currentData.network.dns.activeLine
 
             userPreferencesDataSource.updateDnsSettings(
                 apiDns = finalApiDns,
                 imageDns = finalImageDns,
-                activeDnsLine = finalLineName,
+                activeDnsLine = finalLineName
             )
 
-            applySelection(finalApiDns, finalImageDns)
+            val updatedLines = _uiState.value.lines.mapValues { (_, list) ->
+                list.map { item ->
+                    val isSel = if (item.domain == "picacomic.com") {
+                        finalImageDns.contains(item.ip)
+                    } else {
+                        finalApiDns.contains(item.ip)
+                    }
+                    item.copy(isSelected = isSel)
+                }
+            }
+
+            _uiState.value = _uiState.value.copy(
+                lines = updatedLines,
+                currentApiDnsSet = finalApiDns,
+                currentImageDnsSet = finalImageDns
+            )
         }
     }
 
     fun resetToDefault() {
         viewModelScope.launch {
-            val defaultDns = setOf(DEFAULT_DNS_IP)
-            userPreferencesDataSource.updateDnsSettings(defaultDns, defaultDns, DEFAULT_DNS_LINE)
-            _uiState.update { state ->
-                state.copy(
-                    lines = state.lines.mapValues { (_, list) ->
-                        list.map { item -> item.copy(isSelected = defaultDns.contains(item.ip)) }
-                    },
-                    currentApiDnsSet = defaultDns,
-                    currentImageDnsSet = defaultDns,
-                )
+            val defaultDns = setOf("104.21.20.188")
+            userPreferencesDataSource.updateDnsSettings(defaultDns, defaultDns, "telecom")
+            val updatedLines = _uiState.value.lines.mapValues { (_, list) ->
+                list.map { item ->
+                    item.copy(isSelected = defaultDns.contains(item.ip))
+                }
             }
-        }
-    }
-
-    /** 根据最终选定的 API / 图片 IP 集合，刷新列表选中态与展示态。 */
-    private fun applySelection(finalApiDns: Set<String>, finalImageDns: Set<String>) {
-        _uiState.update { state ->
-            state.copy(
-                lines = state.lines.mapValues { (_, list) ->
-                    list.map { item ->
-                        val isSel = if (item.domain == BikaDnsDomains.IMAGE) {
-                            finalImageDns.contains(item.ip)
-                        } else {
-                            finalApiDns.contains(item.ip)
-                        }
-                        item.copy(isSelected = isSel)
-                    }
-                },
-                currentApiDnsSet = finalApiDns,
-                currentImageDnsSet = finalImageDns,
+            _uiState.value = _uiState.value.copy(
+                lines = updatedLines,
+                currentApiDnsSet = defaultDns,
+                currentImageDnsSet = defaultDns
             )
         }
-    }
-
-    private companion object {
-        const val DEFAULT_DNS_IP = "104.21.20.188"
-        const val DEFAULT_DNS_LINE = "telecom"
     }
 }
 
@@ -575,14 +669,13 @@ fun IpRowItem(
                     Spacer(modifier = Modifier.width(8.dp))
 
                     // 显示域名类型标签
-                    val isApiDomain = result.domain == BikaDnsDomains.API
-                    val tagText = if (isApiDomain) "API" else "图片"
-                    val tagBgColor = if (isApiDomain) {
+                    val tagText = if (result.domain == "picaapi.picacomic.com") "API" else "图片"
+                    val tagBgColor = if (result.domain == "picaapi.picacomic.com") {
                         MaterialTheme.colorScheme.primaryContainer
                     } else {
                         MaterialTheme.colorScheme.tertiaryContainer
                     }
-                    val tagTextColor = if (isApiDomain) {
+                    val tagTextColor = if (result.domain == "picaapi.picacomic.com") {
                         MaterialTheme.colorScheme.onPrimaryContainer
                     } else {
                         MaterialTheme.colorScheme.onTertiaryContainer
@@ -610,12 +703,10 @@ fun IpRowItem(
                             statusText = "待测速"
                             statusColor = MaterialTheme.colorScheme.onSurfaceVariant
                         }
-
-                        HostLatencyProbe.UNREACHABLE -> {
+                        Long.MAX_VALUE -> {
                             statusText = "不可达/超时"
                             statusColor = MaterialTheme.colorScheme.error
                         }
-
                         else -> {
                             statusText = "${result.latency} ms"
                             statusColor = when {
