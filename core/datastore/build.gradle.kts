@@ -13,6 +13,7 @@ dependencies {
     api(projects.core.model)
 
     implementation(projects.core.common)
+    implementation(libs.kotlin.logging)
 
     implementation(libs.kotlinx.serialization.json)
 

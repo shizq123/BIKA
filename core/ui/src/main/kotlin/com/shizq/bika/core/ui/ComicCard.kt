@@ -50,7 +50,7 @@ fun ComicCard(
     onItemClick: () -> Unit = {}
 ) {
     ListItem(
-        {
+        content = {
             Column {
                 // 标题上方流式状态徽章墙（列表项内避免 FlowRow 的多轮测量，改用 Row）
                 Row(

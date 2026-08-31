@@ -28,8 +28,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
-import com.shizq.bika.core.common.BikaLog
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
+
+private val logger = KotlinLogging.logger("RetryableImage")
 
 /**
  * 判断加载失败是否值得自动重试：
@@ -65,10 +67,10 @@ fun RetryableAsyncImage(
             val error = (state as AsyncImagePainter.State.Error).result.throwable
             if (retryCount == 0) {
                 if (error.isRetryableError()) {
-                    BikaLog.e("RetryableImage", "图片加载失败: $model", error)
+                    logger.error(error) { "图片加载失败: $model" }
                 } else {
                     // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
-                    BikaLog.w("RetryableImage", "图片永久不可用(不重试): $model", error)
+                    logger.warn(error) { "图片永久不可用(不重试): $model" }
                 }
             }
             if (error.isRetryableError()) {

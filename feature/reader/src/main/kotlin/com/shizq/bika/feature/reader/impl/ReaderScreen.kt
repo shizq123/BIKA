@@ -70,7 +70,6 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.data.paging.Chapter
 import com.shizq.bika.core.data.paging.ChapterPage
@@ -114,6 +113,9 @@ import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.Calendar
+import io.github.oshai.kotlinlogging.KotlinLogging
+
+private val logger = KotlinLogging.logger("ReaderScreen")
 
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
@@ -249,13 +251,13 @@ private fun ReaderContent(
             LaunchedEffect(progressState) {
                 when (val state = progressState) {
                     is ProgressState.Restoring -> {
-                        BikaLog.d("ReaderScreen", "正在恢复进度到第 ${state.targetPage} 页")
+                        logger.debug { "正在恢复进度到第 ${state.targetPage} 页" }
                     }
                     is ProgressState.Restored -> {
-                        BikaLog.d("ReaderScreen", "进度已恢复到第 ${state.actualPage} 页")
+                        logger.debug { "进度已恢复到第 ${state.actualPage} 页" }
                     }
                     is ProgressState.RestoreFailed -> {
-                        BikaLog.w("ReaderScreen", "进度恢复失败: ${state.reason}")
+                        logger.warn { "进度恢复失败: ${state.reason}" }
                     }
                     is ProgressState.Tracking -> {
                         // 正在跟踪页面变化，不需要日志（太频繁）

@@ -51,7 +51,11 @@ import coil3.request.crossfade
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.core.ui.isRetryableError
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
+
+private val pagingLogger = KotlinLogging.logger("ReaderPaging")
+private val imageLogger = KotlinLogging.logger("ReaderImage")
 
 /**
  * 分页数据未就绪时的占位组件：
@@ -75,10 +79,10 @@ fun ChapterPageLoadStateItem(
             val error = refreshError?.error ?: appendError?.error
             if (autoRetryCount == 0) {
                 if (error.isRetryableError()) {
-                    com.shizq.bika.core.common.BikaLog.e("ReaderPaging", "章节分页加载失败: 第 ${index + 1} 页", error)
+                    pagingLogger.error(error) { "章节分页加载失败: 第 ${index + 1} 页" }
                 } else {
                     // 404 等永久失败：提示后不再自动重试
-                    com.shizq.bika.core.common.BikaLog.w("ReaderPaging", "章节分页永久不可用(不重试): 第 ${index + 1} 页", error)
+                    pagingLogger.warn(error) { "章节分页永久不可用(不重试): 第 ${index + 1} 页" }
                 }
             }
             if (error.isRetryableError()) {
@@ -217,10 +221,10 @@ fun ComicPageItem(
                     val error = (state as? AsyncImagePainter.State.Error)?.result?.throwable
                     if (imageRetryCount == 0) {
                         if (error.isRetryableError()) {
-                            com.shizq.bika.core.common.BikaLog.e("ReaderImage", "图片加载失败: 第 ${index + 1} 页 url=${page.url}", error)
+                            imageLogger.error(error) { "图片加载失败: 第 ${index + 1} 页 url=${page.url}" }
                         } else {
                             // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
-                            com.shizq.bika.core.common.BikaLog.w("ReaderImage", "图片永久不可用(不重试): 第 ${index + 1} 页 url=${page.url}", error)
+                            imageLogger.warn(error) { "图片永久不可用(不重试): 第 ${index + 1} 页 url=${page.url}" }
                         }
                     }
                     if (error.isRetryableError()) {
