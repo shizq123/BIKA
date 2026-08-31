@@ -9,6 +9,7 @@ import org.apache.logging.log4j.core.config.builder.api.ConfigurationBuilderFact
 import org.apache.logging.log4j.core.config.builder.api.LayoutComponentBuilder
 import org.apache.logging.log4j.core.config.builder.impl.BuiltConfiguration
 import java.io.File
+
 object LoggingConfigurator {
     private const val CHARSET = "UTF-8"
     private const val APP_NAME = "APP"
@@ -21,6 +22,7 @@ object LoggingConfigurator {
         "%highlight{%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%t] %c{1}: %msg%n%throwable}{FATAL=red bold, ERROR=red, WARN=yellow, INFO=green, DEBUG=bright_blue, TRACE=bright_green}"
     private const val FILE_PATTERN =
         "%d{yyyy-MM-dd HH:mm:ss.SSS} [%-5level] [%t] %c: %msg%n%throwable"
+
     fun configureLogging(logsFolder: File) {
         ensureLogsFolder(logsFolder)
         val builder = ConfigurationBuilderFactory.newConfigurationBuilder().apply {
@@ -37,15 +39,18 @@ object LoggingConfigurator {
             updateLoggers()
         }
     }
+
     private fun ensureLogsFolder(folder: File) {
         require(folder.exists() || folder.mkdirs()) {
             "Failed to create log directory: ${folder.absolutePath}"
         }
     }
+
     private fun ConfigurationBuilder<BuiltConfiguration>.consoleAppender() =
         newAppender(CONSOLE_APPENDER, "Console").apply {
             add(patternLayout(CONSOLE_PATTERN))
         }
+
     private fun ConfigurationBuilder<BuiltConfiguration>.fileAppender(
         logsFolder: File,
     ): AppenderComponentBuilder =
@@ -69,17 +74,20 @@ object LoggingConfigurator {
                 },
             )
         }
+
     private fun ConfigurationBuilder<BuiltConfiguration>.rootLogger() =
         newRootLogger(Level.ALL).apply {
             add(newAppenderRef(CONSOLE_APPENDER))
             add(newAppenderRef(FILE_APPENDER))
         }
+
     private fun ConfigurationBuilder<BuiltConfiguration>.ktorClientLogger() =
         newLogger(KTOR_CLIENT_LOGGER, Level.DEBUG).apply {
-            addAttribute("additivity", false)
+            addAttribute("additivity", true)
             add(newAppenderRef(CONSOLE_APPENDER))
             add(newAppenderRef(FILE_APPENDER))
         }
+
     private fun ConfigurationBuilder<BuiltConfiguration>.patternLayout(
         pattern: String,
     ): LayoutComponentBuilder =
