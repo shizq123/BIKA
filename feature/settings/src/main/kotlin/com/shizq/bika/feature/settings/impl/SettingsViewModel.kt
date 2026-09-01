@@ -20,10 +20,6 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import java.text.DecimalFormat
 
 @HiltViewModel
@@ -62,78 +58,11 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun checkForUpdates() {
-        if (_updateUiState.value is UpdateUiState.Checking) return
-        _updateUiState.value = UpdateUiState.Checking
 
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                val okHttpClient = okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                    .build()
-                val request = okhttp3.Request.Builder()
-                    .url("https://api.github.com/repos/STlxx-lin/BIKA/releases/tags/latest")
-                    .header("User-Agent", "BIKA-Android")
-                    .build()
-                okHttpClient.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) throw Exception("HTTP 错误码: ${response.code}")
-                    val bodyString = response.body.string()
-                    val json = Json.parseToJsonElement(bodyString).jsonObject
-                    val tagName = json["tag_name"]?.jsonPrimitive?.content
-                        ?: throw Exception("未找到 tag_name")
-                    val releaseNotes = json["body"]?.jsonPrimitive?.content ?: ""
-                    val htmlUrl = json["html_url"]?.jsonPrimitive?.content
-                        ?: "https://github.com/STlxx-lin/BIKA/releases"
-
-                    val assets = json["assets"]?.jsonArray
-                    var apkUrl = htmlUrl
-                    var remoteVersion = ""
-                    if (assets != null) {
-                        for (i in 0 until assets.size) {
-                            val assetObj = assets[i].jsonObject
-                            val name = assetObj["name"]?.jsonPrimitive?.content ?: ""
-                            if (name.endsWith(".apk") && name.contains("_v")) {
-                                remoteVersion = name.substringAfter("_v").substringBefore(".apk")
-                                apkUrl = assetObj["browser_download_url"]?.jsonPrimitive?.content
-                                    ?: htmlUrl
-                                break
-                            }
-                        }
-                    }
-
-                    if (remoteVersion.isEmpty()) {
-                        remoteVersion = tagName.trimStart('v')
-                    }
-                    val currentVersion = com.shizq.bika.BuildConfig.VERSION_NAME
-
-                    if (isNewerVersion(remoteVersion, currentVersion)) {
-                        _updateUiState.value =
-                            UpdateUiState.HasUpdate(remoteVersion, releaseNotes, apkUrl)
-                    } else {
-                        _updateUiState.value = UpdateUiState.NoUpdate
-                    }
-                }
-            } catch (e: Exception) {
-                _updateUiState.value = UpdateUiState.Error(e.message ?: "未知网络错误")
-            }
-        }
     }
 
     fun resetUpdateState() {
         _updateUiState.value = UpdateUiState.Idle
-    }
-
-    private fun isNewerVersion(latest: String, current: String): Boolean {
-        val latestParts = latest.split('.').mapNotNull { it.toIntOrNull() }
-        val currentParts = current.split('.').mapNotNull { it.toIntOrNull() }
-        val size = maxOf(latestParts.size, currentParts.size)
-        for (i in 0 until size) {
-            val l = latestParts.getOrNull(i) ?: 0
-            val c = currentParts.getOrNull(i) ?: 0
-            if (l > c) return true
-            if (l < c) return false
-        }
-        return false
     }
 
     fun logout() {
