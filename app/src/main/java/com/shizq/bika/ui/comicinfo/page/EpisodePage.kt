@@ -45,10 +45,13 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import androidx.paging.compose.itemKey
 import com.shizq.bika.core.database.model.ChapterProgressEntity
+import com.shizq.bika.core.database.model.isCompleted
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.network.model.Episode
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.flowOf
-import com.shizq.bika.core.common.BikaLog
+
+private val logger = KotlinLogging.logger("EpisodePage")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,7 +75,7 @@ fun EpisodesPage(
             try {
                 allEpisodes = onFetchAllEpisodes()
             } catch (e: Exception) {
-                com.shizq.bika.core.common.BikaLog.e("EpisodePage", "获取全部章节失败", e)
+                logger.error(e) { "获取全部章节失败" }
             } finally {
                 isLoadingEpisodes = false
             }
@@ -289,7 +292,7 @@ fun EpisodeItem(
                 )
                 
         if (progress != null) {
-            val isCompleted = progress.pageCount > 0 && progress.currentPage >= progress.pageCount
+            val isCompleted = progress.isCompleted
             val progressText = if (isCompleted) "已读完" else "看到第 ${progress.currentPage} 页"
             val pageText = if (progress.pageCount > 0) "共 ${progress.pageCount} 页" else "页数未知"
             Text(
@@ -311,7 +314,7 @@ fun EpisodeItem(
     }
     
     if (progress != null) {
-        val isCompleted = progress.pageCount > 0 && progress.currentPage >= progress.pageCount
+        val isCompleted = progress.isCompleted
         Surface(
             shape = RoundedCornerShape(4.dp),
             color = if (isCompleted) 

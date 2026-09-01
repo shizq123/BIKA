@@ -2,9 +2,12 @@ package com.shizq.bika.core.datastore
 
 import androidx.datastore.core.DataStore
 import com.shizq.bika.core.datastore.model.UserCredentials
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+
+private val logger = KotlinLogging.logger("Credentials")
 
 class UserCredentialsDataSource @Inject constructor(
     private val userCredentials: DataStore<UserCredentials>,
@@ -49,10 +52,7 @@ class UserCredentialsDataSource @Inject constructor(
     private fun decryptWithLog(value: String, name: String, cipher: CredentialsCipher): String {
         val plain = cipher.decrypt(value)
         if (plain == null && cipher.isEncrypted(value)) {
-            com.shizq.bika.core.common.BikaLog.e(
-                "Credentials",
-                "凭证 $name 解密失败（密钥丢失或数据损坏），将原样透传；建议重新登录"
-            )
+            logger.error { "凭证 $name 解密失败（密钥丢失或数据损坏），将原样透传；建议重新登录" }
         }
         return plain ?: value
     }

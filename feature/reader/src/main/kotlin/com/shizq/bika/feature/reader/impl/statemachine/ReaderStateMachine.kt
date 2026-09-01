@@ -2,7 +2,7 @@ package com.shizq.bika.feature.reader.impl.statemachine
 
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
-import com.shizq.bika.core.common.BikaLog
+import io.github.oshai.kotlinlogging.KotlinLogging
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -17,6 +17,8 @@ import com.shizq.bika.feature.reader.impl.state.UiControlState
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+
+private val logger = KotlinLogging.logger("ReaderProgress")
 
 class ReaderStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
@@ -187,10 +189,7 @@ class ReaderStateMachine @Inject constructor(
             val progress = history?.asExternalModel()?.progressList
                 ?.find { it.chapterNumber == chapterOrder }
             val startPage = progress?.currentPage ?: 0
-            BikaLog.d(
-                "ReaderProgress",
-                "恢复进度: comic=$historyId 章节=$chapterOrder DB进度=${progress?.currentPage}/${progress?.pageCount} 起始页=$startPage"
-            )
+            logger.debug { "恢复进度: comic=$historyId 章节=$chapterOrder DB进度=${progress?.currentPage}/${progress?.pageCount} 起始页=$startPage" }
             startPage
         }
     }

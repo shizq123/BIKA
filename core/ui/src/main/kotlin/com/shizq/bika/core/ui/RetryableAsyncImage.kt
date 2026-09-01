@@ -28,8 +28,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
-import com.shizq.bika.core.common.BikaLog
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
+
+private val logger = KotlinLogging.logger("RetryableImage")
 
 /**
  * 判断加载失败是否值得自动重试：
@@ -65,10 +67,10 @@ fun RetryableAsyncImage(
             val error = (state as AsyncImagePainter.State.Error).result.throwable
             if (retryCount == 0) {
                 if (error.isRetryableError()) {
-                    BikaLog.e("RetryableImage", "图片加载失败: $model", error)
+                    logger.error(error) { "图片加载失败: $model" }
                 } else {
                     // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
-                    BikaLog.w("RetryableImage", "图片永久不可用(不重试): $model", error)
+                    logger.warn(error) { "图片永久不可用(不重试): $model" }
                 }
             }
             if (error.isRetryableError()) {
@@ -81,9 +83,12 @@ fun RetryableAsyncImage(
     }
 
     val isError = state is AsyncImagePainter.State.Error
+    // 注意：不要在正常态挂 clickable(enabled = isError)。
+    // enabled=false 的 clickable 仍会参与 hit test 并消费 down 事件，
+    // 导致外层卡片（如漫画详情页的推荐卡片、阅读历史的 ComicCard）的
+    // 点击被静默吞掉，表现为“点击无反应”。只有错误态才需要拦截点击。
     Box(
-        modifier = modifier
-            .clickable(enabled = isError) { painter.restart() },
+        modifier = modifier,
         contentAlignment = Alignment.Center
     ) {
         Image(
@@ -97,7 +102,8 @@ fun RetryableAsyncImage(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.LightGray.copy(alpha = 0.6f)),
+                    .background(Color.LightGray.copy(alpha = 0.6f))
+                    .clickable { painter.restart() },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

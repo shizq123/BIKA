@@ -2,7 +2,9 @@ package com.shizq.bika.feature.reader.impl.progress
 
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.feature.reader.impl.layout.ReaderController
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -12,6 +14,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+private val logger = KotlinLogging.logger("ProgressManager")
 
 /**
  * 阅读进度管理器
@@ -77,20 +81,17 @@ class ReadingProgressManager(
         return restoreStrategy.restore(targetPage, dataSource, controller, config).also { result ->
             _state.value = when (result) {
                 is RestoreResult.Success -> {
-                    BikaLog.d(
-                        TAG,
-                        "恢复成功: 目标=$targetPage 实际=${result.actualPage} 尝试=${result.attempts}次"
-                    )
+                    logger.debug { "恢复成功: 目标=$targetPage 实际=${result.actualPage} 尝试=${result.attempts}次" }
                     ProgressState.Restored(result.actualPage)
                 }
 
                 is RestoreResult.Timeout -> {
-                    BikaLog.w(TAG, "恢复超时: 目标=$targetPage 降级=${result.fallbackPage}")
+                    logger.warn { "恢复超时: 目标=$targetPage 降级=${result.fallbackPage}" }
                     ProgressState.Restored(result.fallbackPage)
                 }
 
                 is RestoreResult.Failure -> {
-                    BikaLog.e(TAG, "恢复失败: ${result.reason}")
+                    logger.error { "恢复失败: ${result.reason}" }
                     ProgressState.RestoreFailed(result.reason)
                 }
             }
@@ -139,7 +140,7 @@ class ReadingProgressManager(
     private fun onPageChanged(page: Int) {
         lastKnownPage = page
         _state.value = ProgressState.Tracking(page)
-        BikaLog.i(TAG, "页面变化: page=$page")
+        logger.info { "页面变化: page=$page" }
         scheduleStore(page)
     }
 

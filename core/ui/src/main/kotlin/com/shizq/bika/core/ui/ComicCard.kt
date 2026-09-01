@@ -6,7 +6,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -29,13 +28,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
+import android.graphics.drawable.ColorDrawable
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
+import coil3.request.error
+import coil3.request.placeholder
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.RemoteImage
 
@@ -46,12 +50,11 @@ fun ComicCard(
     onItemClick: () -> Unit = {}
 ) {
     ListItem(
-        {
+        content = {
             Column {
-                // 标题上方流式状态徽章墙
-                FlowRow(
+                // 标题上方流式状态徽章墙（列表项内避免 FlowRow 的多轮测量，改用 Row）
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(bottom = 6.dp)
                 ) {
                     val progress = comic.lastReadChapterProgress
@@ -95,13 +98,21 @@ fun ComicCard(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                FlowRow(
+                Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    comic.categories.fastForEach { category ->
+                    comic.categories.take(3).fastForEach { category ->
                         Tag(
                             text = category,
+                        )
+                    }
+                    if (comic.categories.size > 3) {
+                        Text(
+                            text = "+${comic.categories.size - 3}",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.outline,
+                            modifier = Modifier.padding(start = 2.dp)
                         )
                     }
                 }
@@ -142,7 +153,12 @@ fun ComicCard(
         leadingContent = {
             Box(contentAlignment = Alignment.TopStart) {
                 AsyncImage(
-                    model = comic.image.originalImageUrl,
+                    model = ImageRequest.Builder(LocalContext.current)
+                        .data(comic.image.originalImageUrl)
+                        // 加载前显示占位色块，避免列表快速滚动时整行空白闪烁
+                        .placeholder(ColorDrawable(0xFFE3E3E3.toInt()))
+                        .error(ColorDrawable(0xFFE3E3E3.toInt()))
+                        .build(),
                     contentDescription = comic.title,
                     modifier = Modifier
                         .width(100.dp)

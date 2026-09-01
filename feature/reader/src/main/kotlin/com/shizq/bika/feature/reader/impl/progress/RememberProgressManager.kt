@@ -9,7 +9,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.compose.LazyPagingItems
-import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.feature.reader.impl.layout.ReaderController
 import kotlinx.coroutines.flow.first
@@ -45,7 +44,6 @@ fun rememberReadingProgressManager(
     val scope = rememberCoroutineScope()
 
     val manager = remember(initialPage) {
-        BikaLog.d("ReadingProgress", "创建 ProgressManager: initialPage=$initialPage")
         ReadingProgressManager(
             restoreStrategy = RetryRestoreStrategy(),
             config = config,
@@ -59,24 +57,12 @@ fun rememberReadingProgressManager(
 
     // 1. 恢复进度（每次 initialPage 变化时触发）
     LaunchedEffect(initialPage) {
-        BikaLog.d("ReadingProgress", "开始恢复进度: target=$initialPage")
-        when (val result = manager.restore(initialPage, dataSource, controller)) {
+        when (manager.restore(initialPage, dataSource, controller)) {
             is RestoreResult.Success -> {
-                BikaLog.d(
-                    "ReadingProgress",
-                    "恢复成功: page=${result.actualPage}, attempts=${result.attempts}"
-                )
             }
-
             is RestoreResult.Timeout -> {
-                BikaLog.w(
-                    "ReadingProgress",
-                    "恢复超时: target=${result.targetPage}, fallback=${result.fallbackPage}"
-                )
             }
-
             is RestoreResult.Failure -> {
-                BikaLog.e("ReadingProgress", "恢复失败: ${result.reason}")
             }
         }
     }
@@ -93,7 +79,6 @@ fun rememberReadingProgressManager(
             if (event == Lifecycle.Event.ON_STOP) {
                 scope.launch {
                     val currentPage = controller.visibleItemIndex.first()
-                    BikaLog.d("ReadingProgress", "ON_STOP: 立即保存 page=$currentPage")
                     manager.persistNow(currentPage, onPersist)
                 }
             }
@@ -102,10 +87,7 @@ fun rememberReadingProgressManager(
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            // 组合即将销毁：不再依赖 scope（其协程可能来不及调度就被取消），
-            // 同步读取最后已知页码并同步触发兜底保存。
             manager.persistLastKnownPage { page ->
-                BikaLog.d("ReadingProgress", "onDispose: 最终保存 page=$page")
                 onPersist(page)
             }
         }

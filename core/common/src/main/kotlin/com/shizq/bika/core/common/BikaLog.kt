@@ -3,8 +3,16 @@ package com.shizq.bika.core.common
 import android.content.Context
 import android.util.Log
 import java.io.File
-
-@Deprecated("建议使用 KotlinLogging", ReplaceWith("io.github.oshai.kotlinlogging.KotlinLogging"))
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+/**
+ * 崩溃日志与日志文件管理（clearLogs/getLogFile 等）。
+ *
+ * 常规业务日志已迁移到 KotlinLogging（见各模块 logger 定义），
+ * 此处保留的是 KotlinLogging 没有等价能力的部分：
+ * 进程崩溃同步落盘、日志文件清理与定向导出。
+ */
 object BikaLog {
 
     @Volatile

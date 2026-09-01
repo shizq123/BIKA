@@ -317,11 +317,11 @@ class FeedViewModel @AssistedInject constructor(
 }
 
 /**
- * 对单个 ComicSummary 从 DetailedHistory 列表快照中注入本地状态。
- * 为避免重复逻辑，调用 ComicStatusInjector.kt 中的 injectLocalStatusFrom。
+ * 对单个 ComicSummary 从预先构建的 id -> DetailedHistory 映射中注入本地状态。
+ * 映射由调用方（UI 层）在列表外构建一次，避免每个列表项重复 O(N) 扫描。
+ * 逻辑复用 ComicStatusInjector.kt 中的 injectLocalStatusFrom。
  */
-fun ComicSummary.injectSingleFrom(histories: List<DetailedHistory>): ComicSummary {
-    val historyMap = histories.associateBy { it.history.id }
+fun ComicSummary.injectFromHistoryMap(historyMap: Map<String, DetailedHistory>): ComicSummary {
     val detailed = historyMap[id] ?: return this
     val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
     val progressText = computeProgressText(lastProgress, detailed.history.epsCount)
