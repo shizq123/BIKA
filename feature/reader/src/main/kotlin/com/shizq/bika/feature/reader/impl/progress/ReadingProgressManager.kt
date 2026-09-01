@@ -1,10 +1,8 @@
 package com.shizq.bika.feature.reader.impl.progress
 
-import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.feature.reader.impl.layout.ReaderController
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
@@ -14,8 +12,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
-private val logger = KotlinLogging.logger("ProgressManager")
 
 /**
  * 阅读进度管理器
@@ -106,14 +102,12 @@ class ReadingProgressManager(
      * - 使用 distinctUntilChanged 避免重复保存相同页码
      *
      * @param pageFlow 页码变化流（通常是 controller.visibleItemIndex）
-     * @param scope 协程作用域
-     * @param persistProgress 持久化函数（返回是否成功）
      */
     fun startTracking(pageFlow: Flow<Int>) {
         trackingScope.launch {
             // 等待恢复完成
             state.first { it is ProgressState.Restored || it is ProgressState.RestoreFailed }
-            BikaLog.d(TAG, "恢复完成，开始跟踪页面变化")
+            logger.debug { "恢复完成，开始跟踪页面变化" }
 
             // 开始跟踪
             pageFlow
@@ -134,6 +128,7 @@ class ReadingProgressManager(
      */
     suspend fun persistNow(page: Int, persistProgress: (Int) -> Unit) {
         persistJob?.cancelAndJoin()
+        this.persistProgress = persistProgress
         persistProgress(page)
     }
 
@@ -170,6 +165,7 @@ class ReadingProgressManager(
     }
 
     private companion object {
-        const val TAG = "ProgressManager"
+        private val logger = KotlinLogging.logger("ProgressManager")
+
     }
 }
