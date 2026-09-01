@@ -37,12 +37,22 @@ import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.serialization.json.Json
+import okhttp3.ConnectionPool
 import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 
 @Module
 @InstallIn(SingletonComponent::class)
 internal object NetworkModule {
+    @Provides
+    @Singleton
+    fun provideConnectionPool(): ConnectionPool = ConnectionPool(
+        10,
+        5,
+        TimeUnit.MINUTES,
+    )
+
     @Provides
     @Singleton
     fun providesHttpClient(
@@ -93,10 +103,12 @@ internal object NetworkModule {
     @Provides
     @Singleton
     fun okHttpCallFactory(
+        connectionPool: ConnectionPool,
         tokenAuthenticator: TokenAuthenticator,
         directDns: DirectDns,
     ): OkHttpClient = trace("OkHttpClient") {
         OkHttpClient.Builder()
+            .connectionPool(connectionPool)
             .authenticator(tokenAuthenticator)
             .dns(directDns)
             .build()
@@ -124,7 +136,14 @@ internal object NetworkModule {
     @Provides
     @Singleton
     @Named("github")
-    fun provideGithubHttpClient(): HttpClient = HttpClient(OkHttp) {
+    fun provideGithubHttpClient(
+        connectionPool: ConnectionPool,
+    ): HttpClient = HttpClient(OkHttp) {
+        engine {
+            preconfigured = OkHttpClient.Builder()
+                .connectionPool(connectionPool)
+                .build()
+        }
         install(ContentNegotiation) {
             json(
                 Json {
@@ -148,7 +167,14 @@ internal object NetworkModule {
     @Provides
     @Singleton
     @Named("dns")
-    fun provideDnsHttpClient(): HttpClient = HttpClient(OkHttp) {
+    fun provideDnsHttpClient(
+        connectionPool: ConnectionPool,
+    ): HttpClient = HttpClient(OkHttp) {
+        engine {
+            preconfigured = OkHttpClient.Builder()
+                .connectionPool(connectionPool)
+                .build()
+        }
         expectSuccess = false
         install(HttpTimeout) {
             connectTimeoutMillis = 10_000L
