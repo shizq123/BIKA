@@ -1,19 +1,23 @@
 package com.shizq.bika.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.exclude
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.adaptive.WindowAdaptiveInfo
 import androidx.compose.material3.adaptive.currentWindowAdaptiveInfoV2
-import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
@@ -26,6 +30,8 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.ui.NavDisplay
+import com.shizq.bika.core.ui.message.UserMessageEffect
+import com.shizq.bika.navigation.AuthenticationRoute
 import com.shizq.bika.navigation.Navigator
 import com.shizq.bika.navigation.rootSection
 
@@ -38,19 +44,20 @@ fun BikaApp(
     windowAdaptiveInfo: WindowAdaptiveInfo = currentWindowAdaptiveInfoV2(),
     usePredictiveBack: Boolean = false,
 ) {
-
     val navigator = remember { Navigator(appState.navigationState) }
 
     val canGoBack by remember {
         derivedStateOf {
-            if (appState.navigationState.currentRootDestination == com.shizq.bika.navigation.AuthenticationRoute) {
+            if (appState.navigationState.currentRootDestination == AuthenticationRoute) {
                 appState.navigationState.authenticationBackStack.size > 1
             } else {
-                val currentStack = appState.navigationState.backStacks[appState.navigationState.topLevelRoute]
+                val currentStack =
+                    appState.navigationState.backStacks[appState.navigationState.topLevelRoute]
                 if (currentStack != null) {
                     val currentRoute = currentStack.lastOrNull()
                     val isAtBaseRoute = currentRoute == appState.navigationState.topLevelRoute
-                    val isAtStartTab = appState.navigationState.topLevelRoute == appState.navigationState.topLevelStartRoute
+                    val isAtStartTab =
+                        appState.navigationState.topLevelRoute == appState.navigationState.topLevelStartRoute
                     !(isAtBaseRoute && isAtStartTab)
                 } else {
                     false
@@ -71,6 +78,21 @@ fun BikaApp(
             containerColor = Color.Transparent,
             contentColor = MaterialTheme.colorScheme.onBackground,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
+            snackbarHost = {
+                val snackbarHostState = remember { SnackbarHostState() }
+                UserMessageEffect(
+                    source = appState.messageSource,
+                    snackbarHostState = snackbarHostState,
+                )
+                SnackbarHost(
+                    snackbarHostState,
+                    modifier = Modifier.windowInsetsPadding(
+                        WindowInsets.safeDrawing.exclude(
+                            WindowInsets.ime,
+                        ),
+                    ),
+                )
+            },
         ) { padding ->
             Column(
                 Modifier

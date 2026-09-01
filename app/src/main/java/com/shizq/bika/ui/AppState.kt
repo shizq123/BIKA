@@ -5,6 +5,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.navigation3.runtime.NavKey
+import com.shizq.bika.core.message.MessageSource
 import com.shizq.bika.core.ui.TrackDisposableJank
 import com.shizq.bika.navigation.AuthenticationRoute
 import com.shizq.bika.navigation.ConnectedRoute
@@ -19,6 +20,7 @@ private val TOP_LEVEL_ROUTES = setOf<NavKey>(
 @Composable
 fun rememberAppState(
     startDestination: NavKey,
+    messageSource: MessageSource,
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
 ): AppState {
     val navigationState = rememberNavigationState(
@@ -33,10 +35,12 @@ fun rememberAppState(
     return remember(
         navigationState,
         coroutineScope,
+        messageSource,
     ) {
         AppState(
             navigationState = navigationState,
             coroutineScope = coroutineScope,
+            messageSource = messageSource,
         )
     }
 }
@@ -45,6 +49,7 @@ fun rememberAppState(
 class AppState(
     val navigationState: NavigationState,
     coroutineScope: CoroutineScope,
+    val messageSource: MessageSource
 )
 
 /**

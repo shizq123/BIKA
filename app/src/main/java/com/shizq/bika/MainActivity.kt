@@ -24,7 +24,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import androidx.metrics.performance.JankStats
 import com.shizq.bika.MainActivityUiState.Loading
 import com.shizq.bika.MainActivityUiState.Success
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.designsystem.theme.BikaTheme
+import com.shizq.bika.core.message.MessageSource
 import com.shizq.bika.core.ui.composition.LocalWindow
 import com.shizq.bika.ui.BikaApp
 import com.shizq.bika.ui.rememberAppState
@@ -48,9 +50,13 @@ class MainActivity : ComponentActivity() {
     lateinit var lazyStats: Lazy<JankStats>
 
     @Inject
-    lateinit var userPreferencesDataSource: com.shizq.bika.core.datastore.UserPreferencesDataSource
+    lateinit var userPreferencesDataSource: UserPreferencesDataSource
+
+    @Inject
+    lateinit var messageSource: MessageSource
 
     private val viewModel: MainActivityViewModel by viewModels()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
@@ -145,10 +151,12 @@ class MainActivity : ComponentActivity() {
 
                         is Success -> {
                             val appState = rememberAppState(state.startDestination)
-                            val userData by userPreferencesDataSource.userData.collectAsStateWithLifecycle(initialValue = null)
+                            val userData by userPreferencesDataSource.userData.collectAsStateWithLifecycle(
+                                null
+                            )
                             val usePredictiveBack = userData?.app?.predictiveBackEnabled ?: false
 
-                            BikaApp(appState, usePredictiveBack = usePredictiveBack)
+                            BikaApp(appState, usePredictiveBack = usePredictiveBack, messageSource)
                         }
                     }
                 }
