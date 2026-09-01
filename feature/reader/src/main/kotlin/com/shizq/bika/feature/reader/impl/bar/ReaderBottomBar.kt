@@ -18,16 +18,13 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
 import com.shizq.bika.core.model.reader.ReadingMode
+import com.shizq.bika.feature.reader.impl.util.ScrubState
 
 @Composable
-fun ReaderBottomBar(
+internal fun ReaderBottomBar(
     currentPage: Int,
     totalPages: Int,
     readingMode: ReadingMode,
@@ -36,11 +33,16 @@ fun ReaderBottomBar(
     onOpenSettings: () -> Unit,
     onOpenReadingMode: () -> Unit,
     onOpenOrientation: () -> Unit,
-    onPrevChapter: (() -> Unit)? = null,
-    onNextChapter: (() -> Unit)? = null,
-    onSeeking: ((Int) -> Unit)? = null,
-    onSeekingFinished: (() -> Unit)? = null,
+    hasPrevChapter: Boolean = false,
+    hasNextChapter: Boolean = false,
+    onPrevChapter: () -> Unit = {},
+    onNextChapter: () -> Unit = {},
+    scrubState: ScrubState,
 ) {
+    DisposableEffect(Unit) {
+        onDispose { scrubState.cancelScrub() }
+    }
+
     BottomBar(
         progressIndicator = {
             if (totalPages > 0) {
@@ -48,20 +50,11 @@ fun ReaderBottomBar(
             }
         },
         progressSlider = {
-            var sliderPosition by remember { mutableFloatStateOf(currentPage.toFloat()) }
-
-            LaunchedEffect(currentPage) {
-                sliderPosition = currentPage.toFloat()
-            }
             Slider(
-                value = sliderPosition,
-                onValueChange = {
-                    sliderPosition = it
-                    onSeeking?.invoke(it.toInt())
-                },
+                value = scrubState.position,
+                onValueChange = scrubState::onScrub,
                 onValueChangeFinished = {
-                    onSeekToPage(sliderPosition.toInt())
-                    onSeekingFinished?.invoke()
+                    onSeekToPage(scrubState.onScrubFinished())
                 },
                 valueRange = 0f..(totalPages.coerceAtLeast(1) - 1).toFloat(),
             )
@@ -78,13 +71,13 @@ fun ReaderBottomBar(
             ) {
                 // 上一章
                 IconButton(
-                    onClick = { onPrevChapter?.invoke() },
-                    enabled = onPrevChapter != null
+                    onClick = onPrevChapter,
+                    enabled = hasPrevChapter
                 ) {
                     Icon(
                         Icons.Rounded.SkipPrevious,
                         contentDescription = "上一章",
-                        tint = if (onPrevChapter != null) LocalContentColor.current
+                        tint = if (hasPrevChapter) LocalContentColor.current
                                else LocalContentColor.current.copy(alpha = 0.38f)
                     )
                 }
@@ -101,13 +94,13 @@ fun ReaderBottomBar(
                 }
                 // 下一章
                 IconButton(
-                    onClick = { onNextChapter?.invoke() },
-                    enabled = onNextChapter != null
+                    onClick = onNextChapter,
+                    enabled = hasNextChapter
                 ) {
                     Icon(
                         Icons.Rounded.SkipNext,
                         contentDescription = "下一章",
-                        tint = if (onNextChapter != null) LocalContentColor.current
+                        tint = if (hasNextChapter) LocalContentColor.current
                                else LocalContentColor.current.copy(alpha = 0.38f)
                     )
                 }

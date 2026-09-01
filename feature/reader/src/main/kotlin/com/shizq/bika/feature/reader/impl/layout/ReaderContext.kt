@@ -1,6 +1,5 @@
 package com.shizq.bika.feature.reader.impl.layout
 
-import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
@@ -8,6 +7,7 @@ import androidx.compose.runtime.Stable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.BookSpreadsMode
@@ -16,16 +16,20 @@ import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.model.reader.TapZoneLayout
 import com.shizq.bika.core.model.reader.ViewerType
 import com.shizq.bika.feature.reader.impl.util.preload.LazyListScrollStateProvider
-import com.shizq.bika.feature.reader.impl.util.preload.PagerScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.ScrollStateProvider
+import com.shizq.bika.feature.reader.impl.util.preload.SpreadScrollStateProvider
 
+/**
+ * 不再暴露 LazyListState：那会绕过 [ReaderController] 的抽象，
+ * 让调用方用 `lazyListState != null` 反推「是不是条漫模式」。
+ * 滚动能力查询走 [ReaderController.supportsContinuousScroll]。
+ */
 @Stable
-data class ReaderContext(
+class ReaderContext(
     val layout: ReaderLayout,
     val controller: ReaderController,
     val scrollStateProvider: ScrollStateProvider,
     val config: ReaderConfig = ReaderConfig.Default,
-    val lazyListState: LazyListState? = null
 )
 
 data class ReaderConfig(
@@ -69,8 +73,9 @@ fun rememberReaderContext(
     chapterOrder: Int,
 ): ReaderContext {
     val configuration = LocalConfiguration.current
+    val windowInfo = LocalWindowInfo.current
     val isLargeOrLandscape = remember(configuration) {
-        val aspect = configuration.screenWidthDp.toFloat() / configuration.screenHeightDp.toFloat()
+        val aspect = windowInfo.containerSize.width.toFloat() / windowInfo.containerSize.height.toFloat()
         aspect >= 1.25f || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
     }
     val useDoublePage = remember(config.bookSpreadsMode, isLargeOrLandscape, readingMode) {
@@ -106,34 +111,57 @@ fun rememberReaderContext(
                     controller = controller,
                     scrollStateProvider = scrollProvider,
                     config = config,
-                    lazyListState = listState
                 )
             }
         }
 
         ViewerType.Pager -> {
-            val pageCount = if (useDoublePage) (chapterPages.itemCount + 1) / 2 else chapterPages.itemCount
-            val pagerState =
-                rememberPagerState(initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex) { pageCount }
+            // key(chapterOrder) 与 Scrolling 分支对齐：不加的话切章时 pagerState 被复用，
+            // initialPage 只在首次创建生效，新章节会停在旧页码上。
+            key(chapterOrder) {
+                // 分组状态先建立：pagerState 的 pageCount 要取翻页单位数，
+                // 不能再用 (itemCount + 1) / 2 —— 出现宽页独占一屏时该公式会算少，
+                // 页码从宽页之后开始整体错位。
+                val spreadState = remember(useDoublePage) {
+                    PageSpreadState(
+                        doublePage = useDoublePage,
+                        pageCountProvider = { chapterPages.itemCount },
+                    )
+                }
 
-            val layout = remember(pagerState, readingMode.direction, readingMode.isRtl, useDoublePage) {
-                PagerLayout(
-                    pagerState = pagerState,
-                    direction = readingMode.direction,
-                    isRtl = readingMode.isRtl,
-                    useDoublePage = useDoublePage
+                val pagerState = rememberPagerState(
+                    // initialPage 只在创建时读一次，此刻 chapterPages.itemCount 往往还是 0、
+                    // 分组结果为空，查 spreadIndexOfPage 只会得到 0。创建时也还没有任何页被
+                    // 测量过，等价于「无宽页」，此时单位下标就是 index/2，直接算即可。
+                    // 真正的进度定位由 ProgressManager 调 scrollToPage 完成（那里会查分组）。
+                    initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex
+                ) { spreadState.spreadCount }
+
+                val layout =
+                    remember(pagerState, readingMode.direction, readingMode.isRtl, spreadState) {
+                        PagerLayout(
+                            pagerState = pagerState,
+                            direction = readingMode.direction,
+                            isRtl = readingMode.isRtl,
+                            spreadState = spreadState,
+                        )
+                    }
+
+                val controller = remember(pagerState, spreadState) {
+                    PagerController(pagerState, spreadState)
+                }
+                // 预载要按真实页码走：跨页时一屏有两页，只报 currentPage 会漏预载右页。
+                val scrollProvider = remember(pagerState, spreadState) {
+                    SpreadScrollStateProvider(spreadState.visibleSpreadRange(pagerState))
+                }
+
+                ReaderContext(
+                    layout = layout,
+                    controller = controller,
+                    scrollStateProvider = scrollProvider,
+                    config = config,
                 )
             }
-
-            val controller = remember(pagerState, useDoublePage) { PagerController(pagerState, useDoublePage, initialPageIndex) }
-            val scrollProvider = remember(pagerState) { PagerScrollStateProvider(pagerState) }
-
-            ReaderContext(
-                layout = layout,
-                controller = controller,
-                scrollStateProvider = scrollProvider,
-                config = config
-            )
         }
     }
 }

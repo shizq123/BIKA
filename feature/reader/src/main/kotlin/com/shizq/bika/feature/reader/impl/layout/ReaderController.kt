@@ -13,6 +13,12 @@ interface ReaderController {
     val visibleItemIndex: Flow<Int>
 
     /**
+     * 像素级连续滚动能力，null 表示该 viewer 不支持（如 Pager）。
+     * 调用方（自动滚动）应据此决定是否展示入口，而不是调用一个可能静默失效的方法。
+     */
+    val continuousScroller: ContinuousScroller?
+
+    /**
      * 翻到下一页
      * - 条漫模式：向下滚动一屏（通常是高度的 80%）
      * - 翻页模式：切换到 index + 1
@@ -28,9 +34,4 @@ interface ReaderController {
      * 跳转到指定页码（用于目录跳转或进度条拖动）
      */
     suspend fun scrollToPage(index: Int)
-
-    /**
-     * 平滑移动偏移量（用于自动滚动）
-     */
-    suspend fun scrollBy(value: Float) {}
 }

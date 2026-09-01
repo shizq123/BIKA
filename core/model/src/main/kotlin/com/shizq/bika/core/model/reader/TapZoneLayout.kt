@@ -4,7 +4,7 @@ package com.shizq.bika.core.model.reader
  * 屏幕点击区域布局策略.
  *
  * 定义了当用户点击屏幕不同位置时，应该触发何种操作（上一页、下一页、呼出菜单）。
- * 该枚举负责将点击坐标 (x, y) 映射为 [ReaderAction]。
+ * 该枚举负责将点击坐标 (x, y) 映射为 [TapAction]。
  *
  * @property label 用于在设置界面显示的中文名称.
  */
@@ -84,7 +84,7 @@ enum class TapZoneLayout(val label: String) {
      * @param isRtl 阅读方向是否为从右向左 (Right-to-Left).
      *              - `true`: 日漫模式 (点左边是下一页).
      *              - `false`: 国漫/条漫模式 (点右边是下一页).
-     * @return [ReaderAction] 对应的动作指令.
+     * @return [TapAction] 对应的动作指令.
      */
     fun resolve(
         x: Float,
@@ -92,7 +92,7 @@ enum class TapZoneLayout(val label: String) {
         width: Int,
         height: Int,
         isRtl: Boolean
-    ): ReaderAction {
+    ): TapAction {
         val percentX = x / width.toFloat()
         val percentY = y / height.toFloat()
 
@@ -100,11 +100,11 @@ enum class TapZoneLayout(val label: String) {
             Sides -> {
                 val sideRegion = 0.33f
                 if (percentX < sideRegion) {
-                    if (isRtl) ReaderAction.NextPage else ReaderAction.PrevPage
+                    if (isRtl) TapAction.NextPage else TapAction.PrevPage
                 } else if (percentX > (1 - sideRegion)) {
-                    if (isRtl) ReaderAction.PrevPage else ReaderAction.NextPage
+                    if (isRtl) TapAction.PrevPage else TapAction.NextPage
                 } else {
-                    ReaderAction.ToggleMenu
+                    TapAction.ToggleMenu
                 }
             }
 
@@ -113,7 +113,7 @@ enum class TapZoneLayout(val label: String) {
                 val menuMin = 0.33f
                 val menuMax = 0.67f
                 if (percentX in menuMin..menuMax && percentY in menuMin..menuMax) {
-                    return ReaderAction.ToggleMenu
+                    return TapAction.ToggleMenu
                 }
 
                 val isNextPage = if (isRtl) {
@@ -127,12 +127,12 @@ enum class TapZoneLayout(val label: String) {
                     val isLeft = percentX < menuMin
                     !(isTop || isLeft)
                 }
-                if (isNextPage) ReaderAction.NextPage else ReaderAction.PrevPage
+                if (isNextPage) TapAction.NextPage else TapAction.PrevPage
             }
 
             Kindle -> {
                 // 顶部 15% -> 菜单
-                if (percentY < 0.15f) return ReaderAction.ToggleMenu
+                if (percentY < 0.15f) return TapAction.ToggleMenu
 
                 // 左侧 20% -> 总是上一页 (或根据习惯调整)
                 val isLeftStrip = percentX < 0.2f
@@ -140,13 +140,13 @@ enum class TapZoneLayout(val label: String) {
                 // 这里采用简单逻辑：左侧窄条总是往回翻，大面积总是往后翻
                 // 这样符合物理直觉：点左边就是往左翻，点右边(大面积)就是往右翻
                 if (isLeftStrip) {
-                    if (isRtl) ReaderAction.NextPage else ReaderAction.PrevPage
+                    if (isRtl) TapAction.NextPage else TapAction.PrevPage
                 } else {
-                    if (isRtl) ReaderAction.PrevPage else ReaderAction.NextPage
+                    if (isRtl) TapAction.PrevPage else TapAction.NextPage
                 }
             }
 
-            Off -> ReaderAction.ToggleMenu
+            Off -> TapAction.ToggleMenu
         }
     }
 }

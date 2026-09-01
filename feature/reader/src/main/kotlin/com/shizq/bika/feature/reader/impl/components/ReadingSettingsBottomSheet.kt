@@ -210,7 +210,7 @@ fun ReadingSettingsBottomSheet(
                         }
                     }
 
-                    if (config.readingMode == ReadingMode.WEBTOON) {
+                    if (config.readingMode.supportsAutoScroll) {
                         Spacer(modifier = Modifier.height(16.dp))
                         SectionTitle("条漫自动滚动")
 

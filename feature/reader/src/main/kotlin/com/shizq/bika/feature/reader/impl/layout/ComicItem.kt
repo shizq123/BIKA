@@ -28,7 +28,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -36,6 +38,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -48,11 +53,15 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import io.github.oshai.kotlinlogging.KotlinLogging
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.core.ui.isRetryableError
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
+import me.saket.telephoto.zoomable.EnabledZoomGestures
+import me.saket.telephoto.zoomable.ZoomSpec
+import me.saket.telephoto.zoomable.rememberZoomableState
+import me.saket.telephoto.zoomable.zoomable
 
 private val pagingLogger = KotlinLogging.logger("ReaderPaging")
 private val imageLogger = KotlinLogging.logger("ReaderImage")
@@ -118,15 +127,59 @@ fun ChapterPageLoadStateItem(
     }
 }
 
+/**
+ * 单页渲染。
+ *
+ * [zoomable] 为 true 时本页自己承接缩放与点击（翻页模式）：每页独立缩放，
+ * 翻到下一页时缩放自动复位。条漫模式传 false，由容器整体缩放。
+ *
+ * [onTap] 收到的坐标是**根坐标系**下的位置。跨页模式一屏有两页，用页面局部
+ * 坐标会把右页的左半边当成「屏幕左侧」，导致点击翻页方向反掉。
+ */
 @Composable
 fun ComicPageItem(
     page: ChapterPage,
     index: Int,
     modifier: Modifier = Modifier,
+    zoomable: Boolean = false,
+    onTap: ((PageTapContext) -> Unit)? = null,
     onSizeLoaded: ((width: Float, height: Float) -> Unit)? = null
 ) {
     val config = LocalReaderConfig.current
-    var magnifierCenter by remember { androidx.compose.runtime.mutableStateOf(Offset.Unspecified) }
+    var magnifierCenter by remember { mutableStateOf(Offset.Unspecified) }
+
+    // 缩放状态不需要按 page.id 做 key：翻页模式下 Pager 的 key 已经包含页码与
+    // 图片 id，换页就是换节点，state 随节点一起重建，缩放不会残留到下一页。
+    val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
+    var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    val currentOnTap by rememberUpdatedState(onTap)
+
+    val zoomModifier = if (zoomable) {
+        Modifier
+            // onGloballyPositioned 必须在 zoomable **之前**：放在之后拿到的是
+            // 已经过缩放变换的坐标系，换算出来的点击位置会随缩放倍数漂移。
+            .onGloballyPositioned { rootCoordinates = it }
+            .zoomable(
+                state = zoomableState,
+                gestures = EnabledZoomGestures.ZoomAndPan,
+                onClick = { localOffset ->
+                    val handler = currentOnTap ?: return@zoomable
+                    val coords = rootCoordinates
+                    if (coords == null || !coords.isAttached) return@zoomable
+                    // 转到根坐标系，并取根节点尺寸作为视口尺寸
+                    val root = coords.findRootCoordinates()
+                    val rootOffset = root.localPositionOf(coords, localOffset)
+                    handler(
+                        PageTapContext(
+                            position = rootOffset,
+                            viewportSize = root.size,
+                        )
+                    )
+                }
+            )
+    } else {
+        Modifier
+    }
 
     val magnifierModifier = if (config.magnifierEnabled) {
         Modifier
@@ -187,11 +240,38 @@ fun ComicPageItem(
     val painter = rememberAsyncImagePainter(model = imageRequest)
 
     val state by painter.state.collectAsState()
+
+    // 重试计数必须在 when 之外：声明在 Error 分支内时，state 一旦离开 Error
+    // （例如重试后短暂进入 Loading）计数就被丢弃，退避永远从 2s 重新开始，
+    // 持续失败的图片会变成固定 2s 一次的无限轮询。
+    var imageRetryCount by remember(page.id) { mutableIntStateOf(0) }
+    val errorState = state as? AsyncImagePainter.State.Error
+    LaunchedEffect(errorState, imageRetryCount) {
+        val error = errorState?.result?.throwable ?: return@LaunchedEffect
+        if (imageRetryCount == 0) {
+            if (error.isRetryableError()) {
+                imageLogger.error(error) { "图片加载失败: 第 ${index + 1} 页 url=${page.url}" }
+            } else {
+                // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
+                imageLogger.warn(error) { "图片永久不可用(不重试): 第 ${index + 1} 页 url=${page.url}" }
+            }
+        }
+        if (error.isRetryableError()) {
+            // 用 coerceAtMost 前先限制位移量：shl 的右操作数按 mod 32 取模，
+            // imageRetryCount 涨到 32 时 2000L shl 32 会绕回 2000，退避失效。
+            val delayMs = (2000L shl imageRetryCount.coerceAtMost(4)).coerceAtMost(30_000L)
+            imageRetryCount++
+            delay(delayMs)
+            painter.restart()
+        }
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(imageAspectRatio)
             .animateContentSize(animationSpec = tween(durationMillis = 200))
+            .then(zoomModifier)
             .then(magnifierModifier),
     ) {
         Image(
@@ -213,32 +293,16 @@ fun ComicPageItem(
             }
 
             is AsyncImagePainter.State.Error -> {
-                // 网络不稳定时持续退避重试（2s/4s/8s/16s/30s 封顶），网络恢复后图片自动重新获取；
-                // 首次失败记录原因日志，便于排查"图片无法重新获取"
-                var imageRetryCount by remember(page.id) { mutableIntStateOf(0) }
-                LaunchedEffect(imageRetryCount) {
-                    // state 是委托属性，闭包内无法 smart cast，显式转换后取失败原因
-                    val error = (state as? AsyncImagePainter.State.Error)?.result?.throwable
-                    if (imageRetryCount == 0) {
-                        if (error.isRetryableError()) {
-                            imageLogger.error(error) { "图片加载失败: 第 ${index + 1} 页 url=${page.url}" }
-                        } else {
-                            // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
-                            imageLogger.warn(error) { "图片永久不可用(不重试): 第 ${index + 1} 页 url=${page.url}" }
-                        }
-                    }
-                    if (error.isRetryableError()) {
-                        val delayMs = (2000L shl imageRetryCount).coerceAtMost(30_000L)
-                        imageRetryCount++
-                        delay(delayMs)
-                        painter.restart()
-                    }
-                }
+                // 退避重试逻辑已提到 when 之外，这里只负责 UI
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
                         .background(Color.LightGray)
-                        .clickable { painter.restart() },
+                        .clickable {
+                            // 手动重试时重置计数，让用户的显式操作立即生效
+                            imageRetryCount = 0
+                            painter.restart()
+                        },
                     contentAlignment = Alignment.Center
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -256,12 +320,11 @@ fun ComicPageItem(
             is AsyncImagePainter.State.Success -> {
                 val intrinsicSize = state.painter?.intrinsicSize
 
+                // 上报尺寸不能放在 `if (ratio != newRatio)` 里：跨页分组依赖这个
+                // 回调判定宽页，而恰好等于当前 ratio 的页会被跳过，宽页永远测不出来。
                 LaunchedEffect(intrinsicSize) {
                     if (intrinsicSize != null && intrinsicSize.width > 0 && intrinsicSize.height > 0) {
-                        val newRatio = intrinsicSize.width / intrinsicSize.height
-                        if (imageAspectRatio != newRatio) {
-                            imageAspectRatio = newRatio
-                        }
+                        imageAspectRatio = intrinsicSize.width / intrinsicSize.height
                         onSizeLoaded?.invoke(intrinsicSize.width, intrinsicSize.height)
                     }
                 }

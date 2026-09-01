@@ -2,6 +2,7 @@ package com.shizq.bika.feature.reader.impl.layout
 
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -18,10 +19,14 @@ class WebtoonLayout(
     private val listState: LazyListState,
     private val hasPageGap: Boolean
 ) : ReaderLayout {
+    /** 条漫由容器整体缩放：连续滚动下逐页缩放没有意义。 */
+    override val ownsPageGestures: Boolean = false
+
     @Composable
     override fun Content(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
+        onPageTap: (PageTapContext) -> Unit,
     ) {
         LazyColumn(
             state = listState,
@@ -38,6 +43,7 @@ class WebtoonLayout(
                 },
             ) { index ->
                 pageItems[index]?.let {
+                    // 缩放与点击都由容器处理，这里不传 onTap
                     ComicPageItem(it, index)
                 } ?: ChapterPageLoadStateItem(pageItems, index)
             }
@@ -54,6 +60,17 @@ class WebtoonController(
 
     override val totalPages: Int
         get() = listState.layoutInfo.totalItemsCount
+
+    override val continuousScroller: ContinuousScroller = object : ContinuousScroller {
+        override suspend fun scrollBy(pixels: Float): Float = listState.scrollBy(pixels)
+
+        override val isScrollInProgress: Boolean
+            get() = listState.isScrollInProgress
+
+        override val interactionSource: InteractionSource
+        get() = listState.interactionSource
+    }
+
     override val visibleItemIndex: Flow<Int> = snapshotFlow {
         calculateCurrentPageIndex()
     }.distinctUntilChanged()
@@ -80,10 +97,6 @@ class WebtoonController(
         // paging 的 itemCount，导致目标页被 clamp 到已布局末尾、滚动落空。
         // scrollToItem 对超界 index 会滚动到末尾，调用方应确保数据已加载到目标页。
         listState.scrollToItem(index.coerceAtLeast(0))
-    }
-
-    override suspend fun scrollBy(value: Float) {
-        listState.scrollBy(value)
     }
 
     /**

@@ -56,6 +56,13 @@ enum class ReadingMode(
     );
 
     val isHorizontal: Boolean get() = direction == Direction.Horizontal
+
+    /**
+     * 是否支持连续像素滚动（自动滚动的前提条件）。
+     * 与 [ReaderController.continuousScroller] 是否非 null 保持一致，
+     * 供设置面板等无法拿到 controller 实例的地方判断入口是否展示。
+     */
+    val supportsAutoScroll: Boolean get() = viewerType == ViewerType.Scrolling
 }
 
 enum class Direction { Horizontal, Vertical }
