@@ -1,15 +1,15 @@
 package com.shizq.bika.feature.settings.impl
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import coil3.imageLoader
+import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.domain.CheckAppUpdateUseCase
 import com.shizq.bika.core.model.theme.DarkThemeConfig
+import com.shizq.bika.core.network.image.ImageCacheManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,14 +20,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.DecimalFormat
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    @ApplicationContext application: Context,
     @ApplicationScope private val scope: CoroutineScope,
     private val userPreferencesDataSource: UserPreferencesDataSource,
-    private val userCredentialsDataSource: UserCredentialsDataSource
+    private val userCredentialsDataSource: UserCredentialsDataSource,
+    private val checkAppUpdateUseCase: CheckAppUpdateUseCase,
+    private val imageCacheManager: ImageCacheManager,
 ) : ViewModel() {
     val settingsUiState = userPreferencesDataSource.userData.map {
         SettingsUiState.Success(
@@ -45,10 +47,9 @@ class SettingsViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         SettingsUiState.Loading
     )
-    private val imageLoader = application.imageLoader
 
-    val cacheSize: StateFlow<String>
-        field = MutableStateFlow("计算中...")
+    private val _cacheSize = MutableStateFlow("计算中...")
+    val cacheSize: StateFlow<String> = _cacheSize.asStateFlow()
 
     private val _updateUiState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
     val updateUiState: StateFlow<UpdateUiState> = _updateUiState.asStateFlow()
@@ -58,7 +59,26 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun checkForUpdates() {
+        if (_updateUiState.value is UpdateUiState.Checking) return
+        _updateUiState.value = UpdateUiState.Checking
 
+        viewModelScope.launch {
+            try {
+                val release = checkAppUpdateUseCase()
+                _updateUiState.value = if (release != null) {
+                    UpdateUiState.HasUpdate(
+                        version = release.versionName,
+                        body = release.changelog,
+                        url = release.downloadUrl
+                    )
+                } else {
+                    UpdateUiState.NoUpdate
+                }
+            } catch (e: Exception) {
+                BikaLog.e(TAG, "检查更新失败", e)
+                _updateUiState.value = UpdateUiState.Error(e.message ?: "检查更新失败")
+            }
+        }
     }
 
     fun resetUpdateState() {
@@ -120,13 +140,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearLogs() {
-        com.shizq.bika.core.common.BikaLog.clearLogs()
+        BikaLog.clearLogs()
     }
 
     suspend fun getLogsContent(): String =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        withContext(Dispatchers.IO) {
             try {
-                val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()
+                val logFile = BikaLog.getLogFile()
                 if (logFile != null && logFile.exists()) {
                     val lines = logFile.readLines()
                     if (lines.size > 2000) {
@@ -147,10 +167,9 @@ class SettingsViewModel @Inject constructor(
      * 在后台线程更新缓存大小，并更新 StateFlow
      */
     fun updateCacheSize() {
-        viewModelScope.launch(Dispatchers.IO) {
-            val size = imageLoader.diskCache?.size ?: 0L
-            val formattedSize = formatBytes(size)
-            cacheSize.value = formattedSize
+        viewModelScope.launch {
+            val size = imageCacheManager.diskCacheSize()
+            _cacheSize.value = formatBytes(size)
         }
     }
 
@@ -158,8 +177,8 @@ class SettingsViewModel @Inject constructor(
      * 在后台线程清理缓存，并在完成后刷新缓存大小
      */
     fun clearCache() {
-        viewModelScope.launch(Dispatchers.IO) {
-            imageLoader.diskCache?.clear()
+        viewModelScope.launch {
+            imageCacheManager.clear()
             updateCacheSize()
         }
     }
@@ -175,6 +194,10 @@ class SettingsViewModel @Inject constructor(
         if (mb < 1024) return "${DecimalFormat("#.##").format(mb)} MB"
         val gb = mb / 1024.0
         return "${DecimalFormat("#.##").format(gb)} GB"
+    }
+
+    companion object {
+        private const val TAG = "SettingsViewModel"
     }
 }
 

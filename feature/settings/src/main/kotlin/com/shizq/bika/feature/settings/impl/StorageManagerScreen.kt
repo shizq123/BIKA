@@ -47,7 +47,6 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import coil3.SingletonImageLoader
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -66,6 +65,8 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.text.DecimalFormat
 import javax.inject.Inject
+import kotlin.math.log10
+import kotlin.math.pow
 
 data class OfflineComicItem(
     val comicId: String,
@@ -428,11 +429,8 @@ fun OfflineComicRow(
 fun formatSize(bytes: Long): String {
     if (bytes <= 0) return "0.00 B"
     val units = arrayOf("B", "KB", "MB", "GB", "TB")
-    val digitGroups = (Math.log10(bytes.toDouble()) / Math.log10(1024.toDouble())).toInt()
+    val digitGroups = (log10(bytes.toDouble()) / log10(1024.toDouble())).toInt()
     return DecimalFormat("#,##0.00").format(
-        bytes / Math.pow(
-            1024.toDouble(),
-            digitGroups.toDouble()
-        )
+        bytes / 1024.toDouble().pow(digitGroups.toDouble())
     ) + " " + units[digitGroups]
 }

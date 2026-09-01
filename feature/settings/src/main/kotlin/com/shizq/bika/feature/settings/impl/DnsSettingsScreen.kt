@@ -64,9 +64,6 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
-import okhttp3.Request
 import javax.inject.Inject
 
 @Serializable
@@ -112,16 +109,6 @@ class DnsSettingsViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(DnsSettingsUiState())
     val uiState: StateFlow<DnsSettingsUiState> = _uiState.asStateFlow()
-
-    private val client = OkHttpClient.Builder()
-        .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-        .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-        .build()
-
-    private val json = Json {
-        ignoreUnknownKeys = true
-        coerceInputValues = true
-    }
 
     init {
         loadAndTest()
@@ -195,26 +182,7 @@ class DnsSettingsViewModel @Inject constructor(
         url: String,
         domain: String
     ): List<Triple<String, String, String>> = withContext(Dispatchers.IO) {
-        val request = Request.Builder()
-            .url(url)
-            .build()
-        try {
-            client.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@withContext emptyList()
-                val body = response.body.string()
-                val parsed = json.decodeFromString<DnsResolveResponse>(body)
-                val resultList = mutableListOf<Triple<String, String, String>>()
-                parsed.data?.lines?.forEach { (lineName, dnsLine) ->
-                    dnsLine.ips.forEach { ip ->
-                        resultList.add(Triple(ip, lineName, domain))
-                    }
-                }
-                resultList
-            }
-        } catch (e: Exception) {
-            com.shizq.bika.core.common.BikaLog.e("DnsSettings", "获取 DNS 配置失败", e)
             emptyList()
-        }
     }
 
     fun startLatencyTest() {
