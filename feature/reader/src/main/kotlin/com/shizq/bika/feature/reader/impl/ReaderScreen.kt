@@ -119,7 +119,6 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -
         chapterItems = chapterItems,
         onBackClick = onBackClick,
         dispatch = viewModel::dispatch,
-        persistProgressBlocking = { viewModel.saveProgress(it) },
     )
 }
 
@@ -132,7 +131,6 @@ private fun ReaderContent(
     chapterItems: LazyPagingItems<Chapter>,
     onBackClick: () -> Unit = {},
     dispatch: (ReaderAction) -> Unit = {},
-    persistProgressBlocking: (Int) -> Boolean = { false },
 ) {
     when (state) {
         is ReaderUiState.Initializing -> FullScreenLoading()
@@ -142,7 +140,6 @@ private fun ReaderContent(
             chapterItems = chapterItems,
             onBackClick = onBackClick,
             dispatch = dispatch,
-            persistProgressBlocking = persistProgressBlocking,
         )
     }
 }
@@ -155,7 +152,6 @@ private fun ReaderReadyContent(
     chapterItems: LazyPagingItems<Chapter>,
     onBackClick: () -> Unit,
     dispatch: (ReaderAction) -> Unit,
-    persistProgressBlocking: (Int) -> Boolean,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -172,12 +168,11 @@ private fun ReaderReadyContent(
         chapterOrder = chapterState.order,
     )
     val controller = readerContext.controller
-    // TODO: remove persistProgressBlocking
     val progressManager = rememberReadingProgressManager(
         controller = controller,
         imageList = pageItems,
         initialPage = chapterState.initialPage,
-        onPersist = persistProgressBlocking
+        onPersist = { dispatch(ReaderAction.PersistProgress(it)) },
     )
 
     // 监听进度恢复状态（用于调试和日志）

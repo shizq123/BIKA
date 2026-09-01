@@ -7,7 +7,6 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.freeletics.flowredux2.initializeWith
-import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.model.ChapterCatalog
 import com.shizq.bika.core.data.paging.ChapterMeta
@@ -36,15 +35,12 @@ import kotlinx.coroutines.flow.shareIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private const val TAG = "ReaderViewModel"
-
 @HiltViewModel(assistedFactory = ReaderViewModel.Factory::class)
 class ReaderViewModel @AssistedInject constructor(
     savedStateHandle: SavedStateHandle,
     private val chapterRepository: ChapterRepository,
     private val downloadRepository: DownloadRepository,
     private val downloadTaskRepository: DownloadTaskRepository,
-    private val readingProgressStore: ReadingProgressStore,
     readerStateMachine: ReaderStateMachine,
     @Assisted id: String,
     @Assisted order: Int,
@@ -158,35 +154,6 @@ class ReaderViewModel @AssistedInject constructor(
     fun dispatch(action: ReaderAction) {
         viewModelScope.launch {
             stateMachine.dispatch(action)
-        }
-    }
-
-    @Volatile
-    private var lastKnownPage = -1
-
-    /**
-     * 立即保存当前阅读进度（同步阻塞写库，返回时已落库）。
-     * 供返回、应用退到后台/被杀等关键时机调用。
-     * @return 是否保存成功
-     */
-    fun saveProgress(pageIndex: Int): Boolean {
-        lastKnownPage = pageIndex
-        val state = stateMachine.state.value
-        BikaLog.d(TAG, "saveProgress: pageIndex=$pageIndex 状态=${state::class.simpleName}")
-        if (state is ReaderUiState.Ready) {
-            return readingProgressStore.save(state.id, state.chapter.order, state.chapter.meta, pageIndex)
-        }
-        return false
-    }
-
-    override fun onCleared() {
-        // ViewModel 被销毁前做最后一次兜底保存（如进程被系统回收）
-        if (lastKnownPage >= 0) {
-            val state = stateMachine.state.value
-            BikaLog.d(TAG, "onCleared 兜底保存: lastKnownPage=$lastKnownPage 状态=${state::class.simpleName}")
-            if (state is ReaderUiState.Ready) {
-                readingProgressStore.save(state.id, state.chapter.order, state.chapter.meta, lastKnownPage)
-            }
         }
     }
 

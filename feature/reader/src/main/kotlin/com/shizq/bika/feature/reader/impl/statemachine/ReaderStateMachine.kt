@@ -22,7 +22,7 @@ class ReaderStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
-    private val progressSaver: ReadingProgressStore,
+    private val progressStore: ReadingProgressStore,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
     init {
         spec {
@@ -52,7 +52,7 @@ class ReaderStateMachine @Inject constructor(
                     // 天然保证顺序正确：不再依赖调用方额外 dispatch 一个“保存进度”的 action，
                     // 也不存在两个 action 并发执行导致进度写错章节的竞态。
                     // saveSuspend 内部处理 meta==null（totalImages=0 占位）。
-                    progressSaver.saveSuspend(
+                    progressStore.store(
                         snapshot.id,
                         previousChapter.order,
                         previousChapter.meta,
@@ -168,6 +168,14 @@ class ReaderStateMachine @Inject constructor(
                     mutate {
                         copy(uiControl = uiControl.copy(seekState = SeekState.Idle))
                     }
+                }
+                onActionEffect<ReaderAction.PersistProgress> {
+                    progressStore.store(
+                        snapshot.id,
+                        snapshot.chapter.order,
+                        snapshot.chapter.meta,
+                        it.page
+                    )
                 }
             }
         }
