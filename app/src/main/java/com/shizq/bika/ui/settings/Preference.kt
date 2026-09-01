@@ -62,7 +62,7 @@ fun Preference(
     onClick: (() -> Unit)? = null
 ) {
     ListItem(
-        { Text(title) },
+        content = { Text(title) },
         supportingContent = if (summary != null) {
             { Text(summary) }
         } else null,
@@ -82,7 +82,7 @@ fun SwitchPreference(
     onCheckedChange: (Boolean) -> Unit
 ) {
     ListItem(
-        { Text(title) },
+        content = { Text(title) },
         supportingContent = if (summary != null) {
             { Text(summary) }
         } else null,
@@ -123,7 +123,7 @@ fun <T> ListPreference(
     var showDialog by remember { mutableStateOf(false) }
 
     ListItem(
-        { Text(title) },
+        content = { Text(title) },
         supportingContent = { Text(optionToText(selectedValue)) },
         leadingContent = if (iconVector != null) {
             { Icon(imageVector = iconVector, contentDescription = null) }

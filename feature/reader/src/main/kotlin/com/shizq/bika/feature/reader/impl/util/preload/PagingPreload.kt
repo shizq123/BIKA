@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.FlowPreview::class)
+
 package com.shizq.bika.feature.reader.impl.util.preload
 
 import androidx.compose.runtime.Composable

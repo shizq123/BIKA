@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+
 package com.shizq.bika.core.network.plugin
 
 import com.shizq.bika.core.network.model.Box
