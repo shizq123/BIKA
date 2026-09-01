@@ -31,12 +31,15 @@ import com.shizq.bika.ui.rememberAppState
 import com.shizq.bika.util.isSystemInDarkTheme
 import dagger.Lazy
 import dagger.hilt.android.AndroidEntryPoint
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
+
+private val logger = KotlinLogging.logger("MainActivity")
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -59,7 +62,7 @@ class MainActivity : ComponentActivity() {
                 .collect { enabled ->
                     com.shizq.bika.core.common.BikaLog.init(applicationContext, enabled)
                     if (enabled) {
-                        com.shizq.bika.core.common.BikaLog.i("MainActivity", "Application launch: Logging system enabled.")
+                        logger.info { "Application launch: Logging system enabled." }
                     }
                 }
         }

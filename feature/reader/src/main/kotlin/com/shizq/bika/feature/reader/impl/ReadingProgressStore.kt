@@ -1,6 +1,6 @@
 package com.shizq.bika.feature.reader.impl
 
-import com.shizq.bika.core.common.BikaLog
+import io.github.oshai.kotlinlogging.KotlinLogging
 import com.shizq.bika.core.data.paging.ChapterMeta
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlin.time.Clock
+
+private val logger = KotlinLogging.logger("ReaderProgress")
 
 /**
  * 将阅读进度持久化到数据库。
@@ -42,7 +44,7 @@ class ReadingProgressStore @Inject constructor(
      */
     suspend fun saveSuspend(comicId: String, chapterOrder: Int, meta: ChapterMeta?, pageIndex: Int): Boolean {
         if (comicId.isEmpty()) {
-            BikaLog.w(TAG, "跳过保存: comicId 为空 章节=$chapterOrder 页=$pageIndex")
+            logger.warn { "跳过保存: comicId 为空 章节=$chapterOrder 页=$pageIndex" }
             return false
         }
         // meta 为 null 时（ChapterMetaLoaded 还未到达），用 totalImages=0 占位保存。
@@ -52,10 +54,10 @@ class ReadingProgressStore @Inject constructor(
             withContext(Dispatchers.IO) {
                 saveInternal(comicId, chapterOrder, effectiveMeta, pageIndex)
             }
-            BikaLog.d(TAG, "进度已落库: comic=$comicId 章节=$chapterOrder 页=$pageIndex/${effectiveMeta.totalImages}")
+            logger.debug { "进度已落库: comic=$comicId 章节=$chapterOrder 页=$pageIndex/${effectiveMeta.totalImages}" }
             true
         } catch (e: Exception) {
-            BikaLog.e(TAG, "进度落库失败: comic=$comicId 章节=$chapterOrder 页=$pageIndex", e)
+            logger.error(e) { "进度落库失败: comic=$comicId 章节=$chapterOrder 页=$pageIndex" }
             false
         }
     }
@@ -78,8 +80,8 @@ class ReadingProgressStore @Inject constructor(
             historyDao.upsertHistory(newRecord)
         }
 
-        // 如果翻到最后一页或最后2页，判定为看完了本章
-        val isFinished = meta.totalImages > 0 && pageIndex >= meta.totalImages - 2
+        // 如果翻到最后 3 页（即 pageIndex >= totalImages - 3 或 totalImages <= 3 时），判定为看完了本章
+        val isFinished = meta.totalImages > 0 && pageIndex >= (meta.totalImages - 3).coerceAtLeast(0)
 
         val chapterProgress = ChapterProgressEntity(
             historyId = comicId,

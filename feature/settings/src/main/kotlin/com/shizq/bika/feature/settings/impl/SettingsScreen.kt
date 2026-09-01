@@ -461,10 +461,15 @@ fun SettingsContent(
                     }
 
                     item {
+                        val versionName = remember(context) {
+                            runCatching {
+                                context.packageManager.getPackageInfo(context.packageName, 0).versionName ?: "1.0.0"
+                            }.getOrDefault("1.0.0")
+                        }
                         PreferenceGroup(title = { Text("应用") }) {
                             Preference(
                                 title = "检查更新",
-                                summary = "当前版本: ${com.shizq.bika.BuildConfig.VERSION_NAME}",
+                                summary = "当前版本: $versionName",
                                 iconVector = Icons.Default.Refresh,
                                 onClick = onCheckForUpdates
                             )

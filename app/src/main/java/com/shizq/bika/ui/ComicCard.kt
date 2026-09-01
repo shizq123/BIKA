@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -29,10 +28,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.request.ImageRequest
+import com.shizq.bika.core.data.model.isCompleted
 import coil3.request.crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -69,8 +68,8 @@ fun ComicCard(
             ),
     ) {
         Row(
+            // 不用 IntrinsicSize.Max：它会强制列表项每帧多一轮测量，滚动时拖慢布局
             modifier = Modifier
-                .height(androidx.compose.foundation.layout.IntrinsicSize.Max)
                 .defaultMinSize(minHeight = 135.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -109,18 +108,16 @@ fun ComicCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 16.dp)
-                    .fillMaxHeight(),
+                    .padding(end = 16.dp),
                 verticalArrangement = Arrangement.Center
             ) {
                 // 标题和作者
                 Column(modifier = Modifier.weight(1f)) {
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // 状态徽章墙 (标题上方)
-                    FlowRow(
+                    // 状态徽章墙 (标题上方)：列表项内用 Row 避免 FlowRow 的多轮测量
+                    Row(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.padding(bottom = 6.dp)
                     ) {
                         val lastProgress = detailedReadingHistory.lastReadChapterProgress
@@ -128,7 +125,7 @@ fun ComicCard(
                             val epsCount = detailedReadingHistory.history.epsCount
                             if (epsCount > lastProgress.chapterNumber) {
                                 Badge(text = "有更新", containerColor = androidx.compose.ui.graphics.Color(0xFFFF9800))
-                            } else if (lastProgress.chapterNumber >= epsCount && lastProgress.currentPage >= lastProgress.pageCount && lastProgress.pageCount > 0) {
+                            } else if (lastProgress.chapterNumber >= epsCount && lastProgress.isCompleted) {
                                 Badge(text = "已读完", containerColor = androidx.compose.ui.graphics.Color(0xFF4CAF50))
                             } else {
                                 Badge(text = "已阅读", containerColor = MaterialTheme.colorScheme.secondary)
@@ -167,13 +164,13 @@ fun ComicCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
-                    // 药丸式分类 Tag 标签
+                    // 药丸式分类 Tag 标签（最多 3 个 + 溢出计数，Row 布局保持轻量）
                     val categories = detailedReadingHistory.history.categories
                     if (categories.isNotEmpty()) {
                         Spacer(modifier = Modifier.height(6.dp))
-                        FlowRow(
+                        Row(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
                             categories.take(3).forEach { category ->
                                 Text(
@@ -184,6 +181,14 @@ fun ComicCard(
                                         .clip(CircleShape)
                                         .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f))
                                         .padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                            if (categories.size > 3) {
+                                Text(
+                                    text = "+${categories.size - 3}",
+                                    fontSize = 10.sp,
+                                    color = MaterialTheme.colorScheme.outline,
+                                    modifier = Modifier.padding(start = 2.dp)
                                 )
                             }
                         }

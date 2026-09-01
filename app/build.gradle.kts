@@ -51,9 +51,18 @@ android {
     buildFeatures {
         buildConfig = true
     }
+
     packaging {
         resources {
-            merges += "META-INF/DEPENDENCIES"
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/META-INF/DEPENDENCIES"
+            excludes += "/META-INF/LICENSE"
+            excludes += "/META-INF/LICENSE.txt"
+            excludes += "/META-INF/license.txt"
+            excludes += "/META-INF/NOTICE"
+            excludes += "/META-INF/NOTICE.txt"
+            excludes += "/META-INF/notice.txt"
+            excludes += "/META-INF/ASL2.0"
         }
     }
 }
@@ -75,6 +84,7 @@ dependencies {
     implementation(projects.sync.work)
 
     implementation(projects.feature.reader)
+    implementation(projects.feature.settings)
 
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.compose.foundation.layout)
@@ -116,6 +126,10 @@ dependencies {
     // 测试框架依赖：仅测试作用域，避免打进 release APK
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit"))
+
+    // Compose UI 交互测试（instrumented）
+    androidTestImplementation(libs.androidx.compose.ui.test)
+    debugImplementation(libs.androidx.compose.ui.testManifest)
 }
 
 baselineProfile {

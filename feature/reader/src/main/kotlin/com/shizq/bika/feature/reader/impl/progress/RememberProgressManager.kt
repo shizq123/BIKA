@@ -9,11 +9,13 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.compose.LazyPagingItems
-import com.shizq.bika.core.common.BikaLog
+import io.github.oshai.kotlinlogging.KotlinLogging
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.feature.reader.impl.layout.ReaderController
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+
+private val logger = KotlinLogging.logger("ReadingProgress")
 
 /**
  * 在 Compose 中创建并管理 ReadingProgressManager
@@ -41,7 +43,7 @@ fun rememberReadingProgressManager(
     val scope = rememberCoroutineScope()
 
     val manager = remember(initialPage) {
-        BikaLog.d("ReadingProgress", "创建 ProgressManager: initialPage=$initialPage")
+        logger.debug { "创建 ProgressManager: initialPage=$initialPage" }
         ReadingProgressManager(
             restoreStrategy = RetryRestoreStrategy(),
             config = config
@@ -54,16 +56,16 @@ fun rememberReadingProgressManager(
 
     // 1. 恢复进度（每次 initialPage 变化时触发）
     LaunchedEffect(initialPage) {
-        BikaLog.d("ReadingProgress", "开始恢复进度: target=$initialPage")
+        logger.debug { "开始恢复进度: target=$initialPage" }
         when (val result = manager.restore(initialPage, dataSource, controller)) {
             is RestoreResult.Success -> {
-                BikaLog.d("ReadingProgress", "恢复成功: page=${result.actualPage}, attempts=${result.attempts}")
+                logger.debug { "恢复成功: page=${result.actualPage}, attempts=${result.attempts}" }
             }
             is RestoreResult.Timeout -> {
-                BikaLog.w("ReadingProgress", "恢复超时: target=${result.targetPage}, fallback=${result.fallbackPage}")
+                logger.warn { "恢复超时: target=${result.targetPage}, fallback=${result.fallbackPage}" }
             }
             is RestoreResult.Failure -> {
-                BikaLog.e("ReadingProgress", "恢复失败: ${result.reason}")
+                logger.error { "恢复失败: ${result.reason}" }
             }
         }
     }
@@ -84,7 +86,7 @@ fun rememberReadingProgressManager(
             if (event == Lifecycle.Event.ON_STOP) {
                 scope.launch {
                     val currentPage = controller.visibleItemIndex.first()
-                    BikaLog.d("ReadingProgress", "ON_STOP: 立即保存 page=$currentPage")
+                    logger.debug { "ON_STOP: 立即保存 page=$currentPage" }
                     manager.persistNow(currentPage)
                 }
             }
@@ -95,7 +97,7 @@ fun rememberReadingProgressManager(
             lifecycleOwner.lifecycle.removeObserver(observer)
             scope.launch {
                 val currentPage = controller.visibleItemIndex.first()
-                BikaLog.d("ReadingProgress", "onDispose: 最终保存 page=$currentPage")
+                logger.debug { "onDispose: 最终保存 page=$currentPage" }
                 manager.persistNow(currentPage)
             }
         }

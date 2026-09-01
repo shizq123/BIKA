@@ -7,7 +7,7 @@ import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.freeletics.flowredux2.initializeWith
-import com.shizq.bika.core.common.BikaLog
+import io.github.oshai.kotlinlogging.KotlinLogging
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.model.ChapterCatalog
 import com.shizq.bika.core.data.paging.ChapterMeta
@@ -37,6 +37,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 private const val TAG = "ReaderViewModel"
+private val logger = KotlinLogging.logger(TAG)
 
 @HiltViewModel(assistedFactory = ReaderViewModel.Factory::class)
 class ReaderViewModel @AssistedInject constructor(
@@ -172,7 +173,7 @@ class ReaderViewModel @AssistedInject constructor(
     fun saveProgress(pageIndex: Int): Boolean {
         lastKnownPage = pageIndex
         val state = stateMachine.state.value
-        BikaLog.d(TAG, "saveProgress: pageIndex=$pageIndex 状态=${state::class.simpleName}")
+        logger.debug { "saveProgress: pageIndex=$pageIndex 状态=${state::class.simpleName}" }
         if (state is ReaderUiState.Ready) {
             return readingProgressStore.save(state.id, state.chapter.order, state.chapter.meta, pageIndex)
         }
@@ -183,7 +184,7 @@ class ReaderViewModel @AssistedInject constructor(
         // ViewModel 被销毁前做最后一次兜底保存（如进程被系统回收）
         if (lastKnownPage >= 0) {
             val state = stateMachine.state.value
-            BikaLog.d(TAG, "onCleared 兜底保存: lastKnownPage=$lastKnownPage 状态=${state::class.simpleName}")
+            logger.debug { "onCleared 兜底保存: lastKnownPage=$lastKnownPage 状态=${state::class.simpleName}" }
             if (state is ReaderUiState.Ready) {
                 readingProgressStore.save(state.id, state.chapter.order, state.chapter.meta, lastKnownPage)
             }
