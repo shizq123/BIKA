@@ -66,7 +66,7 @@ class DownloadListViewModel @Inject constructor(
                     .groupBy { it.historyId }
                     .mapValues { (_, progressList) ->
                         val finished = progressList.count { it.isCompleted }
-                        val reading = progressList.count { !it.isCompleted }
+                        val reading = progressList.count { it.pageCount > 0 && !it.isCompleted }
                         ComicReadSummary(
                             finishedCount = finished,
                             readingCount = reading,
