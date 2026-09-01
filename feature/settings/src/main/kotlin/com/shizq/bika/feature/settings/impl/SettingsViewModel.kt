@@ -7,9 +7,11 @@ import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.CheckAppUpdateUseCase
+import com.shizq.bika.core.message.MessageReporter
 import com.shizq.bika.core.model.theme.DarkThemeConfig
 import com.shizq.bika.core.network.image.ImageCacheManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,6 +24,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -30,6 +34,7 @@ class SettingsViewModel @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource,
     private val checkAppUpdateUseCase: CheckAppUpdateUseCase,
     private val imageCacheManager: ImageCacheManager,
+    private val messageReporter: MessageReporter,
 ) : ViewModel() {
     val settingsUiState = userPreferencesDataSource.userData.map {
         SettingsUiState.Success(
@@ -85,6 +90,7 @@ class SettingsViewModel @Inject constructor(
         _updateUiState.value = UpdateUiState.Idle
     }
 
+    // 使用 ApplicationScope：确保退出登录时即使页面已销毁，清除 token 的操作也能完成
     fun logout() {
         scope.launch {
             userCredentialsDataSource.setToken(null)
@@ -159,6 +165,7 @@ class SettingsViewModel @Inject constructor(
                     ""
                 }
             } catch (e: Exception) {
+                BikaLog.e(TAG, "读取日志失败", e)
                 "读取日志失败: ${e.localizedMessage}"
             }
         }
@@ -188,16 +195,18 @@ class SettingsViewModel @Inject constructor(
      */
     private fun formatBytes(bytes: Long): String {
         if (bytes < 1024) return "$bytes B"
+        val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US))
         val kb = bytes / 1024.0
-        if (kb < 1024) return "${DecimalFormat("#.##").format(kb)} KB"
+        if (kb < 1024) return "${decimalFormat.format(kb)} KB"
         val mb = kb / 1024.0
-        if (mb < 1024) return "${DecimalFormat("#.##").format(mb)} MB"
+        if (mb < 1024) return "${decimalFormat.format(mb)} MB"
         val gb = mb / 1024.0
-        return "${DecimalFormat("#.##").format(gb)} GB"
+        return "${decimalFormat.format(gb)} GB"
     }
 
     companion object {
         private const val TAG = "SettingsViewModel"
+        private val logger = KotlinLogging.logger { "SettingsViewModel" }
     }
 }
 

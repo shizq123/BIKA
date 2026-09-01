@@ -1,7 +1,11 @@
 package com.shizq.bika.feature.settings.impl
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -51,13 +55,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.model.theme.DarkThemeConfig
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import kotlinx.coroutines.launch
+
+/** 统一的 Toast 展示入口，避免各处重复拼装 [Toast.makeText]。 */
+private fun showToast(context: Context, message: String, duration: Int = Toast.LENGTH_SHORT) {
+    Toast.makeText(context, message, duration).show()
+}
 
 @Composable
 fun SettingsScreen(
@@ -78,19 +90,11 @@ fun SettingsScreen(
 
     LaunchedEffect(updateUiState) {
         if (updateUiState is UpdateUiState.NoUpdate) {
-            android.widget.Toast.makeText(
-                context,
-                "当前已是最新版本",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
+            showToast(context, "当前已是最新版本")
             viewModel.resetUpdateState()
         } else if (updateUiState is UpdateUiState.Error) {
             val errorState = updateUiState as UpdateUiState.Error
-            android.widget.Toast.makeText(
-                context,
-                "检查更新失败: ${errorState.message}",
-                android.widget.Toast.LENGTH_LONG
-            ).show()
+            showToast(context, "检查更新失败: ${errorState.message}", Toast.LENGTH_LONG)
             viewModel.resetUpdateState()
         }
     }
@@ -153,23 +157,15 @@ fun SettingsScreen(
             logs = logsContent,
             onCopy = {
                 val clipboard =
-                    context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("logs", logsContent)
+                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("logs", logsContent)
                 clipboard.setPrimaryClip(clip)
-                android.widget.Toast.makeText(
-                    context,
-                    "已复制到剪贴板",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                showToast(context, "已复制到剪贴板")
             },
             onClear = {
                 viewModel.clearLogs()
                 logsContent = ""
-                android.widget.Toast.makeText(
-                    context,
-                    "日志已清空",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                showToast(context, "日志已清空")
             },
             onDismiss = { showLogsDialog = false }
         )
@@ -194,10 +190,10 @@ fun SettingsScreen(
             }
         },
         onExportLogs = {
-            val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()
+            val logFile = BikaLog.getLogFile()
             if (logFile != null && logFile.exists() && logFile.length() > 0) {
                 try {
-                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                    val uri = FileProvider.getUriForFile(
                         context,
                         "${context.packageName}.fileprovider",
                         logFile
@@ -210,18 +206,11 @@ fun SettingsScreen(
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "导出日志"))
                 } catch (e: Exception) {
-                    android.widget.Toast.makeText(
-                        context,
-                        "导出失败: ${e.localizedMessage}",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+                    BikaLog.e("SettingsScreen", "导出日志失败", e)
+                    showToast(context, "导出失败: ${e.localizedMessage}")
                 }
             } else {
-                android.widget.Toast.makeText(
-                    context,
-                    "日志为空，请先开启日志开关并操作产生日志后再来查看",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                showToast(context, "日志为空，请先开启日志开关并操作产生日志后再来查看")
             }
         },
         onLogoutClicked = {
@@ -481,7 +470,7 @@ fun SettingsContent(
                                 onClick = {
                                     val intent = Intent(
                                         Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        "package:com.shizq.bika".toUri()
+                                        "package:${context.packageName}".toUri()
                                     )
                                     context.startActivity(intent)
                                 }
@@ -541,7 +530,7 @@ fun LogViewerDialog(
                     Text(
                         text = logs.ifBlank { "暂无本地日志，请开启日志开关并操作产生日志后再来查看。" },
                         style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
