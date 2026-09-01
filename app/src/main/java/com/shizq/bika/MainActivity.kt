@@ -1,6 +1,7 @@
 package com.shizq.bika
 
 import android.os.Bundle
+import android.view.WindowManager
 import androidx.activity.ComponentActivity
 import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
@@ -79,9 +80,9 @@ class MainActivity : ComponentActivity() {
                 .distinctUntilChanged()
                 .collect { enabled ->
                     if (enabled) {
-                        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                        window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
                     } else {
-                        window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_SECURE)
+                        window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
                     }
                 }
         }
@@ -150,13 +151,13 @@ class MainActivity : ComponentActivity() {
                         }
 
                         is Success -> {
-                            val appState = rememberAppState(state.startDestination)
+                            val appState = rememberAppState(state.startDestination, messageSource)
                             val userData by userPreferencesDataSource.userData.collectAsStateWithLifecycle(
                                 null
                             )
                             val usePredictiveBack = userData?.app?.predictiveBackEnabled ?: false
 
-                            BikaApp(appState, usePredictiveBack = usePredictiveBack, messageSource)
+                            BikaApp(appState, usePredictiveBack = usePredictiveBack)
                         }
                     }
                 }
