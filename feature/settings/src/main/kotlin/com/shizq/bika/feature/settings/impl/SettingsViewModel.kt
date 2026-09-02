@@ -6,7 +6,6 @@ import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.core.domain.CheckAppUpdateUseCase
 import com.shizq.bika.core.message.MessageReporter
 import com.shizq.bika.core.model.theme.DarkThemeConfig
 import com.shizq.bika.core.network.image.ImageCacheManager
@@ -32,7 +31,6 @@ class SettingsViewModel @Inject constructor(
     @ApplicationScope private val scope: CoroutineScope,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val userCredentialsDataSource: UserCredentialsDataSource,
-    private val checkAppUpdateUseCase: CheckAppUpdateUseCase,
     private val imageCacheManager: ImageCacheManager,
     private val messageReporter: MessageReporter,
 ) : ViewModel() {
@@ -56,38 +54,8 @@ class SettingsViewModel @Inject constructor(
     private val _cacheSize = MutableStateFlow("计算中...")
     val cacheSize: StateFlow<String> = _cacheSize.asStateFlow()
 
-    private val _updateUiState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
-    val updateUiState: StateFlow<UpdateUiState> = _updateUiState.asStateFlow()
-
     init {
         updateCacheSize()
-    }
-
-    fun checkForUpdates() {
-        if (_updateUiState.value is UpdateUiState.Checking) return
-        _updateUiState.value = UpdateUiState.Checking
-
-        viewModelScope.launch {
-            try {
-                val release = checkAppUpdateUseCase()
-                _updateUiState.value = if (release != null) {
-                    UpdateUiState.HasUpdate(
-                        version = release.versionName,
-                        body = release.changelog,
-                        url = release.downloadUrl
-                    )
-                } else {
-                    UpdateUiState.NoUpdate
-                }
-            } catch (e: Exception) {
-                BikaLog.e(TAG, "检查更新失败", e)
-                _updateUiState.value = UpdateUiState.Error(e.message ?: "检查更新失败")
-            }
-        }
-    }
-
-    fun resetUpdateState() {
-        _updateUiState.value = UpdateUiState.Idle
     }
 
     // 使用 ApplicationScope：确保退出登录时即使页面已销毁，清除 token 的操作也能完成
@@ -96,12 +64,12 @@ class SettingsViewModel @Inject constructor(
             userCredentialsDataSource.setToken(null)
         }
     }
+
     fun updateDarkThemeConfig(config: DarkThemeConfig) {
         viewModelScope.launch {
             userPreferencesDataSource.setDarkThemeConfig(config)
         }
     }
-
 
     fun updateAutoCheckIn(enabled: Boolean) {
         viewModelScope.launch {
@@ -190,20 +158,6 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    /**
-     * 将字节数格式化为可读的字符串 (KB, MB, GB)
-     */
-    private fun formatBytes(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US))
-        val kb = bytes / 1024.0
-        if (kb < 1024) return "${decimalFormat.format(kb)} KB"
-        val mb = kb / 1024.0
-        if (mb < 1024) return "${decimalFormat.format(mb)} MB"
-        val gb = mb / 1024.0
-        return "${decimalFormat.format(gb)} GB"
-    }
-
     companion object {
         private const val TAG = "SettingsViewModel"
         private val logger = KotlinLogging.logger { "SettingsViewModel" }
@@ -224,10 +178,18 @@ sealed interface SettingsUiState {
     ) : SettingsUiState
 }
 
-sealed interface UpdateUiState {
-    data object Idle : UpdateUiState
-    data object Checking : UpdateUiState
-    data class HasUpdate(val version: String, val body: String, val url: String) : UpdateUiState
-    data object NoUpdate : UpdateUiState
-    data class Error(val message: String) : UpdateUiState
+/**
+ * 将字节数格式化为可读的字符串 (B, KB, MB, GB)。
+ *
+ * 提取为顶层纯函数以便单独进行单元测试，不依赖 [SettingsViewModel] 的构造参数。
+ */
+internal fun formatBytes(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US))
+    val kb = bytes / 1024.0
+    if (kb < 1024) return "${decimalFormat.format(kb)} KB"
+    val mb = kb / 1024.0
+    if (mb < 1024) return "${decimalFormat.format(mb)} MB"
+    val gb = mb / 1024.0
+    return "${decimalFormat.format(gb)} GB"
 }

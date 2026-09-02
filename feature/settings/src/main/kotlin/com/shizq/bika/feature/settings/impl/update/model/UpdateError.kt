@@ -1,4 +1,4 @@
-package com.shizq.bika.feature.update.model
+package com.shizq.bika.feature.settings.impl.update.model
 
 sealed interface UpdateError {
     data object NetworkUnavailable : UpdateError

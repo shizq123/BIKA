@@ -1,4 +1,4 @@
-package com.shizq.bika.feature.update.platform
+package com.shizq.bika.feature.settings.impl.update.platform
 
 import java.io.File
 

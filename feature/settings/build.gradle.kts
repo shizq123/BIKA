@@ -10,6 +10,6 @@ android {
 dependencies {
     implementation(projects.core.domain)
     implementation(projects.core.download)
-    // TODO: remove
-    implementation(libs.coil.compose)
+
+    implementation(libs.flowredux)
 }
