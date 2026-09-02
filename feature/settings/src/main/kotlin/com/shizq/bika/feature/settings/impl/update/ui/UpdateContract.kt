@@ -71,10 +71,6 @@ sealed interface UpdateUiEffect {
     data class OpenUnknownAppSourcesSetting(
         val apkPath: String,
     ) : UpdateUiEffect
-
-    data class Snackbar(
-        val message: String,
-    ) : UpdateUiEffect
 }
 
 enum class UpdateCheckSource {

@@ -79,10 +79,6 @@ fun UpdateEffectHandler(
                         )
                     }
                 }
-
-                is UpdateUiEffect.Snackbar -> {
-                    // 如果你项目里有 SnackbarHost，可在这里接入
-                }
             }
         }
     }
