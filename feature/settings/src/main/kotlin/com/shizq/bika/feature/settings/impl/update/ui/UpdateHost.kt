@@ -23,8 +23,6 @@ fun UpdateHost(
         }
     }
 
-    // NoUpdate(Manual) 的用户反馈已迁移至 UpdateViewModel，通过 MessageReporter 走统一的 Snackbar 通道。
-
     UpdateEffectHandler(
         effects = viewModel.effects,
         onError = { message ->
