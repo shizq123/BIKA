@@ -80,10 +80,6 @@ fun UpdateEffectHandler(
                     }
                 }
 
-                is UpdateUiEffect.Toast -> {
-                    // 如果你项目里有统一 Toast/Snackbar，可在这里接入
-                }
-
                 is UpdateUiEffect.Snackbar -> {
                     // 如果你项目里有 SnackbarHost，可在这里接入
                 }

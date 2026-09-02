@@ -1,10 +1,8 @@
 package com.shizq.bika.feature.settings.impl.update.ui
 
-import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 
@@ -14,7 +12,6 @@ fun UpdateHost(
     viewModel: UpdateViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val context = LocalContext.current
 
     if (autoCheckOnLaunch) {
         LaunchedEffect(Unit) {
@@ -26,14 +23,7 @@ fun UpdateHost(
         }
     }
 
-    // 手动检查（用户主动点击"检查更新"）时，NoUpdate 需要明确反馈，Auto 静默检查则不打断用户
-    LaunchedEffect(state) {
-        val currentState = state
-        if (currentState is UpdateUiState.NoUpdate && currentState.source == UpdateCheckSource.Manual) {
-            Toast.makeText(context, "当前已是最新版本", Toast.LENGTH_SHORT).show()
-            viewModel.dispatch(UpdateAction.Reset)
-        }
-    }
+    // NoUpdate(Manual) 的用户反馈已迁移至 UpdateViewModel，通过 MessageReporter 走统一的 Snackbar 通道。
 
     UpdateEffectHandler(
         effects = viewModel.effects,
