@@ -1,6 +1,7 @@
 package com.shizq.bika.core.network
 
 import com.shizq.bika.core.model.SortOrder
+import com.shizq.bika.core.network.auth.SkipSessionExpiry
 import com.shizq.bika.core.network.model.ActionData
 import com.shizq.bika.core.network.model.ChapterPagesData
 import com.shizq.bika.core.network.model.CollectionsData
@@ -69,10 +70,13 @@ class BikaDataSource @Inject constructor(
             // 优先 HTTPS（防篡改）；服务器不支持时回退明文通道
             client.get("https://$BOOTSTRAP_HOST/init") {
                 attributes.put(ExpectRawResponse, Unit)
+                // 引导接口是匿名的，其 401 与用户会话无关
+                attributes.put(SkipSessionExpiry, Unit)
             }.body()
         } catch (_: Exception) {
             client.get("http://$BOOTSTRAP_HOST/init") {
                 attributes.put(ExpectRawResponse, Unit)
+                attributes.put(SkipSessionExpiry, Unit)
             }.body()
         }
     }
@@ -83,6 +87,9 @@ class BikaDataSource @Inject constructor(
         return try {
             val response = client.post("auth/sign-in") {
                 attributes.put(ExpectRawResponse, Unit)
+                // 登录接口的 401 表示"本次账号密码不对"，是登录表单的业务错误，
+                // 不能触发会话终止——此时本就没有会话可终止
+                attributes.put(SkipSessionExpiry, Unit)
                 val jsonBody = buildJsonObject {
                     put("email", JsonPrimitive(username))
                     put("password", JsonPrimitive(password))

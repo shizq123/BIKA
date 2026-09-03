@@ -2,13 +2,16 @@
 
 package com.shizq.bika.ui.signin
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import com.freeletics.flowredux2.ChangeableState
 import com.freeletics.flowredux2.ChangedState
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.auth.SessionManager
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
@@ -17,6 +20,7 @@ import kotlin.coroutines.cancellation.CancellationException
 class AuthenticationStateMachineFactory(
     private val api: BikaDataSource,
     private val userCredentialsDataSource: UserCredentialsDataSource,
+    private val sessionManager: SessionManager,
     private val username: String,
     private val password: String,
     private val rememberPassword: Boolean
@@ -39,9 +43,16 @@ class AuthenticationStateMachineFactory(
             val loginResult = api.login(username, password)
 
             if (!loginResult.token.isNullOrEmpty()) {
-                userCredentialsDataSource.setToken(loginResult.token)
-                userCredentialsDataSource.setUsername(username)
-                userCredentialsDataSource.setPassword(if (rememberPassword) password else null)
+                // 三次写入用 NonCancellable 保护：登录成功后用户往往立刻被导航走，
+                // 状态机随之取消。若在 setToken 之后、setUsername 之前被打断，
+                // 会留下"已登录但用户名缺失"的半截状态。
+                withContext(NonCancellable) {
+                    userCredentialsDataSource.setToken(loginResult.token)
+                    userCredentialsDataSource.setUsername(username)
+                    userCredentialsDataSource.setPassword(if (rememberPassword) password else null)
+                }
+                // 重置会话终止闸门，使本次会话再次过期时仍能被处理
+                sessionManager.onAuthenticated()
                 override { AuthState.Success }
             } else {
                 val errorMsg = when (loginResult.message) {
