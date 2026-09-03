@@ -31,10 +31,12 @@ enum class SessionExpiryReason {
  *
  * 终止动作只清 token，不清用户名/密码：
  * - 清 token 会让 [UserCredentialsDataSource.userData] 的 token 变空，
- *   MainActivityViewModel 据此把 startDestination 切到登录页，
+ *   MainActivityViewModel 据此把 isLoggedIn 翻成 false，根节点切回认证图，
  *   路由跳转因此是数据驱动的，不需要额外的导航事件。
  * - 保留用户名/密码使登录页仍能预填，减少重新登录的输入成本。
- *   显式登出应另行清除全部凭据。
+ *
+ * 用户主动登出走 `MainActivityViewModel.logout()`，语义与此处一致（只清
+ * token），区别只是不提示「登录已过期」。
  */
 @Singleton
 class SessionManager @Inject constructor(

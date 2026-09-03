@@ -151,13 +151,18 @@ class MainActivity : ComponentActivity() {
                         }
 
                         is Success -> {
-                            val appState = rememberAppState(state.startDestination, messageSource)
+                            val appState = rememberAppState(messageSource)
                             val userData by userPreferencesDataSource.userData.collectAsStateWithLifecycle(
                                 null
                             )
                             val usePredictiveBack = userData?.app?.predictiveBackEnabled ?: false
 
-                            BikaApp(appState, usePredictiveBack = usePredictiveBack)
+                            BikaApp(
+                                appState = appState,
+                                isLoggedIn = state.isLoggedIn,
+                                onLogout = viewModel::logout,
+                                usePredictiveBack = usePredictiveBack,
+                            )
                         }
                     }
                 }

@@ -6,11 +6,9 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.runtime.remember
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
@@ -20,7 +18,6 @@ import com.shizq.bika.feature.settings.impl.BlockedTagsScreen
 import com.shizq.bika.feature.settings.impl.DnsSettingsScreen
 import com.shizq.bika.feature.settings.impl.SettingsScreen
 import com.shizq.bika.feature.settings.impl.StorageManagerScreen
-import com.shizq.bika.ui.LocalUseBackAnimation
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
@@ -36,53 +33,16 @@ import com.shizq.bika.ui.search.SearchScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 
-fun EntryProviderScope<NavKey>.rootSection(
-    navigator: Navigator,
-    useAnimation: Boolean = true
-) {
-    entry<AuthenticationRoute> {
-        val useAnim = LocalUseBackAnimation.current
-        NavDisplay(
-            backStack = navigator.state.authenticationBackStack,
-            entryProvider = entryProvider {
-                authenticationSection(
-                    navigationToDashboard = { navigator.navigate(ConnectedRoute) },
-                    navigateToRegister = {
-                        navigator.navigate(AuthenticationRoute.RegisterRoute)
-                    },
-                    onBackClick = navigator::goBack,
-                    useAnimation = useAnim
-                )
-            }
-        )
-    }
-
-    entry<ConnectedRoute> {
-        val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
-        val useAnim = LocalUseBackAnimation.current
-        NavDisplay(
-            entries = navigator.state.toEntries(
-                entryProvider = entryProvider {
-                    featureSection(navigator, useAnimation = useAnim)
-                }
-            ),
-            onBack = navigator::goBack,
-            sceneStrategies = listOf(dialogStrategy)
-        )
-    }
-}
-
 fun EntryProviderScope<NavKey>.authenticationSection(
-    navigationToDashboard: () -> Unit,
     navigateToRegister: () -> Unit,
     onBackClick: () -> Unit,
     useAnimation: Boolean = true
 ) {
     entry<AuthenticationRoute.LoginRoute> {
         LoginScreen(
-            onNavigateToDashboard = navigationToDashboard,
             onNavigateToSignUp = navigateToRegister,
-            onNavigateToForgotPassword = {}
+            onNavigateToForgotPassword = {},
+            onNavigateToDashboard = {}
         )
     }
     entry<AuthenticationRoute.RegisterRoute>(
@@ -133,9 +93,10 @@ private fun slideTransitionMetadata(useAnimation: Boolean = true) = metadata {
 
 fun EntryProviderScope<NavKey>.featureSection(
     navigator: Navigator,
+    onLogout: () -> Unit,
     useAnimation: Boolean = true
 ) {
-    fun slideTransitionMetadata() = com.shizq.bika.navigation.slideTransitionMetadata(useAnimation)
+    fun slideTransitionMetadata() = slideTransitionMetadata(useAnimation)
 
     entry<ConnectedRoute.DashboardRoute> {
         DashboardScreen(
@@ -200,7 +161,7 @@ fun EntryProviderScope<NavKey>.featureSection(
     }
     entry<ConnectedRoute.MineCommentRoute>(
         metadata = slideTransitionMetadata()
-    ) { key ->
+    ) {
         MineCommentScreen(
             onCardClick = navigator::navigateToUnitedDetail,
             onBackClick = navigator::goBack
@@ -234,7 +195,7 @@ fun EntryProviderScope<NavKey>.featureSection(
         metadata = slideTransitionMetadata()
     ) {
         SettingsScreen(
-            navigationToLogin = { navigator.navigate(AuthenticationRoute) },
+            navigationToLogin = onLogout,
             navigationToStorageManager = { navigator.navigate(ConnectedRoute.StorageManagerRoute) },
             navigationToDnsSettings = { navigator.navigate(ConnectedRoute.DnsSettingsRoute) },
             navigationToBlockedTags = { navigator.navigate(ConnectedRoute.BlockedTagsRoute) },
