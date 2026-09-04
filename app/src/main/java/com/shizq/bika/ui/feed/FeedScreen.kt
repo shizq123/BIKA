@@ -83,7 +83,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
 import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
@@ -91,9 +90,11 @@ import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.ui.ComicCard
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
+import com.shizq.bika.domain.filter.FilterGroup
+import com.shizq.bika.domain.filter.FilterOption
+import com.shizq.bika.domain.filter.FilterSelections
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.tag.FilterChip
-import com.shizq.bika.ui.tag.FilterGroup
 import com.shizq.bika.ui.tag.FilterState
 import com.shizq.bika.ui.tag.rememberFilterState
 import kotlinx.coroutines.launch
@@ -250,8 +251,8 @@ private fun FeedContent(
     onSortOrderChanged: (SortOrder) -> Unit,
     onComicClick: (comicId: String) -> Unit,
     onBackClick: () -> Unit,
-    filterSelections: Map<FilterGroup, List<String>>,
-    onFilterChanged: (group: FilterGroup, value: String) -> Unit,
+    filterSelections: FilterSelections,
+    onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
     excludeTopicsGlobal: Boolean,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
     currentPage: Int,
@@ -449,7 +450,7 @@ private fun FeedContent(
 @Composable
 private fun FilterRow(
     filterState: FilterState,
-    onFilterChanged: (group: FilterGroup, value: String) -> Unit,
+    onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
     totalCount: Int,
     currentPage: Int,
     totalPages: Int,
@@ -466,11 +467,7 @@ private fun FilterRow(
         items(filterState.chips) { chipState ->
             FilterChip(
                 state = chipState,
-                onSelectionChanged = { value ->
-                    chipState.kind?.let { group ->
-                        onFilterChanged(group, value)
-                    }
-                },
+                onSelectionChanged = { option -> onFilterChanged(chipState.group, option) },
                 excludeTopicsGlobal = excludeTopicsGlobal,
                 onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged
             )

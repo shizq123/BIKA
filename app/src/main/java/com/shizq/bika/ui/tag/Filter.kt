@@ -11,26 +11,24 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowDropDown
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.InputChip
 import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Switch
-import androidx.compose.material3.HorizontalDivider
-
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
@@ -39,64 +37,47 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.shizq.bika.domain.filter.FilterGroup
+import com.shizq.bika.domain.filter.FilterOption
+import com.shizq.bika.domain.filter.FilterSelections
+import com.shizq.bika.domain.filter.customPagesRange
 
 @Composable
-fun rememberFilterState(
-    selections: Map<FilterGroup, List<String>>
-): FilterState {
-    return remember(selections) {
-        val filterGroups = listOf(
-            FilterGroup.Topic,
-            FilterGroup.ExcludeTopic,
-            FilterGroup.Status,
-            FilterGroup.EpsRange,
-            FilterGroup.PagesRange,
-        )
-        val chips = filterGroups.map { group ->
-
-            val currentSelection = selections[group].orEmpty()
-
-            val (label, values) = when (group) {
-                is FilterGroup.Topic -> "主题" to group.values
-                is FilterGroup.ExcludeTopic -> "排除主题" to group.values
-                is FilterGroup.Status -> "状态" to group.values
-                is FilterGroup.EpsRange -> "话数" to group.values
-                is FilterGroup.PagesRange -> "页数" to group.values
-            }
+fun rememberFilterState(selections: FilterSelections): FilterState = remember(selections) {
+    FilterState(
+        chips = FilterGroup.all.map { group ->
+            val selected = selections[group].orEmpty()
             FilterChipState(
-                label = label,
-                values = values,
-                selected = currentSelection,
-                kind = group
+                group = group,
+                // 用户自定义区间不在 group.options 里，需并入以便渲染出可取消的选项
+                options = group.options + selected.filterNot { it in group.options },
+                selected = selected,
             )
-        }
-        FilterState(chips = chips)
-    }
+        },
+    )
 }
 
 @Immutable
-data class FilterState(
-    val chips: List<FilterChipState>,
-)
+data class FilterState(val chips: List<FilterChipState>)
 
 @Immutable
 data class FilterChipState(
-    val label: String,
-    val values: List<String>,
-    val selected: List<String>,
-    val kind: FilterGroup? = null,
+    val group: FilterGroup,
+    val options: List<FilterOption>,
+    val selected: List<FilterOption>,
 ) {
-    val hasSelection: Boolean
-        get() = selected.isNotEmpty()
+    val label: String get() = group.label
+    val hasSelection: Boolean get() = selected.isNotEmpty()
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterChip(
     state: FilterChipState,
-    onSelectionChanged: (value: String) -> Unit,
+    onSelectionChanged: (FilterOption) -> Unit,
     excludeTopicsGlobal: Boolean = false,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -128,150 +109,37 @@ fun FilterChip(
         if (showSheet) {
             ModalBottomSheet(
                 onDismissRequest = { showSheet = false },
-                sheetState = sheetState
+                sheetState = sheetState,
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .verticalScroll(rememberScrollState())
-                        .padding(bottom = 32.dp)
+                        .padding(bottom = 32.dp),
                 ) {
                     Text(
                         text = "选择${state.label}",
                         style = MaterialTheme.typography.titleLarge,
-                        modifier = Modifier.padding(16.dp)
+                        modifier = Modifier.padding(16.dp),
                     )
 
-                    if (state.kind is FilterGroup.ExcludeTopic) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onExcludeTopicsGlobalChanged(!excludeTopicsGlobal) }
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "全局生效",
-                                style = MaterialTheme.typography.bodyLarge,
-                                modifier = Modifier.weight(1f)
-                            )
-                            Switch(
-                                checked = excludeTopicsGlobal,
-                                onCheckedChange = onExcludeTopicsGlobalChanged
-                            )
-                        }
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
+                    if (state.group is FilterGroup.ExcludeTopic) {
+                        GlobalToggleRow(
+                            enabled = excludeTopicsGlobal,
+                            onEnabledChange = onExcludeTopicsGlobalChanged,
                         )
                     }
 
-                    state.values.forEach { value ->
-                        val isSelected = value in state.selected
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onSelectionChanged(value) }
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = isSelected,
-                                onCheckedChange = null
-                            )
-                            Spacer(Modifier.width(16.dp))
-                            Text(text = value, style = MaterialTheme.typography.bodyLarge)
-                        }
+                    state.options.forEach { option ->
+                        OptionRow(
+                            label = option.label,
+                            checked = option in state.selected,
+                            onClick = { onSelectionChanged(option) },
+                        )
                     }
 
-                    if (state.kind is FilterGroup.PagesRange) {
-                        var customCountText by remember { mutableStateOf("") }
-                        val currentCustomSelections = state.selected.filter { it.startsWith("指定数量: ") }
-
-                        if (currentCustomSelections.isNotEmpty()) {
-                            Text(
-                                text = "已指定数量",
-                                style = MaterialTheme.typography.titleMedium,
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                            )
-                        }
-                        currentCustomSelections.forEach { customVal ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { onSelectionChanged(customVal) }
-                                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Checkbox(
-                                    checked = true,
-                                    onCheckedChange = null
-                                )
-                                Spacer(Modifier.width(16.dp))
-                                Text(text = customVal, style = MaterialTheme.typography.bodyLarge)
-                            }
-                        }
-
-                        var minCountText by remember { mutableStateOf("") }
-                        var maxCountText by remember { mutableStateOf("") }
-
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            OutlinedTextField(
-                                value = minCountText,
-                                onValueChange = { text ->
-                                    if (text.all { it.isDigit() }) {
-                                        minCountText = text
-                                    }
-                                },
-                                label = { Text("最少页数") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Text("至", style = MaterialTheme.typography.bodyMedium)
-                            Spacer(Modifier.width(8.dp))
-                            OutlinedTextField(
-                                value = maxCountText,
-                                onValueChange = { text ->
-                                    if (text.all { it.isDigit() }) {
-                                        maxCountText = text
-                                    }
-                                },
-                                label = { Text("最多页数") },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                modifier = Modifier.weight(1f),
-                                singleLine = true
-                            )
-                            Spacer(Modifier.width(8.dp))
-                            Button(
-                                onClick = {
-                                    val min = minCountText.trim().toIntOrNull()
-                                    val max = maxCountText.trim().toIntOrNull()
-                                    if (min != null || max != null) {
-                                        val label = when {
-                                            min != null && max != null -> "指定数量: $min - $max 页"
-                                            min != null -> "指定数量: >= $min 页"
-                                            else -> "指定数量: <= $max 页"
-                                        }
-                                        if (label !in state.selected) {
-                                            onSelectionChanged(label)
-                                        }
-                                        minCountText = ""
-                                        maxCountText = ""
-                                    }
-                                },
-                                enabled = minCountText.trim().isNotEmpty() || maxCountText.trim().isNotEmpty(),
-                                modifier = Modifier.padding(top = 4.dp)
-                            ) {
-                                Text("添加")
-                            }
-                        }
+                    if (state.group is FilterGroup.PagesRange) {
+                        CustomRangeInput(onAdd = onSelectionChanged)
                     }
                 }
             }
@@ -279,14 +147,106 @@ fun FilterChip(
     }
 }
 
-private fun renderChipLabel(state: FilterChipState): String {
-    return if (state.hasSelection) {
-        if (state.kind is FilterGroup.ExcludeTopic) {
-            "排除: " + state.selected.joinToString(",")
-        } else {
-            state.selected.joinToString(",")
-        }
-    } else {
-        state.label
+@Composable
+private fun GlobalToggleRow(enabled: Boolean, onEnabledChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onEnabledChange(!enabled) }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = "全局生效",
+            style = MaterialTheme.typography.bodyLarge,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = enabled, onCheckedChange = onEnabledChange)
     }
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+        color = MaterialTheme.colorScheme.outlineVariant,
+    )
+}
+
+@Composable
+private fun OptionRow(label: String, checked: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        Spacer(Modifier.width(16.dp))
+        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+/** 自定义页数区间输入。label 由 domain 层的 customPagesRange 生成，此处不拼接文案。 */
+@Composable
+private fun CustomRangeInput(onAdd: (FilterOption) -> Unit) {
+    var minText by remember { mutableStateOf("") }
+    var maxText by remember { mutableStateOf("") }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        DigitsField(
+            value = minText,
+            onValueChange = { minText = it },
+            label = "最少页数",
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Text("至", style = MaterialTheme.typography.bodyMedium)
+        Spacer(Modifier.width(8.dp))
+        DigitsField(
+            value = maxText,
+            onValueChange = { maxText = it },
+            label = "最多页数",
+            modifier = Modifier.weight(1f),
+        )
+        Spacer(Modifier.width(8.dp))
+        Button(
+            onClick = {
+                customPagesRange(minText.toIntOrNull(), maxText.toIntOrNull())?.let(onAdd)
+                minText = ""
+                maxText = ""
+            },
+            enabled = minText.isNotEmpty() || maxText.isNotEmpty(),
+            modifier = Modifier.padding(top = 4.dp),
+        ) {
+            Text("添加")
+        }
+    }
+}
+
+@Composable
+private fun DigitsField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    label: String,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = { text -> if (text.all { it.isDigit() }) onValueChange(text) },
+        label = { Text(label) },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        modifier = modifier,
+        singleLine = true,
+    )
+}
+
+private fun renderChipLabel(state: FilterChipState): String = when {
+    !state.hasSelection -> state.label
+    state.group is FilterGroup.ExcludeTopic ->
+        "排除: " + state.selected.joinToString(",") { it.label }
+
+    else -> state.selected.joinToString(",") { it.label }
 }
