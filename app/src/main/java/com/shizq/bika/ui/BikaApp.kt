@@ -24,7 +24,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
@@ -112,9 +111,7 @@ fun BikaApp(
                 if (isLoggedIn) {
                     NavDisplay(
                         backStack = navigator.contentBackStack,
-                        // ChannelSettingsNavKey 用 DialogSceneStrategy.dialog() 标记，
-                        // 缺了这个策略它会被当成普通全屏页面渲染。
-                        sceneStrategy = remember { DialogSceneStrategy<NavKey>() },
+                        sceneStrategies = listOf(DialogSceneStrategy()),
                         entryProvider = entryProvider {
                             featureSection(
                                 navigator = navigator,
