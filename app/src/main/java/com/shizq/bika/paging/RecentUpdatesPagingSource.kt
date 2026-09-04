@@ -1,18 +1,18 @@
 package com.shizq.bika.paging
 
-import kotlinx.coroutines.CancellationException
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
+import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
 class RecentUpdatesPagingSource @Inject constructor(
     private val api: BikaDataSource
-) : PagingSource<Int, ComicSummary>() {
+) : PagingSource<Int, ComicSummary>(), PageInfoReporting {
 
-    var onPageInfoLoaded: ((totalPages: Int, totalCount: Int) -> Unit)? = null
+    override var onPageInfoLoaded: ((totalPages: Int, totalCount: Int) -> Unit)? = null
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSummary> {
         val page = params.key ?: 1

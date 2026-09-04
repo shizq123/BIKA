@@ -26,6 +26,8 @@ import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.paging.AdvancedSearchPagingSource
 import com.shizq.bika.paging.ChannelPagingSource
 import com.shizq.bika.paging.FavouriteComicsPagingSource
+import com.shizq.bika.paging.PageInfoReporting
+import com.shizq.bika.paging.PageInfoTracker
 import com.shizq.bika.paging.RecentUpdatesPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
 import com.shizq.bika.util.computeProgressText
@@ -93,8 +95,11 @@ class FeedViewModel @AssistedInject constructor(
 
     val currentPage: StateFlow<Int>
         field = MutableStateFlow(1)
-    val totalPages: StateFlow<Int>
-        field = MutableStateFlow(1)
+
+    private val pageInfoTracker = PageInfoTracker()
+
+    /** 总页数由分页源在加载线程上旁路上报，[PageInfoTracker] 负责屏蔽过期数据源的回写。 */
+    val totalPages: StateFlow<Int> = pageInfoTracker.totalPages
 
     // 合并 sort、page、filter、blockedTags 变化，构建统一的分页数据流。
     // 注意：PagingData 不能在 cachedIn 之后再次被 combine/map，否则会运行时崩溃。
@@ -240,50 +245,41 @@ class FeedViewModel @AssistedInject constructor(
     private fun createPagingSource(
         action: DiscoveryAction,
         sort: SortOrder
-    ): PagingSource<Int, ComicSummary> {
-        val source = when (action) {
-            is DiscoveryAction.Channel -> channelPagingSourceFactory.create(action.name, sort)
-            is DiscoveryAction.Knight -> advancedSearchPagingSourceFactory.create(action.name, sort)
-            is DiscoveryAction.AdvancedSearch -> advancedSearchPagingSourceFactory.create(
-                action.name,
-                sort
-            )
+    ): PagingSource<Int, ComicSummary> =
+    // tracked() 的上界是 PageInfoReporting，本函数的返回类型是 PagingSource，
+    // 两者合起来由编译器保证：新增分页源必须同时满足二者，漏实现上报接口会编译失败。
+    // 这替代了原先按具体类型逐个匹配的 when + else 兜底——那种写法漏掉一个分支不会报错，
+        // 只会让总页数静默退化成 1，「跳转到指定页」随之失效。
+        when (action) {
+            is DiscoveryAction.Channel ->
+                channelPagingSourceFactory.create(action.name, sort).tracked()
 
-            is DiscoveryAction.ToFavourite -> favouriteComicsPagingSourceFactory.create(sort)
+            is DiscoveryAction.Knight ->
+                advancedSearchPagingSourceFactory.create(action.name, sort).tracked()
 
-            DiscoveryAction.ToCollections -> SinglePagePagingSource {
-                totalPages.value = 1
+            is DiscoveryAction.AdvancedSearch ->
+                advancedSearchPagingSourceFactory.create(action.name, sort).tracked()
+
+            is DiscoveryAction.ToFavourite ->
+                favouriteComicsPagingSourceFactory.create(sort).tracked()
+
+            DiscoveryAction.ToCollections -> SinglePagePagingSource<Int, ComicSummary> {
                 api.getCollections().collections.firstOrNull()?.comics ?: emptyList()
-            }
+            }.tracked()
 
-            DiscoveryAction.ToRandom -> SinglePagePagingSource {
-                totalPages.value = 1
+            DiscoveryAction.ToRandom -> SinglePagePagingSource<Int, ComicSummary> {
                 api.getRandomComics().comics
-            }
+            }.tracked()
 
-            DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get()
+            DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get().tracked()
         }
 
-        when (source) {
-            is ChannelPagingSource -> source.onPageInfoLoaded = { pages, _ ->
-                totalPages.value = pages
-            }
-            is AdvancedSearchPagingSource -> source.onPageInfoLoaded = { pages, _ ->
-                totalPages.value = pages
-            }
-            is RecentUpdatesPagingSource -> source.onPageInfoLoaded = { pages, _ ->
-                totalPages.value = pages
-            }
-            is FavouriteComicsPagingSource -> source.onPageInfoLoaded = { pages, _ ->
-                totalPages.value = pages
-            }
-            else -> {
-                totalPages.value = 1
-            }
-        }
-
-        return source
-    }
+    /**
+     * 逐分支装配而非在 when 外整体包一层：包在外面时 when 的期望类型是 track 的类型变量 T，
+     * [SinglePagePagingSource] 的 Key 会失去推断依据。放在分支内，期望类型就是本函数声明的
+     * PagingSource<Int, ComicSummary>，各分支独立定型。
+     */
+    private fun <T : PageInfoReporting> T.tracked(): T = pageInfoTracker.track(this)
 
     @AssistedFactory
     interface Factory {
