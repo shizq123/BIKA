@@ -97,6 +97,7 @@ import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterState
 import com.shizq.bika.ui.tag.rememberFilterState
+import com.shizq.bika.util.injectFromHistoryMap
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -574,7 +575,7 @@ fun FavoriteTagsDrawer(
 
     val currentTag = remember(currentAction) { currentAction?.toFavoriteTag() }
     val isCurrentFavorited = remember(favoriteTags, currentTag) {
-        currentTag != null && favoriteTags.any { it.name == currentTag.name && it.actionType == currentTag.actionType }
+        currentTag != null && favoriteTags.any { it.isSameTag(currentTag) }
     }
 
     Surface(
@@ -691,11 +692,15 @@ fun FavoriteTagsDrawer(
                     modifier = Modifier.weight(1f)
                 ) {
                     itemsIndexed(favoriteTags) { index, tag ->
+                        // action 为 null 说明这条收藏无法还原成入口（actionType 无法识别，
+                        // 或骑士标签缺 actionId）。此时禁用跳转但保留删除/改名，
+                        // 否则用户会得到一条既点不动又删不掉的僵尸数据。
+                        val action = remember(tag) { tag.toAction() }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable(enabled = !isEditMode) {
-                                    onNavigateToFeed(tag.toAction())
+                                .clickable(enabled = !isEditMode && action != null) {
+                                    action?.let(onNavigateToFeed)
                                 }
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -722,13 +727,26 @@ fun FavoriteTagsDrawer(
                                 Spacer(Modifier.width(12.dp))
                             }
 
-                            Text(
-                                text = tag.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = tag.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (action == null) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (action == null) {
+                                    Text(
+                                        text = "无法打开，建议删除",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
 
                             if (isEditMode) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {

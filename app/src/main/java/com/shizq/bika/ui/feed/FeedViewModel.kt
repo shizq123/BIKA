@@ -10,7 +10,6 @@ import androidx.paging.PagingData
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
@@ -26,11 +25,11 @@ import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.paging.AdvancedSearchPagingSource
 import com.shizq.bika.paging.ChannelPagingSource
 import com.shizq.bika.paging.FavouriteComicsPagingSource
+import com.shizq.bika.paging.KnightPagingSource
 import com.shizq.bika.paging.PageInfoReporting
 import com.shizq.bika.paging.PageInfoTracker
 import com.shizq.bika.paging.RecentUpdatesPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
-import com.shizq.bika.util.computeProgressText
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -57,6 +56,7 @@ class FeedViewModel @AssistedInject constructor(
     private val channelPagingSourceFactory: ChannelPagingSource.Factory,
     private val favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
     private val advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
+    private val knightPagingSourceFactory: KnightPagingSource.Factory,
     private val recentUpdatesPagingSourceProvider: Provider<RecentUpdatesPagingSource>,
     private val historyDao: ReadingHistoryDao,
     private val userPreferencesDataSource: UserPreferencesDataSource,
@@ -110,7 +110,7 @@ class FeedViewModel @AssistedInject constructor(
         filterSelections,
         userPreferencesDataSource.userData.map { it.filter.blockedTags }.distinctUntilChanged()
     ) { sort, page, filters, blockedTags ->
-        BlockedFilterState(sort, page, filters, blockedTags)
+        FeedQuery(sort, page, filters, blockedTags)
     }.flatMapLatest { state ->
         Pager(
             config = PagingConfig(
@@ -239,7 +239,12 @@ class FeedViewModel @AssistedInject constructor(
 
     fun addCustomFavoriteTag(name: String) {
         if (name.isBlank()) return
-        addFavoriteTag(FavoriteTag(name = name, actionType = "AdvancedSearch"))
+        addFavoriteTag(
+            FavoriteTag(
+                name = name,
+                actionType = FeedActionType.AdvancedSearch.storageValue
+            )
+        )
     }
 
     private fun createPagingSource(
@@ -254,8 +259,9 @@ class FeedViewModel @AssistedInject constructor(
             is DiscoveryAction.Channel ->
                 channelPagingSourceFactory.create(action.name, sort).tracked()
 
+            // 按 id 查，不是按 name。见 KnightPagingSource 的类注释。
             is DiscoveryAction.Knight ->
-                advancedSearchPagingSourceFactory.create(action.name, sort).tracked()
+                knightPagingSourceFactory.create(action.id, sort).tracked()
 
             is DiscoveryAction.AdvancedSearch ->
                 advancedSearchPagingSourceFactory.create(action.name, sort).tracked()
@@ -290,43 +296,12 @@ class FeedViewModel @AssistedInject constructor(
 }
 
 /**
- * 对单个 ComicSummary 从预先构建的 id -> DetailedHistory 映射中注入本地状态。
- * 映射由调用方（UI 层）在列表外构建一次，避免每个列表项重复 O(N) 扫描。
- * 逻辑复用 ComicStatusInjector.kt 中的 injectLocalStatusFrom。
+ * 决定 Pager 是否需要重建的完整查询键。
+ *
+ * 四个字段任一变化都会经 flatMapLatest 重建 Pager，因此新增影响查询结果的维度时必须加进这里，
+ * 否则改动不会生效。
  */
-fun ComicSummary.injectFromHistoryMap(historyMap: Map<String, DetailedHistory>): ComicSummary {
-    val detailed = historyMap[id] ?: return this
-    val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
-    val progressText = computeProgressText(lastProgress, detailed.history.epsCount)
-    return copy(
-        isFavourited = detailed.history.isFavourited,
-        lastReadChapterProgress = progressText
-    )
-}
-
-
-/** 收藏标签的身份判定：name + actionType 构成业务主键。 */
-private fun FavoriteTag.isSameTag(other: FavoriteTag): Boolean =
-    name == other.name && actionType == other.actionType
-
-fun DiscoveryAction.toFavoriteTag(): FavoriteTag? {
-    return when (this) {
-        is DiscoveryAction.Channel -> FavoriteTag(name = name, actionType = "Channel")
-        is DiscoveryAction.Knight -> FavoriteTag(name = name, actionType = "Knight", actionId = id)
-        is DiscoveryAction.AdvancedSearch -> FavoriteTag(name = name, actionType = "AdvancedSearch")
-        else -> null
-    }
-}
-
-fun FavoriteTag.toAction(): DiscoveryAction {
-    return when (actionType) {
-        "Channel" -> DiscoveryAction.Channel(name)
-        "Knight" -> DiscoveryAction.Knight(name, actionId)
-        else -> DiscoveryAction.AdvancedSearch(name)
-    }
-}
-
-private data class BlockedFilterState(
+private data class FeedQuery(
     val sort: SortOrder,
     val page: Int,
     val filters: FilterSelections,
