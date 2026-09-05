@@ -1,12 +1,11 @@
 package com.shizq.bika.ui.dashboard
 
-import android.content.Context
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +27,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,8 +44,6 @@ import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -62,7 +58,6 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -99,8 +94,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import coil3.request.error
-import coil3.request.placeholder
 import com.shizq.bika.R
 import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.model.Channel
@@ -179,6 +172,7 @@ fun DashboardScreen(
         },
         passwordResult = state.passwordResult,
         onDismissPasswordResult = { viewModel.dispatch(DashboardAction.DismissPasswordResult) },
+        isSubmitting = state.isSubmitting,
         channelSettingsUiState = channelSettingsUiState,
         navigationToLeaderboard = navigationToLeaderboard,
         navigateToFavourite = navigateToFavourite,
@@ -226,6 +220,7 @@ fun DashboardContent(
     onChangePassword: (String, String) -> Unit,
     passwordResult: OperationResult?,
     onDismissPasswordResult: () -> Unit,
+    isSubmitting: Boolean,
     channelSettingsUiState: List<Channel>,
     navigationToLeaderboard: () -> Unit,
     navigateToFavourite: (DiscoveryAction) -> Unit,
@@ -255,8 +250,6 @@ fun DashboardContent(
     var showChangePasswordDialog by remember { mutableStateOf(false) }
 
     // sloganResult 驱动：成功时关闭对话框，失败时保持打开并显示错误
-    val isSloganSaving = showEditProfileDialog && sloganResult == null &&
-            (userProfileUiState is UserProfileUiState.Success)
     LaunchedEffect(sloganResult) {
         when (sloganResult) {
             OperationResult.Success -> {
@@ -269,15 +262,8 @@ fun DashboardContent(
     }
 
     if (showEditProfileDialog) {
-        // isSaving 由是否正在等待 sloganResult 推导：打开对话框且 sloganResult 还没回来时为 true
-        var isSaving by remember { mutableStateOf(false) }
-        // sloganResult 返回后重置 isSaving
-        LaunchedEffect(sloganResult) {
-            if (sloganResult != null) isSaving = false
-        }
-
         AlertDialog(
-            onDismissRequest = { if (!isSaving) showEditProfileDialog = false },
+            onDismissRequest = { if (!isSubmitting) showEditProfileDialog = false },
             title = { Text("修改资料") },
             text = {
                 Column(
@@ -290,7 +276,7 @@ fun DashboardContent(
                         label = { Text("自我介绍") },
                         placeholder = { Text("输入您的个性签名") },
                         singleLine = true,
-                        enabled = !isSaving,
+                        enabled = !isSubmitting,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -302,7 +288,7 @@ fun DashboardContent(
                         )
                     }
 
-                    if (isSaving) {
+                    if (isSubmitting) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier
@@ -334,9 +320,8 @@ fun DashboardContent(
             },
             confirmButton = {
                 TextButton(
-                    enabled = !isSaving,
+                    enabled = !isSubmitting,
                     onClick = {
-                        isSaving = true
                         onDismissSloganResult()
                         onUpdateSlogan(inputSlogan)
                     }
@@ -346,7 +331,7 @@ fun DashboardContent(
             },
             dismissButton = {
                 TextButton(
-                    enabled = !isSaving,
+                    enabled = !isSubmitting,
                     onClick = {
                         showEditProfileDialog = false
                         onDismissSloganResult()
@@ -373,11 +358,7 @@ fun DashboardContent(
         when (passwordResult) {
             OperationResult.Success -> {
                 showChangePasswordDialog = false
-                android.widget.Toast.makeText(
-                    context,
-                    "密码修改成功",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                Toast.makeText(context, "密码修改成功", Toast.LENGTH_SHORT).show()
                 onDismissPasswordResult()
             }
 
@@ -386,17 +367,12 @@ fun DashboardContent(
     }
 
     if (showChangePasswordDialog) {
-        var isSaving by remember { mutableStateOf(false) }
-        LaunchedEffect(passwordResult) {
-            if (passwordResult != null) isSaving = false
-        }
         // 打开时重置所有字段
         LaunchedEffect(Unit) {
             inputOldPassword = ""
             inputNewPassword = ""
             inputConfirmPassword = ""
             localPasswordError = null
-            isSaving = false
             oldPasswordVisible = false
             newPasswordVisible = false
             confirmPasswordVisible = false
@@ -404,7 +380,7 @@ fun DashboardContent(
         }
 
         AlertDialog(
-            onDismissRequest = { if (!isSaving) showChangePasswordDialog = false },
+            onDismissRequest = { if (!isSubmitting) showChangePasswordDialog = false },
             title = { Text("修改密码") },
             text = {
                 Column(
@@ -417,7 +393,7 @@ fun DashboardContent(
                         label = { Text("旧密码") },
                         placeholder = { Text("请输入旧密码") },
                         singleLine = true,
-                        enabled = !isSaving,
+                        enabled = !isSubmitting,
                         visualTransformation = if (oldPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { oldPasswordVisible = !oldPasswordVisible }) {
@@ -436,7 +412,7 @@ fun DashboardContent(
                         label = { Text("新密码") },
                         placeholder = { Text("请输入新密码（至少8位）") },
                         singleLine = true,
-                        enabled = !isSaving,
+                        enabled = !isSubmitting,
                         visualTransformation = if (newPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
@@ -455,7 +431,7 @@ fun DashboardContent(
                         label = { Text("确认新密码") },
                         placeholder = { Text("请再次输入新密码") },
                         singleLine = true,
-                        enabled = !isSaving,
+                        enabled = !isSubmitting,
                         visualTransformation = if (confirmPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
@@ -479,7 +455,7 @@ fun DashboardContent(
                         )
                     }
 
-                    if (isSaving) {
+                    if (isSubmitting) {
                         Row(
                             horizontalArrangement = Arrangement.Center,
                             modifier = Modifier
@@ -493,7 +469,7 @@ fun DashboardContent(
             },
             confirmButton = {
                 TextButton(
-                    enabled = !isSaving,
+                    enabled = !isSubmitting,
                     onClick = {
                         localPasswordError = when {
                             inputOldPassword.isEmpty() -> "请输入旧密码"
@@ -503,7 +479,6 @@ fun DashboardContent(
                             else -> null
                         }
                         if (localPasswordError != null) return@TextButton
-                        isSaving = true
                         onDismissPasswordResult()
                         onChangePassword(inputOldPassword, inputNewPassword)
                     }
@@ -513,7 +488,7 @@ fun DashboardContent(
             },
             dismissButton = {
                 TextButton(
-                    enabled = !isSaving,
+                    enabled = !isSubmitting,
                     onClick = {
                         showChangePasswordDialog = false
                         onDismissPasswordResult()
@@ -634,11 +609,11 @@ fun DashboardContent(
                 .fillMaxSize()
                 .nestedScroll(scrollBehavior.nestedScrollConnection),
         ) { innerPadding ->
-            val state: LazyGridState = rememberLazyGridState()
+            val gridState: LazyGridState = rememberLazyGridState()
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
-                state = state,
+                state = gridState,
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
@@ -658,22 +633,26 @@ fun DashboardContent(
                     channelSettingsUiState,
                     key = { it.iconKey }
                 ) { item ->
-                    val context = LocalContext.current
+                    ChannelGridItem(
+                        iconRes = item.iconResId,
+                        label = item.label,
+                        modifier = Modifier
+                            .animateItem()
+                            .testTag("dashboard:channel:${item.label}"),
+                    ) {
+                        when (val destination = item.toDestination()) {
+                            is ChannelDestination.Feed ->
+                                navigateToFavourite(destination.action)
 
-                    if (item.isActive) {
-                        ChannelGridItem(
-                            iconRes = item.iconResId,
-                            label = item.label,
-                            modifier = Modifier
-                                .animateItem()
-                                .testTag("dashboard:channel:${item.label}"),
-                        ) {
-                            navigation(
-                                context = context,
-                                channel = item,
-                                navigationToLeaderboard = navigationToLeaderboard,
-                                navigateToSearch = navigateToFavourite,
-                            )
+                            ChannelDestination.Leaderboard ->
+                                navigationToLeaderboard()
+
+                            is ChannelDestination.Unavailable ->
+                                Toast.makeText(
+                                    context,
+                                    destination.reason,
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                         }
                     }
                 }
@@ -770,30 +749,6 @@ private fun DashboardAppBar(
     )
 }
 
-private fun navigation(
-    channel: Channel,
-    context: Context,
-    navigationToLeaderboard: () -> Unit,
-    navigateToSearch: (DiscoveryAction) -> Unit,
-) {
-
-    when (channel.label) {
-        "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)
-        "排行榜" -> navigationToLeaderboard()
-//            "哔咔小程序" -> start(AppsActivity::class.java)
-        "留言板" -> {
-            android.widget.Toast.makeText(context, "该功能已下线", android.widget.Toast.LENGTH_SHORT).show()
-        }
-
-        "最近更新" -> navigateToSearch(DiscoveryAction.ToRecent)
-
-        "随机本子" -> navigateToSearch(DiscoveryAction.ToRandom)
-
-        else -> navigateToSearch(
-            DiscoveryAction.Channel(channel.label)
-        )
-    }
-}
 
 @Composable
 fun DashboardDrawerContent(
@@ -812,15 +767,11 @@ fun DashboardDrawerContent(
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         // 用户信息卡片：Loading / Error / Success 三态统一由 UserProfileStateCard 处理
-        when (userProfile) {
-            is UserProfileUiState.Success -> UserProfileCard(
-                state = userProfile,
-                onCheckInClick = onCheckInClick,
-                onEditProfile = onEditProfileClick,
-            )
-
-            else -> UserProfileStateCard(state = userProfile)
-        }
+        UserProfileStateCard(
+            state = userProfile,
+            onCheckInClick = onCheckInClick,
+            onEditProfileClick = onEditProfileClick,
+        )
         HorizontalDivider()
         Column(
             modifier = Modifier
@@ -897,135 +848,6 @@ private fun DrawerMenuItem(
         },
         modifier = modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
     )
-}
-
-@Composable
-fun UserProfileCard(
-    state: UserProfileUiState.Success,
-    modifier: Modifier = Modifier,
-    onCheckInClick: () -> Unit,
-    onEditProfile: () -> Unit,
-) {
-    val user = state.user
-    Column(
-        modifier = modifier
-            .padding(16.dp)
-            .testTag("dashboard:userProfile")
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(contentAlignment = Alignment.Center) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(user.avatarUrl)
-                        .placeholder(R.drawable.placeholder_avatar_2)
-                        .error(R.drawable.placeholder_avatar_2)
-                        .build(),
-                    contentDescription = "Avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = user.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    // 无网络时显示离线缓存标识
-                    if (state.isOfflineCache) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = "离线",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = user.levelDisplay,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = user.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .border(
-                                1.dp,
-                                MaterialTheme.colorScheme.primary,
-                                RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(
-                    onClick = onEditProfile
-                ) {
-                    Text(text = "修改资料")
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = onCheckInClick,
-                    enabled = !user.hasCheckedIn,
-                    colors = ButtonDefaults.buttonColors(
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.testTag("dashboard:checkIn"),
-                ) {
-                    Text(text = if (user.hasCheckedIn) "已打卡" else "打卡")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = RoundedCornerShape(4.dp)
-            ) {
-                Text(
-                    text = user.gender,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = user.slogan.ifEmpty { "这个人很懒，什么都没写" },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
 }
 
 @Composable

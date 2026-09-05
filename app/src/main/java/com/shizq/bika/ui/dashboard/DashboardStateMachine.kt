@@ -12,8 +12,11 @@ import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
+import com.shizq.bika.ui.feed.FeedActionType
+import com.shizq.bika.ui.feed.isSameTag
 import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 
@@ -27,10 +30,23 @@ class DashboardStateMachine @Inject constructor(
 
     private val profileRestarter = FlowRestarter()
 
+    /**
+     * 一次性写操作的提交中标志。
+     *
+     * `on<>` handler 只能返回一个 ChangedState，无法在同一个 handler 里先发
+     * `isSubmitting = true` 再发结果。这里沿用 UpdateStateMachine.downloadProgress
+     * 的做法，用一个外部 flow 承载中间态，由 collectWhileInState 投射进 state。
+     */
+    private val submitting = MutableStateFlow(false)
+
     init {
         initializeWith { DashboardState() }
         spec {
             inState<DashboardState> {
+
+                collectWhileInState(submitting) { inFlight ->
+                    mutate { copy(isSubmitting = inFlight) }
+                }
 
                 // ── 用户资料加载（可重启）────────────────────────────────
                 collectWhileInState(
@@ -138,10 +154,18 @@ class DashboardStateMachine @Inject constructor(
 
                 // ── 个人资料修改 ──────────────────────────────────────────
                 on<DashboardAction.UpdateSlogan> { action ->
-                    val result = runCatching {
-                        network.updateUserProfileSlogan(action.slogan)
-                        profileRestarter.restart()
+                    // runCatching 只包住网络调用：restart 只是刷新本地 profile 流，
+                    // 它的失败不代表签名没改成功，混进来会让用户看到「更新失败」
+                    // 而服务端其实已经生效。
+                    val result = try {
+                        submitting.value = true
+                        runCatching { network.updateUserProfileSlogan(action.slogan) }
+                    } finally {
+                        // finally 而非顺序赋值：handler 被取消时也要清掉标志，
+                        // 否则 submitting 停在 true，对话框永久禁用。
+                        submitting.value = false
                     }
+                    result.onSuccess { profileRestarter.restart() }
                     if (result.isFailure) {
                         Log.e(TAG, "更新自我介绍失败", result.exceptionOrNull())
                     }
@@ -150,7 +174,11 @@ class DashboardStateMachine @Inject constructor(
                             sloganResult = if (result.isSuccess) OperationResult.Success
                             else OperationResult.Error(
                                 result.exceptionOrNull()?.localizedMessage ?: "更新失败"
-                            )
+                            ),
+                            // 显式置 false，不依赖本次 mutate 与 collectWhileInState
+                            // 那次 mutate 的先后顺序——若本次基于更早的快照，
+                            // 只靠 submitting 流会把 true 写回来。
+                            isSubmitting = false,
                         )
                     }
                 }
@@ -160,8 +188,13 @@ class DashboardStateMachine @Inject constructor(
                 }
 
                 on<DashboardAction.ChangePassword> { action ->
-                    val result = runCatching {
-                        network.changePassword(action.oldPw, action.newPw)
+                    val result = try {
+                        submitting.value = true
+                        runCatching {
+                            network.changePassword(action.oldPassword, action.newPassword)
+                        }
+                    } finally {
+                        submitting.value = false
                     }
                     if (result.isFailure) {
                         Log.e(TAG, "修改密码失败", result.exceptionOrNull())
@@ -171,7 +204,8 @@ class DashboardStateMachine @Inject constructor(
                             passwordResult = if (result.isSuccess) OperationResult.Success
                             else OperationResult.Error(
                                 result.exceptionOrNull()?.localizedMessage ?: "修改密码失败"
-                            )
+                            ),
+                            isSubmitting = false,
                         )
                     }
                 }
@@ -181,54 +215,49 @@ class DashboardStateMachine @Inject constructor(
                 }
 
                 // ── 收藏标签 CRUD（纯副作用，不改 DashboardState）─────────
+                // 统一走 updateFavoriteTags(transform) 这个原子重载：transform 在 DataStore
+                // 事务内执行，快速连续点击不会因「先读快照再整表写回」而丢更新。
+                // 身份判定复用 FavoriteTag.isSameTag，避免 name + actionType 的谓词散落多处。
                 onActionEffect<DashboardAction.AddFavoriteTag> { action ->
-                    val current =
-                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
-                    val tag = action.tag
-                    if (current.none { it.name == tag.name && it.actionType == tag.actionType }) {
-                        current.add(tag)
-                        userPreferencesDataSource.updateFavoriteTags(current)
+                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                        if (tags.any { it.isSameTag(action.tag) }) tags else tags + action.tag
                     }
                 }
 
                 onActionEffect<DashboardAction.RemoveFavoriteTag> { action ->
-                    val tag = action.tag
-                    val updated = userPreferencesDataSource.userData.first().filter.favoriteTags
-                        .filterNot { it.name == tag.name && it.actionType == tag.actionType }
-                    userPreferencesDataSource.updateFavoriteTags(updated)
+                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                        tags.filterNot { it.isSameTag(action.tag) }
+                    }
                 }
 
                 onActionEffect<DashboardAction.UpdateFavoriteTagName> { action ->
                     if (action.newName.isBlank()) return@onActionEffect
-                    val current =
-                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
-                    val idx = current.indexOfFirst {
-                        it.name == action.tag.name && it.actionType == action.tag.actionType
-                    }
-                    if (idx != -1) {
-                        current[idx] = current[idx].copy(name = action.newName)
-                        userPreferencesDataSource.updateFavoriteTags(current)
+                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                        tags.map {
+                            if (it.isSameTag(action.tag)) it.copy(name = action.newName) else it
+                        }
                     }
                 }
 
                 onActionEffect<DashboardAction.MoveFavoriteTag> { action ->
-                    val current =
-                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
-                    if (action.fromIndex in current.indices && action.toIndex in current.indices) {
-                        val tag = current.removeAt(action.fromIndex)
-                        current.add(action.toIndex, tag)
-                        userPreferencesDataSource.updateFavoriteTags(current)
+                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                        if (action.fromIndex !in tags.indices || action.toIndex !in tags.indices) {
+                            tags
+                        } else {
+                            tags.toMutableList()
+                                .apply { add(action.toIndex, removeAt(action.fromIndex)) }
+                        }
                     }
                 }
 
                 onActionEffect<DashboardAction.AddCustomFavoriteTag> { action ->
                     if (action.name.isBlank()) return@onActionEffect
-                    val tag = FavoriteTag(name = action.name, actionType = "AdvancedSearch")
-                    val current =
-                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
-                    if (current.none { it.name == tag.name && it.actionType == tag.actionType }) {
-                        current.add(tag)
-                        userPreferencesDataSource.updateFavoriteTags(current)
+                    val tag = FavoriteTag(
+                        name = action.name,
+                        actionType = FeedActionType.AdvancedSearch.storageValue,
+                    )
+                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                        if (tags.any { it.isSameTag(tag) }) tags else tags + tag
                     }
                 }
             }
