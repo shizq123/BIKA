@@ -8,7 +8,6 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,14 +35,10 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.Bookmarks
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -57,10 +52,8 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -85,8 +78,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -99,7 +90,6 @@ import coil3.request.crossfade
 import com.shizq.bika.R
 import com.shizq.bika.core.data.model.DetailedReadingHistory
 import com.shizq.bika.core.model.FavoriteTag
-import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.feed.FavoriteTagsDrawer
@@ -163,15 +153,9 @@ fun DashboardScreen(
     // 打卡结果对话框（状态驱动）
     val checkInResult = state.checkInResult
     if (checkInResult != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.dispatch(DashboardAction.DismissCheckInResult) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dispatch(DashboardAction.DismissCheckInResult) }) {
-                    Text("确定")
-                }
-            },
-            title = { Text("打哔咔提示") },
-            text = { Text(checkInResult.message) },
+        CheckInResultDialog(
+            result = checkInResult,
+            onDismiss = { viewModel.dispatch(DashboardAction.DismissCheckInResult) },
         )
     }
 
@@ -182,6 +166,12 @@ fun DashboardScreen(
         onAction = viewModel::dispatch,
         callbacks = callbacks,
     )
+}
+
+/** 修改资料 / 修改密码两个对话框互斥，用同一个状态仲裁哪个在显示。 */
+private sealed interface DashboardDialog {
+    data object EditProfile : DashboardDialog
+    data object ChangePassword : DashboardDialog
 }
 
 @Composable
@@ -221,264 +211,33 @@ fun DashboardContent(
         onAction(DashboardAction.AddCustomFavoriteTag(name))
     }
 
-    // ── 修改资料对话框 ────────────────────────────────────────────────────
-    var showEditProfileDialog by remember { mutableStateOf(false) }
-    var inputSlogan by remember { mutableStateOf("") }
-    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    // ── 对话框状态（互斥）────────────────────────────────────────────────
+    // 修改资料 / 修改密码同一时刻只会显示一个，且两者可以互相跳转，
+    // 用一个 sealed 状态仲裁比两个独立 Boolean 更能表达这种互斥关系。
+    var activeDialog by remember { mutableStateOf<DashboardDialog?>(null) }
+    var editProfileInitialSlogan by remember { mutableStateOf("") }
 
-    // sloganResult 驱动：成功时关闭对话框，失败时保持打开并显示错误
-    LaunchedEffect(sloganResult) {
-        when (sloganResult) {
-            OperationResult.Success -> {
-                showEditProfileDialog = false
-                onDismissSloganResult()
-            }
-
-            is OperationResult.Error, null -> Unit
-        }
-    }
-
-    if (showEditProfileDialog) {
-        AlertDialog(
-            onDismissRequest = { if (!isSubmitting) showEditProfileDialog = false },
-            title = { Text("修改资料") },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = inputSlogan,
-                        onValueChange = { inputSlogan = it },
-                        label = { Text("自我介绍") },
-                        placeholder = { Text("输入您的个性签名") },
-                        singleLine = true,
-                        enabled = !isSubmitting,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    if (sloganResult is OperationResult.Error) {
-                        Text(
-                            text = sloganResult.message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    if (isSubmitting) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    TextButton(
-                        onClick = {
-                            showEditProfileDialog = false
-                            showChangePasswordDialog = true
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("修改密码")
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !isSubmitting,
-                    onClick = {
-                        onDismissSloganResult()
-                        onUpdateSlogan(inputSlogan)
-                    }
-                ) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    enabled = !isSubmitting,
-                    onClick = {
-                        showEditProfileDialog = false
-                        onDismissSloganResult()
-                    }
-                ) {
-                    Text("取消")
-                }
-            }
+    if (activeDialog == DashboardDialog.EditProfile) {
+        EditProfileDialog(
+            initialSlogan = editProfileInitialSlogan,
+            sloganResult = sloganResult,
+            isSubmitting = isSubmitting,
+            onSave = onUpdateSlogan,
+            onDismissResult = onDismissSloganResult,
+            onDismiss = { activeDialog = null },
+            onChangePasswordClick = { activeDialog = DashboardDialog.ChangePassword },
         )
     }
 
-    // ── 修改密码对话框 ────────────────────────────────────────────────────
-    var inputOldPassword by remember { mutableStateOf("") }
-    var inputNewPassword by remember { mutableStateOf("") }
-    var inputConfirmPassword by remember { mutableStateOf("") }
-    var oldPasswordVisible by remember { mutableStateOf(false) }
-    var newPasswordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
-    // 本地校验错误（未发到服务端前）
-    var localPasswordError by remember { mutableStateOf<String?>(null) }
-
-    // passwordResult 驱动：成功时 Toast + 关闭，失败时保持打开
-    LaunchedEffect(passwordResult) {
-        when (passwordResult) {
-            OperationResult.Success -> {
-                showChangePasswordDialog = false
-                Toast.makeText(context, "密码修改成功", Toast.LENGTH_SHORT).show()
-                onDismissPasswordResult()
-            }
-
-            is OperationResult.Error, null -> Unit
-        }
-    }
-
-    if (showChangePasswordDialog) {
-        // 打开时重置所有字段
-        LaunchedEffect(Unit) {
-            inputOldPassword = ""
-            inputNewPassword = ""
-            inputConfirmPassword = ""
-            localPasswordError = null
-            oldPasswordVisible = false
-            newPasswordVisible = false
-            confirmPasswordVisible = false
-            onDismissPasswordResult()
-        }
-
-        AlertDialog(
-            onDismissRequest = { if (!isSubmitting) showChangePasswordDialog = false },
-            title = { Text("修改密码") },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    OutlinedTextField(
-                        value = inputOldPassword,
-                        onValueChange = { inputOldPassword = it },
-                        label = { Text("旧密码") },
-                        placeholder = { Text("请输入旧密码") },
-                        singleLine = true,
-                        enabled = !isSubmitting,
-                        visualTransformation = if (oldPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { oldPasswordVisible = !oldPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (oldPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    contentDescription = if (oldPasswordVisible) "隐藏旧密码" else "显示旧密码"
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = inputNewPassword,
-                        onValueChange = { inputNewPassword = it },
-                        label = { Text("新密码") },
-                        placeholder = { Text("请输入新密码（至少8位）") },
-                        singleLine = true,
-                        enabled = !isSubmitting,
-                        visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (newPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    contentDescription = if (newPasswordVisible) "隐藏新密码" else "显示新密码"
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    OutlinedTextField(
-                        value = inputConfirmPassword,
-                        onValueChange = { inputConfirmPassword = it },
-                        label = { Text("确认新密码") },
-                        placeholder = { Text("请再次输入新密码") },
-                        singleLine = true,
-                        enabled = !isSubmitting,
-                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = {
-                                confirmPasswordVisible = !confirmPasswordVisible
-                            }) {
-                                Icon(
-                                    imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    contentDescription = if (confirmPasswordVisible) "隐藏确认密码" else "显示确认密码"
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // 本地校验错误优先，服务端错误次之
-                    val displayError = localPasswordError
-                        ?: (passwordResult as? OperationResult.Error)?.message
-                    if (displayError != null) {
-                        Text(
-                            text = displayError,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    if (isSubmitting) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !isSubmitting,
-                    onClick = {
-                        localPasswordError = when {
-                            inputOldPassword.isEmpty() -> "请输入旧密码"
-                            inputNewPassword.isEmpty() -> "请输入新密码"
-                            inputNewPassword.length < 8 -> "新密码长度至少需要8个字符"
-                            inputNewPassword != inputConfirmPassword -> "两次输入的新密码不一致"
-                            else -> null
-                        }
-                        if (localPasswordError != null) return@TextButton
-                        onDismissPasswordResult()
-                        onChangePassword(inputOldPassword, inputNewPassword)
-                    }
-                ) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    enabled = !isSubmitting,
-                    onClick = {
-                        showChangePasswordDialog = false
-                        onDismissPasswordResult()
-                    }
-                ) {
-                    Text("取消")
-                }
-            }
+    if (activeDialog == DashboardDialog.ChangePassword) {
+        ChangePasswordDialog(
+            passwordResult = passwordResult,
+            isSubmitting = isSubmitting,
+            onSave = onChangePassword,
+            onDismissResult = onDismissPasswordResult,
+            onDismiss = { activeDialog = null },
         )
     }
-
 
     var showBookmarkDrawer by remember { mutableStateOf(false) }
 
@@ -526,11 +285,11 @@ fun DashboardContent(
                         onEditProfileClick = {
                             scope.launch {
                                 drawerState.close()
-                                // 同步初始化签名输入框，避免 LaunchedEffect 一帧延迟闪烁
+                                // 同步初始化签名输入框初值，避免子组件用旧值 remember
                                 if (userProfileUiState is UserProfileUiState.Success) {
-                                    inputSlogan = userProfileUiState.user.slogan
+                                    editProfileInitialSlogan = userProfileUiState.user.slogan
                                 }
-                                showEditProfileDialog = true
+                                activeDialog = DashboardDialog.EditProfile
                             }
                         },
                         onHistoryClick = {
@@ -604,7 +363,6 @@ fun DashboardContent(
                                 history = history,
                                 onClick = callbacks.navigateToReader,
                                 modifier = Modifier
-                                    .padding(bottom = 8.dp)
                                     .animateItem()
                             )
                         }
