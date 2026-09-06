@@ -1,5 +1,7 @@
 package com.shizq.bika.ui.dashboard
 
+import com.shizq.bika.core.data.model.DetailedReadingHistory
+import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.FavoriteTag
 
 // ─────────────────────────────────────────────
@@ -43,9 +45,18 @@ sealed interface CheckInResult {
     data class Error(override val message: String) : CheckInResult
 }
 
-/** 整个 Dashboard 的单一状态树 */
+/**
+ * 整个 Dashboard 的单一状态树。
+ *
+ * [lastReadHistory] / [activeChannels] / [favoriteTags] 原先是 ViewModel 上三个独立的
+ * StateFlow，UI 要 collect 四处再自行拼装；favoriteTags 更是读走 ViewModel、写走
+ * StateMachine，同一份数据两个 owner。现全部并入本状态树，由 StateMachine 单独持有。
+ */
 data class DashboardState(
     val userProfile: UserProfileUiState = UserProfileUiState.Loading,
+    val lastReadHistory: DetailedReadingHistory? = null,
+    val activeChannels: List<Channel> = emptyList(),
+    val favoriteTags: List<FavoriteTag> = emptyList(),
     val checkInResult: CheckInResult? = null,
     val sloganResult: OperationResult? = null,
     val passwordResult: OperationResult? = null,

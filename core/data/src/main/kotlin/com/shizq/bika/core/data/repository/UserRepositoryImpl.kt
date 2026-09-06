@@ -2,9 +2,11 @@ package com.shizq.bika.core.data.repository
 
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.model.preferences.UserProfileSnapshot
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.UserProfile
 import jakarta.inject.Inject
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 
 class UserRepositoryImpl @Inject constructor(
@@ -28,6 +30,13 @@ class UserRepositoryImpl @Inject constructor(
         )
         return profile
     }
+
+    /**
+     * name 为空视为"没有可用缓存"而非"缓存了一个匿名用户"：
+     * UserPreferences 的默认快照是全空字段，直接返回会让 UI 渲染一张空白资料卡。
+     */
+    override suspend fun cachedUserProfile(): UserProfileSnapshot? =
+        userPreferencesDataSource.userData.first().profile.takeIf { it.name.isNotEmpty() }
 
     override suspend fun punchIn() {
         network.punchIn()
