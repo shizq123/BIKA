@@ -1,5 +1,12 @@
 package com.shizq.bika.domain.filter
 
+import com.shizq.bika.core.domain.filter.FilterGroup
+import com.shizq.bika.core.domain.filter.FilterOption
+import com.shizq.bika.core.domain.filter.FilterSelections
+import com.shizq.bika.core.domain.filter.customPagesRange
+import com.shizq.bika.core.domain.filter.hasAnySelection
+import com.shizq.bika.core.domain.filter.matchesFilters
+import com.shizq.bika.core.domain.filter.toggle
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.RemoteImage
 import kotlin.test.Test

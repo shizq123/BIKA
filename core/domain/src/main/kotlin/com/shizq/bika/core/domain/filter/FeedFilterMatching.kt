@@ -1,4 +1,4 @@
-package com.shizq.bika.domain.filter
+package com.shizq.bika.core.domain.filter
 
 import com.shizq.bika.core.model.ComicSummary
 

@@ -40,10 +40,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.shizq.bika.domain.filter.FilterGroup
-import com.shizq.bika.domain.filter.FilterOption
-import com.shizq.bika.domain.filter.FilterSelections
-import com.shizq.bika.domain.filter.customPagesRange
+import com.shizq.bika.core.domain.filter.FilterGroup
+import com.shizq.bika.core.domain.filter.FilterOption
+import com.shizq.bika.core.domain.filter.FilterSelections
+import com.shizq.bika.core.domain.filter.customPagesRange
 
 @Composable
 fun rememberFilterState(selections: FilterSelections): FilterState = remember(selections) {

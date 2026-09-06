@@ -1,4 +1,4 @@
-package com.shizq.bika.domain.filter
+package com.shizq.bika.core.domain.filter
 
 /**
  * 漫画列表的筛选模型。
