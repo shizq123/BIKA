@@ -5,7 +5,6 @@ import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.preferences.UserPreferences
-import com.shizq.bika.core.model.preferences.UserProfileSnapshot
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.model.reader.TapZoneLayout
@@ -135,31 +134,6 @@ class UserPreferencesDataSource @Inject constructor(
 
     suspend fun setSecureScreenEnabled(enabled: Boolean) = edit {
         it.copy(app = it.app.copy(secureScreenEnabled = enabled))
-    }
-
-    /** 保存用户资料到本地，供无网时回退展示 */
-    suspend fun saveUserProfileCache(
-        name: String,
-        avatarUrl: String,
-        level: Int,
-        exp: Int,
-        title: String,
-        gender: String,
-        slogan: String,
-        honorBadges: List<String>,
-    ) = edit {
-        it.copy(
-            profile = UserProfileSnapshot(
-                name = name,
-                avatarUrl = avatarUrl,
-                level = level,
-                exp = exp,
-                title = title,
-                gender = gender,
-                slogan = slogan,
-                honorBadges = honorBadges,
-            ),
-        )
     }
 
     suspend fun setExcludeTopicsGlobal(enabled: Boolean) = edit {

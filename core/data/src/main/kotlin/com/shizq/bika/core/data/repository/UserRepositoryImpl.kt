@@ -1,7 +1,7 @@
 package com.shizq.bika.core.data.repository
 
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
-import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.datastore.UserProfileSnapshotDataSource
 import com.shizq.bika.core.model.preferences.UserProfileSnapshot
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.UserProfile
@@ -11,32 +11,26 @@ import kotlinx.coroutines.flow.firstOrNull
 
 class UserRepositoryImpl @Inject constructor(
     private val network: BikaDataSource,
-    private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val userProfileSnapshotDataSource: UserProfileSnapshotDataSource,
     private val userCredentialsDataSource: UserCredentialsDataSource,
 ) : UserRepository {
 
     override suspend fun fetchUserProfile(): UserProfile {
         val profile = network.fetchUserProfile().user
-        // 网络成功时同步写入本地缓存，移出 ViewModel 的 Flow.map 副作用
-        userPreferencesDataSource.saveUserProfileCache(
-            name = profile.name,
-            avatarUrl = profile.imageUrl,
-            level = profile.level,
-            exp = profile.exp,
-            title = profile.title,
-            gender = profile.gender,
-            slogan = profile.slogan,
-            honorBadges = profile.characters,
-        )
+        userProfileSnapshotDataSource.store(profile.toSnapshot())
         return profile
     }
 
     /**
      * name 为空视为"没有可用缓存"而非"缓存了一个匿名用户"：
-     * UserPreferences 的默认快照是全空字段，直接返回会让 UI 渲染一张空白资料卡。
+     * 默认快照是全空字段，直接返回会让 UI 渲染一张空白资料卡。
      */
-    override suspend fun cachedUserProfile(): UserProfileSnapshot? =
-        userPreferencesDataSource.userData.first().profile.takeIf { it.name.isNotEmpty() }
+    override suspend fun getUserProfileSnapshot(): UserProfileSnapshot? =
+        userProfileSnapshotDataSource.profile.first().takeIf { it.name.isNotEmpty() }
+
+    override suspend fun clearCachedUserProfile() {
+        userProfileSnapshotDataSource.clear()
+    }
 
     override suspend fun punchIn() {
         network.punchIn()
@@ -63,3 +57,20 @@ class UserRepositoryImpl @Inject constructor(
         }
     }
 }
+
+/**
+ * 网络模型到本地快照的映射。
+ *
+ * 原先是在调用处摊成八个位置参数再于 DataSource 内组装回来，
+ * 相邻的同类型参数（title/gender/slogan）写串了编译器不会报错。
+ */
+private fun UserProfile.toSnapshot() = UserProfileSnapshot(
+    name = name,
+    avatarUrl = imageUrl,
+    level = level,
+    exp = exp,
+    title = title,
+    gender = gender,
+    slogan = slogan,
+    honorBadges = characters,
+)

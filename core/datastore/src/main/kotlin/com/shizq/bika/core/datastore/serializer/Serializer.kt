@@ -8,7 +8,9 @@ import com.shizq.bika.core.datastore.di.DataStoreModule.DataStoreJson
 import com.shizq.bika.core.datastore.model.UpdatePreference
 import com.shizq.bika.core.datastore.model.UserCredentials
 import com.shizq.bika.core.model.preferences.UserPreferences
+import com.shizq.bika.core.model.preferences.UserProfileSnapshot
 import kotlinx.serialization.ExperimentalSerializationApi
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.json.encodeToStream
 import kotlinx.serialization.json.jsonObject
@@ -42,7 +44,7 @@ internal object UserPreferencesSerializer : Serializer<UserPreferences> {
             // 直接用新 serializer 解析旧扁平数据不会报错，而是静默丢弃全部旧字段。
             // 所以必须先探测结构，命中旧结构时走迁移。
             val element = DataStoreJson.decodeFromStream(
-                kotlinx.serialization.json.JsonElement.serializer(),
+                JsonElement.serializer(),
                 input,
             )
             val root = element.jsonObject
@@ -65,6 +67,26 @@ internal object UserPreferencesSerializer : Serializer<UserPreferences> {
 
     override val defaultValue: UserPreferences
         get() = UserPreferences()
+}
+
+internal object UserProfileCacheSerializer : Serializer<UserProfileSnapshot> {
+    override suspend fun readFrom(input: InputStream): UserProfileSnapshot {
+        try {
+            return DataStoreJson.decodeFromStream(UserProfileSnapshot.serializer(), input)
+        } catch (e: Exception) {
+            throw CorruptionException("Failed to decode data", e)
+        }
+    }
+
+    override suspend fun writeTo(
+        t: UserProfileSnapshot,
+        output: OutputStream
+    ) {
+        DataStoreJson.encodeToStream(UserProfileSnapshot.serializer(), t, output)
+    }
+
+    override val defaultValue: UserProfileSnapshot
+        get() = UserProfileSnapshot()
 }
 
 internal object UpdatePreferencesSerializer : Serializer<UpdatePreference> {

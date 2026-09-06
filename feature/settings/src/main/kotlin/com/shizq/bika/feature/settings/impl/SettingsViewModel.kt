@@ -58,10 +58,18 @@ class SettingsViewModel @Inject constructor(
         updateCacheSize()
     }
 
-    // 使用 ApplicationScope：确保退出登录时即使页面已销毁，清除 token 的操作也能完成
+    /**
+     * 使用 ApplicationScope：确保退出登录时即使页面已销毁，清除操作也能完成。
+     *
+     * 先清 token 再清资料缓存：token 是决定登录态的那一份数据，必须优先落盘。
+     * 资料缓存清理失败只会让下一个账号在联网前短暂看到上一个账号的资料卡，
+     * 不该因此把整个登出流程带崩。
+     */
     fun logout() {
         scope.launch {
             userCredentialsDataSource.setToken(null)
+            runCatching { userRepository.clearCachedUserProfile() }
+                .onFailure { logger.warn(it) { "登出时清理资料缓存失败" } }
         }
     }
 

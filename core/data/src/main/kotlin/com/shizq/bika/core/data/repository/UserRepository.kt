@@ -12,11 +12,14 @@ interface UserRepository {
 
     /**
      * 读取本地缓存的用户资料，供无网时回退展示；从未缓存过时返回 null。
-     *
-     * 与 [fetchUserProfile] 内部的写缓存成对：原先写在仓储、读在 StateMachine
-     * 直连 DataStore，缓存的存在形式泄漏到了 UI 层。
      */
-    suspend fun cachedUserProfile(): UserProfileSnapshot?
+    suspend fun getUserProfileSnapshot(): UserProfileSnapshot?
+
+    /**
+     * 清空本地资料缓存。登出时调用，避免下一个账号在联网拿到自己的资料前，
+     * 先看到上一个账号的资料卡。
+     */
+    suspend fun clearCachedUserProfile()
 
     /** 打卡 */
     suspend fun punchIn()

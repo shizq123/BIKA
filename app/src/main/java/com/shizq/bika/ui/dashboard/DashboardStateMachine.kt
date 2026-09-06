@@ -76,7 +76,7 @@ class DashboardStateMachine @Inject constructor(
 
                         is Result.Error -> {
                             // 「缓存是否可用」的判定在仓储里（name 非空），这里只消费结果
-                            val cached = userRepository.cachedUserProfile()
+                            val cached = userRepository.getUserProfileSnapshot()
                             val fallback = if (cached != null) {
                                 UserProfileUiState.Success(
                                     user = User(
