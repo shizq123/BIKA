@@ -2,18 +2,18 @@
 
 package com.shizq.bika.ui.dashboard
 
-import android.util.Log
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
+import com.shizq.bika.core.data.repository.UserRepository
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.FavoriteTag
-import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import com.shizq.bika.ui.feed.FeedActionType
 import com.shizq.bika.ui.feed.isSameTag
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,10 +21,10 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 
 
-private const val TAG = "DashboardSM"
+private val logger = KotlinLogging.logger("DashboardSM")
 
 class DashboardStateMachine @Inject constructor(
-    private val network: BikaDataSource,
+    private val userRepository: UserRepository,
     private val userPreferencesDataSource: UserPreferencesDataSource,
 ) : FlowReduxStateMachineFactory<DashboardState, DashboardAction>() {
 
@@ -49,8 +49,9 @@ class DashboardStateMachine @Inject constructor(
                 }
 
                 // ── 用户资料加载（可重启）────────────────────────────────
+                // 仓储负责写本地缓存，这里只做 network model → UI model 的映射
                 collectWhileInState(
-                    flow { emit(network.fetchUserProfile()) }
+                    flow { emit(userRepository.fetchUserProfile()) }
                         .asResult()
                         .restartable(profileRestarter)
                 ) { result ->
@@ -85,17 +86,7 @@ class DashboardStateMachine @Inject constructor(
                         }
 
                         is Result.Success -> {
-                            val user = result.data.user
-                            userPreferencesDataSource.saveUserProfileCache(
-                                name = user.name,
-                                avatarUrl = user.imageUrl,
-                                level = user.level,
-                                exp = user.exp,
-                                title = user.title,
-                                gender = user.gender,
-                                slogan = user.slogan,
-                                honorBadges = user.characters,
-                            )
+                            val user = result.data
                             mutate {
                                 copy(
                                     userProfile = UserProfileUiState.Success(
@@ -126,21 +117,21 @@ class DashboardStateMachine @Inject constructor(
                         && !profile.isOfflineCache
                         && !profile.user.hasCheckedIn
                     ) {
-                        runCatching { network.punchIn() }
+                        runCatching { userRepository.punchIn() }
                             .onSuccess { profileRestarter.restart() }
-                            .onFailure { Log.e(TAG, "自动打卡失败", it) }
+                            .onFailure { logger.error(it) { "自动打卡失败" } }
                     }
                     noChange()
                 }
 
                 // ── 手动打卡 ─────────────────────────────────────────────
                 on<DashboardAction.CheckIn> {
-                    val result = runCatching { network.punchIn() }
+                    val result = runCatching { userRepository.punchIn() }
                     val checkInResult = if (result.isSuccess) {
                         profileRestarter.restart()
                         CheckInResult.Success("打卡成功！已成功打哔咔。")
                     } else {
-                        Log.e(TAG, "签到失败", result.exceptionOrNull())
+                        logger.error(result.exceptionOrNull()) { "签到失败" }
                         CheckInResult.Error(
                             "打卡失败：${result.exceptionOrNull()?.localizedMessage ?: "未知错误"}"
                         )
@@ -159,7 +150,7 @@ class DashboardStateMachine @Inject constructor(
                     // 而服务端其实已经生效。
                     val result = try {
                         submitting.value = true
-                        runCatching { network.updateUserProfileSlogan(action.slogan) }
+                        runCatching { userRepository.updateSlogan(action.slogan) }
                     } finally {
                         // finally 而非顺序赋值：handler 被取消时也要清掉标志，
                         // 否则 submitting 停在 true，对话框永久禁用。
@@ -167,7 +158,7 @@ class DashboardStateMachine @Inject constructor(
                     }
                     result.onSuccess { profileRestarter.restart() }
                     if (result.isFailure) {
-                        Log.e(TAG, "更新自我介绍失败", result.exceptionOrNull())
+                        logger.error(result.exceptionOrNull()) { "更新自我介绍失败" }
                     }
                     mutate {
                         copy(
@@ -191,13 +182,13 @@ class DashboardStateMachine @Inject constructor(
                     val result = try {
                         submitting.value = true
                         runCatching {
-                            network.changePassword(action.oldPassword, action.newPassword)
+                            userRepository.changePassword(action.oldPassword, action.newPassword)
                         }
                     } finally {
                         submitting.value = false
                     }
                     if (result.isFailure) {
-                        Log.e(TAG, "修改密码失败", result.exceptionOrNull())
+                        logger.error(result.exceptionOrNull()) { "修改密码失败" }
                     }
                     mutate {
                         copy(
