@@ -95,8 +95,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.R
-import com.shizq.bika.core.database.model.DetailedHistory
-import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.data.model.DetailedReadingHistory
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
@@ -121,9 +120,36 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
-    val lastReadHistory by viewModel.lastReadHistory.collectAsStateWithLifecycle()
-    val favoriteTags by viewModel.favoriteTags.collectAsStateWithLifecycle()
+    val callbacks = remember(
+        navigationToLeaderboard,
+        navigateToFavourite,
+        navigationToHistory,
+        navigationToSettings,
+        navigationToReader,
+        onSearchClick,
+        onChannelPreferenceClick,
+        onCommentsClick,
+        onDownloadsClick,
+        onNotificationsClick,
+        onBlockedTagsClick,
+    ) {
+        DashboardCallbacks(
+            navigateToLeaderboard = navigationToLeaderboard,
+            navigateToFavourite = navigateToFavourite,
+            navigateToHistory = navigationToHistory,
+            navigateToSettings = navigationToSettings,
+            navigateToReader = navigationToReader,
+            onSearchClick = onSearchClick,
+            onChannelPreferenceClick = onChannelPreferenceClick,
+            onCommentsClick = onCommentsClick,
+            onDownloadsClick = onDownloadsClick,
+            onNotificationsClick = onNotificationsClick,
+            onBlockedTagsClick = onBlockedTagsClick,
+        )
+    }
+
+
+    // favoriteTags / lastReadHistory / activeChannels 已并入 state，由 DashboardContent 解包
 
     // 自动打卡：profile 首次加载成功且未打卡时 dispatch 一次，
     // 实际检查逻辑在 StateMachine 内部完成，不会重复触发
@@ -152,93 +178,49 @@ fun DashboardScreen(
     UpdateHost()
 
     DashboardContent(
-        userProfileUiState = userProfileUiState,
-        lastReadHistory = lastReadHistory,
-        onCheckInClick = { viewModel.dispatch(DashboardAction.CheckIn) },
-        onUpdateSlogan = { slogan -> viewModel.dispatch(DashboardAction.UpdateSlogan(slogan)) },
-        sloganResult = state.sloganResult,
-        onDismissSloganResult = { viewModel.dispatch(DashboardAction.DismissSloganResult) },
-        onChangePassword = { old, new ->
-            viewModel.dispatch(
-                DashboardAction.ChangePassword(
-                    old,
-                    new
-                )
-            )
-        },
-        passwordResult = state.passwordResult,
-        onDismissPasswordResult = { viewModel.dispatch(DashboardAction.DismissPasswordResult) },
-        isSubmitting = state.isSubmitting,
-        channelSettingsUiState = channelSettingsUiState,
-        navigationToLeaderboard = navigationToLeaderboard,
-        navigateToFavourite = navigateToFavourite,
-        navigationToHistory = navigationToHistory,
-        navigationToSettings = navigationToSettings,
-        onSearchClick = onSearchClick,
-        onChannelPreferenceClick = onChannelPreferenceClick,
-        onCommentsClick = onCommentsClick,
-        onDownloadsClick = onDownloadsClick,
-        onNotificationsClick = onNotificationsClick,
-        navigationToReader = navigationToReader,
-        favoriteTags = favoriteTags,
-        onAddFavorite = { viewModel.dispatch(DashboardAction.AddFavoriteTag(it)) },
-        onRemoveFavorite = { viewModel.dispatch(DashboardAction.RemoveFavoriteTag(it)) },
-        onUpdateFavoriteName = { tag, name ->
-            viewModel.dispatch(
-                DashboardAction.UpdateFavoriteTagName(
-                    tag,
-                    name
-                )
-            )
-        },
-        onMoveFavorite = { from, to ->
-            viewModel.dispatch(
-                DashboardAction.MoveFavoriteTag(
-                    from,
-                    to
-                )
-            )
-        },
-        onAddCustomFavorite = { viewModel.dispatch(DashboardAction.AddCustomFavoriteTag(it)) },
-        onBlockedTagsClick = onBlockedTagsClick,
+        state = state,
+        onAction = viewModel::dispatch,
+        callbacks = callbacks,
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardContent(
-    userProfileUiState: UserProfileUiState,
-    lastReadHistory: DetailedHistory?,
-    onCheckInClick: () -> Unit,
-    onUpdateSlogan: (String) -> Unit,
-    sloganResult: OperationResult?,
-    onDismissSloganResult: () -> Unit,
-    onChangePassword: (String, String) -> Unit,
-    passwordResult: OperationResult?,
-    onDismissPasswordResult: () -> Unit,
-    isSubmitting: Boolean,
-    channelSettingsUiState: List<Channel>,
-    navigationToLeaderboard: () -> Unit,
-    navigateToFavourite: (DiscoveryAction) -> Unit,
-    navigationToHistory: () -> Unit,
-    navigationToSettings: () -> Unit,
-    onSearchClick: () -> Unit,
-    onChannelPreferenceClick: () -> Unit,
-    onCommentsClick: () -> Unit,
-    onDownloadsClick: () -> Unit,
-    onNotificationsClick: () -> Unit,
-    navigationToReader: (String, Int) -> Unit,
-    favoriteTags: List<FavoriteTag>,
-    onAddFavorite: (FavoriteTag) -> Unit,
-    onRemoveFavorite: (FavoriteTag) -> Unit,
-    onUpdateFavoriteName: (FavoriteTag, String) -> Unit,
-    onMoveFavorite: (fromIndex: Int, toIndex: Int) -> Unit,
-    onAddCustomFavorite: (String) -> Unit,
-    onBlockedTagsClick: () -> Unit = {},
+    state: DashboardState,
+    onAction: (DashboardAction) -> Unit,
+    callbacks: DashboardCallbacks,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+
+    val userProfileUiState = state.userProfile
+    val lastReadHistory = state.lastReadHistory
+    val activeChannels = state.activeChannels
+    val favoriteTags = state.favoriteTags
+    val sloganResult = state.sloganResult
+    val passwordResult = state.passwordResult
+    val isSubmitting = state.isSubmitting
+
+    val onCheckInClick = { onAction(DashboardAction.CheckIn) }
+    val onUpdateSlogan = { slogan: String -> onAction(DashboardAction.UpdateSlogan(slogan)) }
+    val onDismissSloganResult = { onAction(DashboardAction.DismissSloganResult) }
+    val onChangePassword = { old: String, new: String ->
+        onAction(DashboardAction.ChangePassword(old, new))
+    }
+    val onDismissPasswordResult = { onAction(DashboardAction.DismissPasswordResult) }
+    val onAddFavorite = { tag: FavoriteTag -> onAction(DashboardAction.AddFavoriteTag(tag)) }
+    val onRemoveFavorite = { tag: FavoriteTag -> onAction(DashboardAction.RemoveFavoriteTag(tag)) }
+    val onUpdateFavoriteName = { tag: FavoriteTag, name: String ->
+        onAction(DashboardAction.UpdateFavoriteTagName(tag, name))
+    }
+    val onMoveFavorite = { from: Int, to: Int ->
+        onAction(DashboardAction.MoveFavoriteTag(from, to))
+    }
+    val onAddCustomFavorite = { name: String ->
+        onAction(DashboardAction.AddCustomFavoriteTag(name))
+    }
 
     // ── 修改资料对话框 ────────────────────────────────────────────────────
     var showEditProfileDialog by remember { mutableStateOf(false) }
@@ -531,7 +513,7 @@ fun DashboardContent(
                     navigationToReader = { comicId, order ->
                         scope.launch {
                             drawerState.close()
-                            navigationToReader(comicId, order)
+                            callbacks.navigateToReader(comicId, order)
                         }
                     },
                     onCheckInClick = {
@@ -553,37 +535,37 @@ fun DashboardContent(
                     onHistoryClick = {
                         scope.launch {
                             drawerState.close()
-                            navigationToHistory()
+                            callbacks.navigateToHistory()
                         }
                     },
                     onFavouriteClick = {
                         scope.launch {
                             drawerState.close()
-                            navigateToFavourite(DiscoveryAction.ToFavourite)
+                            callbacks.navigateToFavourite(DiscoveryAction.ToFavourite)
                         }
                     },
                     onNotificationsClick = {
                         scope.launch {
                             drawerState.close()
-                            onNotificationsClick()
+                            callbacks.onNotificationsClick()
                         }
                     },
                     onCommentsClick = {
                         scope.launch {
                             drawerState.close()
-                            onCommentsClick()
+                            callbacks.onCommentsClick()
                         }
                     },
                     onDownloadsClick = {
                         scope.launch {
                             drawerState.close()
-                            onDownloadsClick()
+                            callbacks.onDownloadsClick()
                         }
                     },
                     onSettingsClick = {
                         scope.launch {
                             drawerState.close()
-                            navigationToSettings()
+                            callbacks.navigateToSettings()
                         }
                     },
                 )
@@ -596,8 +578,8 @@ fun DashboardContent(
                 DashboardAppBar(
                     scrollBehavior = scrollBehavior,
                     onDrawerOpen = { scope.launch { drawerState.open() } },
-                    onSearchClicked = onSearchClick,
-                    onChannelPreferenceClicked = onChannelPreferenceClick,
+                    onSearchClicked = callbacks.onSearchClick,
+                    onChannelPreferenceClicked = callbacks.onChannelPreferenceClick,
                     onBookmarkClicked = { showBookmarkDrawer = true },
                 )
             },
@@ -619,14 +601,14 @@ fun DashboardContent(
                     item(span = { GridItemSpan(maxLineSpan) }) {
                         QuickResumeCard(
                             history = history,
-                            onClick = navigationToReader,
+                            onClick = callbacks.navigateToReader,
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
                 }
 
                 items(
-                    channelSettingsUiState,
+                    activeChannels,
                     key = { it.iconKey }
                 ) { item ->
                     ChannelGridItem(
@@ -638,10 +620,10 @@ fun DashboardContent(
                     ) {
                         when (val destination = item.toDestination()) {
                             is ChannelDestination.Feed ->
-                                navigateToFavourite(destination.action)
+                                callbacks.navigateToFavourite(destination.action)
 
                             ChannelDestination.Leaderboard ->
-                                navigationToLeaderboard()
+                                callbacks.navigateToLeaderboard()
 
                             is ChannelDestination.Unavailable ->
                                 Toast.makeText(
@@ -684,14 +666,14 @@ fun DashboardContent(
                 currentAction = null,
                 onNavigateToFeed = { action ->
                     showBookmarkDrawer = false
-                    navigateToFavourite(action)
+                    callbacks.navigateToFavourite(action)
                 },
                 onAddFavorite = onAddFavorite,
                 onRemoveFavorite = onRemoveFavorite,
                 onUpdateName = onUpdateFavoriteName,
                 onMove = onMoveFavorite,
                 onAddCustom = onAddCustomFavorite,
-                onBlockedTagsClick = onBlockedTagsClick,
+                onBlockedTagsClick = callbacks.onBlockedTagsClick,
                 onClose = { showBookmarkDrawer = false }
             )
         }
@@ -749,7 +731,7 @@ private fun DashboardAppBar(
 @Composable
 fun DashboardDrawerContent(
     userProfile: UserProfileUiState,
-    lastReadHistory: DetailedHistory?,
+    lastReadHistory: DetailedReadingHistory?,
     navigationToReader: (String, Int) -> Unit,
     modifier: Modifier = Modifier,
     onCheckInClick: () -> Unit = {},
@@ -848,16 +830,16 @@ private fun DrawerMenuItem(
 
 @Composable
 fun QuickResumeCard(
-    history: DetailedHistory,
+    history: DetailedReadingHistory,
     onClick: (String, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val lastProgress = remember(history) {
-        history.progressList.maxByOrNull { it.lastReadAt }
-    }
-    val chapterTitle = lastProgress?.let { "第 ${it.chapterId} 话" } ?: "第一话"
+    // 「最近读到哪一章」的判定属于数据模型，复用 DetailedReadingHistory 上的派生属性，
+    // 不在 UI 里重算一遍 maxByOrNull
+    val lastProgress = history.lastReadChapterProgress
+    val chapterTitle = lastProgress?.let { "第 ${it.chapterNumber} 话" } ?: "第一话"
     val progressText = lastProgress?.let { "已读至第 ${it.currentPage} 页 / 共 ${it.pageCount} 页" } ?: "未开始阅读"
-    val lastReadChapterOrder = lastProgress?.chapterId ?: 1
+    val lastReadChapterOrder = lastProgress?.chapterNumber ?: 1
 
     ElevatedCard(
         onClick = { onClick(history.history.id, lastReadChapterOrder) },

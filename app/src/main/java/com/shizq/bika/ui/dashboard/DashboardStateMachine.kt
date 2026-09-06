@@ -6,8 +6,8 @@ import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.coroutine.FlowRestarter
 import com.shizq.bika.core.coroutine.restartable
+import com.shizq.bika.core.data.repository.DashboardRepository
 import com.shizq.bika.core.data.repository.UserRepository
-import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
@@ -17,7 +17,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 
 
@@ -25,7 +24,7 @@ private val logger = KotlinLogging.logger("DashboardSM")
 
 class DashboardStateMachine @Inject constructor(
     private val userRepository: UserRepository,
-    private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val dashboardRepository: DashboardRepository,
 ) : FlowReduxStateMachineFactory<DashboardState, DashboardAction>() {
 
     private val profileRestarter = FlowRestarter()
@@ -48,6 +47,22 @@ class DashboardStateMachine @Inject constructor(
                     mutate { copy(isSubmitting = inFlight) }
                 }
 
+                // ── 本地数据源投射进状态树 ────────────────────────────────
+                // 这三条原先是 ViewModel 上独立的 stateIn flow，UI 需要 collect
+                // 四处再自行拼装。收进状态树后 UI 只有一个订阅点，且 favoriteTags
+                // 的读与写（见下方 CRUD）归到同一个 owner。
+                collectWhileInState(dashboardRepository.lastReadHistory) { history ->
+                    mutate { copy(lastReadHistory = history) }
+                }
+
+                collectWhileInState(dashboardRepository.activeChannels) { channels ->
+                    mutate { copy(activeChannels = channels) }
+                }
+
+                collectWhileInState(dashboardRepository.favoriteTags) { tags ->
+                    mutate { copy(favoriteTags = tags) }
+                }
+
                 // ── 用户资料加载（可重启）────────────────────────────────
                 // 仓储负责写本地缓存，这里只做 network model → UI model 的映射
                 collectWhileInState(
@@ -61,18 +76,19 @@ class DashboardStateMachine @Inject constructor(
                         }
 
                         is Result.Error -> {
-                            val prefs = userPreferencesDataSource.userData.first()
-                            val fallback = if (prefs.profile.name.isNotEmpty()) {
+                            // 「缓存是否可用」的判定在仓储里（name 非空），这里只消费结果
+                            val cached = userRepository.cachedUserProfile()
+                            val fallback = if (cached != null) {
                                 UserProfileUiState.Success(
                                     user = User(
-                                        name = prefs.profile.name,
-                                        avatarUrl = prefs.profile.avatarUrl,
-                                        characters = prefs.profile.honorBadges,
-                                        level = prefs.profile.level,
-                                        exp = prefs.profile.exp,
-                                        title = prefs.profile.title,
-                                        gender = prefs.profile.gender,
-                                        slogan = prefs.profile.slogan,
+                                        name = cached.name,
+                                        avatarUrl = cached.avatarUrl,
+                                        characters = cached.honorBadges,
+                                        level = cached.level,
+                                        exp = cached.exp,
+                                        title = cached.title,
+                                        gender = cached.gender,
+                                        slogan = cached.slogan,
                                         hasCheckedIn = false,
                                     ),
                                     isOfflineCache = true,
@@ -210,20 +226,20 @@ class DashboardStateMachine @Inject constructor(
                 // 事务内执行，快速连续点击不会因「先读快照再整表写回」而丢更新。
                 // 身份判定复用 FavoriteTag.isSameTag，避免 name + actionType 的谓词散落多处。
                 onActionEffect<DashboardAction.AddFavoriteTag> { action ->
-                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                    dashboardRepository.updateFavoriteTags { tags ->
                         if (tags.any { it.isSameTag(action.tag) }) tags else tags + action.tag
                     }
                 }
 
                 onActionEffect<DashboardAction.RemoveFavoriteTag> { action ->
-                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                    dashboardRepository.updateFavoriteTags { tags ->
                         tags.filterNot { it.isSameTag(action.tag) }
                     }
                 }
 
                 onActionEffect<DashboardAction.UpdateFavoriteTagName> { action ->
                     if (action.newName.isBlank()) return@onActionEffect
-                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                    dashboardRepository.updateFavoriteTags { tags ->
                         tags.map {
                             if (it.isSameTag(action.tag)) it.copy(name = action.newName) else it
                         }
@@ -231,7 +247,7 @@ class DashboardStateMachine @Inject constructor(
                 }
 
                 onActionEffect<DashboardAction.MoveFavoriteTag> { action ->
-                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                    dashboardRepository.updateFavoriteTags { tags ->
                         if (action.fromIndex !in tags.indices || action.toIndex !in tags.indices) {
                             tags
                         } else {
@@ -247,7 +263,7 @@ class DashboardStateMachine @Inject constructor(
                         name = action.name,
                         actionType = FeedActionType.AdvancedSearch.storageValue,
                     )
-                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                    dashboardRepository.updateFavoriteTags { tags ->
                         if (tags.any { it.isSameTag(tag) }) tags else tags + tag
                     }
                 }
