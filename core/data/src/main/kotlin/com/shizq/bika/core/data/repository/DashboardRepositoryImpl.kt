@@ -16,14 +16,9 @@ internal class DashboardRepositoryImpl @Inject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
 ) : DashboardRepository {
 
-    /**
-     * DAO 已按 lastInteractionAt DESC 排序，取首条即最近记录。
-     * distinctUntilChanged：历史表任一行变动都会让 DAO 重新发射整表，
-     * 但只要首条没变就不该惊动下游。
-     */
     override val lastReadHistory: Flow<DetailedReadingHistory?> =
-        historyDao.getDetailedHistories()
-            .map { histories -> histories.firstOrNull()?.asExternalModel() }
+        historyDao.getLatestDetailedHistory()
+            .map { history -> history?.asExternalModel() }
             .distinctUntilChanged()
 
     override val activeChannels: Flow<List<Channel>> =

@@ -148,14 +148,12 @@ fun DashboardScreen(
         )
     }
 
-
-    // favoriteTags / lastReadHistory / activeChannels 已并入 state，由 DashboardContent 解包
-
-    // 自动打卡：profile 首次加载成功且未打卡时 dispatch 一次，
-    // 实际检查逻辑在 StateMachine 内部完成，不会重复触发
-    val userProfileUiState = state.userProfile
-    LaunchedEffect(userProfileUiState) {
-        if (userProfileUiState is UserProfileUiState.Success) {
+    // 自动打卡：profile 加载成功后 dispatch 一次，实际检查逻辑在 StateMachine 内部完成。
+    // key 用 Boolean 而非整个 userProfile：后者每次资料刷新（打卡改了 exp/level、
+    // 改签名、下拉刷新）都会换实例，导致 effect 重启并重复 dispatch。
+    val isProfileLoaded = state.userProfile is UserProfileUiState.Success
+    LaunchedEffect(isProfileLoaded) {
+        if (isProfileLoaded) {
             viewModel.dispatch(DashboardAction.AutoCheckIn)
         }
     }
@@ -177,9 +175,14 @@ fun DashboardScreen(
 
     UpdateHost()
 
+    // viewModel::dispatch 每次重组都会新建一个函数对象，引用不等会让
+    // DashboardContent 拿不到 skip。remember 后引用稳定，配合稳定的
+    // DashboardState 才能真正跳过重组。
+    val onAction = remember(viewModel) { viewModel::dispatch }
+
     DashboardContent(
         state = state,
-        onAction = viewModel::dispatch,
+        onAction = onAction,
         callbacks = callbacks,
     )
 }
