@@ -12,7 +12,6 @@ import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import com.shizq.bika.ui.feed.FeedActionType
-import com.shizq.bika.ui.feed.isSameTag
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -226,34 +225,26 @@ class DashboardStateMachine @Inject constructor(
                 // 事务内执行，快速连续点击不会因「先读快照再整表写回」而丢更新。
                 // 身份判定复用 FavoriteTag.isSameTag，避免 name + actionType 的谓词散落多处。
                 onActionEffect<DashboardAction.AddFavoriteTag> { action ->
-                    dashboardRepository.updateFavoriteTags { tags ->
-                        if (tags.any { it.isSameTag(action.tag) }) tags else tags + action.tag
-                    }
+                    dashboardRepository.updateFavoriteTags { addFavoriteTag(it, action.tag) }
                 }
 
                 onActionEffect<DashboardAction.RemoveFavoriteTag> { action ->
-                    dashboardRepository.updateFavoriteTags { tags ->
-                        tags.filterNot { it.isSameTag(action.tag) }
-                    }
+                    dashboardRepository.updateFavoriteTags { removeFavoriteTag(it, action.tag) }
                 }
 
                 onActionEffect<DashboardAction.UpdateFavoriteTagName> { action ->
+                    // 这里的空名短路是为了省掉一次无谓的 DataStore 事务；
+                    // renameFavoriteTag 内部同样有守卫，两者都不能删——
+                    // 事务内的那道才是真正保证不写入空名的。
                     if (action.newName.isBlank()) return@onActionEffect
-                    dashboardRepository.updateFavoriteTags { tags ->
-                        tags.map {
-                            if (it.isSameTag(action.tag)) it.copy(name = action.newName) else it
-                        }
+                    dashboardRepository.updateFavoriteTags {
+                        renameFavoriteTag(it, action.tag, action.newName)
                     }
                 }
 
                 onActionEffect<DashboardAction.MoveFavoriteTag> { action ->
-                    dashboardRepository.updateFavoriteTags { tags ->
-                        if (action.fromIndex !in tags.indices || action.toIndex !in tags.indices) {
-                            tags
-                        } else {
-                            tags.toMutableList()
-                                .apply { add(action.toIndex, removeAt(action.fromIndex)) }
-                        }
+                    dashboardRepository.updateFavoriteTags {
+                        moveFavoriteTag(it, action.fromIndex, action.toIndex)
                     }
                 }
 
@@ -263,9 +254,7 @@ class DashboardStateMachine @Inject constructor(
                         name = action.name,
                         actionType = FeedActionType.AdvancedSearch.storageValue,
                     )
-                    dashboardRepository.updateFavoriteTags { tags ->
-                        if (tags.any { it.isSameTag(tag) }) tags else tags + tag
-                    }
+                    dashboardRepository.updateFavoriteTags { addFavoriteTag(it, tag) }
                 }
             }
         }

@@ -57,6 +57,7 @@ import androidx.compose.material3.ModalDrawerSheet
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -85,6 +86,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -175,19 +177,13 @@ fun DashboardScreen(
 
     UpdateHost()
 
-    // viewModel::dispatch 每次重组都会新建一个函数对象，引用不等会让
-    // DashboardContent 拿不到 skip。remember 后引用稳定，配合稳定的
-    // DashboardState 才能真正跳过重组。
-    val onAction = remember(viewModel) { viewModel::dispatch }
-
     DashboardContent(
         state = state,
-        onAction = onAction,
+        onAction = viewModel::dispatch,
         callbacks = callbacks,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardContent(
     state: DashboardState,
@@ -251,7 +247,7 @@ fun DashboardContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
                         value = inputSlogan,
                         onValueChange = { inputSlogan = it },
                         label = { Text("自我介绍") },
@@ -368,14 +364,14 @@ fun DashboardContent(
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
                         value = inputOldPassword,
                         onValueChange = { inputOldPassword = it },
                         label = { Text("旧密码") },
                         placeholder = { Text("请输入旧密码") },
                         singleLine = true,
                         enabled = !isSubmitting,
-                        visualTransformation = if (oldPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        visualTransformation = if (oldPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { oldPasswordVisible = !oldPasswordVisible }) {
                                 Icon(
@@ -387,14 +383,14 @@ fun DashboardContent(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
                         value = inputNewPassword,
                         onValueChange = { inputNewPassword = it },
                         label = { Text("新密码") },
                         placeholder = { Text("请输入新密码（至少8位）") },
                         singleLine = true,
                         enabled = !isSubmitting,
-                        visualTransformation = if (newPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        visualTransformation = if (newPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
                             IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
                                 Icon(
@@ -406,16 +402,18 @@ fun DashboardContent(
                         modifier = Modifier.fillMaxWidth()
                     )
 
-                    androidx.compose.material3.OutlinedTextField(
+                    OutlinedTextField(
                         value = inputConfirmPassword,
                         onValueChange = { inputConfirmPassword = it },
                         label = { Text("确认新密码") },
                         placeholder = { Text("请再次输入新密码") },
                         singleLine = true,
                         enabled = !isSubmitting,
-                        visualTransformation = if (confirmPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
+                        visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         trailingIcon = {
-                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                            IconButton(onClick = {
+                                confirmPasswordVisible = !confirmPasswordVisible
+                            }) {
                                 Icon(
                                     imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
                                     contentDescription = if (confirmPasswordVisible) "隐藏确认密码" else "显示确认密码"
@@ -504,142 +502,144 @@ fun DashboardContent(
     Box(modifier = Modifier.fillMaxSize()) {
         ModalNavigationDrawer(
             modifier = Modifier.semantics { testTagsAsResourceId = true },
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.testTag("dashboard:drawer"),
-                drawerState = drawerState
-            ) {
-                DashboardDrawerContent(
-                    userProfile = userProfileUiState,
-                    lastReadHistory = lastReadHistory,
-                    navigationToReader = { comicId, order ->
-                        scope.launch {
-                            drawerState.close()
-                            callbacks.navigateToReader(comicId, order)
-                        }
-                    },
-                    onCheckInClick = {
-                        scope.launch {
-                            drawerState.close()
-                            onCheckInClick()
-                        }
-                    },
-                    onEditProfileClick = {
-                        scope.launch {
-                            drawerState.close()
-                            // 同步初始化签名输入框，避免 LaunchedEffect 一帧延迟闪烁
-                            if (userProfileUiState is UserProfileUiState.Success) {
-                                inputSlogan = userProfileUiState.user.slogan
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier.testTag("dashboard:drawer"),
+                    drawerState = drawerState
+                ) {
+                    DashboardDrawerContent(
+                        userProfile = userProfileUiState,
+                        lastReadHistory = lastReadHistory,
+                        navigationToReader = { comicId, order ->
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.navigateToReader(comicId, order)
                             }
-                            showEditProfileDialog = true
-                        }
-                    },
-                    onHistoryClick = {
-                        scope.launch {
-                            drawerState.close()
-                            callbacks.navigateToHistory()
-                        }
-                    },
-                    onFavouriteClick = {
-                        scope.launch {
-                            drawerState.close()
-                            callbacks.navigateToFavourite(DiscoveryAction.ToFavourite)
-                        }
-                    },
-                    onNotificationsClick = {
-                        scope.launch {
-                            drawerState.close()
-                            callbacks.onNotificationsClick()
-                        }
-                    },
-                    onCommentsClick = {
-                        scope.launch {
-                            drawerState.close()
-                            callbacks.onCommentsClick()
-                        }
-                    },
-                    onDownloadsClick = {
-                        scope.launch {
-                            drawerState.close()
-                            callbacks.onDownloadsClick()
-                        }
-                    },
-                    onSettingsClick = {
-                        scope.launch {
-                            drawerState.close()
-                            callbacks.navigateToSettings()
-                        }
-                    },
-                )
-            }
-        },
-    ) {
-        val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-        Scaffold(
-            topBar = {
-                DashboardAppBar(
-                    scrollBehavior = scrollBehavior,
-                    onDrawerOpen = { scope.launch { drawerState.open() } },
-                    onSearchClicked = callbacks.onSearchClick,
-                    onChannelPreferenceClicked = callbacks.onChannelPreferenceClick,
-                    onBookmarkClicked = { showBookmarkDrawer = true },
-                )
+                        },
+                        onCheckInClick = {
+                            scope.launch {
+                                drawerState.close()
+                                onCheckInClick()
+                            }
+                        },
+                        onEditProfileClick = {
+                            scope.launch {
+                                drawerState.close()
+                                // 同步初始化签名输入框，避免 LaunchedEffect 一帧延迟闪烁
+                                if (userProfileUiState is UserProfileUiState.Success) {
+                                    inputSlogan = userProfileUiState.user.slogan
+                                }
+                                showEditProfileDialog = true
+                            }
+                        },
+                        onHistoryClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.navigateToHistory()
+                            }
+                        },
+                        onFavouriteClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.navigateToFavourite(DiscoveryAction.ToFavourite)
+                            }
+                        },
+                        onNotificationsClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.onNotificationsClick()
+                            }
+                        },
+                        onCommentsClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.onCommentsClick()
+                            }
+                        },
+                        onDownloadsClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.onDownloadsClick()
+                            }
+                        },
+                        onSettingsClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.navigateToSettings()
+                            }
+                        },
+                    )
+                }
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-        ) { innerPadding ->
-            val gridState: LazyGridState = rememberLazyGridState()
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                state = gridState,
+        ) {
+            val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+            Scaffold(
+                topBar = {
+                    DashboardAppBar(
+                        scrollBehavior = scrollBehavior,
+                        onDrawerOpen = { scope.launch { drawerState.open() } },
+                        onSearchClicked = callbacks.onSearchClick,
+                        onChannelPreferenceClicked = callbacks.onChannelPreferenceClick,
+                        onBookmarkClicked = { showBookmarkDrawer = true },
+                    )
+                },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .testTag("dashboard:grid"),
-            ) {
-                lastReadHistory?.let { history ->
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        QuickResumeCard(
-                            history = history,
-                            onClick = callbacks.navigateToReader,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+            ) { innerPadding ->
+                val gridState: LazyGridState = rememberLazyGridState()
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    state = gridState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .testTag("dashboard:grid"),
+                ) {
+                    lastReadHistory?.let { history ->
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            QuickResumeCard(
+                                history = history,
+                                onClick = callbacks.navigateToReader,
+                                modifier = Modifier
+                                    .padding(bottom = 8.dp)
+                                    .animateItem()
+                            )
+                        }
                     }
-                }
 
-                items(
-                    activeChannels,
-                    key = { it.iconKey }
-                ) { item ->
-                    ChannelGridItem(
-                        iconRes = item.iconResId,
-                        label = item.label,
-                        modifier = Modifier
-                            .animateItem()
-                            .testTag("dashboard:channel:${item.label}"),
-                    ) {
-                        when (val destination = item.toDestination()) {
-                            is ChannelDestination.Feed ->
-                                callbacks.navigateToFavourite(destination.action)
+                    items(
+                        activeChannels,
+                        key = { it.iconKey }
+                    ) { item ->
+                        ChannelGridItem(
+                            iconRes = item.iconResId,
+                            label = item.label,
+                            modifier = Modifier
+                                .animateItem()
+                                .testTag("dashboard:channel:${item.label}"),
+                        ) {
+                            when (val destination = item.toDestination()) {
+                                is ChannelDestination.Feed ->
+                                    callbacks.navigateToFavourite(destination.action)
 
-                            ChannelDestination.Leaderboard ->
-                                callbacks.navigateToLeaderboard()
+                                ChannelDestination.Leaderboard ->
+                                    callbacks.navigateToLeaderboard()
 
-                            is ChannelDestination.Unavailable ->
-                                Toast.makeText(
-                                    context,
-                                    destination.reason,
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                                is ChannelDestination.Unavailable ->
+                                    Toast.makeText(
+                                        context,
+                                        destination.reason,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
         if (showBookmarkDrawer) {
             Box(
@@ -841,7 +841,8 @@ fun QuickResumeCard(
     // 不在 UI 里重算一遍 maxByOrNull
     val lastProgress = history.lastReadChapterProgress
     val chapterTitle = lastProgress?.let { "第 ${it.chapterNumber} 话" } ?: "第一话"
-    val progressText = lastProgress?.let { "已读至第 ${it.currentPage} 页 / 共 ${it.pageCount} 页" } ?: "未开始阅读"
+    val progressText = lastProgress?.let { "已读至第 ${it.currentPage} 页 / 共 ${it.pageCount} 页" }
+        ?: "未开始阅读"
     val lastReadChapterOrder = lastProgress?.chapterNumber ?: 1
 
     ElevatedCard(
