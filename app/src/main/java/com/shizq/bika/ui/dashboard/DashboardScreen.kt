@@ -137,10 +137,6 @@ fun DashboardScreen(
     // 打卡结果对话框（状态驱动）
     val checkInResult = state.checkInResult
     if (checkInResult != null) {
-        val message = when (checkInResult) {
-            is CheckInResult.Success -> checkInResult.message
-            is CheckInResult.Error -> checkInResult.error
-        }
         AlertDialog(
             onDismissRequest = { viewModel.dispatch(DashboardAction.DismissCheckInResult) },
             confirmButton = {
@@ -149,7 +145,7 @@ fun DashboardScreen(
                 }
             },
             title = { Text("打哔咔提示") },
-            text = { Text(message) },
+            text = { Text(checkInResult.message) },
         )
     }
 

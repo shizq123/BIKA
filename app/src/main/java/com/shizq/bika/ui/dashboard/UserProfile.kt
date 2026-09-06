@@ -37,8 +37,10 @@ sealed interface OperationResult {
 }
 
 sealed interface CheckInResult {
-    data class Success(val message: String) : CheckInResult
-    data class Error(val error: String) : CheckInResult
+    val message: String
+
+    data class Success(override val message: String) : CheckInResult
+    data class Error(override val message: String) : CheckInResult
 }
 
 /** 整个 Dashboard 的单一状态树 */
@@ -50,7 +52,7 @@ data class DashboardState(
     /**
      * 一次性写操作（改签名 / 改密码）是否正在进行中。
      *
-     * 由 StateMachine 而非 UI 持有：原先三个对话框各自 `remember { mutableStateOf(false) }`，
+     * 由 StateMachine 而非 UI 持有：原先两个对话框各自 `remember { mutableStateOf(false) }`，
      * 进程重建后 UI 认为空闲、而请求可能还在飞。改密码对话框会关闭修改资料对话框，
      * 两者不会同时打开，共用一个标志即可。
      */
