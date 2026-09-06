@@ -9,6 +9,8 @@ import com.shizq.bika.core.coroutine.restartable
 import com.shizq.bika.core.data.repository.DashboardRepository
 import com.shizq.bika.core.data.repository.UserRepository
 import com.shizq.bika.core.model.FavoriteTag
+import com.shizq.bika.core.model.preferences.UserProfileSnapshot
+import com.shizq.bika.core.network.model.UserProfile
 import com.shizq.bika.core.result.Result
 import com.shizq.bika.core.result.asResult
 import com.shizq.bika.ui.feed.FeedActionType
@@ -17,7 +19,6 @@ import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
-
 
 private val logger = KotlinLogging.logger("DashboardSM")
 
@@ -76,49 +77,21 @@ class DashboardStateMachine @Inject constructor(
 
                         is Result.Error -> {
                             // 「缓存是否可用」的判定在仓储里（name 非空），这里只消费结果
-                            val cached = userRepository.getUserProfileSnapshot()
-                            val fallback = if (cached != null) {
-                                UserProfileUiState.Success(
-                                    user = User(
-                                        name = cached.name,
-                                        avatarUrl = cached.avatarUrl,
-                                        characters = cached.honorBadges,
-                                        level = cached.level,
-                                        exp = cached.exp,
-                                        title = cached.title,
-                                        gender = cached.gender,
-                                        slogan = cached.slogan,
-                                        hasCheckedIn = false,
-                                    ),
-                                    isOfflineCache = true,
-                                )
-                            } else {
-                                UserProfileUiState.Error(
+                            val fallback = userRepository.getUserProfileSnapshot()
+                                ?.let {
+                                    UserProfileUiState.Success(
+                                        it.toUser(),
+                                        isOfflineCache = true
+                                    )
+                                }
+                                ?: UserProfileUiState.Error(
                                     result.exception.message ?: "加载用户信息失败"
                                 )
-                            }
                             mutate { copy(userProfile = fallback) }
                         }
 
-                        is Result.Success -> {
-                            val user = result.data
-                            mutate {
-                                copy(
-                                    userProfile = UserProfileUiState.Success(
-                                        user = User(
-                                            name = user.name,
-                                            avatarUrl = user.imageUrl,
-                                            characters = user.characters,
-                                            level = user.level,
-                                            exp = user.exp,
-                                            title = user.title,
-                                            gender = user.gender,
-                                            slogan = user.slogan,
-                                            hasCheckedIn = user.isPunched,
-                                        )
-                                    )
-                                )
-                            }
+                        is Result.Success -> mutate {
+                            copy(userProfile = UserProfileUiState.Success(result.data.toUser()))
                         }
                     }
                 }
@@ -260,3 +233,36 @@ class DashboardStateMachine @Inject constructor(
         }
     }
 }
+
+// ─────────────────────────────────────────────
+// 数据源模型 → UI 模型
+// ─────────────────────────────────────────────
+
+private fun UserProfile.toUser() = User(
+    name = name,
+    avatarUrl = imageUrl,
+    characters = characters,
+    level = level,
+    exp = exp,
+    title = title,
+    gender = gender,
+    slogan = slogan,
+    hasCheckedIn = isPunched,
+)
+
+/**
+ * 快照里没有 isPunched：打卡状态是当天的，缓存下来必然过时。
+ * 这里硬编码 false，配合 [UserProfileUiState.Success.isOfflineCache] 让 AutoCheckIn
+ * 在离线态直接短路——不会拿一个陈旧的「未打卡」去触发打卡请求。
+ */
+private fun UserProfileSnapshot.toUser() = User(
+    name = name,
+    avatarUrl = avatarUrl,
+    characters = honorBadges,
+    level = level,
+    exp = exp,
+    title = title,
+    gender = gender,
+    slogan = slogan,
+    hasCheckedIn = false,
+)

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.coroutine.ApplicationScope
+import com.shizq.bika.core.data.repository.UserRepository
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.message.MessageReporter
@@ -31,6 +32,7 @@ class SettingsViewModel @Inject constructor(
     @ApplicationScope private val scope: CoroutineScope,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val userCredentialsDataSource: UserCredentialsDataSource,
+    private val userRepository: UserRepository,
     private val imageCacheManager: ImageCacheManager,
     private val messageReporter: MessageReporter,
 ) : ViewModel() {
