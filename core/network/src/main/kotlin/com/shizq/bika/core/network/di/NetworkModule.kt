@@ -70,6 +70,11 @@ internal object NetworkModule {
             url("https://picaapi.picacomic.com")
             contentType(ContentType.Application.Json.withCharset(Charsets.UTF_8))
         }
+        install(HttpTimeout) {
+            connectTimeoutMillis = 15_000L
+            requestTimeoutMillis = 30_000L
+            socketTimeoutMillis = 30_000L
+        }
         // 通路 A：HTTP 401。装在信封插件之前，先于响应体解析拦下鉴权失败
         install(sessionExpiryPlugin(sessionManager))
         install(ApiEnvelopePlugin) {

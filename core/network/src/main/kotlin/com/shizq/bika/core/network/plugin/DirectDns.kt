@@ -75,15 +75,18 @@ class DirectDns @Inject constructor(
         return Dns.SYSTEM.lookup(hostname)
     }
 
-    private fun isApiHost(hostname: String): Boolean {
-        return hostname.contains("picaapi.picacomic.com", ignoreCase = true)
-    }
+    private fun isApiHost(hostname: String): Boolean = hostname.matchesHost("picaapi.picacomic.com")
 
     private fun isImageHost(hostname: String): Boolean {
-        if (hostname.contains("picaapi.picacomic.com", ignoreCase = true)) return false
-        return hostname.contains("picacomic.com", ignoreCase = true) ||
-               hostname.contains("diwodiwo.xyz", ignoreCase = true) ||
-               hostname.contains("tipatipa.xyz", ignoreCase = true)
+        if (isApiHost(hostname)) return false
+        return IMAGE_HOST_SUFFIXES.any { hostname.matchesHost(it) }
+    }
+
+    private fun String.matchesHost(domain: String): Boolean =
+        equals(domain, ignoreCase = true) || endsWith(".$domain", ignoreCase = true)
+
+    private companion object {
+        val IMAGE_HOST_SUFFIXES = listOf("picacomic.com", "diwodiwo.xyz", "tipatipa.xyz")
     }
 }
 
