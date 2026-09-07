@@ -25,16 +25,42 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.ui.CircularProgressIndicator
 
 /**
- * 修改资料对话框。只认参数和回调，不持有 DashboardViewModel。
+ * 修改资料对话框的 entry 入口。状态归 [EditProfileViewModel]，作用域是本 entry。
  *
- * [initialSlogan] 由调用方在打开对话框那一刻传入当前签名，作为 remember 的初值，
- * 避免像旧实现那样靠 LaunchedEffect 异步赋值导致的一帧闪烁。
+ * [initialSlogan] 从 EditProfileNavKey 传入，见那里的注释。
  */
 @Composable
 fun EditProfileDialog(
+    initialSlogan: String,
+    onDismiss: () -> Unit,
+    onChangePasswordClick: () -> Unit,
+    viewModel: EditProfileViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    EditProfileDialogContent(
+        initialSlogan = initialSlogan,
+        sloganResult = uiState.result,
+        isSubmitting = uiState.isSubmitting,
+        onSave = viewModel::updateSlogan,
+        onDismissResult = viewModel::dismissResult,
+        onDismiss = onDismiss,
+        onChangePasswordClick = onChangePasswordClick,
+    )
+}
+
+/**
+ * 只认参数和回调，不持有任何 ViewModel，便于预览和测试。
+ *
+ * [initialSlogan] 作为 remember 的初值，避免靠 LaunchedEffect 异步赋值导致的一帧闪烁。
+ */
+@Composable
+fun EditProfileDialogContent(
     initialSlogan: String,
     sloganResult: OperationResult?,
     isSubmitting: Boolean,

@@ -28,10 +28,30 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.ui.CircularProgressIndicator
 
+/** 修改密码对话框的 entry 入口。状态归 [ChangePasswordViewModel]，作用域是本 entry。 */
 @Composable
 fun ChangePasswordDialog(
+    onDismiss: () -> Unit,
+    viewModel: ChangePasswordViewModel = hiltViewModel(),
+) {
+    val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    ChangePasswordDialogContent(
+        passwordResult = uiState.result,
+        isSubmitting = uiState.isSubmitting,
+        onSave = viewModel::changePassword,
+        onDismissResult = viewModel::dismissResult,
+        onDismiss = onDismiss,
+    )
+}
+
+/** 只认参数和回调，不持有任何 ViewModel，便于预览和测试。 */
+@Composable
+fun ChangePasswordDialogContent(
     passwordResult: OperationResult?,
     isSubmitting: Boolean,
     onSave: (oldPassword: String, newPassword: String) -> Unit,

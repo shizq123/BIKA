@@ -13,3 +13,15 @@ sealed interface DialogNavKey : Connected
 
 @Serializable
 data object ChannelSettingsNavKey : DialogNavKey
+
+/**
+ * 修改资料对话框。
+ *
+ * [initialSlogan] 进 key 而不是让对话框自己去读 profile：key 会被序列化进返回栈，
+ * 进程死亡后重建仍是打开那一刻的签名，且省掉一次异步读取导致的输入框闪烁。
+ */
+@Serializable
+data class EditProfileNavKey(val initialSlogan: String) : DialogNavKey
+
+@Serializable
+data object ChangePasswordNavKey : DialogNavKey

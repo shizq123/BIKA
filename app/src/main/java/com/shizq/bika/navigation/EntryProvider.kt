@@ -21,8 +21,10 @@ import com.shizq.bika.feature.settings.impl.StorageManagerScreen
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
+import com.shizq.bika.ui.dashboard.ChangePasswordDialog
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
 import com.shizq.bika.ui.dashboard.DashboardScreen
+import com.shizq.bika.ui.dashboard.EditProfileDialog
 import com.shizq.bika.ui.download.DownloadListScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
@@ -267,6 +269,24 @@ fun EntryProviderScope<NavKey>.featureSection(
         metadata = DialogSceneStrategy.dialog(),
     ) {
         ChannelSettingsDialog(
+            onDismiss = navigator::goBack,
+        )
+    }
+
+    entry<EditProfileNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) { key ->
+        EditProfileDialog(
+            initialSlogan = key.initialSlogan,
+            onDismiss = navigator::goBack,
+            onChangePasswordClick = { navigator.navigate(ChangePasswordNavKey) },
+        )
+    }
+
+    entry<ChangePasswordNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) {
+        ChangePasswordDialog(
             onDismiss = navigator::goBack,
         )
     }
