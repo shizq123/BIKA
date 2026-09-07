@@ -11,8 +11,6 @@ import com.shizq.bika.core.network.model.ComicResource
 import com.shizq.bika.core.network.model.CommentDoc
 import com.shizq.bika.core.network.model.CommentsData
 import com.shizq.bika.core.network.model.EpisodeData
-import com.shizq.bika.core.network.model.GameData
-import com.shizq.bika.core.network.model.GameDetailsDataa
 import com.shizq.bika.core.network.model.KeywordsData
 import com.shizq.bika.core.network.model.KnightLeaderboardData
 import com.shizq.bika.core.network.model.LeaderboardData
@@ -144,10 +142,6 @@ class BikaDataSource @Inject constructor(
         return client.get("users/profile").body()
     }
 
-    suspend fun fetchCategories() {
-        client.get("categories")
-    }
-
     suspend fun getKeywords(): KeywordsData {
         return client.get("keywords").body()
     }
@@ -235,13 +229,6 @@ class BikaDataSource @Inject constructor(
         return client.post("comments/$id/like").body()
     }
 
-    /**
-     * 切换子评论（回复）的点赞状态 (点赞/取消点赞)
-     */
-    suspend fun toggleReplyLike(id: String): ActionData {
-        return client.post("comments/$id/like").body()
-    }
-
     suspend fun searchComics(
         topic: String? = null,
         tag: String? = null,
@@ -313,16 +300,6 @@ class BikaDataSource @Inject constructor(
             attributes.put(ExpectRawResponse, Unit)
             setBody(obj)
         }.body()
-    }
-
-    suspend fun getGameList(page: Int): GameData {
-        return client.get("games") {
-            parameter("page", page)
-        }.body()
-    }
-
-    suspend fun getGameDetail(id: String): GameDetailsDataa {
-        return client.get("games/$id").body()
     }
 
     suspend fun mineComment(page: Int): CommentDoc {

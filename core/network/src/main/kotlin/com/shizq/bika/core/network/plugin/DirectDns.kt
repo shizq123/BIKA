@@ -3,6 +3,7 @@ package com.shizq.bika.core.network.plugin
 import android.util.Log
 import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.network.BikaEndpoints
 import com.shizq.bika.core.network.BuildConfig
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -75,7 +76,7 @@ class DirectDns @Inject constructor(
         return Dns.SYSTEM.lookup(hostname)
     }
 
-    private fun isApiHost(hostname: String): Boolean = hostname.matchesHost("picaapi.picacomic.com")
+    private fun isApiHost(hostname: String): Boolean = hostname.matchesHost(BikaEndpoints.API_HOST)
 
     private fun isImageHost(hostname: String): Boolean {
         if (isApiHost(hostname)) return false

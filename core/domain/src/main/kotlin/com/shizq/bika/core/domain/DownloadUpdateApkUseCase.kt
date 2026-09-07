@@ -2,7 +2,7 @@ package com.shizq.bika.core.domain
 
 import com.shizq.bika.core.data.platform.UpdateFileProvider
 import com.shizq.bika.core.data.repository.AppUpdateRepository
-import com.shizq.bika.core.network.model.AppUpdateRelease
+import com.shizq.bika.core.model.AppUpdateRelease
 import java.io.File
 import javax.inject.Inject
 

@@ -7,6 +7,7 @@ import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.network.BikaEndpoints
 import com.shizq.bika.core.network.BuildConfig
 import com.shizq.bika.core.network.auth.SessionExpiryReason
 import com.shizq.bika.core.network.auth.SessionManager
@@ -67,7 +68,7 @@ internal object NetworkModule {
             preconfigured = okHttpClient
         }
         defaultRequest {
-            url("https://picaapi.picacomic.com")
+            url(BikaEndpoints.API_BASE_URL)
             contentType(ContentType.Application.Json.withCharset(Charsets.UTF_8))
         }
         install(HttpTimeout) {

@@ -7,7 +7,7 @@ import com.shizq.bika.core.domain.DownloadUpdateApkUseCase
 import com.shizq.bika.core.domain.IgnoreUpdateVersionUseCase
 import com.shizq.bika.core.domain.MarkUpdatePromptedUseCase
 import com.shizq.bika.core.domain.ShouldShowUpdateUseCase
-import com.shizq.bika.core.network.model.AppUpdateRelease
+import com.shizq.bika.core.model.AppUpdateRelease
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.CancellationException

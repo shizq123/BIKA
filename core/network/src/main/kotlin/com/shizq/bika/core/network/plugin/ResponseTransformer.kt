@@ -1,6 +1,6 @@
 package com.shizq.bika.core.network.plugin
 
-import com.shizq.bika.core.network.model.Box
+import com.shizq.bika.core.network.model.ApiEnvelope
 import io.ktor.client.plugins.api.ClientPlugin
 import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.client.statement.request
@@ -47,7 +47,7 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
             val targetKotlinType = requestedType.kotlinType ?: return@transformResponseBody content
 
             val decodedContent = json.decodeFromStream(
-                Box.serializer(serializer(targetKotlinType)),
+                ApiEnvelope.serializer(serializer(targetKotlinType)),
                 content.toInputStream()
             )
             if (decodedContent.code == HttpStatusCode.Unauthorized.value) {

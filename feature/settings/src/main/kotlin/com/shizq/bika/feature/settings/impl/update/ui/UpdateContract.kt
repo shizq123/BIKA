@@ -1,6 +1,6 @@
 package com.shizq.bika.feature.settings.impl.update.ui
 
-import com.shizq.bika.core.network.model.AppUpdateRelease
+import com.shizq.bika.core.model.AppUpdateRelease
 
 sealed interface UpdateUiState {
     data object Idle : UpdateUiState
