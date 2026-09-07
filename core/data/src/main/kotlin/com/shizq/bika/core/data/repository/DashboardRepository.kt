@@ -22,6 +22,15 @@ interface DashboardRepository {
     val favoriteTags: Flow<List<FavoriteTag>>
 
     /**
+     * 是否启用自动打卡。
+     *
+     * 设置页早已能写这个开关（UserPreferencesDataSource.setAutoCheckIn），但此前
+     * 没有任何读取方：AutoCheckIn 只看「资料已加载且未打卡」就发请求，关掉开关
+     * 照样打卡。这里把它暴露出来，由 DashboardStateMachine 在打卡前判定。
+     */
+    val autoCheckInEnabled: Flow<Boolean>
+
+    /**
      * 以原子的读-改-写方式更新收藏标签。
      *
      * [transform] 在 DataStore 事务内执行，必须是纯函数且不可阻塞。

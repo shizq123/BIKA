@@ -31,6 +31,11 @@ internal class DashboardRepositoryImpl @Inject constructor(
             .map { it.filter.favoriteTags }
             .distinctUntilChanged()
 
+    override val autoCheckInEnabled: Flow<Boolean> =
+        userPreferencesDataSource.userData
+            .map { it.app.autoCheckIn }
+            .distinctUntilChanged()
+
     override suspend fun updateFavoriteTags(
         transform: (List<FavoriteTag>) -> List<FavoriteTag>,
     ) = userPreferencesDataSource.updateFavoriteTags(transform)

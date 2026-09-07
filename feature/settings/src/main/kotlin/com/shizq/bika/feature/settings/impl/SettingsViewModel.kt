@@ -70,7 +70,7 @@ class SettingsViewModel @Inject constructor(
     fun logout() {
         scope.launch {
             userCredentialsDataSource.setToken(null)
-            runCatching { userRepository.clearCachedUserProfile() }
+            runCatching { userRepository.clearUserProfileSnapshot() }
                 .onFailure { logger.warn(it) { "登出时清理资料缓存失败" } }
         }
     }

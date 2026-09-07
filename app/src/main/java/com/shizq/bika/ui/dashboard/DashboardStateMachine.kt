@@ -4,21 +4,17 @@ package com.shizq.bika.ui.dashboard
 
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
-import com.shizq.bika.core.coroutine.FlowRestarter
-import com.shizq.bika.core.coroutine.restartable
+import com.shizq.bika.core.data.model.UserProfileState
 import com.shizq.bika.core.data.repository.DashboardRepository
 import com.shizq.bika.core.data.repository.UserRepository
 import com.shizq.bika.core.model.FavoriteTag
-import com.shizq.bika.core.model.preferences.UserProfileSnapshot
-import com.shizq.bika.core.network.model.UserProfile
 import com.shizq.bika.core.result.Result
-import com.shizq.bika.core.result.asResult
 import com.shizq.bika.ui.feed.FeedActionType
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.first
 
 private val logger = KotlinLogging.logger("DashboardSM")
 
@@ -26,8 +22,6 @@ class DashboardStateMachine @Inject constructor(
     private val userRepository: UserRepository,
     private val dashboardRepository: DashboardRepository,
 ) : FlowReduxStateMachineFactory<DashboardState, DashboardAction>() {
-
-    private val profileRestarter = FlowRestarter()
 
     /**
      * 一次性写操作的提交中标志。
@@ -63,35 +57,27 @@ class DashboardStateMachine @Inject constructor(
                     mutate { copy(favoriteTags = tags) }
                 }
 
-                // ── 用户资料加载（可重启）────────────────────────────────
-                // 仓储负责写本地缓存，这里只做 network model → UI model 的映射
-                collectWhileInState(
-                    flow { emit(userRepository.fetchUserProfile()) }
-                        .asResult()
-                        .restartable(profileRestarter)
-                ) { result ->
+                collectWhileInState(userRepository.userProfile) { result ->
                     when (result) {
                         Result.Loading -> mutate {
-                            copy(userProfile = UserProfileUiState.Loading)
+                            if (userProfile is UserProfileUiState.Success) this
+                            else copy(userProfile = UserProfileUiState.Loading)
                         }
 
-                        is Result.Error -> {
-                            // 「缓存是否可用」的判定在仓储里（name 非空），这里只消费结果
-                            val fallback = userRepository.getUserProfileSnapshot()
-                                ?.let {
-                                    UserProfileUiState.Success(
-                                        it.toUser(),
-                                        isOfflineCache = true
-                                    )
-                                }
-                                ?: UserProfileUiState.Error(
+                        is Result.Error -> mutate {
+                            copy(
+                                userProfile = UserProfileUiState.Error(
                                     result.exception.message ?: "加载用户信息失败"
                                 )
-                            mutate { copy(userProfile = fallback) }
+                            )
                         }
-
                         is Result.Success -> mutate {
-                            copy(userProfile = UserProfileUiState.Success(result.data.toUser()))
+                            copy(
+                                userProfile = UserProfileUiState.Success(
+                                    result.data.toUser(),
+                                    isOfflineCache = result.data.hasCheckedIn == null,
+                                )
+                            )
                         }
                     }
                 }
@@ -101,12 +87,16 @@ class DashboardStateMachine @Inject constructor(
                 // 实际检查在这里做，彻底避免 LaunchedEffect 重复触发问题
                 on<DashboardAction.AutoCheckIn> {
                     val profile = snapshot.userProfile
+                    // 设置项优先：开关关掉时连判定都不做。这里读 first() 而不是把
+                    // autoCheckInEnabled 投射进 state —— 它只在这一处用到，进状态树
+                    // 会多一个没人读的字段，也会多一次无谓的重组。
                     if (profile is UserProfileUiState.Success
                         && !profile.isOfflineCache
                         && !profile.user.hasCheckedIn
+                        && dashboardRepository.autoCheckInEnabled.first()
                     ) {
                         runCatching { userRepository.punchIn() }
-                            .onSuccess { profileRestarter.restart() }
+                            .onSuccess { userRepository.refreshUserProfile() }
                             .onFailure { logger.error(it) { "自动打卡失败" } }
                     }
                     noChange()
@@ -116,7 +106,7 @@ class DashboardStateMachine @Inject constructor(
                 on<DashboardAction.CheckIn> {
                     val result = runCatching { userRepository.punchIn() }
                     val checkInResult = if (result.isSuccess) {
-                        profileRestarter.restart()
+                        userRepository.refreshUserProfile()
                         CheckInResult.Success("打卡成功！已成功打哔咔。")
                     } else {
                         logger.error(result.exceptionOrNull()) { "签到失败" }
@@ -144,7 +134,7 @@ class DashboardStateMachine @Inject constructor(
                         // 否则 submitting 停在 true，对话框永久禁用。
                         submitting.value = false
                     }
-                    result.onSuccess { profileRestarter.restart() }
+                    result.onSuccess { userRepository.refreshUserProfile() }
                     if (result.isFailure) {
                         logger.error(result.exceptionOrNull()) { "更新自我介绍失败" }
                     }
@@ -238,31 +228,20 @@ class DashboardStateMachine @Inject constructor(
 // 数据源模型 → UI 模型
 // ─────────────────────────────────────────────
 
-private fun UserProfile.toUser() = User(
-    name = name,
-    avatarUrl = imageUrl,
-    characters = characters,
-    level = level,
-    exp = exp,
-    title = title,
-    gender = gender,
-    slogan = slogan,
-    hasCheckedIn = isPunched,
-)
-
 /**
- * 快照里没有 isPunched：打卡状态是当天的，缓存下来必然过时。
- * 这里硬编码 false，配合 [UserProfileUiState.Success.isOfflineCache] 让 AutoCheckIn
- * 在离线态直接短路——不会拿一个陈旧的「未打卡」去触发打卡请求。
+ * [UserProfileState.hasCheckedIn] 为 null 代表来自缓存兜底、打卡状态不可知。
+ * 这里映射成 `false` 是为了让 [User.hasCheckedIn] 保持非空类型；真正的「不可知」
+ * 由同一行算出的 [UserProfileUiState.Success.isOfflineCache] 承载，AutoCheckIn
+ * 判断的是那个标志，不会拿这里退化出来的 false 去当「确认未打卡」使用。
  */
-private fun UserProfileSnapshot.toUser() = User(
-    name = name,
-    avatarUrl = avatarUrl,
-    characters = honorBadges,
-    level = level,
-    exp = exp,
-    title = title,
-    gender = gender,
-    slogan = slogan,
-    hasCheckedIn = false,
+private fun UserProfileState.toUser() = User(
+    name = profile.name,
+    avatarUrl = profile.avatarUrl,
+    characters = profile.honorBadges,
+    level = profile.level,
+    exp = profile.exp,
+    title = profile.title,
+    gender = profile.gender,
+    slogan = profile.slogan,
+    hasCheckedIn = hasCheckedIn ?: false,
 )
