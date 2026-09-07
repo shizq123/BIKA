@@ -58,16 +58,6 @@ data class DashboardState(
     val activeChannels: List<Channel> = emptyList(),
     val favoriteTags: List<FavoriteTag> = emptyList(),
     val checkInResult: CheckInResult? = null,
-    val sloganResult: OperationResult? = null,
-    val passwordResult: OperationResult? = null,
-    /**
-     * 一次性写操作（改签名 / 改密码）是否正在进行中。
-     *
-     * 由 StateMachine 而非 UI 持有：原先两个对话框各自 `remember { mutableStateOf(false) }`，
-     * 进程重建后 UI 认为空闲、而请求可能还在飞。改密码对话框会关闭修改资料对话框，
-     * 两者不会同时打开，共用一个标志即可。
-     */
-    val isSubmitting: Boolean = false,
 )
 
 // ─────────────────────────────────────────────
@@ -80,19 +70,6 @@ sealed interface DashboardAction {
     /** 由 Screen 在 profile 首次加载成功后 dispatch；检查逻辑在 SM 内部完成 */
     data object AutoCheckIn : DashboardAction
     data object DismissCheckInResult : DashboardAction
-
-    // 个人资料
-    data class UpdateSlogan(val slogan: String) : DashboardAction
-    data object DismissSloganResult : DashboardAction
-
-    /**
-     * 覆写 toString 屏蔽明文口令：flowredux 的 action 日志/调试中间件会打印 action，
-     * data class 默认实现会把两个密码原样写进日志。
-     */
-    data class ChangePassword(val oldPassword: String, val newPassword: String) : DashboardAction {
-        override fun toString(): String = "ChangePassword(oldPassword=***, newPassword=***)"
-    }
-    data object DismissPasswordResult : DashboardAction
 
     // 收藏标签
     data class AddFavoriteTag(val tag: FavoriteTag) : DashboardAction

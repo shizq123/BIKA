@@ -111,6 +111,9 @@ fun EntryProviderScope<NavKey>.featureSection(
 
             onSearchClick = { navigator.navigate(ConnectedRoute.SearchRoute) },
             onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
+            onEditProfileClick = { slogan ->
+                navigator.navigate(EditProfileNavKey(slogan))
+            },
             onCommentsClick = { navigator.navigate(ConnectedRoute.MineCommentRoute) },
             onDownloadsClick = { navigator.navigate(ConnectedRoute.DownloadListRoute) },
             onNotificationsClick = { navigator.navigate(ConnectedRoute.NotificationsRoute) },

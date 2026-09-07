@@ -24,7 +24,8 @@ class DashboardResultTest {
     /**
      * OperationResult.Success 必须保持 data object。
      *
-     * DashboardScreen 的两个 LaunchedEffect 用 `OperationResult.Success ->` 这种
+     * EditProfileDialogContent / ChangePasswordDialogContent 的 LaunchedEffect 用
+     * `OperationResult.Success ->` 这种
      * 等值分支匹配成功态。一旦它变成带参数的 data class（例如为了和 CheckInResult
      * 合并而塞进一个可空 message），等值分支就不再编译通过，须改成 `is`。
      * 这条断言把「不合并」这个决定钉在测试里。

@@ -13,6 +13,8 @@ data class DashboardCallbacks(
     val navigateToReader: (comicId: String, chapterOrder: Int) -> Unit,
     val onSearchClick: () -> Unit,
     val onChannelPreferenceClick: () -> Unit,
+    /** 打开修改资料对话框。参数是打开那一刻的签名，会随 NavKey 进返回栈。 */
+    val onEditProfileClick: (initialSlogan: String) -> Unit,
     val onCommentsClick: () -> Unit,
     val onDownloadsClick: () -> Unit,
     val onNotificationsClick: () -> Unit,

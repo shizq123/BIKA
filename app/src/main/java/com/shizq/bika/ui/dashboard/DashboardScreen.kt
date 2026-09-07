@@ -104,6 +104,7 @@ fun DashboardScreen(
     navigationToSettings: () -> Unit,
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
+    onEditProfileClick: (initialSlogan: String) -> Unit,
     onCommentsClick: () -> Unit,
     onDownloadsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
@@ -120,6 +121,7 @@ fun DashboardScreen(
         navigationToReader,
         onSearchClick,
         onChannelPreferenceClick,
+        onEditProfileClick,
         onCommentsClick,
         onDownloadsClick,
         onNotificationsClick,
@@ -133,6 +135,7 @@ fun DashboardScreen(
             navigateToReader = navigationToReader,
             onSearchClick = onSearchClick,
             onChannelPreferenceClick = onChannelPreferenceClick,
+            onEditProfileClick = onEditProfileClick,
             onCommentsClick = onCommentsClick,
             onDownloadsClick = onDownloadsClick,
             onNotificationsClick = onNotificationsClick,
@@ -168,12 +171,6 @@ fun DashboardScreen(
     )
 }
 
-/** 修改资料 / 修改密码两个对话框互斥，用同一个状态仲裁哪个在显示。 */
-private sealed interface DashboardDialog {
-    data object EditProfile : DashboardDialog
-    data object ChangePassword : DashboardDialog
-}
-
 @Composable
 fun DashboardContent(
     state: DashboardState,
@@ -188,17 +185,10 @@ fun DashboardContent(
     val lastReadHistory = state.lastReadHistory
     val activeChannels = state.activeChannels
     val favoriteTags = state.favoriteTags
-    val sloganResult = state.sloganResult
-    val passwordResult = state.passwordResult
-    val isSubmitting = state.isSubmitting
 
+    // sloganResult / passwordResult / isSubmitting 不再从这里取：改签名和改密码
+    // 的提交状态归各自对话框的 ViewModel，作用域是对话框那个 entry。
     val onCheckInClick = { onAction(DashboardAction.CheckIn) }
-    val onUpdateSlogan = { slogan: String -> onAction(DashboardAction.UpdateSlogan(slogan)) }
-    val onDismissSloganResult = { onAction(DashboardAction.DismissSloganResult) }
-    val onChangePassword = { old: String, new: String ->
-        onAction(DashboardAction.ChangePassword(old, new))
-    }
-    val onDismissPasswordResult = { onAction(DashboardAction.DismissPasswordResult) }
     val onAddFavorite = { tag: FavoriteTag -> onAction(DashboardAction.AddFavoriteTag(tag)) }
     val onRemoveFavorite = { tag: FavoriteTag -> onAction(DashboardAction.RemoveFavoriteTag(tag)) }
     val onUpdateFavoriteName = { tag: FavoriteTag, name: String ->
@@ -211,33 +201,9 @@ fun DashboardContent(
         onAction(DashboardAction.AddCustomFavoriteTag(name))
     }
 
-    // ── 对话框状态（互斥）────────────────────────────────────────────────
-    // 修改资料 / 修改密码同一时刻只会显示一个，且两者可以互相跳转，
-    // 用一个 sealed 状态仲裁比两个独立 Boolean 更能表达这种互斥关系。
-    var activeDialog by remember { mutableStateOf<DashboardDialog?>(null) }
-    var editProfileInitialSlogan by remember { mutableStateOf("") }
-
-    if (activeDialog == DashboardDialog.EditProfile) {
-        EditProfileDialog(
-            initialSlogan = editProfileInitialSlogan,
-            sloganResult = sloganResult,
-            isSubmitting = isSubmitting,
-            onSave = onUpdateSlogan,
-            onDismissResult = onDismissSloganResult,
-            onDismiss = { activeDialog = null },
-            onChangePasswordClick = { activeDialog = DashboardDialog.ChangePassword },
-        )
-    }
-
-    if (activeDialog == DashboardDialog.ChangePassword) {
-        ChangePasswordDialog(
-            passwordResult = passwordResult,
-            isSubmitting = isSubmitting,
-            onSave = onChangePassword,
-            onDismissResult = onDismissPasswordResult,
-            onDismiss = { activeDialog = null },
-        )
-    }
+    // 修改资料 / 修改密码不在这里：它们是 EditProfileNavKey / ChangePasswordNavKey
+    // 两个独立 entry，由导航返回栈托管，因此配置变更和进程死亡都不会丢。
+    // 见 DialogNavKey 与 EditProfileViewModel 的注释。
 
     var showBookmarkDrawer by remember { mutableStateOf(false) }
 
@@ -285,11 +251,12 @@ fun DashboardContent(
                         onEditProfileClick = {
                             scope.launch {
                                 drawerState.close()
-                                // 同步初始化签名输入框初值，避免子组件用旧值 remember
-                                if (userProfileUiState is UserProfileUiState.Success) {
-                                    editProfileInitialSlogan = userProfileUiState.user.slogan
-                                }
-                                activeDialog = DashboardDialog.EditProfile
+                                // 签名随 NavKey 传出去，进返回栈；资料未加载成功时给空串，
+                                // 此时抽屉里也点不到编辑入口。
+                                val slogan =
+                                    (userProfileUiState as? UserProfileUiState.Success)
+                                        ?.user?.slogan.orEmpty()
+                                callbacks.onEditProfileClick(slogan)
                             }
                         },
                         onHistoryClick = {
