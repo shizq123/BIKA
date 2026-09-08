@@ -5,13 +5,13 @@ package com.shizq.bika.ui.comicinfo
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import androidx.paging.Pager
 import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
 import com.shizq.bika.core.download.scheduler.DownloadScheduler
@@ -119,9 +119,9 @@ class ComicInfoViewModel @AssistedInject constructor(
         viewModelScope.launch {
             try {
                 if (replyToCommentId == null) {
-                    network.addReply(Type.COMIC, id, text)
+                    network.postComment(Type.COMIC, id, text)
                 } else {
-                    network.addCommentReply(replyToCommentId, text)
+                    network.postCommentReply(replyToCommentId, text)
                 }
                 onResult(true)
             } catch (e: Exception) {

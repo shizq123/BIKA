@@ -4,13 +4,12 @@ import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.CommentsData
 import com.shizq.bika.core.network.model.Type
 import com.shizq.bika.core.result.Result
+import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
-
-import jakarta.inject.Inject
 
 class CommentsRepository @Inject constructor(private val bikaDataSource: BikaDataSource) {
 
@@ -43,7 +42,7 @@ class CommentsRepository @Inject constructor(private val bikaDataSource: BikaDat
         page: Int,
     ): Flow<Result<CommentsData>> = flow {
         emit(Result.Loading)
-        val data = bikaDataSource.getReplyReply(commentId, page)
+        val data = bikaDataSource.getCommentReplies(commentId, page)
         emit(Result.Success(data))
     }.catch {
         emit(Result.Error(it))
