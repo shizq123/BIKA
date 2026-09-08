@@ -14,13 +14,16 @@ import com.shizq.bika.core.network.model.EpisodeData
 import com.shizq.bika.core.network.model.KeywordsData
 import com.shizq.bika.core.network.model.KnightLeaderboardData
 import com.shizq.bika.core.network.model.LeaderboardData
-import com.shizq.bika.core.network.model.LoginData
+import com.shizq.bika.core.network.model.LoginResult
+import com.shizq.bika.core.network.model.LoginTokenPayload
 import com.shizq.bika.core.network.model.NetworkBootstrapConfig
 import com.shizq.bika.core.network.model.NotificationsData
 import com.shizq.bika.core.network.model.ProfileData
 import com.shizq.bika.core.network.model.RecommendationData
 import com.shizq.bika.core.network.model.Type
+import com.shizq.bika.core.network.plugin.ApiException
 import com.shizq.bika.core.network.plugin.ExpectRawResponse
+import com.shizq.bika.core.network.plugin.UnauthorizedException
 import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -29,18 +32,13 @@ import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.client.request.put
 import io.ktor.client.request.setBody
-import io.ktor.client.statement.bodyAsText
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import kotlinx.serialization.ExperimentalSerializationApi
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.addAll
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.int
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonArray
 import kotlin.coroutines.cancellation.CancellationException
 
@@ -85,35 +83,27 @@ class BikaDataSource @Inject constructor(
 
     private fun String.isValidAddress(): Boolean = ADDRESS_PATTERN.matches(this)
 
-    suspend fun login(username: String, password: String): LoginData {
+    suspend fun login(username: String, password: String): LoginResult {
         return try {
-            val response = client.post("auth/sign-in") {
-                attributes.put(ExpectRawResponse, Unit)
-                // 登录接口的 401 表示"本次账号密码不对"，是登录表单的业务错误，
-                // 不能触发会话终止——此时本就没有会话可终止
+            val payload = client.post("auth/sign-in") {
+                // 登录接口的 401/其他业务错误码表示"本次账号密码不对"，是登录表单的
+                // 业务错误，不能触发全局会话终止——此时本就没有会话可终止。
                 attributes.put(SkipSessionExpiry, Unit)
                 val jsonBody = buildJsonObject {
                     put("email", JsonPrimitive(username))
                     put("password", JsonPrimitive(password))
                 }
                 setBody(jsonBody)
-            }
-
-            val jsonObj = Json.parseToJsonElement(response.bodyAsText()).jsonObject
-            val code = jsonObj["code"]?.jsonPrimitive?.int
-
-            if (code == 200) {
-                val dataObj = jsonObj["data"]?.jsonObject ?: throw Exception("数据异常")
-                val token = dataObj["token"]?.jsonPrimitive?.content ?: throw Exception("Token为空")
-                LoginData(token = token, message = null)
-            } else {
-                val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
-                LoginData(token = null, message = msg)
-            }
+            }.body<LoginTokenPayload>()
+            LoginResult.Success(payload.token)
         } catch (e: CancellationException) {
             throw e
+        } catch (e: UnauthorizedException) {
+            LoginResult.Rejected(e.message ?: "用户名或密码错误")
+        } catch (e: ApiException) {
+            LoginResult.Rejected(e.serverMessage)
         } catch (e: Exception) {
-            LoginData(token = null, message = e.message ?: "登录失败")
+            LoginResult.Rejected(e.message ?: "登录失败")
         }
     }
 

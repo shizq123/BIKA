@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network.plugin
 
+import com.shizq.bika.core.network.auth.SkipSessionExpiry
 import com.shizq.bika.core.network.model.ApiEnvelope
 import io.ktor.client.plugins.api.ClientPlugin
 import io.ktor.client.plugins.api.createClientPlugin
@@ -45,6 +46,11 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
                 return@transformResponseBody content
             }
 
+            // 登录接口等匿名/表单类请求的 401 是"密码错了"而非"会话过期"：
+            // 跳过 onUnauthorized 回调（不终止会话、不弹全局提示），但仍抛出，
+            // 由调用方（如 BikaDataSource.login）捕获后转成表单内的业务错误展示。
+            val skipSessionExpiry = response.request.attributes.getOrNull(SkipSessionExpiry) != null
+
             // Unit 请求（写操作只关心成功/失败，不关心 data）也要走信封校验，
             // 否则 code!=200 的业务失败会被这里直接放行，调用方误以为操作成功。
             if (requestedType.type == Unit::class) {
@@ -53,7 +59,7 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
                     content.toInputStream()
                 )
                 if (envelope.code == HttpStatusCode.Unauthorized.value) {
-                    onUnauthorized()
+                    if (!skipSessionExpiry) onUnauthorized()
                     throw UnauthorizedException(envelope.message)
                 }
                 if (envelope.code != HttpStatusCode.OK.value) {
@@ -69,7 +75,7 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
                 content.toInputStream()
             )
             if (decodedContent.code == HttpStatusCode.Unauthorized.value) {
-                onUnauthorized()
+                if (!skipSessionExpiry) onUnauthorized()
                 throw UnauthorizedException(decodedContent.message)
             }
             if (decodedContent.code != HttpStatusCode.OK.value) {
@@ -79,5 +85,7 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
         }
     }
 
-class ApiException(val code: Int, message: String) : Exception("API Error ($code): $message")
+/** [serverMessage] 是服务端信封里的原始 message，供调用方在 UI 上直接展示。 */
+class ApiException(val code: Int, val serverMessage: String) :
+    Exception("API Error ($code): $serverMessage")
 class UnauthorizedException(message: String) : Exception(message)

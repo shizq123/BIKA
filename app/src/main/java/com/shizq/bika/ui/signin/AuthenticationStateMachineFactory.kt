@@ -9,6 +9,7 @@ import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.auth.SessionManager
+import com.shizq.bika.core.network.model.LoginResult
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
@@ -40,26 +41,28 @@ class AuthenticationStateMachineFactory(
                 return override { AuthState.Error("账号和密码不能为空") }
             }
 
-            val loginResult = api.login(username, password)
+            when (val loginResult = api.login(username, password)) {
+                is LoginResult.Success -> {
+                    // 三次写入用 NonCancellable 保护：登录成功后用户往往立刻被导航走，
+                    // 状态机随之取消。若在 setToken 之后、setUsername 之前被打断，
+                    // 会留下"已登录但用户名缺失"的半截状态。
+                    withContext(NonCancellable) {
+                        userCredentialsDataSource.setToken(loginResult.token)
+                        userCredentialsDataSource.setUsername(username)
+                        userCredentialsDataSource.setPassword(if (rememberPassword) password else null)
+                    }
+                    // 重置会话终止闸门，使本次会话再次过期时仍能被处理
+                    sessionManager.onAuthenticated()
+                    override { AuthState.Success }
+                }
 
-            if (!loginResult.token.isNullOrEmpty()) {
-                // 三次写入用 NonCancellable 保护：登录成功后用户往往立刻被导航走，
-                // 状态机随之取消。若在 setToken 之后、setUsername 之前被打断，
-                // 会留下"已登录但用户名缺失"的半截状态。
-                withContext(NonCancellable) {
-                    userCredentialsDataSource.setToken(loginResult.token)
-                    userCredentialsDataSource.setUsername(username)
-                    userCredentialsDataSource.setPassword(if (rememberPassword) password else null)
+                is LoginResult.Rejected -> {
+                    val errorMsg = when (loginResult.reason) {
+                        "invalid email or password" -> "用户名或密码错误"
+                        else -> loginResult.reason
+                    }
+                    override { AuthState.Error(errorMsg) }
                 }
-                // 重置会话终止闸门，使本次会话再次过期时仍能被处理
-                sessionManager.onAuthenticated()
-                override { AuthState.Success }
-            } else {
-                val errorMsg = when (loginResult.message) {
-                    "invalid email or password" -> "用户名或密码错误"
-                    else -> loginResult.message ?: "未知错误，请重试"
-                }
-                override { AuthState.Error(errorMsg) }
             }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
