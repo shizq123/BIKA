@@ -12,6 +12,7 @@ import com.shizq.bika.core.network.BuildConfig
 import com.shizq.bika.core.network.auth.SessionExpiryReason
 import com.shizq.bika.core.network.auth.SessionManager
 import com.shizq.bika.core.network.auth.sessionExpiryPlugin
+import com.shizq.bika.core.network.dns.appChannelHeaderFor
 import com.shizq.bika.core.network.plugin.ApiEnvelopePlugin
 import com.shizq.bika.core.network.plugin.DirectDns
 import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
@@ -35,7 +36,6 @@ import io.ktor.http.contentType
 import io.ktor.http.withCharset
 import io.ktor.serialization.kotlinx.json.json
 import io.ktor.utils.io.charsets.Charsets
-import jakarta.inject.Named
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
@@ -103,12 +103,7 @@ internal object NetworkModule {
         bikaAuth {
             channel {
                 val activeLine = userPreferencesDataSource.userData.first().network.dns.activeLine
-                when (activeLine.lowercase()) {
-                    "telecom" -> "1"
-                    "unicom" -> "2"
-                    "mobile" -> "3"
-                    else -> "1"
-                }
+                appChannelHeaderFor(activeLine)
             }
             token {
                 userCredentialsDataSource.userData.firstOrNull()?.token
@@ -147,7 +142,7 @@ internal object NetworkModule {
      */
     @Provides
     @Singleton
-    @Named("image")
+    @ImageClient
     fun imageOkHttpClient(
         directDns: DirectDns,
     ): OkHttpClient = trace("ImageOkHttpClient") {
@@ -160,7 +155,7 @@ internal object NetworkModule {
     @Provides
     @Singleton
     fun imageLoader(
-        @Named("image") okHttpClient: OkHttpClient,
+        @ImageClient okHttpClient: OkHttpClient,
         @ApplicationContext application: Context,
     ): ImageLoader = trace("ImageLoader") {
         ImageLoader.Builder(application)
@@ -178,7 +173,7 @@ internal object NetworkModule {
 
     @Provides
     @Singleton
-    @Named("github")
+    @GithubClient
     fun provideGithubHttpClient(
         connectionPool: ConnectionPool,
     ): HttpClient = HttpClient(OkHttp) {
@@ -209,7 +204,7 @@ internal object NetworkModule {
      */
     @Provides
     @Singleton
-    @Named("dns")
+    @DnsClient
     fun provideDnsHttpClient(
         connectionPool: ConnectionPool,
     ): HttpClient = HttpClient(OkHttp) {

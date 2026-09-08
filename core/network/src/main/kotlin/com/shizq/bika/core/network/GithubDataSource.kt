@@ -1,5 +1,6 @@
 package com.shizq.bika.core.network
 
+import com.shizq.bika.core.network.di.GithubClient
 import com.shizq.bika.core.network.model.GithubReleaseResponse
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -11,7 +12,6 @@ import io.ktor.http.isSuccess
 import io.ktor.util.cio.writeChannel
 import io.ktor.utils.io.copyAndClose
 import jakarta.inject.Inject
-import jakarta.inject.Named
 import jakarta.inject.Singleton
 import java.io.File
 
@@ -21,7 +21,7 @@ class ApkDownloadFailedException(val statusCode: Int) :
 
 @Singleton
 class GithubDataSource @Inject constructor(
-    @Named("github") private val httpClient: HttpClient,
+    @GithubClient private val httpClient: HttpClient,
 ) {
     suspend fun getLatestRelease(): GithubReleaseResponse =
         httpClient

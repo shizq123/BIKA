@@ -33,8 +33,14 @@ class ApiEnvelopeConfig {
     }
 }
 
+/**
+ * 解包 Bika 接口统一的 `{code, message, data}` 信封的插件。
+ *
+ * 命名统一为 "ApiEnvelope"：文件名、注册名与业务含义保持一致，避免
+ * 日志里出现的注册名与源码文件名不对应导致排查时找不到人。
+ */
 val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
-    createClientPlugin("ResponseTransformer", ::ApiEnvelopeConfig) {
+    createClientPlugin("ApiEnvelope", ::ApiEnvelopeConfig) {
         val json = Json { ignoreUnknownKeys = true }
         val onUnauthorized = pluginConfig.onUnauthorized
 
@@ -84,8 +90,3 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
             decodedContent.data
         }
     }
-
-/** [serverMessage] 是服务端信封里的原始 message，供调用方在 UI 上直接展示。 */
-class ApiException(val code: Int, val serverMessage: String) :
-    Exception("API Error ($code): $serverMessage")
-class UnauthorizedException(message: String) : Exception(message)

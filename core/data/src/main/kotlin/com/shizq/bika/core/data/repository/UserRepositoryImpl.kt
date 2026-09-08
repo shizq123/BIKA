@@ -108,7 +108,7 @@ class UserRepositoryImpl @Inject constructor(
 
 private fun UserProfile.toSnapshot() = UserProfileSnapshot(
     name = name,
-    avatarUrl = imageUrl,
+    avatarUrl = avatar.originalImageUrl,
     level = level,
     exp = exp,
     title = title,

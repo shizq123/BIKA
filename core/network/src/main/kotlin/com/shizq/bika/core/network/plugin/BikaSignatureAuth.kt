@@ -26,7 +26,8 @@ class BikaAuthConfig {
     var apiKey: String = "C69BAF41DA5ABD1FFEDC6D2FEA56B"
     var secretKey: String = "~d}\$Q7\$eIni=V)9\\RK/P.RM4;9[7|@/CA}b~OW!3?EV`:<>M7pddUBL5n|0/*Cn"
 
-    var appChannel: String = "2"
+    // 注：这里没有静态的 appChannel 字段——生效的 app-channel 头由 channelProvider
+    // 按运营商线路动态计算（见 [channel]、[com.shizq.bika.core.network.dns.appChannelHeaderFor]）。
     var appVersion: String = "2.2.1.2.3.3"
     var appBuildVersion: String = "44"
     var appUuid: String = "defaultUuid"

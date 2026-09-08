@@ -31,9 +31,4 @@ data class UserProfile(
 
     val character: String? = null, //这是显示的挂件/立绘URL
     val avatar: Media = Media()
-) {
-    val imageUrl: String
-        get() = "https://s3.picacomic.com/static/${avatar.path}"
-    val imageUrl2: String
-        get() = "${avatar.fileServer}/static/${avatar.path}"
-}
+)

@@ -55,8 +55,8 @@ class BikaDataSource @Inject constructor(
         private val ADDRESS_PATTERN = Regex("^[0-9a-zA-Z.\\-:\\[\\]]{1,255}$")
     }
 
-    suspend fun getNetworkConfig(): NetworkBootstrapConfig {
-        val config = fetchBootstrapConfig()
+    suspend fun getBootstrapConfig(): NetworkBootstrapConfig {
+        val config = getBootstrapConfigWithHttpFallback()
         // 明文通道下的响应校验：过滤非法地址，全部非法时返回空列表（调用方不会更新 DNS）
         val validated = config.addresses.filter { it.isValidAddress() }
         if (validated.size != config.addresses.size) {
@@ -65,7 +65,8 @@ class BikaDataSource @Inject constructor(
         return config.copy(addresses = validated)
     }
 
-    private suspend fun fetchBootstrapConfig(): NetworkBootstrapConfig {
+    /** 私有实现的核心信息是"带明文回退"，命名里写出来，别只留在 get 那层的注释里。 */
+    private suspend fun getBootstrapConfigWithHttpFallback(): NetworkBootstrapConfig {
         return try {
             // 优先 HTTPS（防篡改）；服务器不支持时回退明文通道
             client.get("https://$BOOTSTRAP_HOST/init") {
@@ -188,16 +189,24 @@ class BikaDataSource @Inject constructor(
     }
 
     /**
-     * 获取指定评论的回复列表
+     * 获取指定评论的子评论（回复）列表。
+     *
+     * 原名 getReplyReply（"回复的回复"？）必须靠注释才能看懂；改名后语义自解释。
      */
-    suspend fun getReplyReply(id: String, page: Int): CommentsData {
-        return client.get("comments/$id/childrens/") {
+    suspend fun getCommentReplies(commentId: String, page: Int): CommentsData {
+        return client.get("comments/$commentId/childrens/") {
             parameter("page", page)
         }.body()
     }
 
-    suspend fun addReply(type: Type, id: String, content: String) {
-        client.post("${type.type}/$id/comments") {
+    /**
+     * 给漫画/游戏发一条主评论。
+     *
+     * 原名 addReply 与真正的"回复评论"（[postCommentReply]）只差两个词，
+     * 参数又都是 (String, String)，传错了编译器不会拦；改名后两者不再可能混淆。
+     */
+    suspend fun postComment(type: Type, targetId: String, content: String) {
+        client.post("${type.type}/$targetId/comments") {
             val jsonBody = buildJsonObject {
                 put("content", JsonPrimitive(content))
             }
@@ -205,7 +214,8 @@ class BikaDataSource @Inject constructor(
         }.body<Unit>()
     }
 
-    suspend fun addCommentReply(commentId: String, content: String) {
+    /** 回复某条已有评论（原名 addCommentReply，见 [postComment] 的重命名说明）。 */
+    suspend fun postCommentReply(commentId: String, content: String) {
         client.post("comments/$commentId") {
             val jsonBody = buildJsonObject {
                 put("content", JsonPrimitive(content))
@@ -281,20 +291,50 @@ class BikaDataSource @Inject constructor(
     }
 
     /**
+     * 注册新账号。原名 requestSignUp(obj: JsonObject) 的签名等于没有签名——
+     * 调用方必须去翻实现才知道服务端要哪些字段；改成命名参数后接口自己说明需求。
+     *
+     * 失败响应示例：
      *  {
      *     "code": 400,
      *     "error": "1008",
      *     "message": "email is already exist"
      *   }
      */
-    suspend fun requestSignUp(obj: JsonObject): JsonObject {
+    suspend fun signUp(
+        email: String,
+        password: String,
+        name: String,
+        birthday: String,
+        gender: String,
+        question1: String,
+        answer1: String,
+        question2: String,
+        answer2: String,
+        question3: String,
+        answer3: String,
+    ): JsonObject {
+        val body = buildJsonObject {
+            put("email", JsonPrimitive(email))
+            put("password", JsonPrimitive(password))
+            put("name", JsonPrimitive(name))
+            put("birthday", JsonPrimitive(birthday))
+            put("gender", JsonPrimitive(gender))
+            put("question1", JsonPrimitive(question1))
+            put("answer1", JsonPrimitive(answer1))
+            put("question2", JsonPrimitive(question2))
+            put("answer2", JsonPrimitive(answer2))
+            put("question3", JsonPrimitive(question3))
+            put("answer3", JsonPrimitive(answer3))
+        }
         return client.post("auth/register") {
             attributes.put(ExpectRawResponse, Unit)
-            setBody(obj)
+            setBody(body)
         }.body()
     }
 
-    suspend fun mineComment(page: Int): CommentDoc {
+    /** 获取当前用户发表过的评论列表（原名 mineComment 是名词短语，不是动作，且 "mine" 有"挖矿"的歧义）。 */
+    suspend fun getMyComments(page: Int): CommentDoc {
         return client.get("users/my-comments") {
             parameter("page", page)
         }.body()
