@@ -5,10 +5,11 @@ import androidx.paging.PagingState
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.network.BikaDataSource
-import kotlinx.coroutines.CancellationException
+import com.shizq.bika.core.network.model.Type
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 
 class ReplyPagingSource @AssistedInject constructor(
     private val api: BikaDataSource,
@@ -18,7 +19,7 @@ class ReplyPagingSource @AssistedInject constructor(
         val page = params.key ?: 1
 
         return try {
-            val response = api.getReplyReply(id, page)
+            val response = api.getComments(Type.COMIC, id, page)
 
             val commentsPage = response.comments
 

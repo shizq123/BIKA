@@ -53,6 +53,18 @@ class BikaDataSource @Inject constructor(
         // 引导接口可能走明文 HTTP 回退，响应内容必须严格校验：
         // 仅接受合法 IP/主机名，防止中间人篡改注入恶意地址
         private val ADDRESS_PATTERN = Regex("^[0-9a-zA-Z.\\-:\\[\\]]{1,255}$")
+
+        /**
+         * 服务端对这些关键词做了精确匹配屏蔽，词尾追加空格可绕过匹配、
+         * 搜索结果不受影响。简繁两种写法都会命中。
+         *
+         * 发现时间：迁移自旧实现，具体绕过的匹配逻辑未知。若服务端改为
+         * trim 后再匹配，此处会失效，可直接删除。
+         */
+        private val BLOCKED_KEYWORDS = setOf("小學女生(JS)", "小学女生(JS)")
+
+        fun String.evadeKeywordBlocking(): String =
+            if (trim() in BLOCKED_KEYWORDS) trimEnd() + "   " else this
     }
 
     suspend fun getBootstrapConfig(): NetworkBootstrapConfig {
@@ -258,17 +270,9 @@ class BikaDataSource @Inject constructor(
         sort: SortOrder,
         page: Int
     ): ComicResource {
-        val processedContent = if (content.trim().equals("小學女生(JS)", ignoreCase = true) ||
-            content.trim().equals("小学女生(JS)", ignoreCase = true)
-        ) {
-            content.trimEnd() + "   "
-        } else {
-            content
-        }
-
         return client.post("comics/advanced-search") {
             val body = buildJsonObject {
-                put("keyword", JsonPrimitive(processedContent))
+                put("keyword", JsonPrimitive(content.evadeKeywordBlocking()))
                 put("sort", JsonPrimitive(sort.value))
                 putJsonArray("categories") {
                     addAll(categories)
