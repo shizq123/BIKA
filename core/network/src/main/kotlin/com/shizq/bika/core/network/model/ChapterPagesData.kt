@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ChapterPagesData(
     @SerialName("pages")
-    val paginationData: PageData<Image>,
+    val imagePages: PageData<Image>,
 
     @SerialName("ep")
     val chapterInfo: ChapterInfo
