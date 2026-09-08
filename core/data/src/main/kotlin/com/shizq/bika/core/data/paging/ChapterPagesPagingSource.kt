@@ -27,15 +27,15 @@ class ChapterPagesPagingSource @AssistedInject constructor(
 
             metadata.value = ChapterMeta(
                 title = response.chapterInfo.title,
-                totalImages = response.paginationData.total
+                totalImages = paginationData.total
             )
 
             LoadResult.Page(
-                data = paginationData.images.map { image ->
+                data = paginationData.docs.map { image ->
                     ChapterPage(id = image.imageId, url = image.media.originalImageUrl)
                 },
                 prevKey = null,
-                nextKey = if (currentPage < paginationData.totalPages) currentPage + 1 else null
+                nextKey = if (currentPage < paginationData.pages) currentPage + 1 else null
             )
         } catch (e: CancellationException) {
             throw e

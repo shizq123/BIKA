@@ -5,16 +5,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class EpisodeData(
-    val eps: EpisodePagination
-)
-
-@Serializable
-data class EpisodePagination(
-    val docs: List<Episode>,
-    val total: Int,
-    val limit: Int,
-    val page: Int,
-    val pages: Int
+    val eps: PageData<Episode>
 )
 
 @Serializable
