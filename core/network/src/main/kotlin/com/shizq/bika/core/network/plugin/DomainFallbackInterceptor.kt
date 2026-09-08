@@ -1,11 +1,10 @@
 package com.shizq.bika.core.network.plugin
 
-import android.util.Log
 import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
-import com.shizq.bika.core.network.BuildConfig
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
@@ -18,9 +17,9 @@ import okhttp3.HttpUrl
 import okhttp3.HttpUrl.Companion.toHttpUrl
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
+import kotlin.time.Duration.Companion.milliseconds
 
-private const val TAG = "DomainFallbackCoil"
-private val DEBUG_LOGGING = BuildConfig.DEBUG
+private val logger = KotlinLogging.logger("DomainFallbackCoil")
 
 /** 主请求慢于此值就启动降级竞速。 */
 private const val SLOW_MAIN_THRESHOLD_MS = 2500L
@@ -43,7 +42,7 @@ class DomainFallbackInterceptor : Interceptor {
 
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult = coroutineScope {
         if (coroutineContext[FallbackMarker] != null) {
-            if (DEBUG_LOGGING) Log.d(TAG, "Skipping fallback race for fallback request: ${chain.request.data}")
+            logger.debug { "跳过降级竞速（本身就是降级请求）: ${chain.request.data}" }
             return@coroutineScope chain.proceed()
         }
 
@@ -74,7 +73,8 @@ class DomainFallbackInterceptor : Interceptor {
         }
 
         // 等一小会儿：主请求可能很快成功，也可能很快失败。
-        val earlyResult = withTimeoutOrNull(SLOW_MAIN_THRESHOLD_MS) { mainRequest.await() }
+        val earlyResult =
+            withTimeoutOrNull(SLOW_MAIN_THRESHOLD_MS.milliseconds) { mainRequest.await() }
 
         if (earlyResult is SuccessResult) {
             return@coroutineScope earlyResult
@@ -84,16 +84,12 @@ class DomainFallbackInterceptor : Interceptor {
         // 否则一个必然失败的 path 会被放大成 7 个请求（fast path + 5 竞速 + 收尾 proceed）。
         if (earlyResult is ErrorResult) {
             if (!earlyResult.throwable.isWorthFallback()) {
-                if (DEBUG_LOGGING) {
-                    Log.w(TAG, "Permanent failure, skipping fallback: ${chain.request.data}", earlyResult.throwable)
-                }
+                logger.warn(earlyResult.throwable) { "永久性失败，跳过降级: ${chain.request.data}" }
                 return@coroutineScope earlyResult
             }
-            if (DEBUG_LOGGING) Log.w(TAG, "Main request for '$failedHost' failed. Starting fallback race.")
+            logger.warn { "主域名 '$failedHost' 请求失败，开始降级竞速" }
         } else {
-            if (DEBUG_LOGGING) {
-                Log.w(TAG, "Main request for '$failedHost' is too slow (>${SLOW_MAIN_THRESHOLD_MS}ms). Starting fallback race.")
-            }
+            logger.warn { "主域名 '$failedHost' 请求过慢（>${SLOW_MAIN_THRESHOLD_MS}ms），开始降级竞速" }
         }
 
         val raceResult = performFallbackRace(chain, httpUrl, failedHost)
@@ -110,8 +106,8 @@ class DomainFallbackInterceptor : Interceptor {
             if (e is CancellationException) throw e
             ErrorResult(null, chain.request, e)
         }
-        if (DEBUG_LOGGING && mainResult is ErrorResult) {
-            Log.e(TAG, "All attempts failed for: $originalUrl")
+        if (mainResult is ErrorResult) {
+            logger.error(mainResult.throwable) { "所有域名均尝试失败: $originalUrl" }
         }
         mainResult
     }
@@ -131,17 +127,17 @@ class DomainFallbackInterceptor : Interceptor {
         // 如果有已知的最佳域名，先单独尝试它，避免并发风暴
         val currentOptimal = optimalFallbackHost
         if (currentOptimal != null && currentOptimal in fallbackHosts) {
-            if (DEBUG_LOGGING) Log.d(TAG, "Trying fast path with known optimal host: $currentOptimal")
+            logger.debug { "尝试已知最优域名（快速通道）: $currentOptimal" }
             val fastResult = tryFallbackHost(chain, httpUrl, currentOptimal)
             if (fastResult != null) {
-                if (DEBUG_LOGGING) Log.i(TAG, "Fast path successful with: $currentOptimal")
+                logger.info { "快速通道命中: $currentOptimal" }
                 return fastResult
             }
             // 失效即清空：否则这个域名一旦挂掉，后续每张图都要先白等它 3 秒超时。
             if (optimalFallbackHost == currentOptimal) {
                 optimalFallbackHost = null
             }
-            if (DEBUG_LOGGING) Log.d(TAG, "Fast path failed, cleared optimal host. Falling back to race.")
+            logger.debug { "快速通道失败，已清空最优域名记录，转入竞速" }
         }
 
         // 去除刚才已经试过的最佳域名，剩下的一起竞速
@@ -160,7 +156,7 @@ class DomainFallbackInterceptor : Interceptor {
         originalHttpUrl: HttpUrl,
         hostsToRace: List<String>
     ): SuccessResult? = coroutineScope {
-        if (DEBUG_LOGGING) Log.i(TAG, "Racing remaining hosts: $hostsToRace")
+        logger.info { "开始竞速剩余域名: $hostsToRace" }
 
         val resultChannel = Channel<Pair<String, SuccessResult>>(1)
 
@@ -183,14 +179,14 @@ class DomainFallbackInterceptor : Interceptor {
         for (msg in resultChannel) {
             optimalFallbackHost = msg.first
             winnerResult = msg.second
-            if (DEBUG_LOGGING) Log.i(TAG, "Race won by host: '${msg.first}'")
+            logger.info { "竞速获胜域名: '${msg.first}'" }
             break
         }
 
         jobs.forEach { it.cancel() }
 
         if (winnerResult == null) {
-            if (DEBUG_LOGGING) Log.e(TAG, "All fallback attempts failed for: $originalHttpUrl")
+            logger.error { "所有降级域名均竞速失败: $originalHttpUrl" }
         }
 
         winnerResult
@@ -208,7 +204,7 @@ class DomainFallbackInterceptor : Interceptor {
         val newRequest = chain.request.newBuilder().data(newUrl).build()
 
         return try {
-            withTimeoutOrNull(3000L) {
+            withTimeoutOrNull(3000L.milliseconds) {
                 withContext(FallbackMarker()) {
                     val result = chain.withRequest(newRequest).proceed()
                     result as? SuccessResult

@@ -1,10 +1,9 @@
 package com.shizq.bika.core.network.plugin
 
-import android.util.Log
 import com.shizq.bika.core.coroutine.ApplicationScope
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.network.BikaEndpoints
-import com.shizq.bika.core.network.BuildConfig
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import kotlinx.coroutines.CoroutineScope
@@ -16,6 +15,8 @@ import java.net.InetAddress
 import java.net.UnknownHostException
 import kotlin.concurrent.atomics.AtomicReference
 import kotlin.concurrent.atomics.ExperimentalAtomicApi
+
+private val logger = KotlinLogging.logger("DirectDns")
 
 @OptIn(ExperimentalAtomicApi::class)
 @Singleton
@@ -37,7 +38,7 @@ class DirectDns @Inject constructor(
                         try {
                             InetAddress.getByName(ip)
                         } catch (e: UnknownHostException) {
-                            if (DEBUG_LOGGING) Log.w(TAG, "Invalid API IP string: $ip", e)
+                            logger.warn(e) { "Invalid API IP string: $ip" }
                             null
                         }
                     }
@@ -45,14 +46,14 @@ class DirectDns @Inject constructor(
                         try {
                             InetAddress.getByName(ip)
                         } catch (e: UnknownHostException) {
-                            if (DEBUG_LOGGING) Log.w(TAG, "Invalid Image IP string: $ip", e)
+                            logger.warn(e) { "Invalid Image IP string: $ip" }
                             null
                         }
                     }
 
                     apiIpsRef.store(apiIps)
                     imageIpsRef.store(imageIps)
-                    if (DEBUG_LOGGING) Log.i(TAG, "Direct DNS updated. API IPs: ${apiIps.size}, Image IPs: ${imageIps.size}")
+                    logger.info { "Direct DNS updated. API IPs: ${apiIps.size}, Image IPs: ${imageIps.size}" }
                 }
         }
     }
@@ -61,18 +62,18 @@ class DirectDns @Inject constructor(
         if (isApiHost(hostname)) {
             val currentApiIps = apiIpsRef.load()
             if (currentApiIps.isNotEmpty()) {
-                if (DEBUG_LOGGING) Log.d(TAG, "Returning API IP list for hostname: $hostname")
+                logger.debug { "Returning API IP list for hostname: $hostname" }
                 return currentApiIps
             }
         } else if (isImageHost(hostname)) {
             val currentImageIps = imageIpsRef.load()
             if (currentImageIps.isNotEmpty()) {
-                if (DEBUG_LOGGING) Log.d(TAG, "Returning Image IP list for hostname: $hostname")
+                logger.debug { "Returning Image IP list for hostname: $hostname" }
                 return currentImageIps
             }
         }
 
-        if (DEBUG_LOGGING) Log.d(TAG, "No direct IP matched or empty IP list. Falling back to system DNS for: $hostname")
+        logger.debug { "No direct IP matched or empty IP list. Falling back to system DNS for: $hostname" }
         return Dns.SYSTEM.lookup(hostname)
     }
 
@@ -90,6 +91,3 @@ class DirectDns @Inject constructor(
         val IMAGE_HOST_SUFFIXES = listOf("picacomic.com", "diwodiwo.xyz", "tipatipa.xyz")
     }
 }
-
-private const val TAG = "DirectDns"
-private val DEBUG_LOGGING = BuildConfig.DEBUG

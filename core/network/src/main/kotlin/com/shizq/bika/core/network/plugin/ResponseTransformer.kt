@@ -10,6 +10,7 @@ import io.ktor.util.AttributeKey
 import io.ktor.utils.io.KtorDsl
 import io.ktor.utils.io.jvm.javaio.toInputStream
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.serializer
 
@@ -40,8 +41,25 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
             if (response.request.attributes.getOrNull(ExpectRawResponse) != null) {
                 return@transformResponseBody null
             }
-            if (!response.status.isSuccess() || requestedType.type == Unit::class) {
+            if (!response.status.isSuccess()) {
                 return@transformResponseBody content
+            }
+
+            // Unit 请求（写操作只关心成功/失败，不关心 data）也要走信封校验，
+            // 否则 code!=200 的业务失败会被这里直接放行，调用方误以为操作成功。
+            if (requestedType.type == Unit::class) {
+                val envelope = json.decodeFromStream(
+                    ApiEnvelope.serializer(JsonElement.serializer()),
+                    content.toInputStream()
+                )
+                if (envelope.code == HttpStatusCode.Unauthorized.value) {
+                    onUnauthorized()
+                    throw UnauthorizedException(envelope.message)
+                }
+                if (envelope.code != HttpStatusCode.OK.value) {
+                    throw ApiException(envelope.code, envelope.message)
+                }
+                return@transformResponseBody Unit
             }
 
             val targetKotlinType = requestedType.kotlinType ?: return@transformResponseBody content

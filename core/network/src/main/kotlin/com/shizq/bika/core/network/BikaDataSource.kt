@@ -21,6 +21,7 @@ import com.shizq.bika.core.network.model.ProfileData
 import com.shizq.bika.core.network.model.RecommendationData
 import com.shizq.bika.core.network.model.Type
 import com.shizq.bika.core.network.plugin.ExpectRawResponse
+import io.github.oshai.kotlinlogging.KotlinLogging
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
@@ -41,6 +42,9 @@ import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.putJsonArray
+import kotlin.coroutines.cancellation.CancellationException
+
+private val logger = KotlinLogging.logger("BikaNetwork")
 
 @Singleton
 class BikaDataSource @Inject constructor(
@@ -58,7 +62,7 @@ class BikaDataSource @Inject constructor(
         // 明文通道下的响应校验：过滤非法地址，全部非法时返回空列表（调用方不会更新 DNS）
         val validated = config.addresses.filter { it.isValidAddress() }
         if (validated.size != config.addresses.size) {
-            android.util.Log.w("BikaNetwork", "引导配置包含非法地址，已过滤: ${config.addresses.filterNot { it.isValidAddress() }}")
+            logger.warn { "引导配置包含非法地址，已过滤: ${config.addresses.filterNot { it.isValidAddress() }}" }
         }
         return config.copy(addresses = validated)
     }
@@ -106,8 +110,7 @@ class BikaDataSource @Inject constructor(
                 val msg = jsonObj["message"]?.jsonPrimitive?.content ?: "请求失败"
                 LoginData(token = null, message = msg)
             }
-        } catch (e: kotlinx.coroutines.CancellationException) {
-            // 协程取消必须透传，不能转为"登录失败"错误提示
+        } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             LoginData(token = null, message = e.message ?: "登录失败")
@@ -115,7 +118,7 @@ class BikaDataSource @Inject constructor(
     }
 
     suspend fun punchIn() {
-        client.post("users/punch-in").bodyAsText()
+        client.post("users/punch-in").body<Unit>()
     }
 
     suspend fun updateUserProfileSlogan(slogan: String) {
@@ -124,7 +127,7 @@ class BikaDataSource @Inject constructor(
                 put("slogan", JsonPrimitive(slogan))
             }
             setBody(jsonBody)
-        }.bodyAsText()
+        }.body<Unit>()
     }
 
     suspend fun changePassword(oldPassword: String, newPassword: String) {
@@ -134,9 +137,8 @@ class BikaDataSource @Inject constructor(
                 put("password", JsonPrimitive(newPassword))
             }
             setBody(jsonBody)
-        }.bodyAsText()
+        }.body<Unit>()
     }
-
 
     suspend fun fetchUserProfile(): ProfileData {
         return client.get("users/profile").body()
@@ -210,7 +212,7 @@ class BikaDataSource @Inject constructor(
                 put("content", JsonPrimitive(content))
             }
             setBody(jsonBody)
-        }.bodyAsText()
+        }.body<Unit>()
     }
 
     suspend fun addCommentReply(commentId: String, content: String) {
@@ -219,7 +221,7 @@ class BikaDataSource @Inject constructor(
                 put("content", JsonPrimitive(content))
             }
             setBody(jsonBody)
-        }.bodyAsText()
+        }.body<Unit>()
     }
 
     /**
