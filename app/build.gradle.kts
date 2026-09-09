@@ -15,8 +15,8 @@ android {
 
     defaultConfig {
         applicationId = "com.shizq.bika"
-        versionCode = 70
-        versionName = "1.11.20"
+        versionCode = 71
+        versionName = "1.11.21"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
