@@ -68,9 +68,7 @@ import kotlinx.serialization.json.Json
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import javax.inject.Inject
-import io.github.oshai.kotlinlogging.KotlinLogging
-
-private val logger = KotlinLogging.logger("DnsSettings")
+import com.shizq.bika.core.common.BikaLog
 
 @Serializable
 data class DnsResolveResponse(
@@ -202,7 +200,7 @@ class DnsSettingsViewModel @Inject constructor(
                 resultList
             }
         } catch (e: Exception) {
-            logger.error(e) { "获取 DNS 配置失败" }
+            com.shizq.bika.core.common.BikaLog.e("DnsSettings", "获取 DNS 配置失败", e)
             emptyList()
         }
     }

@@ -83,8 +83,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
 import com.shizq.bika.core.database.model.DetailedHistory
+import com.shizq.bika.core.domain.filter.FilterGroup
+import com.shizq.bika.core.domain.filter.FilterOption
+import com.shizq.bika.core.domain.filter.FilterSelections
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
@@ -93,9 +95,9 @@ import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.tag.FilterChip
-import com.shizq.bika.ui.tag.FilterGroup
 import com.shizq.bika.ui.tag.FilterState
 import com.shizq.bika.ui.tag.rememberFilterState
+import com.shizq.bika.util.injectFromHistoryMap
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -250,8 +252,8 @@ private fun FeedContent(
     onSortOrderChanged: (SortOrder) -> Unit,
     onComicClick: (comicId: String) -> Unit,
     onBackClick: () -> Unit,
-    filterSelections: Map<FilterGroup, List<String>>,
-    onFilterChanged: (group: FilterGroup, value: String) -> Unit,
+    filterSelections: FilterSelections,
+    onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
     excludeTopicsGlobal: Boolean,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
     currentPage: Int,
@@ -449,7 +451,7 @@ private fun FeedContent(
 @Composable
 private fun FilterRow(
     filterState: FilterState,
-    onFilterChanged: (group: FilterGroup, value: String) -> Unit,
+    onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
     totalCount: Int,
     currentPage: Int,
     totalPages: Int,
@@ -466,11 +468,7 @@ private fun FilterRow(
         items(filterState.chips) { chipState ->
             FilterChip(
                 state = chipState,
-                onSelectionChanged = { value ->
-                    chipState.kind?.let { group ->
-                        onFilterChanged(group, value)
-                    }
-                },
+                onSelectionChanged = { option -> onFilterChanged(chipState.group, option) },
                 excludeTopicsGlobal = excludeTopicsGlobal,
                 onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged
             )
@@ -577,7 +575,7 @@ fun FavoriteTagsDrawer(
 
     val currentTag = remember(currentAction) { currentAction?.toFavoriteTag() }
     val isCurrentFavorited = remember(favoriteTags, currentTag) {
-        currentTag != null && favoriteTags.any { it.name == currentTag.name && it.actionType == currentTag.actionType }
+        currentTag != null && favoriteTags.any { it.isSameTag(currentTag) }
     }
 
     Surface(
@@ -694,11 +692,15 @@ fun FavoriteTagsDrawer(
                     modifier = Modifier.weight(1f)
                 ) {
                     itemsIndexed(favoriteTags) { index, tag ->
+                        // action 为 null 说明这条收藏无法还原成入口（actionType 无法识别，
+                        // 或骑士标签缺 actionId）。此时禁用跳转但保留删除/改名，
+                        // 否则用户会得到一条既点不动又删不掉的僵尸数据。
+                        val action = remember(tag) { tag.toAction() }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable(enabled = !isEditMode) {
-                                    onNavigateToFeed(tag.toAction())
+                                .clickable(enabled = !isEditMode && action != null) {
+                                    action?.let(onNavigateToFeed)
                                 }
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -725,13 +727,26 @@ fun FavoriteTagsDrawer(
                                 Spacer(Modifier.width(12.dp))
                             }
 
-                            Text(
-                                text = tag.name,
-                                style = MaterialTheme.typography.bodyLarge,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.weight(1f)
-                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = tag.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = if (action == null) {
+                                        MaterialTheme.colorScheme.onSurfaceVariant
+                                    } else {
+                                        MaterialTheme.colorScheme.onSurface
+                                    },
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                                if (action == null) {
+                                    Text(
+                                        text = "无法打开，建议删除",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            }
 
                             if (isEditMode) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {

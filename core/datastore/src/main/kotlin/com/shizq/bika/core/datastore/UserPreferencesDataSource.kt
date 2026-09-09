@@ -5,7 +5,6 @@ import com.shizq.bika.core.model.BookSpreadsMode
 import com.shizq.bika.core.model.Channel
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.preferences.UserPreferences
-import com.shizq.bika.core.model.preferences.UserProfileSnapshot
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.model.reader.TapZoneLayout
@@ -137,41 +136,58 @@ class UserPreferencesDataSource @Inject constructor(
         it.copy(app = it.app.copy(secureScreenEnabled = enabled))
     }
 
-    /** 保存用户资料到本地，供无网时回退展示 */
-    suspend fun saveUserProfileCache(
-        name: String,
-        avatarUrl: String,
-        level: Int,
-        exp: Int,
-        title: String,
-        gender: String,
-        slogan: String,
-        honorBadges: List<String>,
-    ) = edit {
-        it.copy(
-            profile = UserProfileSnapshot(
-                name = name,
-                avatarUrl = avatarUrl,
-                level = level,
-                exp = exp,
-                title = title,
-                gender = gender,
-                slogan = slogan,
-                honorBadges = honorBadges,
-            ),
-        )
-    }
-
     suspend fun setExcludeTopicsGlobal(enabled: Boolean) = edit {
         it.copy(filter = it.filter.copy(globalTopicBlockEnabled = enabled))
+    }
+
+    /**
+     * 一次性开启全局主题屏蔽并写入初始主题列表。
+     * 拆成两次写入会让观察者看到「已开启但主题仍是旧值」的中间态。
+     */
+    suspend fun enableGlobalTopicBlock(topics: List<String>) = edit {
+        it.copy(
+            filter = it.filter.copy(
+                globalTopicBlockEnabled = true,
+                globalBlockedTopics = topics,
+            ),
+        )
     }
 
     suspend fun setGlobalExcludedTopics(topics: List<String>) = edit {
         it.copy(filter = it.filter.copy(globalBlockedTopics = topics))
     }
 
+    /**
+     * 以原子的读-改-写方式更新全局排除主题。
+     * 相比先取快照再 [setGlobalExcludedTopics]，可避免并发调用时的更新丢失。
+     */
+    suspend fun updateGlobalExcludedTopics(
+        transform: (List<String>) -> List<String>,
+    ) = edit {
+        it.copy(
+            filter = it.filter.copy(
+                globalBlockedTopics = transform(it.filter.globalBlockedTopics),
+            ),
+        )
+    }
+
+    /** 切换单个全局排除主题的选中状态。 */
+    suspend fun toggleGlobalExcludedTopic(topic: String) = updateGlobalExcludedTopics { topics ->
+        if (topic in topics) topics - topic else topics + topic
+    }
+
     suspend fun updateFavoriteTags(tags: List<FavoriteTag>) = edit {
         it.copy(filter = it.filter.copy(favoriteTags = tags))
+    }
+
+    /**
+     * 以原子的读-改-写方式更新收藏标签。
+     * [transform] 在 DataStore 的事务内执行，因此必须是纯函数且不可阻塞。
+     */
+    suspend fun updateFavoriteTags(
+        transform: (List<FavoriteTag>) -> List<FavoriteTag>,
+    ) = edit {
+        it.copy(filter = it.filter.copy(favoriteTags = transform(it.filter.favoriteTags)))
     }
 
     suspend fun setUsePredictiveBack(enabled: Boolean) = edit {

@@ -46,7 +46,7 @@ internal object UserPreferencesMigration {
 
     /** 新嵌套结构的聚合键。 */
     private val NESTED_KEYS = setOf(
-        "reader", "theme", "network", "download", "filter", "app", "dashboard", "cachedProfile",
+        "reader", "theme", "network", "download", "filter", "app", "dashboard", "profile",
     )
 
     /**

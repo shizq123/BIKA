@@ -41,7 +41,7 @@ internal class SyncWorker @AssistedInject constructor(
             syncSubscriber.subscribe()
 
             try {
-                val config = api.getNetworkConfig()
+                val config = api.getBootstrapConfig()
 
                 userPreferencesDataSource.setDns(config.addresses.toSet())
                 Result.success()

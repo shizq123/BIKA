@@ -13,9 +13,12 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -35,6 +38,7 @@ import com.shizq.bika.R
 
 internal object DashboardDrawerTags {
     const val UserProfile = "dashboard:userProfile"
+    const val CheckIn = "dashboard:checkIn"
     const val History = "dashboard:drawer:history"
     const val Favourite = "dashboard:drawer:favourite"
     const val Notifications = "dashboard:drawer:notifications"
@@ -44,16 +48,28 @@ internal object DashboardDrawerTags {
 }
 
 // TODO: 添加重试操作
+/**
+ * 用户信息卡片，三态统一入口。
+ *
+ * 原先 Success 态在 DashboardScreen 有一份独立的 UserProfileCard，与这里的
+ * UserProfileSuccessCard 渲染同一份数据但细节不一致（ifEmpty/ifBlank、title 空值处理、
+ * ImageRequest 是否 remember），且两者打同一个 testTag。现已合并到此处。
+ */
 @Composable
 internal fun UserProfileStateCard(
     state: UserProfileUiState,
     modifier: Modifier = Modifier,
+    onCheckInClick: () -> Unit = {},
+    onEditProfileClick: () -> Unit = {},
 ) {
     when (state) {
         UserProfileUiState.Loading -> UserProfileLoadingCard(modifier = modifier)
         is UserProfileUiState.Error -> UserProfileErrorCard(modifier = modifier)
         is UserProfileUiState.Success -> UserProfileSuccessCard(
             user = state.user,
+            isOfflineCache = state.isOfflineCache,
+            onCheckInClick = onCheckInClick,
+            onEditProfileClick = onEditProfileClick,
             modifier = modifier
         )
     }
@@ -62,6 +78,9 @@ internal fun UserProfileStateCard(
 @Composable
 private fun UserProfileSuccessCard(
     user: User,
+    isOfflineCache: Boolean,
+    onCheckInClick: () -> Unit,
+    onEditProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
@@ -96,13 +115,33 @@ private fun UserProfileSuccessCard(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = user.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Text(
+                        text = user.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    // 服务端不可达、走本地缓存时标出，避免用户把过期数据当成最新
+                    if (isOfflineCache) {
+                        Surface(
+                            color = MaterialTheme.colorScheme.errorContainer,
+                            shape = RoundedCornerShape(4.dp)
+                        ) {
+                            Text(
+                                text = "离线",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
+                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -154,6 +193,27 @@ private fun UserProfileSuccessCard(
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f)
             )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = onEditProfileClick) {
+                Text(text = "修改资料")
+            }
+            Spacer(modifier = Modifier.width(8.dp))
+            Button(
+                onClick = onCheckInClick,
+                enabled = !user.hasCheckedIn,
+                colors = ButtonDefaults.buttonColors(
+                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                modifier = Modifier.testTag(DashboardDrawerTags.CheckIn)
+            ) {
+                Text(text = if (user.hasCheckedIn) "已打卡" else "打卡")
+            }
         }
     }
 }

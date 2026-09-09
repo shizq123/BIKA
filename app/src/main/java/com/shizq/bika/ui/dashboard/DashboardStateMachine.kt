@@ -2,101 +2,68 @@
 
 package com.shizq.bika.ui.dashboard
 
-import android.util.Log
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
-import com.shizq.bika.core.coroutine.FlowRestarter
-import com.shizq.bika.core.coroutine.restartable
-import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.data.model.UserProfileState
+import com.shizq.bika.core.data.repository.DashboardRepository
+import com.shizq.bika.core.data.repository.UserRepository
 import com.shizq.bika.core.model.FavoriteTag
-import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.result.Result
-import com.shizq.bika.core.result.asResult
+import com.shizq.bika.ui.feed.FeedActionType
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 
-
-private const val TAG = "DashboardSM"
+private val logger = KotlinLogging.logger("DashboardSM")
 
 class DashboardStateMachine @Inject constructor(
-    private val network: BikaDataSource,
-    private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val userRepository: UserRepository,
+    private val dashboardRepository: DashboardRepository,
 ) : FlowReduxStateMachineFactory<DashboardState, DashboardAction>() {
-
-    private val profileRestarter = FlowRestarter()
 
     init {
         initializeWith { DashboardState() }
         spec {
             inState<DashboardState> {
 
-                // ── 用户资料加载（可重启）────────────────────────────────
-                collectWhileInState(
-                    flow { emit(network.fetchUserProfile()) }
-                        .asResult()
-                        .restartable(profileRestarter)
-                ) { result ->
+                // ── 本地数据源投射进状态树 ────────────────────────────────
+                // 这三条原先是 ViewModel 上独立的 stateIn flow，UI 需要 collect
+                // 四处再自行拼装。收进状态树后 UI 只有一个订阅点，且 favoriteTags
+                // 的读与写（见下方 CRUD）归到同一个 owner。
+                collectWhileInState(dashboardRepository.lastReadHistory) { history ->
+                    mutate { copy(lastReadHistory = history) }
+                }
+
+                collectWhileInState(dashboardRepository.activeChannels) { channels ->
+                    mutate { copy(activeChannels = channels) }
+                }
+
+                collectWhileInState(dashboardRepository.favoriteTags) { tags ->
+                    mutate { copy(favoriteTags = tags) }
+                }
+
+                collectWhileInState(userRepository.userProfile) { result ->
                     when (result) {
                         Result.Loading -> mutate {
-                            copy(userProfile = UserProfileUiState.Loading)
+                            if (userProfile is UserProfileUiState.Success) this
+                            else copy(userProfile = UserProfileUiState.Loading)
                         }
 
-                        is Result.Error -> {
-                            val prefs = userPreferencesDataSource.userData.first()
-                            val fallback = if (prefs.profile.name.isNotEmpty()) {
-                                UserProfileUiState.Success(
-                                    user = User(
-                                        name = prefs.profile.name,
-                                        avatarUrl = prefs.profile.avatarUrl,
-                                        characters = prefs.profile.honorBadges,
-                                        level = prefs.profile.level,
-                                        exp = prefs.profile.exp,
-                                        title = prefs.profile.title,
-                                        gender = prefs.profile.gender,
-                                        slogan = prefs.profile.slogan,
-                                        hasCheckedIn = false,
-                                    ),
-                                    isOfflineCache = true,
-                                )
-                            } else {
-                                UserProfileUiState.Error(
+                        is Result.Error -> mutate {
+                            copy(
+                                userProfile = UserProfileUiState.Error(
                                     result.exception.message ?: "加载用户信息失败"
                                 )
-                            }
-                            mutate { copy(userProfile = fallback) }
-                        }
-
-                        is Result.Success -> {
-                            val user = result.data.user
-                            userPreferencesDataSource.saveUserProfileCache(
-                                name = user.name,
-                                avatarUrl = user.imageUrl,
-                                level = user.level,
-                                exp = user.exp,
-                                title = user.title,
-                                gender = user.gender,
-                                slogan = user.slogan,
-                                honorBadges = user.characters,
                             )
-                            mutate {
-                                copy(
-                                    userProfile = UserProfileUiState.Success(
-                                        user = User(
-                                            name = user.name,
-                                            avatarUrl = user.imageUrl,
-                                            characters = user.characters,
-                                            level = user.level,
-                                            exp = user.exp,
-                                            title = user.title,
-                                            gender = user.gender,
-                                            slogan = user.slogan,
-                                            hasCheckedIn = user.isPunched,
-                                        )
-                                    )
+                        }
+                        is Result.Success -> mutate {
+                            copy(
+                                userProfile = UserProfileUiState.Success(
+                                    result.data.toUser(),
+                                    isOfflineCache = result.data.hasCheckedIn == null,
                                 )
-                            }
+                            )
                         }
                     }
                 }
@@ -106,25 +73,29 @@ class DashboardStateMachine @Inject constructor(
                 // 实际检查在这里做，彻底避免 LaunchedEffect 重复触发问题
                 on<DashboardAction.AutoCheckIn> {
                     val profile = snapshot.userProfile
+                    // 设置项优先：开关关掉时连判定都不做。这里读 first() 而不是把
+                    // autoCheckInEnabled 投射进 state —— 它只在这一处用到，进状态树
+                    // 会多一个没人读的字段，也会多一次无谓的重组。
                     if (profile is UserProfileUiState.Success
                         && !profile.isOfflineCache
                         && !profile.user.hasCheckedIn
+                        && dashboardRepository.autoCheckInEnabled.first()
                     ) {
-                        runCatching { network.punchIn() }
-                            .onSuccess { profileRestarter.restart() }
-                            .onFailure { Log.e(TAG, "自动打卡失败", it) }
+                        runCatching { userRepository.punchIn() }
+                            .onSuccess { userRepository.refreshUserProfile() }
+                            .onFailure { logger.error(it) { "自动打卡失败" } }
                     }
                     noChange()
                 }
 
                 // ── 手动打卡 ─────────────────────────────────────────────
                 on<DashboardAction.CheckIn> {
-                    val result = runCatching { network.punchIn() }
+                    val result = runCatching { userRepository.punchIn() }
                     val checkInResult = if (result.isSuccess) {
-                        profileRestarter.restart()
+                        userRepository.refreshUserProfile()
                         CheckInResult.Success("打卡成功！已成功打哔咔。")
                     } else {
-                        Log.e(TAG, "签到失败", result.exceptionOrNull())
+                        logger.error(result.exceptionOrNull()) { "签到失败" }
                         CheckInResult.Error(
                             "打卡失败：${result.exceptionOrNull()?.localizedMessage ?: "未知错误"}"
                         )
@@ -136,102 +107,67 @@ class DashboardStateMachine @Inject constructor(
                     mutate { copy(checkInResult = null) }
                 }
 
-                // ── 个人资料修改 ──────────────────────────────────────────
-                on<DashboardAction.UpdateSlogan> { action ->
-                    val result = runCatching {
-                        network.updateUserProfileSlogan(action.slogan)
-                        profileRestarter.restart()
-                    }
-                    if (result.isFailure) {
-                        Log.e(TAG, "更新自我介绍失败", result.exceptionOrNull())
-                    }
-                    mutate {
-                        copy(
-                            sloganResult = if (result.isSuccess) OperationResult.Success
-                            else OperationResult.Error(
-                                result.exceptionOrNull()?.localizedMessage ?: "更新失败"
-                            )
-                        )
-                    }
-                }
-
-                on<DashboardAction.DismissSloganResult> {
-                    mutate { copy(sloganResult = null) }
-                }
-
-                on<DashboardAction.ChangePassword> { action ->
-                    val result = runCatching {
-                        network.changePassword(action.oldPw, action.newPw)
-                    }
-                    if (result.isFailure) {
-                        Log.e(TAG, "修改密码失败", result.exceptionOrNull())
-                    }
-                    mutate {
-                        copy(
-                            passwordResult = if (result.isSuccess) OperationResult.Success
-                            else OperationResult.Error(
-                                result.exceptionOrNull()?.localizedMessage ?: "修改密码失败"
-                            )
-                        )
-                    }
-                }
-
-                on<DashboardAction.DismissPasswordResult> {
-                    mutate { copy(passwordResult = null) }
-                }
+                // 改签名 / 改密码已迁出：见 DashboardAction 里的说明。
 
                 // ── 收藏标签 CRUD（纯副作用，不改 DashboardState）─────────
+                // 统一走 updateFavoriteTags(transform) 这个原子重载：transform 在 DataStore
+                // 事务内执行，快速连续点击不会因「先读快照再整表写回」而丢更新。
+                // 身份判定复用 FavoriteTag.isSameTag，避免 name + actionType 的谓词散落多处。
                 onActionEffect<DashboardAction.AddFavoriteTag> { action ->
-                    val current =
-                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
-                    val tag = action.tag
-                    if (current.none { it.name == tag.name && it.actionType == tag.actionType }) {
-                        current.add(tag)
-                        userPreferencesDataSource.updateFavoriteTags(current)
-                    }
+                    dashboardRepository.updateFavoriteTags { addFavoriteTag(it, action.tag) }
                 }
 
                 onActionEffect<DashboardAction.RemoveFavoriteTag> { action ->
-                    val tag = action.tag
-                    val updated = userPreferencesDataSource.userData.first().filter.favoriteTags
-                        .filterNot { it.name == tag.name && it.actionType == tag.actionType }
-                    userPreferencesDataSource.updateFavoriteTags(updated)
+                    dashboardRepository.updateFavoriteTags { removeFavoriteTag(it, action.tag) }
                 }
 
                 onActionEffect<DashboardAction.UpdateFavoriteTagName> { action ->
+                    // 这里的空名短路是为了省掉一次无谓的 DataStore 事务；
+                    // renameFavoriteTag 内部同样有守卫，两者都不能删——
+                    // 事务内的那道才是真正保证不写入空名的。
                     if (action.newName.isBlank()) return@onActionEffect
-                    val current =
-                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
-                    val idx = current.indexOfFirst {
-                        it.name == action.tag.name && it.actionType == action.tag.actionType
-                    }
-                    if (idx != -1) {
-                        current[idx] = current[idx].copy(name = action.newName)
-                        userPreferencesDataSource.updateFavoriteTags(current)
+                    dashboardRepository.updateFavoriteTags {
+                        renameFavoriteTag(it, action.tag, action.newName)
                     }
                 }
 
                 onActionEffect<DashboardAction.MoveFavoriteTag> { action ->
-                    val current =
-                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
-                    if (action.fromIndex in current.indices && action.toIndex in current.indices) {
-                        val tag = current.removeAt(action.fromIndex)
-                        current.add(action.toIndex, tag)
-                        userPreferencesDataSource.updateFavoriteTags(current)
+                    dashboardRepository.updateFavoriteTags {
+                        moveFavoriteTag(it, action.fromIndex, action.toIndex)
                     }
                 }
 
                 onActionEffect<DashboardAction.AddCustomFavoriteTag> { action ->
                     if (action.name.isBlank()) return@onActionEffect
-                    val tag = FavoriteTag(name = action.name, actionType = "AdvancedSearch")
-                    val current =
-                        userPreferencesDataSource.userData.first().filter.favoriteTags.toMutableList()
-                    if (current.none { it.name == tag.name && it.actionType == tag.actionType }) {
-                        current.add(tag)
-                        userPreferencesDataSource.updateFavoriteTags(current)
-                    }
+                    val tag = FavoriteTag(
+                        name = action.name,
+                        actionType = FeedActionType.AdvancedSearch.storageValue,
+                    )
+                    dashboardRepository.updateFavoriteTags { addFavoriteTag(it, tag) }
                 }
             }
         }
     }
 }
+
+// ─────────────────────────────────────────────
+// 数据源模型 → UI 模型
+// ─────────────────────────────────────────────
+
+/**
+ * [UserProfileState.hasCheckedIn] 为 null 代表来自缓存兜底、打卡状态不可知。
+ * 这里映射成 `false` 是为了让 [User.hasCheckedIn] 保持非空类型；真正的「不可知」
+ * 由同一行算出的 [UserProfileUiState.Success.isOfflineCache] 承载，AutoCheckIn
+ * 判断的是那个标志，不会拿这里退化出来的 false 去当「确认未打卡」使用。
+ */
+private fun UserProfileState.toUser() = User(
+    name = profile.name,
+    avatarUrl = profile.avatarUrl,
+    characters = profile.honorBadges,
+    level = profile.level,
+    exp = profile.exp,
+    title = profile.title,
+    gender = profile.gender,
+    slogan = profile.slogan,
+    hasCheckedIn = hasCheckedIn ?: false,
+)

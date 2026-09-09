@@ -2,19 +2,21 @@
 
 package com.shizq.bika.ui.signin
 
-import kotlinx.coroutines.ExperimentalCoroutinesApi
 import com.freeletics.flowredux2.ChangeableState
 import com.freeletics.flowredux2.ChangedState
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.auth.SessionManager
 import jakarta.inject.Inject
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.first
 
 class LoginStateMachineFactory @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource,
-    private val api: BikaDataSource
+    private val api: BikaDataSource,
+    private val sessionManager: SessionManager,
 ) : FlowReduxStateMachineFactory<LoginUiState, LoginAction>() {
 
     init {
@@ -67,6 +69,7 @@ class LoginStateMachineFactory @Inject constructor(
                         AuthenticationStateMachineFactory(
                             api = api,
                             userCredentialsDataSource = userCredentialsDataSource,
+                            sessionManager = sessionManager,
                             username = snapshot.username,
                             password = snapshot.password,
                             rememberPassword = snapshot.rememberPassword

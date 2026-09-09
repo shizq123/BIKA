@@ -2,7 +2,7 @@ package com.shizq.bika.core.domain
 
 import com.shizq.bika.core.data.platform.AppVersionProvider
 import com.shizq.bika.core.data.repository.AppUpdateRepository
-import com.shizq.bika.core.network.model.AppUpdateRelease
+import com.shizq.bika.core.model.AppUpdateRelease
 import javax.inject.Inject
 
 class CheckAppUpdateUseCase @Inject constructor(

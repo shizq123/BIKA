@@ -6,22 +6,25 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.runtime.remember
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
-import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.feature.reader.impl.ReaderScreen
 import com.shizq.bika.feature.reader.impl.ReaderViewModel
-import com.shizq.bika.ui.LocalUseBackAnimation
+import com.shizq.bika.feature.settings.impl.BlockedTagsScreen
+import com.shizq.bika.feature.settings.impl.DnsSettingsScreen
+import com.shizq.bika.feature.settings.impl.SettingsScreen
+import com.shizq.bika.feature.settings.impl.StorageManagerScreen
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
+import com.shizq.bika.ui.dashboard.ChangePasswordDialog
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
 import com.shizq.bika.ui.dashboard.DashboardScreen
+import com.shizq.bika.ui.dashboard.EditProfileDialog
 import com.shizq.bika.ui.download.DownloadListScreen
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
@@ -29,60 +32,19 @@ import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
 import com.shizq.bika.ui.notifications.NotificationsScreen
 import com.shizq.bika.ui.search.SearchScreen
-import com.shizq.bika.ui.settings.BlockedTagsScreen
-import com.shizq.bika.ui.settings.DnsSettingsScreen
-import com.shizq.bika.ui.settings.SettingsScreen
-import com.shizq.bika.ui.settings.StorageManagerScreen
 import com.shizq.bika.ui.signin.LoginScreen
 import com.shizq.bika.ui.signup.RegistrationScreen
 
-fun EntryProviderScope<NavKey>.rootSection(
-    navigator: Navigator,
-    useAnimation: Boolean = true
-) {
-    entry<AuthenticationRoute> {
-        val useAnim = LocalUseBackAnimation.current
-        NavDisplay(
-            backStack = navigator.state.authenticationBackStack,
-            entryProvider = entryProvider {
-                authenticationSection(
-                    navigationToDashboard = { navigator.navigate(ConnectedRoute) },
-                    navigateToRegister = {
-                        navigator.navigate(AuthenticationRoute.RegisterRoute)
-                    },
-                    onBackClick = navigator::goBack,
-                    useAnimation = useAnim
-                )
-            }
-        )
-    }
-
-    entry<ConnectedRoute> {
-        val dialogStrategy = remember { DialogSceneStrategy<NavKey>() }
-        val useAnim = LocalUseBackAnimation.current
-        NavDisplay(
-            entries = navigator.state.toEntries(
-                entryProvider = entryProvider {
-                    featureSection(navigator, useAnimation = useAnim)
-                }
-            ),
-            onBack = navigator::goBack,
-            sceneStrategies = listOf(dialogStrategy)
-        )
-    }
-}
-
 fun EntryProviderScope<NavKey>.authenticationSection(
-    navigationToDashboard: () -> Unit,
     navigateToRegister: () -> Unit,
     onBackClick: () -> Unit,
     useAnimation: Boolean = true
 ) {
     entry<AuthenticationRoute.LoginRoute> {
         LoginScreen(
-            onNavigateToDashboard = navigationToDashboard,
             onNavigateToSignUp = navigateToRegister,
-            onNavigateToForgotPassword = {}
+            onNavigateToForgotPassword = {},
+            onNavigateToDashboard = {}
         )
     }
     entry<AuthenticationRoute.RegisterRoute>(
@@ -133,9 +95,10 @@ private fun slideTransitionMetadata(useAnimation: Boolean = true) = metadata {
 
 fun EntryProviderScope<NavKey>.featureSection(
     navigator: Navigator,
+    onLogout: () -> Unit,
     useAnimation: Boolean = true
 ) {
-    fun slideTransitionMetadata() = com.shizq.bika.navigation.slideTransitionMetadata(useAnimation)
+    fun slideTransitionMetadata() = slideTransitionMetadata(useAnimation)
 
     entry<ConnectedRoute.DashboardRoute> {
         DashboardScreen(
@@ -148,6 +111,9 @@ fun EntryProviderScope<NavKey>.featureSection(
 
             onSearchClick = { navigator.navigate(ConnectedRoute.SearchRoute) },
             onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
+            onEditProfileClick = { slogan ->
+                navigator.navigate(EditProfileNavKey(slogan))
+            },
             onCommentsClick = { navigator.navigate(ConnectedRoute.MineCommentRoute) },
             onDownloadsClick = { navigator.navigate(ConnectedRoute.DownloadListRoute) },
             onNotificationsClick = { navigator.navigate(ConnectedRoute.NotificationsRoute) },
@@ -200,7 +166,7 @@ fun EntryProviderScope<NavKey>.featureSection(
     }
     entry<ConnectedRoute.MineCommentRoute>(
         metadata = slideTransitionMetadata()
-    ) { key ->
+    ) {
         MineCommentScreen(
             onCardClick = navigator::navigateToUnitedDetail,
             onBackClick = navigator::goBack
@@ -234,7 +200,7 @@ fun EntryProviderScope<NavKey>.featureSection(
         metadata = slideTransitionMetadata()
     ) {
         SettingsScreen(
-            navigationToLogin = { navigator.navigate(AuthenticationRoute) },
+            navigationToLogin = onLogout,
             navigationToStorageManager = { navigator.navigate(ConnectedRoute.StorageManagerRoute) },
             navigationToDnsSettings = { navigator.navigate(ConnectedRoute.DnsSettingsRoute) },
             navigationToBlockedTags = { navigator.navigate(ConnectedRoute.BlockedTagsRoute) },
@@ -306,6 +272,24 @@ fun EntryProviderScope<NavKey>.featureSection(
         metadata = DialogSceneStrategy.dialog(),
     ) {
         ChannelSettingsDialog(
+            onDismiss = navigator::goBack,
+        )
+    }
+
+    entry<EditProfileNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) { key ->
+        EditProfileDialog(
+            initialSlogan = key.initialSlogan,
+            onDismiss = navigator::goBack,
+            onChangePasswordClick = { navigator.navigate(ChangePasswordNavKey) },
+        )
+    }
+
+    entry<ChangePasswordNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) {
+        ChangePasswordDialog(
             onDismiss = navigator::goBack,
         )
     }

@@ -17,15 +17,25 @@ fun List<ComicSummary>.injectLocalStatusFrom(histories: List<DetailedHistory>): 
     if (histories.isEmpty()) return this
     // 建立 id -> DetailedHistory 的映射，避免对每个 comic 都线性扫描
     val historyMap = histories.associateBy { it.history.id }
-    return this.map { comic ->
-        val detailed = historyMap[comic.id] ?: return@map comic
-        val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
-        val progressText = computeProgressText(lastProgress, detailed.history.epsCount)
-        comic.copy(
-            isFavourited = detailed.history.isFavourited,
-            lastReadChapterProgress = progressText
-        )
-    }
+    return this.map { comic -> comic.injectFromHistoryMap(historyMap) }
+}
+
+/**
+ * 单个 ComicSummary 的注入，映射由调用方预先构建。
+ *
+ * 供两类调用方共用：[injectLocalStatusFrom] 处理整个列表；UI 层在 LazyColumn 外构建一次映射后
+ * 逐项调用，避免每个列表项各自扫描一遍历史记录。
+ */
+fun ComicSummary.injectFromHistoryMap(
+    historyMap: Map<String, DetailedHistory>
+): ComicSummary {
+    val detailed = historyMap[id] ?: return this
+    val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
+    val progressText = computeProgressText(lastProgress, detailed.history.epsCount)
+    return copy(
+        isFavourited = detailed.history.isFavourited,
+        lastReadChapterProgress = progressText
+    )
 }
 
 /**
@@ -53,7 +63,7 @@ internal fun computeProgressText(lastProgress: ChapterProgressEntity?, epsCount:
     if (lastProgress == null) return null
     return when {
         epsCount > lastProgress.chapterId -> "有更新"
-        lastProgress.chapterId >= epsCount && lastProgress.isCompleted -> "已读完"
+        lastProgress.isCompleted -> "已读完"
         else -> "已阅读"
     }
 }

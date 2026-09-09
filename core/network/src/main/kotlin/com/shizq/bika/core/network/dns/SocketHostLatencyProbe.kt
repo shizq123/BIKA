@@ -6,23 +6,22 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.net.InetSocketAddress
 import java.net.Socket
-import kotlin.system.measureTimeMillis
+import kotlin.time.Clock
 
 /** 通过对 443 端口做一次 TCP 握手来测量延迟的 [HostLatencyProbe] 实现。 */
 @Singleton
 internal class SocketHostLatencyProbe @Inject constructor() : HostLatencyProbe {
 
     override suspend fun measureLatency(ip: String): Long = withContext(Dispatchers.IO) {
-        measureTimeMillis {
-            try {
-                Socket().use { socket ->
-                    socket.connect(InetSocketAddress(ip, HTTPS_PORT), CONNECT_TIMEOUT_MS)
-                }
-            } catch (e: Exception) {
-                HostLatencyProbe.UNREACHABLE
+        val startedAtMs = Clock.System.now().toEpochMilliseconds()
+        try {
+            Socket().use { socket ->
+                socket.connect(InetSocketAddress(ip, HTTPS_PORT), CONNECT_TIMEOUT_MS)
             }
+            Clock.System.now().toEpochMilliseconds() - startedAtMs
+        } catch (e: Exception) {
+            HostLatencyProbe.UNREACHABLE
         }
-
     }
 
     private companion object {

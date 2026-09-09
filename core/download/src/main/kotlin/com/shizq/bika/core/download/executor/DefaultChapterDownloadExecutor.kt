@@ -38,6 +38,7 @@ import java.net.UnknownHostException
 import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.resumeWithException
 import kotlin.time.Clock
+import kotlin.time.Duration.Companion.milliseconds
 
 @Singleton
 class DefaultChapterDownloadExecutor @Inject constructor(
@@ -203,13 +204,13 @@ class DefaultChapterDownloadExecutor @Inject constructor(
                 page = page,
             )
 
-            val pagination = response.paginationData
-            val images = pagination.images
-                .mapNotNull { it.media.originalImageUrl.takeIf(String::isNotBlank) }
+            val pagination = response.imagePages
+            val images = pagination.docs
+                .mapNotNull { it.media.originalImageUrl.takeIf(String::isNotEmpty) }
 
             allPages.addAll(images)
 
-            val remoteTotalPages = pagination.totalPages
+            val remoteTotalPages = pagination.total
             val shouldStop = images.isEmpty() || remoteTotalPages <= page || remoteTotalPages <= 0
             if (shouldStop) break
 
@@ -254,7 +255,7 @@ class DefaultChapterDownloadExecutor @Inject constructor(
                     "页下载失败，准备重试: page=$pageNumber, attempt=${attempt + 1}, delay=${backoffMs}ms",
                     e,
                 )
-                delay(backoffMs)
+                delay(backoffMs.milliseconds)
             }
         }
 

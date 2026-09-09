@@ -1,14 +1,17 @@
 package com.shizq.bika.feature.settings.impl
 
-import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.coroutine.ApplicationScope
+import com.shizq.bika.core.data.repository.UserRepository
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.message.MessageReporter
 import com.shizq.bika.core.model.theme.DarkThemeConfig
+import com.shizq.bika.core.network.image.ImageCacheManager
 import dagger.hilt.android.lifecycle.HiltViewModel
-import dagger.hilt.android.qualifiers.ApplicationContext
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -19,14 +22,19 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    @ApplicationContext application: Context,
     @ApplicationScope private val scope: CoroutineScope,
     private val userPreferencesDataSource: UserPreferencesDataSource,
-    private val userCredentialsDataSource: UserCredentialsDataSource
+    private val userCredentialsDataSource: UserCredentialsDataSource,
+    private val userRepository: UserRepository,
+    private val imageCacheManager: ImageCacheManager,
+    private val messageReporter: MessageReporter,
 ) : ViewModel() {
     val settingsUiState = userPreferencesDataSource.userData.map {
         SettingsUiState.Success(
@@ -44,92 +52,26 @@ class SettingsViewModel @Inject constructor(
         SharingStarted.WhileSubscribed(5000),
         SettingsUiState.Loading
     )
-//    private val imageLoader = application.imageLoader
 
-    val cacheSize: StateFlow<String>
-        field = MutableStateFlow("计算中...")
-
-    private val _updateUiState = MutableStateFlow<UpdateUiState>(UpdateUiState.Idle)
-    val updateUiState: StateFlow<UpdateUiState> = _updateUiState.asStateFlow()
+    private val _cacheSize = MutableStateFlow("计算中...")
+    val cacheSize: StateFlow<String> = _cacheSize.asStateFlow()
 
     init {
         updateCacheSize()
     }
 
-    fun checkForUpdates() {
-        if (_updateUiState.value is UpdateUiState.Checking) return
-        _updateUiState.value = UpdateUiState.Checking
-
-        viewModelScope.launch(Dispatchers.IO) {
-//            try {
-//                val okHttpClient = okhttp3.OkHttpClient.Builder()
-//                    .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-//                    .readTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-//                    .build()
-//                val request = okhttp3.Request.Builder()
-//                    .url("https://api.github.com/repos/STlxx-lin/BIKA/releases/tags/latest")
-//                    .header("User-Agent", "BIKA-Android")
-//                    .build()
-//                okHttpClient.newCall(request).execute().use { response ->
-//                    if (!response.isSuccessful) throw Exception("HTTP 错误码: ${response.code}")
-//                    val bodyString = response.body.string()
-//                    val json = Json.parseToJsonElement(bodyString).jsonObject
-//                    val tagName = json["tag_name"]?.jsonPrimitive?.content ?: throw Exception("未找到 tag_name")
-//                    val releaseNotes = json["body"]?.jsonPrimitive?.content ?: ""
-//                    val htmlUrl = json["html_url"]?.jsonPrimitive?.content ?: "https://github.com/STlxx-lin/BIKA/releases"
-//
-//                    val assets = json["assets"]?.jsonArray
-//                    var apkUrl = htmlUrl
-//                    var remoteVersion = ""
-//                    if (assets != null) {
-//                        for (i in 0 until assets.size) {
-//                            val assetObj = assets[i].jsonObject
-//                            val name = assetObj["name"]?.jsonPrimitive?.content ?: ""
-//                            if (name.endsWith(".apk") && name.contains("_v")) {
-//                                remoteVersion = name.substringAfter("_v").substringBefore(".apk")
-//                                apkUrl = assetObj["browser_download_url"]?.jsonPrimitive?.content ?: htmlUrl
-//                                break
-//                            }
-//                        }
-//                    }
-//
-//                    if (remoteVersion.isEmpty()) {
-//                        remoteVersion = tagName.trimStart('v')
-//                    }
-//                    val currentVersion = com.shizq.bika.BuildConfig.VERSION_NAME
-//
-//                    if (isNewerVersion(remoteVersion, currentVersion)) {
-//                        _updateUiState.value = UpdateUiState.HasUpdate(remoteVersion, releaseNotes, apkUrl)
-//                    } else {
-//                        _updateUiState.value = UpdateUiState.NoUpdate
-//                    }
-//                }
-//            } catch (e: Exception) {
-//                _updateUiState.value = UpdateUiState.Error(e.message ?: "未知网络错误")
-//            }
-        }
-    }
-
-    fun resetUpdateState() {
-        _updateUiState.value = UpdateUiState.Idle
-    }
-
-    private fun isNewerVersion(latest: String, current: String): Boolean {
-        val latestParts = latest.split('.').mapNotNull { it.toIntOrNull() }
-        val currentParts = current.split('.').mapNotNull { it.toIntOrNull() }
-        val size = maxOf(latestParts.size, currentParts.size)
-        for (i in 0 until size) {
-            val l = latestParts.getOrNull(i) ?: 0
-            val c = currentParts.getOrNull(i) ?: 0
-            if (l > c) return true
-            if (l < c) return false
-        }
-        return false
-    }
-
+    /**
+     * 使用 ApplicationScope：确保退出登录时即使页面已销毁，清除操作也能完成。
+     *
+     * 先清 token 再清资料缓存：token 是决定登录态的那一份数据，必须优先落盘。
+     * 资料缓存清理失败只会让下一个账号在联网前短暂看到上一个账号的资料卡，
+     * 不该因此把整个登出流程带崩。
+     */
     fun logout() {
         scope.launch {
             userCredentialsDataSource.setToken(null)
+            runCatching { userRepository.clearUserProfileSnapshot() }
+                .onFailure { logger.warn(it) { "登出时清理资料缓存失败" } }
         }
     }
 
@@ -138,7 +80,6 @@ class SettingsViewModel @Inject constructor(
             userPreferencesDataSource.setDarkThemeConfig(config)
         }
     }
-
 
     fun updateAutoCheckIn(enabled: Boolean) {
         viewModelScope.launch {
@@ -183,13 +124,13 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearLogs() {
-        com.shizq.bika.core.common.BikaLog.clearLogs()
+        BikaLog.clearLogs()
     }
 
     suspend fun getLogsContent(): String =
-        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+        withContext(Dispatchers.IO) {
             try {
-                val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()
+                val logFile = BikaLog.getLogFile()
                 if (logFile != null && logFile.exists()) {
                     val lines = logFile.readLines()
                     if (lines.size > 2000) {
@@ -202,6 +143,7 @@ class SettingsViewModel @Inject constructor(
                     ""
                 }
             } catch (e: Exception) {
+                BikaLog.e(TAG, "读取日志失败", e)
                 "读取日志失败: ${e.localizedMessage}"
             }
         }
@@ -210,10 +152,9 @@ class SettingsViewModel @Inject constructor(
      * 在后台线程更新缓存大小，并更新 StateFlow
      */
     fun updateCacheSize() {
-        viewModelScope.launch(Dispatchers.IO) {
-//            val size = imageLoader.diskCache?.size ?: 0L
-//            val formattedSize = formatBytes(size)
-//            cacheSize.value = formattedSize
+        viewModelScope.launch {
+            val size = imageCacheManager.diskCacheSize()
+            _cacheSize.value = formatBytes(size)
         }
     }
 
@@ -221,23 +162,15 @@ class SettingsViewModel @Inject constructor(
      * 在后台线程清理缓存，并在完成后刷新缓存大小
      */
     fun clearCache() {
-        viewModelScope.launch(Dispatchers.IO) {
-//            imageLoader.diskCache?.clear()
+        viewModelScope.launch {
+            imageCacheManager.clear()
             updateCacheSize()
         }
     }
 
-    /**
-     * 将字节数格式化为可读的字符串 (KB, MB, GB)
-     */
-    private fun formatBytes(bytes: Long): String {
-        if (bytes < 1024) return "$bytes B"
-        val kb = bytes / 1024.0
-        if (kb < 1024) return "${DecimalFormat("#.##").format(kb)} KB"
-        val mb = kb / 1024.0
-        if (mb < 1024) return "${DecimalFormat("#.##").format(mb)} MB"
-        val gb = mb / 1024.0
-        return "${DecimalFormat("#.##").format(gb)} GB"
+    companion object {
+        private const val TAG = "SettingsViewModel"
+        private val logger = KotlinLogging.logger { "SettingsViewModel" }
     }
 }
 
@@ -255,10 +188,18 @@ sealed interface SettingsUiState {
     ) : SettingsUiState
 }
 
-sealed interface UpdateUiState {
-    data object Idle : UpdateUiState
-    data object Checking : UpdateUiState
-    data class HasUpdate(val version: String, val body: String, val url: String) : UpdateUiState
-    data object NoUpdate : UpdateUiState
-    data class Error(val message: String) : UpdateUiState
+/**
+ * 将字节数格式化为可读的字符串 (B, KB, MB, GB)。
+ *
+ * 提取为顶层纯函数以便单独进行单元测试，不依赖 [SettingsViewModel] 的构造参数。
+ */
+internal fun formatBytes(bytes: Long): String {
+    if (bytes < 1024) return "$bytes B"
+    val decimalFormat = DecimalFormat("#.##", DecimalFormatSymbols(Locale.US))
+    val kb = bytes / 1024.0
+    if (kb < 1024) return "${decimalFormat.format(kb)} KB"
+    val mb = kb / 1024.0
+    if (mb < 1024) return "${decimalFormat.format(mb)} MB"
+    val gb = mb / 1024.0
+    return "${decimalFormat.format(gb)} GB"
 }

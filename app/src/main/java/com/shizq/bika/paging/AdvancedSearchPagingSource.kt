@@ -5,17 +5,17 @@ import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
-import kotlinx.coroutines.CancellationException
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.CancellationException
 
 class AdvancedSearchPagingSource @AssistedInject constructor(
     private val api: BikaDataSource,
     @Assisted private val query: String,
     @Assisted private val sort: SortOrder,
-) : PagingSource<Int, ComicSummary>() {
-    var onPageInfoLoaded: ((totalPages: Int, totalCount: Int) -> Unit)? = null
+) : PagingSource<Int, ComicSummary>(), PageInfoReporting {
+    override var onPageInfoLoaded: ((totalPages: Int, totalCount: Int) -> Unit)? = null
 
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, ComicSummary> {
         val page = params.key ?: 1

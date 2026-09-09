@@ -9,13 +9,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.paging.compose.LazyPagingItems
-import io.github.oshai.kotlinlogging.KotlinLogging
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.feature.reader.impl.layout.ReaderController
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-
-private val logger = KotlinLogging.logger("ReadingProgress")
 
 /**
  * 在 Compose 中创建并管理 ReadingProgressManager
@@ -28,7 +25,11 @@ private val logger = KotlinLogging.logger("ReadingProgress")
  * @param controller 阅读控制器
  * @param imageList 页面数据（Paging）
  * @param initialPage 初始页码
- * @param onPersist 持久化函数（通常是 viewModel::persistProgress）
+ * @param onPersist 持久化函数：不挂起、立即返回，内部应将落库动作转交给不受组合生命周期
+ *   影响的作用域（如 ViewModel.viewModelScope），而不是自己去写库。这一约束同时覆盖了
+ *   页面跟踪防抖保存、ON_STOP、以及组合销毁（onDispose）三条调用路径——onDispose 里拿到的
+ *   `rememberCoroutineScope()` 协程作用域会在组合销毁过程中被取消，提交给它的挂起任务
+ *   不保证能在取消生效前被调度执行，因此这里统一要求同步回调。
  * @param config 配置（可选）
  * @return 进度管理器实例
  */
@@ -37,16 +38,16 @@ fun rememberReadingProgressManager(
     controller: ReaderController,
     imageList: LazyPagingItems<ChapterPage>,
     initialPage: Int,
-    onPersist: suspend (Int) -> Boolean,
+    onPersist: (Int) -> Unit,
     config: ProgressConfig = ProgressConfig()
 ): ReadingProgressManager {
     val scope = rememberCoroutineScope()
 
     val manager = remember(initialPage) {
-        logger.debug { "创建 ProgressManager: initialPage=$initialPage" }
         ReadingProgressManager(
             restoreStrategy = RetryRestoreStrategy(),
-            config = config
+            config = config,
+            trackingScope = scope,
         )
     }
 
@@ -56,38 +57,29 @@ fun rememberReadingProgressManager(
 
     // 1. 恢复进度（每次 initialPage 变化时触发）
     LaunchedEffect(initialPage) {
-        logger.debug { "开始恢复进度: target=$initialPage" }
-        when (val result = manager.restore(initialPage, dataSource, controller)) {
+        when (manager.restore(initialPage, dataSource, controller)) {
             is RestoreResult.Success -> {
-                logger.debug { "恢复成功: page=${result.actualPage}, attempts=${result.attempts}" }
             }
             is RestoreResult.Timeout -> {
-                logger.warn { "恢复超时: target=${result.targetPage}, fallback=${result.fallbackPage}" }
             }
             is RestoreResult.Failure -> {
-                logger.error { "恢复失败: ${result.reason}" }
             }
         }
     }
 
     // 2. 跟踪页面变化（manager 创建后立即开始）
     LaunchedEffect(manager) {
-        manager.startTracking(
-            pageFlow = controller.visibleItemIndex,
-            scope = scope,
-            persistProgress = onPersist
-        )
+        manager.startTracking(pageFlow = controller.visibleItemIndex)
     }
 
-    // 3. 生命周期感知：在 ON_STOP 时立即保存
+    // 3. 生命周期感知：在 ON_STOP 时立即保存（此时组合仍在，scope 未被取消，可安全挂起等待）
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_STOP) {
                 scope.launch {
                     val currentPage = controller.visibleItemIndex.first()
-                    logger.debug { "ON_STOP: 立即保存 page=$currentPage" }
-                    manager.persistNow(currentPage)
+                    manager.persistNow(currentPage, onPersist)
                 }
             }
         }
@@ -95,10 +87,8 @@ fun rememberReadingProgressManager(
 
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            scope.launch {
-                val currentPage = controller.visibleItemIndex.first()
-                logger.debug { "onDispose: 最终保存 page=$currentPage" }
-                manager.persistNow(currentPage)
+            manager.persistLastKnownPage { page ->
+                onPersist(page)
             }
         }
     }

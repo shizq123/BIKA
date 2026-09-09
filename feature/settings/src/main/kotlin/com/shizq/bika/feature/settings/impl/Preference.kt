@@ -175,7 +175,6 @@ fun <T> ListPreference(
         )
     }
 }
-
 @Preview
 @Composable
 fun PreferenceGroupPreview() {

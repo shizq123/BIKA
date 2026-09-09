@@ -1,25 +1,12 @@
-# Add project specific ProGuard rules here.
-# You can control the set of files you want to keep.
-
-# ----------------------------------------------------------------------
-# Log4j2 & SLF4J 混淆与 R8 适配规则
-# ----------------------------------------------------------------------
-# 忽略 Android 平台不存在的 JVM/JavaEE/OSGi 可选依赖警告
+# Log4j2 missing classes
 -dontwarn aQute.bnd.annotation.spi.**
--dontwarn java.lang.management.**
 -dontwarn javax.management.**
 -dontwarn javax.naming.**
 -dontwarn javax.script.**
 -dontwarn org.osgi.framework.**
--dontwarn org.apache.logging.log4j.**
--dontwarn org.slf4j.**
+-dontwarn org.apache.logging.log4j.core.jmx.**
+-dontwarn org.apache.logging.log4j.core.net.JndiManager**
 
-# 保留 Log4j2 核心反射、插件及服务加载器
--keepattributes *Annotation*, InnerClasses, EnclosingMethod, Signature, Exceptions
+# Keep Log4j2 core classes
 -keep class org.apache.logging.log4j.** { *; }
 -keep interface org.apache.logging.log4j.** { *; }
--keep enum org.apache.logging.log4j.** { *; }
--keep class * implements org.apache.logging.log4j.spi.Provider { *; }
--keep class * implements org.slf4j.spi.SLF4JServiceProvider { *; }
--keep class * implements org.apache.logging.log4j.core.config.plugins.util.PluginType { *; }
-

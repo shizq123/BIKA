@@ -1,7 +1,11 @@
 package com.shizq.bika.feature.settings.impl
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -41,7 +45,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,13 +54,24 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.model.theme.DarkThemeConfig
-import com.shizq.bika.core.ui.CircularProgressIndicator
+import com.shizq.bika.feature.settings.impl.update.ui.UpdateAction
+import com.shizq.bika.feature.settings.impl.update.ui.UpdateCheckSource
+import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
+import com.shizq.bika.feature.settings.impl.update.ui.UpdateViewModel
 import kotlinx.coroutines.launch
+
+/** 统一的 Toast 展示入口，避免各处重复拼装 [Toast.makeText]。 */
+private fun showToast(context: Context, message: String, duration: Int = Toast.LENGTH_SHORT) {
+    Toast.makeText(context, message, duration).show()
+}
 
 @Composable
 fun SettingsScreen(
@@ -66,84 +80,18 @@ fun SettingsScreen(
     navigationToDnsSettings: () -> Unit,
     navigationToBlockedTags: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
+    updateViewModel: UpdateViewModel = hiltViewModel(),
     onBackClick: () -> Unit,
 ) {
     val settingsUiState by viewModel.settingsUiState.collectAsStateWithLifecycle()
     val cacheSize by viewModel.cacheSize.collectAsStateWithLifecycle()
-    val updateUiState by viewModel.updateUiState.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
-    val uriHandler = LocalUriHandler.current
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(updateUiState) {
-        if (updateUiState is UpdateUiState.NoUpdate) {
-            android.widget.Toast.makeText(
-                context,
-                "当前已是最新版本",
-                android.widget.Toast.LENGTH_SHORT
-            ).show()
-            viewModel.resetUpdateState()
-        } else if (updateUiState is UpdateUiState.Error) {
-            val errorState = updateUiState as UpdateUiState.Error
-            android.widget.Toast.makeText(
-                context,
-                "检查更新失败: ${errorState.message}",
-                android.widget.Toast.LENGTH_LONG
-            ).show()
-            viewModel.resetUpdateState()
-        }
-    }
-
-    if (updateUiState is UpdateUiState.Checking) {
-        AlertDialog(
-            onDismissRequest = {},
-            confirmButton = {},
-            title = { Text("正在检查更新") },
-            text = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    CircularProgressIndicator()
-                    Text("请稍候...")
-                }
-            }
-        )
-    }
-
-    val hasUpdateState = updateUiState as? UpdateUiState.HasUpdate
-    if (hasUpdateState != null) {
-        AlertDialog(
-            onDismissRequest = { viewModel.resetUpdateState() },
-            title = { Text("发现新版本 (${hasUpdateState.version})") },
-            text = {
-                Column(
-                    modifier = Modifier.verticalScroll(rememberScrollState())
-                ) {
-                    Text(
-                        text = hasUpdateState.body.ifBlank { "无更新说明" },
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        uriHandler.openUri(hasUpdateState.url)
-                        viewModel.resetUpdateState()
-                    }
-                ) {
-                    Text("去下载")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { viewModel.resetUpdateState() }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
+    // 设置页不自动检查更新（自动检查已在 Dashboard 通过 UpdateHost 完成），
+    // 复用同一套 MVI 更新逻辑，仅由用户点击"检查更新"手动触发
+    UpdateHost(autoCheckOnLaunch = false, viewModel = updateViewModel)
 
     var showLogsDialog by remember { mutableStateOf(false) }
     var logsContent by remember { mutableStateOf("") }
@@ -153,23 +101,15 @@ fun SettingsScreen(
             logs = logsContent,
             onCopy = {
                 val clipboard =
-                    context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
-                val clip = android.content.ClipData.newPlainText("logs", logsContent)
+                    context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                val clip = ClipData.newPlainText("logs", logsContent)
                 clipboard.setPrimaryClip(clip)
-                android.widget.Toast.makeText(
-                    context,
-                    "已复制到剪贴板",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                showToast(context, "已复制到剪贴板")
             },
             onClear = {
                 viewModel.clearLogs()
                 logsContent = ""
-                android.widget.Toast.makeText(
-                    context,
-                    "日志已清空",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                showToast(context, "日志已清空")
             },
             onDismiss = { showLogsDialog = false }
         )
@@ -194,10 +134,10 @@ fun SettingsScreen(
             }
         },
         onExportLogs = {
-            val logFile = com.shizq.bika.core.common.BikaLog.getLogFile()
+            val logFile = BikaLog.getLogFile()
             if (logFile != null && logFile.exists() && logFile.length() > 0) {
                 try {
-                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                    val uri = FileProvider.getUriForFile(
                         context,
                         "${context.packageName}.fileprovider",
                         logFile
@@ -210,18 +150,11 @@ fun SettingsScreen(
                     }
                     context.startActivity(Intent.createChooser(shareIntent, "导出日志"))
                 } catch (e: Exception) {
-                    android.widget.Toast.makeText(
-                        context,
-                        "导出失败: ${e.localizedMessage}",
-                        android.widget.Toast.LENGTH_SHORT
-                    ).show()
+                    BikaLog.e("SettingsScreen", "导出日志失败", e)
+                    showToast(context, "导出失败: ${e.localizedMessage}")
                 }
             } else {
-                android.widget.Toast.makeText(
-                    context,
-                    "日志为空，请先开启日志开关并操作产生日志后再来查看",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
+                showToast(context, "日志为空，请先开启日志开关并操作产生日志后再来查看")
             }
         },
         onLogoutClicked = {
@@ -232,7 +165,11 @@ fun SettingsScreen(
         onDnsSettingsClick = navigationToDnsSettings,
         onBlockedTagsClick = navigationToBlockedTags,
         onBackClick = onBackClick,
-        onCheckForUpdates = viewModel::checkForUpdates,
+        onCheckForUpdates = {
+            updateViewModel.dispatch(
+                UpdateAction.CheckUpdate(source = UpdateCheckSource.Manual),
+            )
+        },
     )
 }
 
@@ -481,7 +418,7 @@ fun SettingsContent(
                                 onClick = {
                                     val intent = Intent(
                                         Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
-                                        "package:com.shizq.bika".toUri()
+                                        "package:${context.packageName}".toUri()
                                     )
                                     context.startActivity(intent)
                                 }
@@ -541,7 +478,7 @@ fun LogViewerDialog(
                     Text(
                         text = logs.ifBlank { "暂无本地日志，请开启日志开关并操作产生日志后再来查看。" },
                         style = MaterialTheme.typography.bodySmall.copy(
-                            fontFamily = androidx.compose.ui.text.font.FontFamily.Monospace
+                            fontFamily = FontFamily.Monospace
                         ),
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

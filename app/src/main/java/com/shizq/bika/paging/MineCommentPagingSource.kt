@@ -1,11 +1,11 @@
 package com.shizq.bika.paging
 
-import kotlinx.coroutines.CancellationException
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Comment
 import jakarta.inject.Inject
+import kotlinx.coroutines.CancellationException
 
 class MineCommentPagingSource @Inject constructor(
     private val api: BikaDataSource
@@ -14,7 +14,7 @@ class MineCommentPagingSource @Inject constructor(
         val page = params.key ?: 1
 
         return try {
-            val response = api.mineComment(page)
+            val response = api.getMyComments(page)
 
             val comments = response.comments
 

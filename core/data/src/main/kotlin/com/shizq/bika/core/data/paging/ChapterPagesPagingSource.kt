@@ -23,19 +23,19 @@ class ChapterPagesPagingSource @AssistedInject constructor(
 
             val response = dataSource.getChapterPages(id, order, currentPage)
 
-            val paginationData = response.paginationData
+            val imagePages = response.imagePages
 
             metadata.value = ChapterMeta(
                 title = response.chapterInfo.title,
-                totalImages = response.paginationData.total
+                totalImages = imagePages.total
             )
 
             LoadResult.Page(
-                data = paginationData.images.map { image ->
+                data = imagePages.docs.map { image ->
                     ChapterPage(id = image.imageId, url = image.media.originalImageUrl)
                 },
                 prevKey = null,
-                nextKey = if (currentPage < paginationData.totalPages) currentPage + 1 else null
+                nextKey = if (currentPage < imagePages.pages) currentPage + 1 else null
             )
         } catch (e: CancellationException) {
             throw e

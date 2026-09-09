@@ -79,6 +79,18 @@ interface ReadingHistoryDao {
     fun getDetailedHistories(): Flow<List<DetailedHistory>>
 
     /**
+     * 仅获取最近一条详细阅读历史，无记录时发射 null。
+     *
+     * 与 [getDetailedHistories] 取首条等价，但把 LIMIT 1 下推到 SQL：
+     * 后者会把整张 readingHistory 表连同每行关联的全部 chapterProgress 读出、
+     * 建成对象，再丢弃除首条外的所有数据。历史积累到几百条时，
+     * Dashboard 冷启和每次历史写入都要付这份代价。
+     */
+    @Transaction
+    @Query("SELECT * FROM readingHistory ORDER BY lastInteractionAt DESC LIMIT 1")
+    fun getLatestDetailedHistory(): Flow<DetailedHistory?>
+
+    /**
      * [核心功能] 根据 ID 获取单个详细的阅读历史记录。
      * 同样使用 @Transaction 来保证数据查询的原子性。
      * @param id 历史记录的 ID

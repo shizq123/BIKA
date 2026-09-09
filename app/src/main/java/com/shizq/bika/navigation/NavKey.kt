@@ -3,12 +3,18 @@ package com.shizq.bika.navigation
 import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
-sealed interface Root : NavKey
-
+/**
+ * 认证图内的路由。用户尚未持有可用 token 时所处的图。
+ */
 sealed interface Authentication : NavKey
 
-@Serializable
-data object AuthenticationRoute : Root {
+/**
+ * 认证图的命名空间。
+ *
+ * 注意：它本身不是可导航的目标。当前处于哪个图由会话状态（token 是否存在）
+ * 决定，不由导航栈表达——参见 [Navigator] 的类注释。
+ */
+data object AuthenticationRoute {
     @Serializable
     data object LoginRoute : Authentication
 
@@ -16,10 +22,15 @@ data object AuthenticationRoute : Root {
     data object RegisterRoute : Authentication
 }
 
+/**
+ * 主图内的路由。用户持有可用 token 时所处的图。
+ */
 sealed interface Connected : NavKey
 
-@Serializable
-data object ConnectedRoute : Root {
+/**
+ * 主图的命名空间。与 [AuthenticationRoute] 同理，本身不可导航。
+ */
+data object ConnectedRoute {
     @Serializable
     data object DashboardRoute : Connected
 

@@ -1,15 +1,13 @@
 package com.shizq.bika.ui.dashboard
 
-import android.content.Context
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +26,6 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -38,16 +35,10 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.rounded.Bookmarks
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
@@ -62,9 +53,7 @@ import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.NavigationDrawerItem
 import androidx.compose.material3.NavigationDrawerItemDefaults
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
@@ -89,7 +78,6 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -99,14 +87,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import coil3.request.error
-import coil3.request.placeholder
 import com.shizq.bika.R
-import com.shizq.bika.core.database.model.DetailedHistory
-import com.shizq.bika.core.model.Channel
+import com.shizq.bika.core.data.model.DetailedReadingHistory
 import com.shizq.bika.core.model.FavoriteTag
-import com.shizq.bika.core.ui.CircularProgressIndicator
-import com.shizq.bika.feature.update.ui.UpdateHost
+import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.feed.FavoriteTagsDrawer
 import kotlinx.coroutines.delay
@@ -120,6 +104,7 @@ fun DashboardScreen(
     navigationToSettings: () -> Unit,
     onSearchClick: () -> Unit,
     onChannelPreferenceClick: () -> Unit,
+    onEditProfileClick: (initialSlogan: String) -> Unit,
     onCommentsClick: () -> Unit,
     onDownloadsClick: () -> Unit,
     onNotificationsClick: () -> Unit,
@@ -128,15 +113,42 @@ fun DashboardScreen(
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val channelSettingsUiState by viewModel.userChannelPreferences.collectAsStateWithLifecycle()
-    val lastReadHistory by viewModel.lastReadHistory.collectAsStateWithLifecycle()
-    val favoriteTags by viewModel.favoriteTags.collectAsStateWithLifecycle()
+    val callbacks = remember(
+        navigationToLeaderboard,
+        navigateToFavourite,
+        navigationToHistory,
+        navigationToSettings,
+        navigationToReader,
+        onSearchClick,
+        onChannelPreferenceClick,
+        onEditProfileClick,
+        onCommentsClick,
+        onDownloadsClick,
+        onNotificationsClick,
+        onBlockedTagsClick,
+    ) {
+        DashboardCallbacks(
+            navigateToLeaderboard = navigationToLeaderboard,
+            navigateToFavourite = navigateToFavourite,
+            navigateToHistory = navigationToHistory,
+            navigateToSettings = navigationToSettings,
+            navigateToReader = navigationToReader,
+            onSearchClick = onSearchClick,
+            onChannelPreferenceClick = onChannelPreferenceClick,
+            onEditProfileClick = onEditProfileClick,
+            onCommentsClick = onCommentsClick,
+            onDownloadsClick = onDownloadsClick,
+            onNotificationsClick = onNotificationsClick,
+            onBlockedTagsClick = onBlockedTagsClick,
+        )
+    }
 
-    // 自动打卡：profile 首次加载成功且未打卡时 dispatch 一次，
-    // 实际检查逻辑在 StateMachine 内部完成，不会重复触发
-    val userProfileUiState = state.userProfile
-    LaunchedEffect(userProfileUiState) {
-        if (userProfileUiState is UserProfileUiState.Success) {
+    // 自动打卡：profile 加载成功后 dispatch 一次，实际检查逻辑在 StateMachine 内部完成。
+    // key 用 Boolean 而非整个 userProfile：后者每次资料刷新（打卡改了 exp/level、
+    // 改签名、下拉刷新）都会换实例，导致 effect 重启并重复 dispatch。
+    val isProfileLoaded = state.userProfile is UserProfileUiState.Success
+    LaunchedEffect(isProfileLoaded) {
+        if (isProfileLoaded) {
             viewModel.dispatch(DashboardAction.AutoCheckIn)
         }
     }
@@ -144,387 +156,54 @@ fun DashboardScreen(
     // 打卡结果对话框（状态驱动）
     val checkInResult = state.checkInResult
     if (checkInResult != null) {
-        val message = when (checkInResult) {
-            is CheckInResult.Success -> checkInResult.message
-            is CheckInResult.Error -> checkInResult.error
-        }
-        AlertDialog(
-            onDismissRequest = { viewModel.dispatch(DashboardAction.DismissCheckInResult) },
-            confirmButton = {
-                TextButton(onClick = { viewModel.dispatch(DashboardAction.DismissCheckInResult) }) {
-                    Text("确定")
-                }
-            },
-            title = { Text("打哔咔提示") },
-            text = { Text(message) },
+        CheckInResultDialog(
+            result = checkInResult,
+            onDismiss = { viewModel.dispatch(DashboardAction.DismissCheckInResult) },
         )
     }
 
     UpdateHost()
 
     DashboardContent(
-        userProfileUiState = userProfileUiState,
-        lastReadHistory = lastReadHistory,
-        onCheckInClick = { viewModel.dispatch(DashboardAction.CheckIn) },
-        onUpdateSlogan = { slogan -> viewModel.dispatch(DashboardAction.UpdateSlogan(slogan)) },
-        sloganResult = state.sloganResult,
-        onDismissSloganResult = { viewModel.dispatch(DashboardAction.DismissSloganResult) },
-        onChangePassword = { old, new ->
-            viewModel.dispatch(
-                DashboardAction.ChangePassword(
-                    old,
-                    new
-                )
-            )
-        },
-        passwordResult = state.passwordResult,
-        onDismissPasswordResult = { viewModel.dispatch(DashboardAction.DismissPasswordResult) },
-        channelSettingsUiState = channelSettingsUiState,
-        navigationToLeaderboard = navigationToLeaderboard,
-        navigateToFavourite = navigateToFavourite,
-        navigationToHistory = navigationToHistory,
-        navigationToSettings = navigationToSettings,
-        onSearchClick = onSearchClick,
-        onChannelPreferenceClick = onChannelPreferenceClick,
-        onCommentsClick = onCommentsClick,
-        onDownloadsClick = onDownloadsClick,
-        onNotificationsClick = onNotificationsClick,
-        navigationToReader = navigationToReader,
-        favoriteTags = favoriteTags,
-        onAddFavorite = { viewModel.dispatch(DashboardAction.AddFavoriteTag(it)) },
-        onRemoveFavorite = { viewModel.dispatch(DashboardAction.RemoveFavoriteTag(it)) },
-        onUpdateFavoriteName = { tag, name ->
-            viewModel.dispatch(
-                DashboardAction.UpdateFavoriteTagName(
-                    tag,
-                    name
-                )
-            )
-        },
-        onMoveFavorite = { from, to ->
-            viewModel.dispatch(
-                DashboardAction.MoveFavoriteTag(
-                    from,
-                    to
-                )
-            )
-        },
-        onAddCustomFavorite = { viewModel.dispatch(DashboardAction.AddCustomFavoriteTag(it)) },
-        onBlockedTagsClick = onBlockedTagsClick,
+        state = state,
+        onAction = viewModel::dispatch,
+        callbacks = callbacks,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DashboardContent(
-    userProfileUiState: UserProfileUiState,
-    lastReadHistory: DetailedHistory?,
-    onCheckInClick: () -> Unit,
-    onUpdateSlogan: (String) -> Unit,
-    sloganResult: OperationResult?,
-    onDismissSloganResult: () -> Unit,
-    onChangePassword: (String, String) -> Unit,
-    passwordResult: OperationResult?,
-    onDismissPasswordResult: () -> Unit,
-    channelSettingsUiState: List<Channel>,
-    navigationToLeaderboard: () -> Unit,
-    navigateToFavourite: (DiscoveryAction) -> Unit,
-    navigationToHistory: () -> Unit,
-    navigationToSettings: () -> Unit,
-    onSearchClick: () -> Unit,
-    onChannelPreferenceClick: () -> Unit,
-    onCommentsClick: () -> Unit,
-    onDownloadsClick: () -> Unit,
-    onNotificationsClick: () -> Unit,
-    navigationToReader: (String, Int) -> Unit,
-    favoriteTags: List<FavoriteTag>,
-    onAddFavorite: (FavoriteTag) -> Unit,
-    onRemoveFavorite: (FavoriteTag) -> Unit,
-    onUpdateFavoriteName: (FavoriteTag, String) -> Unit,
-    onMoveFavorite: (fromIndex: Int, toIndex: Int) -> Unit,
-    onAddCustomFavorite: (String) -> Unit,
-    onBlockedTagsClick: () -> Unit = {},
+    state: DashboardState,
+    onAction: (DashboardAction) -> Unit,
+    callbacks: DashboardCallbacks,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    // ── 修改资料对话框 ────────────────────────────────────────────────────
-    var showEditProfileDialog by remember { mutableStateOf(false) }
-    var inputSlogan by remember { mutableStateOf("") }
-    var showChangePasswordDialog by remember { mutableStateOf(false) }
+    val userProfileUiState = state.userProfile
+    val lastReadHistory = state.lastReadHistory
+    val activeChannels = state.activeChannels
+    val favoriteTags = state.favoriteTags
 
-    // sloganResult 驱动：成功时关闭对话框，失败时保持打开并显示错误
-    val isSloganSaving = showEditProfileDialog && sloganResult == null &&
-            (userProfileUiState is UserProfileUiState.Success)
-    LaunchedEffect(sloganResult) {
-        when (sloganResult) {
-            OperationResult.Success -> {
-                showEditProfileDialog = false
-                onDismissSloganResult()
-            }
-
-            is OperationResult.Error, null -> Unit
-        }
+    // sloganResult / passwordResult / isSubmitting 不再从这里取：改签名和改密码
+    // 的提交状态归各自对话框的 ViewModel，作用域是对话框那个 entry。
+    val onCheckInClick = { onAction(DashboardAction.CheckIn) }
+    val onAddFavorite = { tag: FavoriteTag -> onAction(DashboardAction.AddFavoriteTag(tag)) }
+    val onRemoveFavorite = { tag: FavoriteTag -> onAction(DashboardAction.RemoveFavoriteTag(tag)) }
+    val onUpdateFavoriteName = { tag: FavoriteTag, name: String ->
+        onAction(DashboardAction.UpdateFavoriteTagName(tag, name))
+    }
+    val onMoveFavorite = { from: Int, to: Int ->
+        onAction(DashboardAction.MoveFavoriteTag(from, to))
+    }
+    val onAddCustomFavorite = { name: String ->
+        onAction(DashboardAction.AddCustomFavoriteTag(name))
     }
 
-    if (showEditProfileDialog) {
-        // isSaving 由是否正在等待 sloganResult 推导：打开对话框且 sloganResult 还没回来时为 true
-        var isSaving by remember { mutableStateOf(false) }
-        // sloganResult 返回后重置 isSaving
-        LaunchedEffect(sloganResult) {
-            if (sloganResult != null) isSaving = false
-        }
-
-        AlertDialog(
-            onDismissRequest = { if (!isSaving) showEditProfileDialog = false },
-            title = { Text("修改资料") },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    androidx.compose.material3.OutlinedTextField(
-                        value = inputSlogan,
-                        onValueChange = { inputSlogan = it },
-                        label = { Text("自我介绍") },
-                        placeholder = { Text("输入您的个性签名") },
-                        singleLine = true,
-                        enabled = !isSaving,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    if (sloganResult is OperationResult.Error) {
-                        Text(
-                            text = sloganResult.message,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    if (isSaving) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    }
-
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
-
-                    TextButton(
-                        onClick = {
-                            showEditProfileDialog = false
-                            showChangePasswordDialog = true
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Lock,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("修改密码")
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !isSaving,
-                    onClick = {
-                        isSaving = true
-                        onDismissSloganResult()
-                        onUpdateSlogan(inputSlogan)
-                    }
-                ) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    enabled = !isSaving,
-                    onClick = {
-                        showEditProfileDialog = false
-                        onDismissSloganResult()
-                    }
-                ) {
-                    Text("取消")
-                }
-            }
-        )
-    }
-
-    // ── 修改密码对话框 ────────────────────────────────────────────────────
-    var inputOldPassword by remember { mutableStateOf("") }
-    var inputNewPassword by remember { mutableStateOf("") }
-    var inputConfirmPassword by remember { mutableStateOf("") }
-    var oldPasswordVisible by remember { mutableStateOf(false) }
-    var newPasswordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
-    // 本地校验错误（未发到服务端前）
-    var localPasswordError by remember { mutableStateOf<String?>(null) }
-
-    // passwordResult 驱动：成功时 Toast + 关闭，失败时保持打开
-    LaunchedEffect(passwordResult) {
-        when (passwordResult) {
-            OperationResult.Success -> {
-                showChangePasswordDialog = false
-                android.widget.Toast.makeText(
-                    context,
-                    "密码修改成功",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
-                onDismissPasswordResult()
-            }
-
-            is OperationResult.Error, null -> Unit
-        }
-    }
-
-    if (showChangePasswordDialog) {
-        var isSaving by remember { mutableStateOf(false) }
-        LaunchedEffect(passwordResult) {
-            if (passwordResult != null) isSaving = false
-        }
-        // 打开时重置所有字段
-        LaunchedEffect(Unit) {
-            inputOldPassword = ""
-            inputNewPassword = ""
-            inputConfirmPassword = ""
-            localPasswordError = null
-            isSaving = false
-            oldPasswordVisible = false
-            newPasswordVisible = false
-            confirmPasswordVisible = false
-            onDismissPasswordResult()
-        }
-
-        AlertDialog(
-            onDismissRequest = { if (!isSaving) showChangePasswordDialog = false },
-            title = { Text("修改密码") },
-            text = {
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    androidx.compose.material3.OutlinedTextField(
-                        value = inputOldPassword,
-                        onValueChange = { inputOldPassword = it },
-                        label = { Text("旧密码") },
-                        placeholder = { Text("请输入旧密码") },
-                        singleLine = true,
-                        enabled = !isSaving,
-                        visualTransformation = if (oldPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { oldPasswordVisible = !oldPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (oldPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    contentDescription = if (oldPasswordVisible) "隐藏旧密码" else "显示旧密码"
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    androidx.compose.material3.OutlinedTextField(
-                        value = inputNewPassword,
-                        onValueChange = { inputNewPassword = it },
-                        label = { Text("新密码") },
-                        placeholder = { Text("请输入新密码（至少8位）") },
-                        singleLine = true,
-                        enabled = !isSaving,
-                        visualTransformation = if (newPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { newPasswordVisible = !newPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (newPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    contentDescription = if (newPasswordVisible) "隐藏新密码" else "显示新密码"
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    androidx.compose.material3.OutlinedTextField(
-                        value = inputConfirmPassword,
-                        onValueChange = { inputConfirmPassword = it },
-                        label = { Text("确认新密码") },
-                        placeholder = { Text("请再次输入新密码") },
-                        singleLine = true,
-                        enabled = !isSaving,
-                        visualTransformation = if (confirmPasswordVisible) androidx.compose.ui.text.input.VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
-                                Icon(
-                                    imageVector = if (confirmPasswordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
-                                    contentDescription = if (confirmPasswordVisible) "隐藏确认密码" else "显示确认密码"
-                                )
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-
-                    // 本地校验错误优先，服务端错误次之
-                    val displayError = localPasswordError
-                        ?: (passwordResult as? OperationResult.Error)?.message
-                    if (displayError != null) {
-                        Text(
-                            text = displayError,
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-
-                    if (isSaving) {
-                        Row(
-                            horizontalArrangement = Arrangement.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp)
-                        ) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(
-                    enabled = !isSaving,
-                    onClick = {
-                        localPasswordError = when {
-                            inputOldPassword.isEmpty() -> "请输入旧密码"
-                            inputNewPassword.isEmpty() -> "请输入新密码"
-                            inputNewPassword.length < 8 -> "新密码长度至少需要8个字符"
-                            inputNewPassword != inputConfirmPassword -> "两次输入的新密码不一致"
-                            else -> null
-                        }
-                        if (localPasswordError != null) return@TextButton
-                        isSaving = true
-                        onDismissPasswordResult()
-                        onChangePassword(inputOldPassword, inputNewPassword)
-                    }
-                ) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    enabled = !isSaving,
-                    onClick = {
-                        showChangePasswordDialog = false
-                        onDismissPasswordResult()
-                    }
-                ) {
-                    Text("取消")
-                }
-            }
-        )
-    }
-
+    // 修改资料 / 修改密码不在这里：它们是 EditProfileNavKey / ChangePasswordNavKey
+    // 两个独立 entry，由导航返回栈托管，因此配置变更和进程死亡都不会丢。
+    // 见 DialogNavKey 与 EditProfileViewModel 的注释。
 
     var showBookmarkDrawer by remember { mutableStateOf(false) }
 
@@ -548,119 +227,118 @@ fun DashboardContent(
     Box(modifier = Modifier.fillMaxSize()) {
         ModalNavigationDrawer(
             modifier = Modifier.semantics { testTagsAsResourceId = true },
-        drawerState = drawerState,
-        drawerContent = {
-            ModalDrawerSheet(
-                modifier = Modifier.testTag("dashboard:drawer"),
-                drawerState = drawerState
-            ) {
-                DashboardDrawerContent(
-                    userProfile = userProfileUiState,
-                    lastReadHistory = lastReadHistory,
-                    navigationToReader = { comicId, order ->
-                        scope.launch {
-                            drawerState.close()
-                            navigationToReader(comicId, order)
-                        }
-                    },
-                    onCheckInClick = {
-                        scope.launch {
-                            drawerState.close()
-                            onCheckInClick()
-                        }
-                    },
-                    onEditProfileClick = {
-                        scope.launch {
-                            drawerState.close()
-                            // 同步初始化签名输入框，避免 LaunchedEffect 一帧延迟闪烁
-                            if (userProfileUiState is UserProfileUiState.Success) {
-                                inputSlogan = userProfileUiState.user.slogan
+            drawerState = drawerState,
+            drawerContent = {
+                ModalDrawerSheet(
+                    modifier = Modifier.testTag("dashboard:drawer"),
+                    drawerState = drawerState
+                ) {
+                    DashboardDrawerContent(
+                        userProfile = userProfileUiState,
+                        lastReadHistory = lastReadHistory,
+                        navigationToReader = { comicId, order ->
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.navigateToReader(comicId, order)
                             }
-                            showEditProfileDialog = true
-                        }
-                    },
-                    onHistoryClick = {
-                        scope.launch {
-                            drawerState.close()
-                            navigationToHistory()
-                        }
-                    },
-                    onFavouriteClick = {
-                        scope.launch {
-                            drawerState.close()
-                            navigateToFavourite(DiscoveryAction.ToFavourite)
-                        }
-                    },
-                    onNotificationsClick = {
-                        scope.launch {
-                            drawerState.close()
-                            onNotificationsClick()
-                        }
-                    },
-                    onCommentsClick = {
-                        scope.launch {
-                            drawerState.close()
-                            onCommentsClick()
-                        }
-                    },
-                    onDownloadsClick = {
-                        scope.launch {
-                            drawerState.close()
-                            onDownloadsClick()
-                        }
-                    },
-                    onSettingsClick = {
-                        scope.launch {
-                            drawerState.close()
-                            navigationToSettings()
-                        }
-                    },
-                )
-            }
-        },
-    ) {
-        val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-        Scaffold(
-            topBar = {
-                DashboardAppBar(
-                    scrollBehavior = scrollBehavior,
-                    onDrawerOpen = { scope.launch { drawerState.open() } },
-                    onSearchClicked = onSearchClick,
-                    onChannelPreferenceClicked = onChannelPreferenceClick,
-                    onBookmarkClicked = { showBookmarkDrawer = true },
-                )
+                        },
+                        onCheckInClick = {
+                            scope.launch {
+                                drawerState.close()
+                                onCheckInClick()
+                            }
+                        },
+                        onEditProfileClick = {
+                            scope.launch {
+                                drawerState.close()
+                                // 签名随 NavKey 传出去，进返回栈；资料未加载成功时给空串，
+                                // 此时抽屉里也点不到编辑入口。
+                                val slogan =
+                                    (userProfileUiState as? UserProfileUiState.Success)
+                                        ?.user?.slogan.orEmpty()
+                                callbacks.onEditProfileClick(slogan)
+                            }
+                        },
+                        onHistoryClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.navigateToHistory()
+                            }
+                        },
+                        onFavouriteClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.navigateToFavourite(DiscoveryAction.ToFavourite)
+                            }
+                        },
+                        onNotificationsClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.onNotificationsClick()
+                            }
+                        },
+                        onCommentsClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.onCommentsClick()
+                            }
+                        },
+                        onDownloadsClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.onDownloadsClick()
+                            }
+                        },
+                        onSettingsClick = {
+                            scope.launch {
+                                drawerState.close()
+                                callbacks.navigateToSettings()
+                            }
+                        },
+                    )
+                }
             },
-            modifier = Modifier
-                .fillMaxSize()
-                .nestedScroll(scrollBehavior.nestedScrollConnection),
-        ) { innerPadding ->
-            val state: LazyGridState = rememberLazyGridState()
-
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(3),
-                state = state,
+        ) {
+            val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
+            Scaffold(
+                topBar = {
+                    DashboardAppBar(
+                        scrollBehavior = scrollBehavior,
+                        onDrawerOpen = { scope.launch { drawerState.open() } },
+                        onSearchClicked = callbacks.onSearchClick,
+                        onChannelPreferenceClicked = callbacks.onChannelPreferenceClick,
+                        onBookmarkClicked = { showBookmarkDrawer = true },
+                    )
+                },
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .testTag("dashboard:grid"),
-            ) {
-                lastReadHistory?.let { history ->
-                    item(span = { GridItemSpan(maxLineSpan) }) {
-                        QuickResumeCard(
-                            history = history,
-                            onClick = navigationToReader,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
+                    .nestedScroll(scrollBehavior.nestedScrollConnection),
+            ) { innerPadding ->
+                val gridState: LazyGridState = rememberLazyGridState()
+
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(3),
+                    state = gridState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .testTag("dashboard:grid"),
+                ) {
+                    lastReadHistory?.let { history ->
+                        item(span = { GridItemSpan(maxLineSpan) }) {
+                            QuickResumeCard(
+                                history = history,
+                                onClick = callbacks.navigateToReader,
+                                modifier = Modifier
+                                    .animateItem()
+                            )
+                        }
                     }
-                }
 
-                items(
-                    channelSettingsUiState,
-                    key = { it.iconKey }
-                ) { item ->
-                    val context = LocalContext.current
-
-                    if (item.isActive) {
+                    items(
+                        activeChannels,
+                        key = { it.iconKey }
+                    ) { item ->
                         ChannelGridItem(
                             iconRes = item.iconResId,
                             label = item.label,
@@ -668,18 +346,25 @@ fun DashboardContent(
                                 .animateItem()
                                 .testTag("dashboard:channel:${item.label}"),
                         ) {
-                            navigation(
-                                context = context,
-                                channel = item,
-                                navigationToLeaderboard = navigationToLeaderboard,
-                                navigateToSearch = navigateToFavourite,
-                            )
+                            when (val destination = item.toDestination()) {
+                                is ChannelDestination.Feed ->
+                                    callbacks.navigateToFavourite(destination.action)
+
+                                ChannelDestination.Leaderboard ->
+                                    callbacks.navigateToLeaderboard()
+
+                                is ChannelDestination.Unavailable ->
+                                    Toast.makeText(
+                                        context,
+                                        destination.reason,
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                            }
                         }
                     }
                 }
             }
         }
-    }
 
         if (showBookmarkDrawer) {
             Box(
@@ -709,14 +394,14 @@ fun DashboardContent(
                 currentAction = null,
                 onNavigateToFeed = { action ->
                     showBookmarkDrawer = false
-                    navigateToFavourite(action)
+                    callbacks.navigateToFavourite(action)
                 },
                 onAddFavorite = onAddFavorite,
                 onRemoveFavorite = onRemoveFavorite,
                 onUpdateName = onUpdateFavoriteName,
                 onMove = onMoveFavorite,
                 onAddCustom = onAddCustomFavorite,
-                onBlockedTagsClick = onBlockedTagsClick,
+                onBlockedTagsClick = callbacks.onBlockedTagsClick,
                 onClose = { showBookmarkDrawer = false }
             )
         }
@@ -770,35 +455,11 @@ private fun DashboardAppBar(
     )
 }
 
-private fun navigation(
-    channel: Channel,
-    context: Context,
-    navigationToLeaderboard: () -> Unit,
-    navigateToSearch: (DiscoveryAction) -> Unit,
-) {
-
-    when (channel.label) {
-        "推荐" -> navigateToSearch(DiscoveryAction.ToCollections)
-        "排行榜" -> navigationToLeaderboard()
-//            "哔咔小程序" -> start(AppsActivity::class.java)
-        "留言板" -> {
-            android.widget.Toast.makeText(context, "该功能已下线", android.widget.Toast.LENGTH_SHORT).show()
-        }
-
-        "最近更新" -> navigateToSearch(DiscoveryAction.ToRecent)
-
-        "随机本子" -> navigateToSearch(DiscoveryAction.ToRandom)
-
-        else -> navigateToSearch(
-            DiscoveryAction.Channel(channel.label)
-        )
-    }
-}
 
 @Composable
 fun DashboardDrawerContent(
     userProfile: UserProfileUiState,
-    lastReadHistory: DetailedHistory?,
+    lastReadHistory: DetailedReadingHistory?,
     navigationToReader: (String, Int) -> Unit,
     modifier: Modifier = Modifier,
     onCheckInClick: () -> Unit = {},
@@ -812,15 +473,11 @@ fun DashboardDrawerContent(
 ) {
     Column(modifier = modifier.fillMaxSize()) {
         // 用户信息卡片：Loading / Error / Success 三态统一由 UserProfileStateCard 处理
-        when (userProfile) {
-            is UserProfileUiState.Success -> UserProfileCard(
-                state = userProfile,
-                onCheckInClick = onCheckInClick,
-                onEditProfile = onEditProfileClick,
-            )
-
-            else -> UserProfileStateCard(state = userProfile)
-        }
+        UserProfileStateCard(
+            state = userProfile,
+            onCheckInClick = onCheckInClick,
+            onEditProfileClick = onEditProfileClick,
+        )
         HorizontalDivider()
         Column(
             modifier = Modifier
@@ -900,146 +557,18 @@ private fun DrawerMenuItem(
 }
 
 @Composable
-fun UserProfileCard(
-    state: UserProfileUiState.Success,
-    modifier: Modifier = Modifier,
-    onCheckInClick: () -> Unit,
-    onEditProfile: () -> Unit,
-) {
-    val user = state.user
-    Column(
-        modifier = modifier
-            .padding(16.dp)
-            .testTag("dashboard:userProfile")
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(contentAlignment = Alignment.Center) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(user.avatarUrl)
-                        .placeholder(R.drawable.placeholder_avatar_2)
-                        .error(R.drawable.placeholder_avatar_2)
-                        .build(),
-                    contentDescription = "Avatar",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clip(CircleShape)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(16.dp))
-
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(
-                        text = user.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    // 无网络时显示离线缓存标识
-                    if (state.isOfflineCache) {
-                        Surface(
-                            color = MaterialTheme.colorScheme.errorContainer,
-                            shape = RoundedCornerShape(4.dp)
-                        ) {
-                            Text(
-                                text = "离线",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onErrorContainer,
-                                modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                            )
-                        }
-                    }
-                }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = user.levelDisplay,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = user.title,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .border(
-                                1.dp,
-                                MaterialTheme.colorScheme.primary,
-                                RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 4.dp, vertical = 2.dp)
-                    )
-                }
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(
-                    onClick = onEditProfile
-                ) {
-                    Text(text = "修改资料")
-                }
-
-                Spacer(modifier = Modifier.width(8.dp))
-
-                Button(
-                    onClick = onCheckInClick,
-                    enabled = !user.hasCheckedIn,
-                    colors = ButtonDefaults.buttonColors(
-                        disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
-                        disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                    ),
-                    modifier = Modifier.testTag("dashboard:checkIn"),
-                ) {
-                    Text(text = if (user.hasCheckedIn) "已打卡" else "打卡")
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(12.dp))
-
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Surface(
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                shape = RoundedCornerShape(4.dp)
-            ) {
-                Text(
-                    text = user.gender,
-                    style = MaterialTheme.typography.labelSmall,
-                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.width(8.dp))
-
-            Text(
-                text = user.slogan.ifEmpty { "这个人很懒，什么都没写" },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
 fun QuickResumeCard(
-    history: DetailedHistory,
+    history: DetailedReadingHistory,
     onClick: (String, Int) -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val lastProgress = remember(history) {
-        history.progressList.maxByOrNull { it.lastReadAt }
-    }
-    val chapterTitle = lastProgress?.let { "第 ${it.chapterId} 话" } ?: "第一话"
-    val progressText = lastProgress?.let { "已读至第 ${it.currentPage} 页 / 共 ${it.pageCount} 页" } ?: "未开始阅读"
-    val lastReadChapterOrder = lastProgress?.chapterId ?: 1
+    // 「最近读到哪一章」的判定属于数据模型，复用 DetailedReadingHistory 上的派生属性，
+    // 不在 UI 里重算一遍 maxByOrNull
+    val lastProgress = history.lastReadChapterProgress
+    val chapterTitle = lastProgress?.let { "第 ${it.chapterNumber} 话" } ?: "第一话"
+    val progressText = lastProgress?.let { "已读至第 ${it.currentPage} 页 / 共 ${it.pageCount} 页" }
+        ?: "未开始阅读"
+    val lastReadChapterOrder = lastProgress?.chapterNumber ?: 1
 
     ElevatedCard(
         onClick = { onClick(history.history.id, lastReadChapterOrder) },

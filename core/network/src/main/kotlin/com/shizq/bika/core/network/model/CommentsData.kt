@@ -1,35 +1,15 @@
 package com.shizq.bika.core.network.model
 
-import com.shizq.bika.core.network.utils.IntAsStringSerializer
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class CommentsData(
     @SerialName("comments")
-    val comments: CommentsPage,
+    val comments: PageData<CommentData>,
 
     @SerialName("topComments")
     val topComments: List<CommentData> = emptyList()
-)
-
-@Serializable
-data class CommentsPage(
-    @SerialName("docs")
-    val docs: List<CommentData>,
-
-    @SerialName("total")
-    val total: Int,
-
-    @SerialName("limit")
-    val limit: Int,
-
-    @SerialName("page")
-    @Serializable(with = IntAsStringSerializer::class)
-    val page: Int,
-
-    @SerialName("pages")
-    val pages: Int
 )
 
 @Serializable

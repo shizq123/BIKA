@@ -1,10 +1,10 @@
 package com.shizq.bika.core.network.dns
 
+import com.shizq.bika.core.network.di.DnsClient
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
 import io.ktor.client.request.get
 import jakarta.inject.Inject
-import jakarta.inject.Named
 import jakarta.inject.Singleton
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
@@ -21,7 +21,7 @@ import kotlinx.serialization.Serializable
  */
 @Singleton
 internal class KtorDnsHostResolver @Inject constructor(
-    @Named("dns") private val client: HttpClient,
+    @DnsClient private val client: HttpClient,
 ) : DnsHostResolver {
     private val requests = listOf(
         "https://macapi1.com/app/picacomic/dns/resolve?domain=${BikaDnsDomains.IMAGE}" to BikaDnsDomains.IMAGE,

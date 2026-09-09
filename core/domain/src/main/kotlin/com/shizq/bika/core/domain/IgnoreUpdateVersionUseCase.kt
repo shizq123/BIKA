@@ -1,7 +1,7 @@
 package com.shizq.bika.core.domain
 
 import com.shizq.bika.core.datastore.UpdatePreferenceDataSource
-import com.shizq.bika.core.network.model.AppUpdateRelease
+import com.shizq.bika.core.model.AppUpdateRelease
 import javax.inject.Inject
 
 class IgnoreUpdateVersionUseCase @Inject constructor(

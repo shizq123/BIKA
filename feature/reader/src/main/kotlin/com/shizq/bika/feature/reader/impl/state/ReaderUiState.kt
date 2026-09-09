@@ -91,4 +91,10 @@ sealed interface ReaderAction {
     data class ChapterCatalogLoaded(val catalog: ChapterCatalog) : ReaderAction
 
     data object SeekConsumed : ReaderAction
+
+    /**
+     * 持久化当前阅读进度（常规翻页自动保存、ON_STOP/组合销毁兜底保存均走此 action）。
+     * handler 内部读取当前 snapshot 的章节信息，调用方无需关心具体写库细节。
+     */
+    data class PersistProgress(val page: Int) : ReaderAction
 }

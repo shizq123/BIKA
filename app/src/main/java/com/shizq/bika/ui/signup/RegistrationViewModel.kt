@@ -9,8 +9,6 @@ import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.int
 import kotlinx.serialization.json.jsonPrimitive
 
@@ -31,21 +29,21 @@ class RegistrationViewModel @Inject constructor(
             val basicInfoData = basicInfoState.toData()
             val securityData = securityQuestionsState.toData()
             val personalData = personalInfoState.toData()
-            val obj = buildJsonObject {
-                put("email", JsonPrimitive(basicInfoData.email))
-                put("name", JsonPrimitive(basicInfoData.nickname))
-                put("password", JsonPrimitive(basicInfoData.password))
-
-                put("birthday", JsonPrimitive(personalData.birthday))
-                put("gender", JsonPrimitive(personalData.gender))
-
-                securityData.questions.forEachIndexed { index, question ->
-                    put("answer${index + 1}", JsonPrimitive(question.answer))
-                    put("question${index + 1}", JsonPrimitive(question.question))
-                }
-            }
+            val questions = securityData.questions
             try {
-                val data = api.requestSignUp(obj)
+                val data = api.signUp(
+                    email = basicInfoData.email,
+                    password = basicInfoData.password,
+                    name = basicInfoData.nickname,
+                    birthday = personalData.birthday,
+                    gender = personalData.gender,
+                    question1 = questions[0].question,
+                    answer1 = questions[0].answer,
+                    question2 = questions[1].question,
+                    answer2 = questions[1].answer,
+                    question3 = questions[2].question,
+                    answer3 = questions[2].answer,
+                )
                 val code = data["code"]?.jsonPrimitive?.int
                 if (code == 200) {
                     userCredentialsDataSource.setUsername(basicInfoData.email)
