@@ -25,6 +25,7 @@ build/
 # Signing files
 .signing/
 .vscode/
+.mimosa/
 
 # Local configuration file (sdk path, etc)
 local.properties
