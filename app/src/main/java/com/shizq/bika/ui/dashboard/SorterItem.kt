@@ -52,7 +52,7 @@ fun <T> SortableItem(
     var showDialog by rememberSaveable { mutableStateOf(false) }
     val valuesState by remember(values) { derivedStateOf { values() } }
     ListItem(
-        { exposed(valuesState) },
+        content = { exposed(valuesState) },
         leadingContent = icon,
         modifier = modifier.clickable {
             showDialog = true

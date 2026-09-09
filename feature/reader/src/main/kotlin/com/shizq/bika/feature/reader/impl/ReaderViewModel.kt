@@ -1,3 +1,5 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package com.shizq.bika.feature.reader.impl
 
 import android.net.Uri
