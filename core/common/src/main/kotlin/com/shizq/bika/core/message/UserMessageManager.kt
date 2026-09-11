@@ -4,7 +4,6 @@ import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 
 /**
  * 单条展示 + FIFO 排队的消息中枢。
@@ -13,22 +12,22 @@ import kotlinx.coroutines.flow.asStateFlow
  * 回调里再次调用 [report] 或 [dismiss] 是合法的，不会自锁。
  */
 @Singleton
-class UserMessageManager @Inject constructor() : UserMessageMonitor {
+internal class UserMessageManager @Inject constructor() : UserMessageMonitor {
 
     private val lock = Any()
 
     /** 队首即当前展示中的消息。 */
     private val queue = ArrayDeque<UserMessage>()
 
-    private val _current = MutableStateFlow<UserMessage?>(null)
-    override val current: StateFlow<UserMessage?> = _current.asStateFlow()
+    override val current: StateFlow<UserMessage?>
+        field = MutableStateFlow<UserMessage?>(null)
 
     override fun report(message: UserMessage): MessageId {
         synchronized(lock) {
             // 已在展示或排队中，视为重复上报直接丢弃。
             if (queue.any { it.id == message.id }) return message.id
             queue.addLast(message)
-            if (queue.size == 1) _current.value = message
+            if (queue.size == 1) current.value = message
         }
         return message.id
     }
@@ -40,7 +39,7 @@ class UserMessageManager @Inject constructor() : UserMessageMonitor {
             val wasHead = index == 0
             val removed = queue.removeAt(index)
             if (wasHead) {
-                _current.value = queue.firstOrNull()
+                current.value = queue.firstOrNull()
                 removed
             } else {
                 null
@@ -55,7 +54,7 @@ class UserMessageManager @Inject constructor() : UserMessageMonitor {
             // 忽略过期回传：UI 侧的退场动画可能晚于一次主动 dismiss。
             if (queue.firstOrNull()?.id != id) return
             val removed = queue.removeFirst()
-            _current.value = queue.firstOrNull()
+            current.value = queue.firstOrNull()
             removed
         }
         val action = finished.action ?: return
@@ -69,7 +68,7 @@ class UserMessageManager @Inject constructor() : UserMessageMonitor {
     fun clear() {
         synchronized(lock) {
             queue.clear()
-            _current.value = null
+            current.value = null
         }
     }
 }
