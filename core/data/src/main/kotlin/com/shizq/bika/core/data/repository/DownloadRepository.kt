@@ -13,6 +13,7 @@ import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.database.model.DownloadTaskEntity
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
+import com.shizq.bika.core.download.storage.LocalComicStorage
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -27,7 +28,6 @@ import java.util.UUID
 import java.util.zip.ZipEntry
 import java.util.zip.ZipFile
 import java.util.zip.ZipOutputStream
-import kotlin.collections.map
 import kotlin.time.Clock
 
 @Singleton
@@ -35,6 +35,7 @@ class DownloadRepository @Inject constructor(
     @ApplicationContext private val context: Context,
     private val readingHistoryDao: ReadingHistoryDao,
     private val downloadTaskRepository: DownloadTaskRepository,
+    private val localComicStorage: LocalComicStorage,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     companion object {
@@ -53,20 +54,27 @@ class DownloadRepository @Inject constructor(
 
     // ---- 本地文件访问 ----
 
-    /** 获取隐藏目录下的章节文件夹 */
-    fun getEpisodeDir(comicId: String, episodeOrder: Int): File {
-        val base = context.getExternalFilesDir(null) ?: context.filesDir
-        return File(base, ".bika/comics/$comicId/$episodeOrder")
-    }
+    /**
+     * 获取隐藏目录下的章节文件夹。
+     *
+     * 委托给 [LocalComicStorage.resolveEpisodeDir]（core:download 的唯一权威实现），
+     * 不再自行拼路径：此前这里硬编码 `.bika/comics/$comicId/$episodeOrder` 且不做
+     * sanitizePathSegment，与下载模块的目录布局各算各的，comicId 含路径分隔符等
+     * 特殊字符时两侧解析出的目录会不一致。
+     */
+    fun getEpisodeDir(comicId: String, episodeOrder: Int): File =
+        localComicStorage.resolveEpisodeDir(comicId, episodeOrder)
 
-    /** 获取已下载章节的本地图片文件列表（用于本地阅读） */
-    fun getLocalImages(comicId: String, episodeOrder: Int): List<File> {
-        val dir = getEpisodeDir(comicId, episodeOrder)
-        return dir.listFiles()
-            ?.filter { it.isFile && it.extension == "jpg" }
-            ?.sortedBy { it.name }
-            ?: emptyList()
-    }
+    /**
+     * 获取已下载章节的本地图片文件列表（用于本地阅读）。
+     *
+     * 委托给 [LocalComicStorage.listPageFiles]：此前这里只认 `.jpg` 扩展名、
+     * 按文件名字符串排序，而下载模块实际支持 jpg/jpeg/png/webp/gif/bmp/avif/heic
+     * 并按解析出的页码数字排序。下载为非 jpg 格式的章节离线阅读会得到空列表或
+     * 页面顺序错乱，现在统一到下载模块的实现，两侧不再可能出现不一致。
+     */
+    fun getLocalImages(comicId: String, episodeOrder: Int): List<File> =
+        localComicStorage.listPageFiles(getEpisodeDir(comicId, episodeOrder))
 
     // ---- CBZ 导入 ----
 
@@ -208,16 +216,17 @@ class DownloadRepository @Inject constructor(
         val sanitizedEpisode = task.episodeTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
         val outputFile = File(exportDir, "$sanitizedTitle - $sanitizedEpisode.cbz")
 
+        // 用 listPageFiles 而非本地硬编码的 extension == "jpg" 过滤：
+        // 下载模块支持 jpg/jpeg/png/webp/gif/bmp/avif/heic，只认 jpg 会让非 jpg
+        // 格式下载的章节导出为缺页的 CBZ。listPageFiles 同时保证了按页码排序。
         ZipOutputStream(FileOutputStream(outputFile)).use { zos ->
-            sourceDir.listFiles()?.forEach { file ->
-                if (file.isFile && file.extension == "jpg") {
-                    val entry = ZipEntry(file.name)
-                    zos.putNextEntry(entry)
-                    file.inputStream().use { fis ->
-                        fis.copyTo(zos)
-                    }
-                    zos.closeEntry()
+            localComicStorage.listPageFiles(sourceDir).forEach { file ->
+                val entry = ZipEntry(file.name)
+                zos.putNextEntry(entry)
+                file.inputStream().use { fis ->
+                    fis.copyTo(zos)
                 }
+                zos.closeEntry()
             }
         }
         outputFile
@@ -239,15 +248,14 @@ class DownloadRepository @Inject constructor(
                 if (sourceDir.exists() && sourceDir.isDirectory) {
                     val chapterFolderName =
                         task.episodeTitle.replace(Regex("[\\\\/:*?\"<>|]"), "_")
-                    sourceDir.listFiles()?.forEach { file ->
-                        if (file.isFile && file.extension == "jpg") {
-                            val entry = ZipEntry("$chapterFolderName/${file.name}")
-                            zos.putNextEntry(entry)
-                            file.inputStream().use { fis ->
-                                fis.copyTo(zos)
-                            }
-                            zos.closeEntry()
+                    // 同上：统一用 listPageFiles，不再只打包 jpg
+                    localComicStorage.listPageFiles(sourceDir).forEach { file ->
+                        val entry = ZipEntry("$chapterFolderName/${file.name}")
+                        zos.putNextEntry(entry)
+                        file.inputStream().use { fis ->
+                            fis.copyTo(zos)
                         }
+                        zos.closeEntry()
                     }
                 }
             }
@@ -303,7 +311,7 @@ private fun DownloadTask.toEntity() = DownloadTaskEntity(
     episodeId = episodeId,
     episodeTitle = episodeTitle,
     episodeOrder = episodeOrder,
-    status = com.shizq.bika.core.database.model.DownloadStatus.valueOf(status.name),
+    status = DownloadStatus.valueOf(status.name),
     progress = progress,
     totalPages = totalPages,
     downloadedPages = downloadedPages,
