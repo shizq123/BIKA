@@ -1,8 +1,10 @@
 package com.shizq.bika.core.data.di
 
 import com.shizq.bika.core.data.platform.AndroidAppVersionProvider
+import com.shizq.bika.core.data.platform.AndroidFileShareProvider
 import com.shizq.bika.core.data.platform.AndroidUpdateFileProvider
 import com.shizq.bika.core.data.platform.AppVersionProvider
+import com.shizq.bika.core.data.platform.FileShareProvider
 import com.shizq.bika.core.data.platform.UpdateFileProvider
 import dagger.Binds
 import dagger.Module
@@ -24,4 +26,10 @@ abstract class UpdateModule {
     abstract fun bindUpdateFileProvider(
         impl: AndroidUpdateFileProvider,
     ): UpdateFileProvider
+
+    @Binds
+    @Singleton
+    abstract fun bindFileShareProvider(
+        impl: AndroidFileShareProvider,
+    ): FileShareProvider
 }

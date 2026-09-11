@@ -11,6 +11,9 @@ import com.shizq.bika.core.download.domain.MoveDownloadTaskToFrontUseCase
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
 import com.shizq.bika.core.download.scheduler.DownloadScheduler
+import com.shizq.bika.core.message.MessageReporter
+import com.shizq.bika.core.message.UiText
+import com.shizq.bika.core.message.reportError
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -34,6 +37,7 @@ class DownloadListViewModel @Inject constructor(
     private val moveToFrontUseCase: MoveDownloadTaskToFrontUseCase,
     private val downloadScheduler: DownloadScheduler,
     private val downloadRepository: DownloadRepository,
+    private val messageReporter: MessageReporter,
 ) : ViewModel() {
     // ---- 导航状态（单一数据源） ----
     private val _navState = MutableStateFlow<DownloadNavState>(DownloadNavState.ComicList)
@@ -168,6 +172,12 @@ class DownloadListViewModel @Inject constructor(
     }
 
     fun importCbz(uri: Uri, fileName: String) {
+        if (!fileName.endsWith(".zip", ignoreCase = true) &&
+            !fileName.endsWith(".cbz", ignoreCase = true)
+        ) {
+            messageReporter.reportError(UiText.of("仅支持导入 .cbz 或 .zip 格式的漫画文件"))
+            return
+        }
         downloadRepository.importCbzAsync(uri, fileName)
     }
 

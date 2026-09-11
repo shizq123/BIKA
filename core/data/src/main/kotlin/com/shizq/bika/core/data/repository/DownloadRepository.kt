@@ -1,12 +1,10 @@
 package com.shizq.bika.core.data.repository
 
 import android.content.Context
-import android.content.Intent
 import android.net.Uri
 import android.util.Log
-import android.widget.Toast
-import androidx.core.content.FileProvider
 import com.shizq.bika.core.coroutine.ApplicationScope
+import com.shizq.bika.core.data.platform.FileShareProvider
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.DownloadStatus
@@ -14,6 +12,10 @@ import com.shizq.bika.core.database.model.DownloadTaskEntity
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
 import com.shizq.bika.core.download.storage.LocalComicStorage
+import com.shizq.bika.core.message.MessageReporter
+import com.shizq.bika.core.message.UiText
+import com.shizq.bika.core.message.reportError
+import com.shizq.bika.core.message.reportInfo
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -36,6 +38,8 @@ class DownloadRepository @Inject constructor(
     private val readingHistoryDao: ReadingHistoryDao,
     private val downloadTaskRepository: DownloadTaskRepository,
     private val localComicStorage: LocalComicStorage,
+    private val fileShareProvider: FileShareProvider,
+    private val messageReporter: MessageReporter,
     @ApplicationScope private val scope: CoroutineScope,
 ) {
     companion object {
@@ -78,16 +82,18 @@ class DownloadRepository @Inject constructor(
 
     // ---- CBZ 导入 ----
 
-    /** 导入本地 CBZ/ZIP 漫画（异步，带 Toast 通知） */
+    /** 导入本地 CBZ/ZIP 漫画（异步，带消息通知） */
     fun importCbzAsync(uri: Uri, fileName: String) {
         scope.launch {
-            showToast("已在后台开始导入: $fileName")
+            messageReporter.reportInfo(UiText.of("已在后台开始导入: $fileName"))
             try {
                 importCbz(uri, fileName)
-                showToast("导入成功: $fileName")
+                messageReporter.reportInfo(UiText.of("导入成功: $fileName"))
             } catch (e: Exception) {
                 Log.e(TAG, "导入失败: $fileName", e)
-                showToast("导入失败: ${e.localizedMessage ?: "未知错误"}")
+                messageReporter.reportError(
+                    UiText.of("导入失败: ${e.localizedMessage ?: "未知错误"}"),
+                )
             }
         }
     }
@@ -168,35 +174,39 @@ class DownloadRepository @Inject constructor(
 
     // ---- CBZ / ZIP 导出 ----
 
-    /** 导出指定章节为 CBZ（异步，带 Toast + 系统分享） */
+    /** 导出指定章节为 CBZ（异步，带消息通知 + 系统分享） */
     fun exportToCbzByTask(task: DownloadTask) {
         scope.launch {
-            showToast("已在后台开始打包: ${task.episodeTitle}")
+            messageReporter.reportInfo(UiText.of("已在后台开始打包: ${task.episodeTitle}"))
             try {
                 val file = exportToCbz(task.toEntity())
-                showToast("打包成功: ${task.episodeTitle}")
+                messageReporter.reportInfo(UiText.of("打包成功: ${task.episodeTitle}"))
                 shareFile(file, "application/x-cbz", "导出为 CBZ")
             } catch (e: Exception) {
                 Log.e(TAG, "导出失败", e)
-                showToast("打包失败: ${e.localizedMessage ?: "未知错误"}")
+                messageReporter.reportError(
+                    UiText.of("打包失败: ${e.localizedMessage ?: "未知错误"}"),
+                )
             }
         }
     }
 
-    /** 批量导出章节为单个 ZIP（异步，带 Toast + 系统分享） */
+    /** 批量导出章节为单个 ZIP（异步，带消息通知 + 系统分享） */
     fun exportMultipleToZipByTasks(
         tasks: List<DownloadTask>,
         comicTitle: String,
     ) {
         scope.launch {
-            showToast("已在后台开始打包 ${tasks.size} 个章节...")
+            messageReporter.reportInfo(UiText.of("已在后台开始打包 ${tasks.size} 个章节..."))
             try {
                 val file = exportMultipleToZip(tasks.map { it.toEntity() }, comicTitle)
-                showToast("打包成功: ${comicTitle}_归档")
+                messageReporter.reportInfo(UiText.of("打包成功: ${comicTitle}_归档"))
                 shareFile(file, "application/zip", "批量打包导出")
             } catch (e: Exception) {
                 Log.e(TAG, "打包失败", e)
-                showToast("打包失败: ${e.localizedMessage ?: "未知错误"}")
+                messageReporter.reportError(
+                    UiText.of("打包失败: ${e.localizedMessage ?: "未知错误"}"),
+                )
             }
         }
     }
@@ -268,35 +278,12 @@ class DownloadRepository @Inject constructor(
         return ext in listOf("jpg", "jpeg", "png", "webp")
     }
 
-    private suspend fun showToast(message: String, duration: Int = Toast.LENGTH_SHORT) {
-        withContext(Dispatchers.Main) {
-            Toast.makeText(context, message, duration).show()
-        }
-    }
-
     private fun shareFile(file: File, mimeType: String, title: String) {
         try {
-            val fileUri = FileProvider.getUriForFile(
-                context,
-                "${context.packageName}.fileprovider",
-                file,
-            )
-            val shareIntent = Intent().apply {
-                action = Intent.ACTION_SEND
-                putExtra(Intent.EXTRA_STREAM, fileUri)
-                type = mimeType
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            val chooserIntent = Intent.createChooser(shareIntent, title).apply {
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(chooserIntent)
+            fileShareProvider.share(file, mimeType, title)
         } catch (e: Exception) {
             Log.e(TAG, "分享文件失败", e)
-            scope.launch {
-                showToast("分享失败: ${e.localizedMessage}")
-            }
+            messageReporter.reportError(UiText.of("分享失败: ${e.localizedMessage}"))
         }
     }
 }

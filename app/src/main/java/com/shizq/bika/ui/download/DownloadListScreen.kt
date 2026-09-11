@@ -112,16 +112,6 @@ fun DownloadListScreen(
     ) { uri ->
         if (uri != null) {
             val fileName = getFileName(context, uri) ?: "imported_comic.cbz"
-            if (!fileName.endsWith(".zip", ignoreCase = true) &&
-                !fileName.endsWith(".cbz", ignoreCase = true)
-            ) {
-                android.widget.Toast.makeText(
-                    context,
-                    "仅支持导入 .cbz 或 .zip 格式的漫画文件",
-                    android.widget.Toast.LENGTH_SHORT
-                ).show()
-                return@rememberLauncherForActivityResult
-            }
             viewModel.importCbz(uri = uri, fileName = fileName)
         }
     }

@@ -14,7 +14,7 @@ dependencies {
     api(projects.core.datastore)
     api(projects.core.network)
 
-    implementation(projects.core.download)
+    api(projects.core.download)
 
     implementation(libs.kotlinx.serialization.core)
 
