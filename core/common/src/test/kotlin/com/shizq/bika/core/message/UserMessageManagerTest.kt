@@ -61,8 +61,9 @@ class UserMessageManagerTest {
     fun `同 id 重复上报被合并`() {
         val first = message("dup", text = "第一次")
         val second = message("dup", text = "第二次")
-        manager.report(first)
-        manager.report(second)
+        // 被丢弃的一方也要返回同一 id，调用方才能无条件用返回值去 dismiss。
+        assertEquals(MessageId("dup"), manager.report(first))
+        assertEquals(MessageId("dup"), manager.report(second))
 
         assertSame(first, manager.current.value)
 
