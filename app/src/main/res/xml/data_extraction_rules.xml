@@ -4,11 +4,19 @@
 -->
 <data-extraction-rules>
     <cloud-backup>
-        <!-- 排除含 token/密码（AES-GCM 加密）的凭据文件，防止云备份泄露 -->
-        <exclude domain="file" path="datastore/user_credential.preferences_pb" />
+        <!--
+          排除含 token/密码（AES-GCM 加密）的凭据文件，防止云备份泄露。
+          路径需与 DataStoreFactory 生成的实际文件路径一致，见 backup_rules.xml 的说明；
+          该文件不带 .preferences_pb 后缀。
+        -->
+        <exclude
+            domain="file"
+            path="datastore/user_credential" />
     </cloud-backup>
     <device-transfer>
         <!-- 设备迁移同样排除凭据文件 -->
-        <exclude domain="file" path="datastore/user_credential.preferences_pb" />
+        <exclude
+            domain="file"
+            path="datastore/user_credential" />
     </device-transfer>
 </data-extraction-rules>

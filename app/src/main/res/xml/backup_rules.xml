@@ -5,6 +5,15 @@
    See https://developer.android.com/about/versions/12/backup-restore
 -->
 <full-backup-content>
-    <!-- 排除含 token/密码（AES-GCM 加密）的凭据文件，防止备份/换机迁移泄露 -->
-    <exclude domain="file" path="datastore/user_credential.preferences_pb" />
+    <!--
+      排除含 token/密码（AES-GCM 加密）的凭据文件，防止备份/换机迁移泄露。
+      路径必须与 DataStoreModule.providesUserCredentialsDataStore 的
+      context.dataStoreFile("user_credential") 一致：DataStoreFactory 生成的
+      实际路径是 files/datastore/user_credential，不带 .preferences_pb 后缀
+      （该后缀只在使用 androidx.datastore.preferences 的 preferencesDataStoreFile
+      时才会追加）。此前路径写错导致该文件未被真正排除。
+    -->
+    <exclude
+        domain="file"
+        path="datastore/user_credential" />
 </full-backup-content>

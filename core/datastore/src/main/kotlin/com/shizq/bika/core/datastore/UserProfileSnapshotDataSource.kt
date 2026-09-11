@@ -20,6 +20,11 @@ class UserProfileSnapshotDataSource @Inject constructor(
 
     /** 清空缓存。登出时调用，避免下一个账号看到上一个账号的资料卡。 */
     suspend fun clear() {
-        snapshot.updateData { UserProfileSnapshot() }
+        // 保留 legacyMigrationDone：登出只是清空业务字段，不代表"从未完成过旧存储迁移"。
+        // 若这里整体重置为默认值，下次冷启动会被 UserProfileCacheMigration 误判为需要
+        // 重新迁移，进而可能把上一个账号残留在旧存储里的资料快照恢复回来。
+        snapshot.updateData { current ->
+            UserProfileSnapshot(legacyMigrationDone = current.legacyMigrationDone)
+        }
     }
 }

@@ -20,7 +20,11 @@ import javax.crypto.spec.GCMParameterSpec
 class CredentialsCipher @Inject constructor() {
     private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
 
-    private val cipher: Cipher = Cipher.getInstance("AES/GCM/NoPadding")
+    // javax.crypto.Cipher 不是线程安全的：init() 会修改实例内部状态（模式、IV），
+    // 多个协程并发调用 encrypt/decrypt 共享同一个 Cipher 实例会导致 init 交错，
+    // 结果是用错误的 IV 做 doFinal——加密方产出不可解的密文，解密方静默失败。
+    // 每次调用现取一个新实例，避免这类竞态；Cipher.getInstance 的开销可忽略。
+    private fun newCipher(): Cipher = Cipher.getInstance("AES/GCM/NoPadding")
 
     @Synchronized
     private fun getOrCreateKey(): SecretKey {
@@ -40,6 +44,7 @@ class CredentialsCipher @Inject constructor() {
     }
 
     fun encrypt(plain: String): String {
+        val cipher = newCipher()
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         val iv = cipher.iv
         val encrypted = cipher.doFinal(plain.toByteArray(Charsets.UTF_8))
@@ -58,6 +63,7 @@ class CredentialsCipher @Inject constructor() {
             val raw = Base64.decode(value.removePrefix(PREFIX), Base64.NO_WRAP)
             val iv = raw.copyOfRange(0, IV_LENGTH)
             val encrypted = raw.copyOfRange(IV_LENGTH, raw.size)
+            val cipher = newCipher()
             cipher.init(Cipher.DECRYPT_MODE, getOrCreateKey(), GCMParameterSpec(TAG_LENGTH_BITS, iv))
             String(cipher.doFinal(encrypted), Charsets.UTF_8)
         } catch (_: Exception) {

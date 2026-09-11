@@ -23,19 +23,21 @@ internal class UserProfileCacheMigration(
 ) : DataMigration<UserProfileSnapshot> {
 
     /**
-     * name 为空即「尚无可用缓存」，与 UserRepository 判定缓存可用性的口径一致。
-     * 迁移成功后 name 非空，后续冷启动不再进入。
+     * 用显式的 [UserProfileSnapshot.legacyMigrationDone] 标记判断是否已迁移过，
+     * 不用 name 是否为空——登出会清空 name（见 [UserProfileSnapshotDataSource.clear]），
+     * 若继续用 name 当哨兵，登出后下次冷启动会被误判为"从未迁移"，重新从旧存储
+     * 搬回上一个账号的资料快照。
      */
     override suspend fun shouldMigrate(currentData: UserProfileSnapshot): Boolean =
-        currentData.name.isEmpty()
+        !currentData.legacyMigrationDone
 
     override suspend fun migrate(currentData: UserProfileSnapshot): UserProfileSnapshot {
-        val legacy = readLegacy() ?: return currentData
-        // 旧文件里没存过资料时不覆盖，否则会把 currentData 换成一份等价的空值、
-        // 白写一次文件。
-        if (legacy.name.isEmpty()) return currentData
+        val legacy = readLegacy() ?: return currentData.copy(legacyMigrationDone = true)
+        // 旧文件里没存过资料时不覆盖当前值，但仍需标记迁移完成，否则每次冷启动
+        // 都会重新探测一次旧存储。
+        if (legacy.name.isEmpty()) return currentData.copy(legacyMigrationDone = true)
         logger.info { "已将用户资料快照迁移到独立存储" }
-        return legacy
+        return legacy.copy(legacyMigrationDone = true)
     }
 
     /**
