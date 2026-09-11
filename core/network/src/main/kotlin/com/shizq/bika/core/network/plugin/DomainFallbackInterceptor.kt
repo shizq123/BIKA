@@ -29,8 +29,12 @@ private const val SLOW_MAIN_THRESHOLD_MS = 2500L
  * 换域名重试同一个 path 不会有不同结果，只会放大成 N 倍无效请求。
  * 只有 5xx 与传输层异常（超时、DNS、连接失败）才值得换域名。
  */
-private fun Throwable?.isWorthFallback(): Boolean =
-    this !is coil3.network.HttpException || response.code >= 500
+private fun Throwable?.isWorthFallback(): Boolean {
+    if (this !is coil3.network.HttpException) return true
+
+    val code = response.code
+    return code >= 500
+}
 
 private class FallbackMarker : AbstractCoroutineContextElement(FallbackMarker) {
     companion object Key : CoroutineContext.Key<FallbackMarker>
@@ -80,16 +84,31 @@ class DomainFallbackInterceptor : Interceptor {
             return@coroutineScope earlyResult
         }
 
-        // 主请求已经失败：只有值得降级的错误才换域名。404/403 直接返回，
-        // 否则一个必然失败的 path 会被放大成 7 个请求（fast path + 5 竞速 + 收尾 proceed）。
         if (earlyResult is ErrorResult) {
             if (!earlyResult.throwable.isWorthFallback()) {
+                // 404 特殊处理：依次（串行、非并发）尝试候选域名直到成功，
+                // 优先已知最优域名，避免并发风暴的同时覆盖“真404但换个镜像能取到”的场景。
+                val throwable = earlyResult.throwable
+                if (throwable is coil3.network.HttpException && throwable.response.code == 404) {
+                    val currentOptimal = optimalFallbackHost
+                    val candidateHosts = DomainConfig.MANAGED_HOSTS
+                        .filter { it != failedHost }
+                        .sortedByDescending { it == currentOptimal }
+
+                    for (candidateHost in candidateHosts) {
+                        logger.debug { "404 依次尝试候选域名: $candidateHost" }
+                        val fallbackResult = tryFallbackHost(chain, httpUrl, candidateHost)
+                        if (fallbackResult != null) {
+                            optimalFallbackHost = candidateHost
+                            return@coroutineScope fallbackResult
+                        }
+                    }
+                }
+
                 logger.warn(earlyResult.throwable) { "永久性失败，跳过降级: ${chain.request.data}" }
                 return@coroutineScope earlyResult
             }
             logger.warn { "主域名 '$failedHost' 请求失败，开始降级竞速" }
-        } else {
-            logger.warn { "主域名 '$failedHost' 请求过慢（>${SLOW_MAIN_THRESHOLD_MS}ms），开始降级竞速" }
         }
 
         val raceResult = performFallbackRace(chain, httpUrl, failedHost)
