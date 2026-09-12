@@ -6,6 +6,8 @@ plugins {
 
 android {
     namespace = "com.shizq.bika.core.database"
+
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
@@ -14,4 +16,7 @@ dependencies {
     implementation(libs.kotlinx.datetime)
 
     androidTestImplementation(libs.kotlinx.coroutines.test)
+
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }

@@ -5,6 +5,8 @@ plugins {
 
 android {
     namespace = "com.shizq.bika.core.download"
+
+    testOptions.unitTests.isIncludeAndroidResources = true
 }
 
 dependencies {
@@ -21,4 +23,7 @@ dependencies {
     implementation(libs.androidx.work.ktx)
     implementation(libs.hilt.ext.work)
     ksp(libs.hilt.ext.compiler)
+
+    testImplementation(libs.robolectric)
+    testImplementation(libs.androidx.test.core)
 }
