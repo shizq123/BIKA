@@ -55,12 +55,28 @@ class ChapterRepositoryImpl @Inject constructor(
                 .shareIn(scope, SharingStarted.WhileSubscribed(30_000), replay = 1)
         }
 
-    override fun getChapterPages(comicId: String, order: Int): ChapterPagesResult {
+    override fun getChapterPages(
+        comicId: String,
+        order: Int,
+        startPageIndex: Int
+    ): ChapterPagesResult {
         // 局部变量：仅归属于这一次调用，不同章节/不同调用互不影响，避免共享状态污染
         val metadata = MutableStateFlow<ChapterMeta?>(null)
 
-        val pages = Pager(PagingConfig(pageSize = CHAPTER_PAGES_PAGE_SIZE)) {
-            chapterPagesPagingSourceFactory.create(comicId, order, metadata)
+        // 索引 -> API 页的换算依赖服务端每页数量，但首次请求前这个值还不知道，
+        // 只能用 CHAPTER_PAGES_PAGE_SIZE 作为猜测（与 PagingConfig.pageSize 保持一致）。
+        // 猜错的后果是首次加载没有精确落在目标索引所在页，getRefreshKey 会在数据到位后
+        // 用真实 limit 重新算一次，不会导致崩溃或死循环，只是首屏多一次纠偏。
+        val initialApiPage = (startPageIndex / CHAPTER_PAGES_PAGE_SIZE) + 1
+
+        val pages = Pager(
+            config = PagingConfig(
+                pageSize = CHAPTER_PAGES_PAGE_SIZE,
+                enablePlaceholders = true,
+            ),
+            initialKey = initialApiPage.takeIf { it > 1 },
+        ) {
+            chapterPagesPagingSourceFactory.create(comicId, order, initialApiPage, metadata)
         }.flow
 
         return ChapterPagesResult(

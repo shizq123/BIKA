@@ -31,7 +31,7 @@ class BikaApplication : Application(), SingletonImageLoader.Factory {
     override fun onCreate() {
         super.onCreate()
         initializeLogging()
-        setStrictModePolicy()
+//        setStrictModePolicy()
         Sync.initialize(this)
         Download.initialize(this)
         profileVerifierLogger()

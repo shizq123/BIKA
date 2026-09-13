@@ -27,6 +27,8 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
@@ -59,8 +61,23 @@ class ReaderViewModel @AssistedInject constructor(
 
     // 在线模式下，每次章节变化只调用一次 getChapterPages，pages 和 meta 共享同一个结果，
     // 用 shareIn 转为热流，避免 meta/pages 各自订阅时分别触发一次网络请求。
-    private val chapterPagesResultFlow = currentChapterOrder
-        .map { chapterOrder -> chapterRepository.getChapterPages(id, chapterOrder) }
+    //
+    // 分页流同时以 order 和 initialPage 作为 key：initialPage 只在从
+    // JumpToChapter 派生出新的 ChapterState 时变化一次，不会随后续翻页而变，
+    // 因此不会导致同一章节内翻页时反复重建分页流。
+    // 该值被传给 getChapterPages 用于换算首次请求的 API 页（见 ChapterRepositoryImpl），
+    // 使恢复到很靠后的页时无需逐页向前加载。
+    //
+    // 只从 Ready 状态派生：Initializing 阶段 initialPage 尚未从数据库查出（固定为占位值），
+    // 若把它也纳入 key，会在 Initializing -> Ready 转换时把 (order, 占位值) 和
+    // (order, 真实值) 当成两个不同的 key，导致启动时多打一次浪费的网络请求。
+    private val chapterPagesResultFlow = stateMachine.state
+        .filterIsInstance<ReaderUiState.Ready>()
+        .map { state -> state.chapter.order to state.chapter.initialPage }
+        .distinctUntilChanged()
+        .map { (chapterOrder, initialPage) ->
+            chapterRepository.getChapterPages(id, chapterOrder, initialPage)
+        }
         .shareIn(viewModelScope, SharingStarted.Lazily, replay = 1)
 
     // 图片列表流：下载模式读取本地文件，在线模式从网络加载

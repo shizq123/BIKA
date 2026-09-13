@@ -25,8 +25,13 @@ interface ChapterRepository {
 
     /**
      * 获取指定章节的图片列表（分页），以及随分页请求一并返回的章节元信息。
+     *
+     * @param startPageIndex 恢复阅读进度时的目标页索引（0-based，对应 [ChapterPage] 在
+     *   全章中的绝对位置）。传入非 0 值时，首次加载会直接请求覆盖该索引的 API 页，
+     *   而不是总是从第 1 页开始——避免恢复到很靠后的页时需要逐页向前加载。
+     *   换算依赖服务端每页数量，若不确定可传 0（等价于原有行为）。
      */
-    fun getChapterPages(comicId: String, order: Int): ChapterPagesResult
+    fun getChapterPages(comicId: String, order: Int, startPageIndex: Int = 0): ChapterPagesResult
 }
 
 /**
