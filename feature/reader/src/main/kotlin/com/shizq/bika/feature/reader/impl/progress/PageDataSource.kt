@@ -3,7 +3,6 @@ package com.shizq.bika.feature.reader.impl.progress
 import androidx.compose.runtime.snapshotFlow
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 
@@ -45,30 +44,4 @@ class PagingDataSource(
             .distinctUntilChanged()
             .first { it }
     }
-}
-
-/**
- * LazyPagingItems 适配器。
- *
- * [awaitLoaded] 用 snapshotFlow 观察 peek 结果：peek 读的是 Compose 快照状态，
- * 分页数据到达会触发重新求值，因此无需轮询。
- */
-class PagingDataSource(
-    private val items: LazyPagingItems<ChapterPage>,
-) : PageDataSource {
-
-    override fun isLoaded(index: Int): Boolean =
-        index >= 0 && index < items.itemCount && items.peek(index) != null
-
-    override val reportedCount: Int get() = items.itemCount
-
-    override suspend fun awaitLoaded(index: Int) {
-        snapshotFlow { isLoaded(index) }
-            .distinctUntilChanged()
-            .first { it }
-    }
-
-    /** 已加载的真实项数量变化流，供 UI 展示恢复进度用（可选）。 */
-    val loadedIndexFlow: Flow<Int> = snapshotFlow { items.itemCount }
-        .distinctUntilChanged()
 }
