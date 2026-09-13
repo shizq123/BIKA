@@ -17,6 +17,11 @@ import com.shizq.bika.core.data.repository.ChapterRepository
 import com.shizq.bika.core.data.repository.DownloadRepository
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
+import com.shizq.bika.feature.reader.impl.progress.AwaitDataRestoreStrategy
+import com.shizq.bika.feature.reader.impl.progress.ProgressConfig
+import com.shizq.bika.feature.reader.impl.progress.ReadingProgressManager
+import com.shizq.bika.feature.reader.impl.progress.ReadingProgressWriter
+import com.shizq.bika.feature.reader.impl.progress.StoreBackedSink
 import com.shizq.bika.feature.reader.impl.state.ReaderAction
 import com.shizq.bika.feature.reader.impl.state.ReaderUiState
 import com.shizq.bika.feature.reader.impl.statemachine.ReaderStateMachine
@@ -46,14 +51,42 @@ class ReaderViewModel @AssistedInject constructor(
     private val downloadRepository: DownloadRepository,
     private val downloadTaskRepository: DownloadTaskRepository,
     readerStateMachine: ReaderStateMachine,
+    progressStore: ReadingProgressStore,
     @Assisted id: String,
     @Assisted order: Int,
     @Assisted downloadedOnly: Boolean,
 ) : ViewModel() {
     private val currentChapterOrder = savedStateHandle.getStateFlow("order", order)
 
+    /**
+     * 进度管理器归 ViewModel，用 viewModelScope。
+     *
+     * 这是本次重写的核心结构改动：旧实现在 composition 里用 rememberCoroutineScope()
+     * 持有它，于是「必须比组合活得久的写入」和「必须随组合销毁的观察」共用一个 scope，
+     * 组合销毁会掐死尚未触发的防抖 job。ReadingProgressManager 的 KDoc 里那段
+     * 「onPersist 不能挂起、必须转交 viewModelScope」的契约、以及
+     * persistLastKnownPage 这个同步逃生口，都是为补偿这一点而存在的。
+     *
+     * 现在写入在 viewModelScope 里，观察由 composition 通过 ReadingProgressEffect
+     * 驱动（那部分随组合取消是正确的，controller 本就与组合同生死）。
+     */
+    private val progressConfig = ProgressConfig()
+
+    val progressManager = ReadingProgressManager(
+        writer = ReadingProgressWriter(
+            sink = StoreBackedSink(progressStore),
+            scope = viewModelScope,
+            debounce = progressConfig.persistDebounce,
+        ),
+        restoreStrategy = AwaitDataRestoreStrategy(),
+        config = progressConfig,
+    )
+
     init {
         readerStateMachine.initializeWith { ReaderUiState.Initializing(id, order) }
+        // 把切章写入接到流水线上。必须在 launchIn 之前完成，否则第一次
+        // JumpToChapter 可能落到 NoOp 上。
+        readerStateMachine.progressWriteCoordinator = progressManager
     }
 
     private val stateMachine = readerStateMachine.launchIn(viewModelScope)

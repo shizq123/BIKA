@@ -7,8 +7,9 @@ import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
-import com.shizq.bika.feature.reader.impl.ReadingProgressStore
 import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
+import com.shizq.bika.feature.reader.impl.progress.ChapterProgress
+import com.shizq.bika.feature.reader.impl.progress.ProgressWriteCoordinator
 import com.shizq.bika.feature.reader.impl.state.ChapterState
 import com.shizq.bika.feature.reader.impl.state.ReaderAction
 import com.shizq.bika.feature.reader.impl.state.ReaderSheet
@@ -25,8 +26,15 @@ class ReaderStateMachine @Inject constructor(
     private val savedStateHandle: SavedStateHandle,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val historyDao: ReadingHistoryDao,
-    private val progressStore: ReadingProgressStore,
 ) : FlowReduxStateMachineFactory<ReaderUiState, ReaderAction>() {
+
+    /**
+     * 由 ReaderViewModel 在创建 ReadingProgressManager 后接上。
+     * 状态机自身不持有 ReadingProgressStore——进度写入只有一个入口（写入流水线），
+     * 状态机直接写库正是旧实现里第四个无序写入者的来源。
+     */
+    var progressWriteCoordinator: ProgressWriteCoordinator = ProgressWriteCoordinator.NoOp
+
     init {
         spec {
             inState<ReaderUiState.Initializing> {
@@ -51,15 +59,21 @@ class ReaderStateMachine @Inject constructor(
                     val newOrder = action.chapter.order
                     savedStateHandle["order"] = newOrder
 
-                    // 用跳转前的 snapshot 保存旧章节的阅读进度，与切换章节合并成同一次 dispatch，
-                    // 天然保证顺序正确：不再依赖调用方额外 dispatch 一个“保存进度”的 action，
-                    // 也不存在两个 action 并发执行导致进度写错章节的竞态。
-                    // saveSuspend 内部处理 meta==null（totalImages=0 占位）。
-                    progressStore.store(
-                        snapshot.id,
-                        previousChapter.order,
-                        previousChapter.meta,
-                        action.currentPage
+                    // 用跳转前的 snapshot 构造旧章节进度，交给写入流水线。
+                    // 与切换章节合并成同一次 dispatch，天然保证顺序正确。
+                    //
+                    // 改动点：不再直接调 progressStore.store。那是第四个独立写入者，
+                    // 与防抖写入之间没有顺序约束。现在走 progressManager，与其余
+                    // 三条路径共用同一个 collector；同时它会关闭写库闸门，
+                    // 让新章节在恢复确认前不写库。
+                    progressWriteCoordinator.onChapterSwitch(
+                        ChapterProgress(
+                            comicId = snapshot.id,
+                            chapterOrder = previousChapter.order,
+                            pageIndex = action.currentPage,
+                            totalPages = previousChapter.meta?.totalImages ?: 0,
+                            chapterTitle = previousChapter.meta?.title.orEmpty(),
+                        )
                     )
 
                     // startFromBeginning=true：自动跳转到下一章，始终从第 0 页开始。
@@ -166,14 +180,11 @@ class ReaderStateMachine @Inject constructor(
                         copy(uiControl = uiControl.copy(readerSheet = ReaderSheet.None))
                     }
                 }
-                onActionEffect<ReaderAction.PersistProgress> {
-                    progressStore.store(
-                        snapshot.id,
-                        snapshot.chapter.order,
-                        snapshot.chapter.meta,
-                        it.page
-                    )
-                }
+                // PersistProgress action 已删除：进度写入不再绕状态机一圈。
+                // 旧路径是 controller 观测到页码 -> onPersist 回调 -> dispatch(PersistProgress)
+                // -> handler 从 snapshot 读章节信息 -> store。中间那次 dispatch 让
+                // 「写哪一章」取决于 action 被调度的时刻，切章瞬间会写错章节。
+                // 现在页码在观测点就与章节身份绑成 ChapterProgress，直接进写入流水线。
             }
         }
     }

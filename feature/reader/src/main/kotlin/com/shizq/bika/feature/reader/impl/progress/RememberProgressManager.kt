@@ -1,97 +1,58 @@
 package com.shizq.bika.feature.reader.impl.progress
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.feature.reader.impl.layout.ReaderController
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.launch
 
 /**
- * 在 Compose 中创建并管理 ReadingProgressManager
+ * 把 composition 里的 controller / pagingItems 接到 ViewModel 持有的
+ * [ReadingProgressManager] 上。
  *
- * 功能：
- * 1. 自动恢复到 initialPage
- * 2. 跟踪页面变化并防抖保存
- * 3. 在关键时机（ON_STOP、onDispose）立即保存
- *
- * @param controller 阅读控制器
- * @param imageList 页面数据（Paging）
- * @param initialPage 初始页码
- * @param onPersist 持久化函数：不挂起、立即返回，内部应将落库动作转交给不受组合生命周期
- *   影响的作用域（如 ViewModel.viewModelScope），而不是自己去写库。这一约束同时覆盖了
- *   页面跟踪防抖保存、ON_STOP、以及组合销毁（onDispose）三条调用路径——onDispose 里拿到的
- *   `rememberCoroutineScope()` 协程作用域会在组合销毁过程中被取消，提交给它的挂起任务
- *   不保证能在取消生效前被调度执行，因此这里统一要求同步回调。
- * @param config 配置（可选）
- * @return 进度管理器实例
+ * 与旧的 rememberReadingProgressManager 的区别：
+ * - 不再在这里创建 manager（它归 ViewModel），因此没有「manager 的 scope 是
+ *   rememberCoroutineScope」这个根问题
+ * - 只有一个 key（[ChapterKey]），恢复与跟踪在同一个 LaunchedEffect 里顺序执行，
+ *   不存在旧实现那种「LaunchedEffect(initialPage) 管恢复、LaunchedEffect(manager)
+ *   管跟踪、controller 按 chapterOrder 重建」三个 key 各走各路的情况
+ * - onDispose 只调 flush()（同步、写入在 viewModelScope），不需要 persistLastKnownPage
+ *   那种同步逃生口，也不需要向调用方施加「onPersist 必须不挂起」的契约
  */
 @Composable
-fun rememberReadingProgressManager(
+fun ReadingProgressEffect(
+    manager: ReadingProgressManager,
+    chapterKey: ChapterKey,
     controller: ReaderController,
-    imageList: LazyPagingItems<ChapterPage>,
+    pageItems: LazyPagingItems<ChapterPage>,
     initialPage: Int,
-    onPersist: (Int) -> Unit,
-    config: ProgressConfig = ProgressConfig()
-): ReadingProgressManager {
-    val scope = rememberCoroutineScope()
+    totalPages: Int,
+    chapterTitle: String,
+) {
+    val dataSource = remember(pageItems) { PagingDataSource(pageItems) }
 
-    val manager = remember(initialPage) {
-        ReadingProgressManager(
-            restoreStrategy = RetryRestoreStrategy(),
-            config = config,
-            trackingScope = scope,
+    // totalPages / chapterTitle 会在 meta 到达后变化，但不该重启恢复会话。
+    // 用 rememberUpdatedState 让跟踪协程读到最新值而不作为 key。
+    val currentTotalPages by rememberUpdatedState(totalPages)
+    val currentTitle by rememberUpdatedState(chapterTitle)
+
+    LaunchedEffect(chapterKey, controller, dataSource) {
+        manager.session(
+            key = chapterKey,
+            targetPage = initialPage,
+            totalPagesProvider = { currentTotalPages },
+            chapterTitleProvider = { currentTitle },
+            dataSource = dataSource,
+            controller = controller,
         )
     }
 
-    val dataSource = remember(imageList) {
-        PagingDataSource(imageList)
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
+        manager.flush()
     }
-
-    // 1. 恢复进度（每次 initialPage 变化时触发）
-    LaunchedEffect(initialPage) {
-        when (manager.restore(initialPage, dataSource, controller)) {
-            is RestoreResult.Success -> {
-            }
-            is RestoreResult.Timeout -> {
-            }
-            is RestoreResult.Failure -> {
-            }
-        }
-    }
-
-    // 2. 跟踪页面变化（manager 创建后立即开始）
-    LaunchedEffect(manager) {
-        manager.startTracking(pageFlow = controller.visibleItemIndex)
-    }
-
-    // 3. 生命周期感知：在 ON_STOP 时立即保存（此时组合仍在，scope 未被取消，可安全挂起等待）
-    val lifecycleOwner = LocalLifecycleOwner.current
-    DisposableEffect(lifecycleOwner) {
-        val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_STOP) {
-                scope.launch {
-                    val currentPage = controller.visibleItemIndex.first()
-                    manager.persistNow(currentPage, onPersist)
-                }
-            }
-        }
-        lifecycleOwner.lifecycle.addObserver(observer)
-
-        onDispose {
-            lifecycleOwner.lifecycle.removeObserver(observer)
-            manager.persistLastKnownPage { page ->
-                onPersist(page)
-            }
-        }
-    }
-
-    return manager
 }

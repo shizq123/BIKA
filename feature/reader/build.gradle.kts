@@ -17,4 +17,6 @@ dependencies {
     implementation(libs.flowredux)
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.telephoto)
+
+    testImplementation(libs.kotlinx.coroutines.test)
 }

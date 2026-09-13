@@ -54,8 +54,9 @@ import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
 import com.shizq.bika.feature.reader.impl.layout.ReaderLayoutHost
 import com.shizq.bika.feature.reader.impl.layout.SideSheetLayout
 import com.shizq.bika.feature.reader.impl.layout.rememberReaderContext
-import com.shizq.bika.feature.reader.impl.progress.ProgressState
-import com.shizq.bika.feature.reader.impl.progress.rememberReadingProgressManager
+import com.shizq.bika.feature.reader.impl.progress.ChapterKey
+import com.shizq.bika.feature.reader.impl.progress.ReadingProgressEffect
+import com.shizq.bika.feature.reader.impl.progress.ReadingProgressManager
 import com.shizq.bika.feature.reader.impl.state.ReaderAction
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.HideSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.JumpToChapter
@@ -75,13 +76,10 @@ import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
 import com.shizq.bika.feature.reader.impl.util.preload.rememberAdaptivePreloadCount
 import com.shizq.bika.feature.reader.impl.util.rememberScrubState
 import com.shizq.bika.feature.reader.impl.util.rememberTopEndSystemAwarePadding
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.launch
-
-private val logger = KotlinLogging.logger("ReaderScreen")
 
 @Composable
 fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -> Unit) {
@@ -94,6 +92,7 @@ fun ReaderScreen(viewModel: ReaderViewModel = hiltViewModel(), onBackClick: () -
         state = uiState,
         pageItems = pageItems,
         chapterItems = chapterItems,
+        progressManager = viewModel.progressManager,
         onBackClick = onBackClick,
         dispatch = viewModel::dispatch,
     )
@@ -106,6 +105,7 @@ private fun ReaderContent(
     state: ReaderUiState,
     pageItems: LazyPagingItems<ChapterPage>,
     chapterItems: LazyPagingItems<Chapter>,
+    progressManager: ReadingProgressManager,
     onBackClick: () -> Unit = {},
     dispatch: (ReaderAction) -> Unit = {},
 ) {
@@ -115,6 +115,7 @@ private fun ReaderContent(
             state = state,
             pageItems = pageItems,
             chapterItems = chapterItems,
+            progressManager = progressManager,
             onBackClick = onBackClick,
             dispatch = dispatch,
         )
@@ -127,6 +128,7 @@ private fun ReaderReadyContent(
     state: ReaderUiState.Ready,
     pageItems: LazyPagingItems<ChapterPage>,
     chapterItems: LazyPagingItems<Chapter>,
+    progressManager: ReadingProgressManager,
     onBackClick: () -> Unit,
     dispatch: (ReaderAction) -> Unit,
 ) {
@@ -145,36 +147,20 @@ private fun ReaderReadyContent(
         chapterOrder = chapterState.order,
     )
     val controller = readerContext.controller
-    val progressManager = rememberReadingProgressManager(
+
+    // 恢复 + 跟踪。单一 key（ChapterKey），恢复与跟踪在同一个协程里顺序执行。
+    // 旧实现是三个 key 各走各路：LaunchedEffect(initialPage) 管恢复、
+    // LaunchedEffect(manager) 管跟踪、controller 按 chapterOrder 重建——
+    // 切到 initialPage 相同的章节时前两者不重启，跟踪协程会继续 collect 旧 controller。
+    ReadingProgressEffect(
+        manager = progressManager,
+        chapterKey = ChapterKey(comicId = state.id, chapterOrder = chapterState.order),
         controller = controller,
-        imageList = pageItems,
+        pageItems = pageItems,
         initialPage = chapterState.initialPage,
-        onPersist = { dispatch(ReaderAction.PersistProgress(it)) },
+        totalPages = chapterState.totalPages,
+        chapterTitle = chapterState.meta?.title.orEmpty(),
     )
-
-    // 监听进度恢复状态（用于调试和日志）
-    val progressState by progressManager.state.collectAsStateWithLifecycle()
-    LaunchedEffect(progressState) {
-        when (val restoreState = progressState) {
-            is ProgressState.Restoring -> {
-                logger.debug { "正在恢复进度到第 ${restoreState.targetPage} 页" }
-            }
-
-            is ProgressState.Restored -> {
-                logger.debug { "进度已恢复到第 ${restoreState.actualPage} 页" }
-            }
-
-            is ProgressState.RestoreFailed -> {
-                logger.warn { "进度恢复失败: ${restoreState.reason}" }
-            }
-
-            is ProgressState.Tracking -> {
-                // 正在跟踪页面变化，不需要日志（太频繁）
-            }
-
-            else -> {}
-        }
-    }
 
     // 上下章导航：由 StateMachine 根据完整目录（state.catalog）解析出相邻章节，
     // 不再在 UI 层用 chapterList.peek() 推算——分页窗口只加载了首屏，
