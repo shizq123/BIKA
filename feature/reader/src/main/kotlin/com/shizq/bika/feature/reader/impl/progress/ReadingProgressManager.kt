@@ -5,7 +5,6 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
-import kotlinx.coroutines.flow.distinctUntilChanged
 
 private val logger = KotlinLogging.logger("ProgressManager")
 
@@ -99,7 +98,6 @@ class ReadingProgressManager(
         controller: ReaderController,
     ) {
         controller.visibleItemIndex
-            .distinctUntilChanged()
             .collectLatest { page ->
                 writer.submit(
                     ChapterProgress(
