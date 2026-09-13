@@ -8,7 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
 /**
- * 跨页分组的共享状态，由 [PagerLayout]（渲染）和 [PagerController]（页码换算）
+ * 跨页分组的共享状态，由 [PagerLayoutStrategy]（渲染）和 [PagerController]（页码换算）
  * 共同读取，保证两边看到的是同一份分组。
  *
  * 分组结果是 derived 的：宽页集合或总页数变化时自动重算，调用方不需要手动同步。
@@ -37,7 +37,7 @@ class PageSpreadState(
 
     /**
      * 分组变化后需要重新定位到的**真实页码**，null 表示无待处理的重定位。
-     * 由 [PagerLayout] 消费，见 [consumePendingAnchor]。
+     * 由 [PagerLayoutStrategy] 消费，见 [consumePendingAnchor]。
      */
     var pendingAnchorPage: Int? by mutableStateOf(null)
         private set

@@ -21,21 +21,21 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 
-class PagerLayout(
+class PagerLayoutStrategy(
     private val pagerState: PagerState,
     private val direction: Direction,
     private val isRtl: Boolean,
     private val spreadState: PageSpreadState,
-) : ReaderLayout {
+) : ReaderLayoutStrategy {
 
     /**
      * 翻页模式由每页自己缩放：容器和页面同时注册缩放手势会互相抢事件。
      * 跨页模式下也让左右两页各自独立缩放。
      */
-    override val ownsPageGestures: Boolean = true
+    override val isGestureSelfContained: Boolean = true
 
     @Composable
-    override fun Content(
+    override fun RenderContent(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,

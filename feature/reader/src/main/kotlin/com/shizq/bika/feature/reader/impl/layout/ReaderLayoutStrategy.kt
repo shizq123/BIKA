@@ -25,7 +25,7 @@ import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 
-interface ReaderLayout {
+interface ReaderLayoutStrategy {
     /**
      * 该布局是否自己处理缩放与点击。
      *
@@ -33,10 +33,10 @@ interface ReaderLayout {
      * 抢事件，表现为捏合时页面乱跳。翻页模式让每页独立缩放，条漫模式仍由
      * 容器整体缩放（连续滚动下逐页缩放没有意义）。
      */
-    val ownsPageGestures: Boolean get() = false
+    val isGestureSelfContained: Boolean get() = false
 
     @Composable
-    fun Content(
+    fun RenderContent(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
@@ -111,7 +111,7 @@ fun ReaderLayoutHost(
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val viewSize = IntSize(constraints.maxWidth, constraints.maxHeight)
         val layout = readerContext.layout
-        val gestureModifier = if (layout.ownsPageGestures) {
+        val gestureModifier = if (layout.isGestureSelfContained) {
             Modifier
         } else {
             Modifier.zoomable(
@@ -124,7 +124,7 @@ fun ReaderLayoutHost(
             )
         }
         key(layout::class) {
-            layout.Content(
+            layout.RenderContent(
                 pageItems = pageItems,
                 modifier = Modifier
                     .fillMaxSize()

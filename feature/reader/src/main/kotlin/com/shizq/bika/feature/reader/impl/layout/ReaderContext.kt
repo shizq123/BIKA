@@ -26,7 +26,7 @@ import com.shizq.bika.feature.reader.impl.util.preload.SpreadScrollStateProvider
  */
 @Stable
 class ReaderContext(
-    val layout: ReaderLayout,
+    val layout: ReaderLayoutStrategy,
     val controller: ReaderController,
     val scrollStateProvider: ScrollStateProvider,
     val config: ReaderConfig = ReaderConfig.Default,
@@ -98,7 +98,7 @@ fun rememberReaderContext(
                 )
 
                 val layout = remember(listState, readingMode.hasPageGap) {
-                    WebtoonLayout(
+                    WebtoonLayoutStrategy(
                         listState = listState,
                         hasPageGap = readingMode.hasPageGap
                     )
@@ -139,7 +139,7 @@ fun rememberReaderContext(
 
                 val layout =
                     remember(pagerState, readingMode.direction, readingMode.isRtl, spreadState) {
-                        PagerLayout(
+                        PagerLayoutStrategy(
                             pagerState = pagerState,
                             direction = readingMode.direction,
                             isRtl = readingMode.isRtl,

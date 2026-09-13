@@ -15,15 +15,15 @@ import com.shizq.bika.core.data.paging.ChapterPage
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 
-class WebtoonLayout(
+class WebtoonLayoutStrategy(
     private val listState: LazyListState,
     private val hasPageGap: Boolean
-) : ReaderLayout {
+) : ReaderLayoutStrategy {
     /** 条漫由容器整体缩放：连续滚动下逐页缩放没有意义。 */
-    override val ownsPageGestures: Boolean = false
+    override val isGestureSelfContained: Boolean = false
 
     @Composable
-    override fun Content(
+    override fun RenderContent(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
