@@ -7,9 +7,6 @@ import kotlinx.coroutines.flow.Flow
  * 屏蔽了底层实现（LazyColumn vs Pager）的差异
  */
 interface ReaderController {
-    // 总页数（用于进度条显示）
-    val totalPages: Int
-
     val visibleItemIndex: Flow<Int>
 
     /**

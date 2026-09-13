@@ -58,9 +58,6 @@ class WebtoonController(
     
     private var lastValidIndex: Int = initialPageIndex
 
-    override val totalPages: Int
-        get() = listState.layoutInfo.totalItemsCount
-
     override val continuousScroller: ContinuousScroller = object : ContinuousScroller {
         override suspend fun scrollBy(pixels: Float): Float = listState.scrollBy(pixels)
 

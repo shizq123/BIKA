@@ -43,19 +43,16 @@ data class ChapterState(
 /**
  * @param showSystemBars 是否显示系统栏/顶部/底部工具栏
  * @param readerSheet 当前激活的浮层 (BottomSheet 或 SideSheet)
- * @param seekState 进度条拖拽状态
+ *
+ * 拖动进度条的状态不在这里：它是单消费者的 UI 瞬态，由
+ * [com.shizq.bika.feature.reader.impl.util.ScrubState] 直接持有，
+ * 松手后调 controller.scrollToPage 即可，不需要绕状态机一圈往返。
  */
 @Immutable
 data class UiControlState(
     val showSystemBars: Boolean = false,
     val readerSheet: ReaderSheet = ReaderSheet.None,
-    val seekState: SeekState = SeekState.Idle
 )
-
-sealed interface SeekState {
-    data object Idle : SeekState
-    data class Seeking(val targetPage: Float) : SeekState
-}
 
 sealed interface ReaderAction {
     /**
@@ -89,8 +86,6 @@ sealed interface ReaderAction {
 
     data class ChapterMetaLoaded(val meta: ChapterMeta) : ReaderAction
     data class ChapterCatalogLoaded(val catalog: ChapterCatalog) : ReaderAction
-
-    data object SeekConsumed : ReaderAction
 
     /**
      * 持久化当前阅读进度（常规翻页自动保存、ON_STOP/组合销毁兜底保存均走此 action）。

@@ -8,6 +8,7 @@ import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -17,6 +18,7 @@ import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.Direction
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.map
 
 class PagerLayout(
@@ -39,6 +41,20 @@ class PagerLayout(
         onPageTap: (PageTapContext) -> Unit,
     ) {
         val spreads = spreadState.spreads
+
+        // 分组重排后把视口拉回同一张真实页。
+        // 只在 onPageMeasured 判定「宽页出现在当前位置之前」时才有待处理值，
+        // 因此不会与进度恢复（ProgressManager 的 scrollToPage）互相打断：
+        // 分页加载导致的 itemCount 增长只在末尾追加分组，不会触发重定位。
+        val pendingAnchor = spreadState.pendingAnchorPage
+        LaunchedEffect(pendingAnchor, spreads) {
+            val anchor = spreadState.consumePendingAnchor() ?: return@LaunchedEffect
+            val target = spreads.spreadIndexOfPage(anchor)
+            if (target != pagerState.currentPage && target < pagerState.pageCount) {
+                pagerState.scrollToPage(target)
+            }
+        }
+
         val pageContent: @Composable (Int) -> Unit = { spreadIndex ->
             // spreads 与 pagerState.pageCount 都来自同一份分组，但 Pager 的
             // pageCount 更新与重组之间存在一帧的窗口，越界时退出而不是崩溃。
@@ -141,7 +157,16 @@ class PagerLayout(
             zoomable = true,
             onTap = onPageTap,
             onSizeLoaded = { width, height ->
-                spreadState.onPageMeasured(index, width, height)
+                // anchorPage 取上报**当时**用户所在的真实页码：测出宽页会改变分组，
+                // 若该宽页在当前位置之前，pagerState.currentPage 的含义会漂移一位。
+                spreadState.onPageMeasured(
+                    pageIndex = index,
+                    width = width,
+                    height = height,
+                    anchorPage = spreadState.spreads
+                        .getOrNull(pagerState.currentPage)
+                        ?.startIndex,
+                )
             },
         )
     }
@@ -152,9 +177,6 @@ class PagerController(
     private val spreadState: PageSpreadState,
 ) : ReaderController {
 
-    override val totalPages: Int
-        get() = spreadState.pageCount
-
     /**
      * Pager 按页吸附，无法平滑推进偏移量，不具备连续滚动能力。
      * 调用方（自动滚动）据此判断入口是否展示，不存在"点了没反应"的静默失效。
@@ -164,12 +186,14 @@ class PagerController(
     /**
      * 当前页码取所在翻页单位的首页。
      *
-     * 不再在 snapshotFlow 里写外部可变字段：那是对快照系统的副作用，
-     * 多个订阅者会互相干扰。空列表时直接发 0，由下游自己判断有效性。
+     * 分组尚未建立时（章节切换后 itemCount 仍为 0）不发射，而不是发 0。
+     * 发 0 会被下游当成"用户正停在第 1 页"：ReadingProgressManager 会把它
+     * 写进数据库，覆盖掉真实进度；页码徽章也会闪一下 "1 / N"。
+     * 下游用 collectAsState(0) 自带初始值，等真实页码到达即可。
      */
     override val visibleItemIndex = snapshotFlow {
-        spreadState.spreads.getOrNull(pagerState.currentPage)?.startIndex ?: 0
-    }.distinctUntilChanged()
+        spreadState.spreads.getOrNull(pagerState.currentPage)?.startIndex
+    }.filterNotNull().distinctUntilChanged()
 
     override suspend fun scrollNextPage() {
         val target = pagerState.currentPage + 1

@@ -18,14 +18,18 @@ fun <T : Any> PagingPreload(
     scrollDebounceMillis: Long = 200L
 ) {
     val context = LocalContext.current
+    val enqueuer = remember(context) { CoilPreloadRequestEnqueuer(context) }
 
-    val preloader = remember(context, modelProvider, preloadCount) {
-        val dataProvider = PagingPreloadDataProvider(pagingItems)
+    // scrollStateProvider 是 key：它随章节重建（rememberReaderContext 里包了
+    // key(chapterOrder)），据此重建 preloader 才能重置其内部的滚动方向状态。
+    // 缺了它的话切章后第一次回调会把方向判反，漏掉一轮预载。
+    // pagingItems 不能当 key：它整章共用同一个实例，切章时引用不变。
+    val preloader = remember(scrollStateProvider, modelProvider, enqueuer, preloadCount) {
         ListPreloader(
-            context = context,
-            dataProvider = dataProvider,
+            dataProvider = PagingPreloadDataProvider(pagingItems),
             modelProvider = modelProvider,
-            maxPreload = preloadCount
+            enqueuer = enqueuer,
+            maxPreload = preloadCount,
         )
     }
 
@@ -34,7 +38,7 @@ fun <T : Any> PagingPreload(
             .debounce(scrollDebounceMillis)
             .collect { visibleRange ->
                 if (visibleRange != null) {
-                    preloader.onScroll(this, visibleRange.first, visibleRange.last)
+                    preloader.onScroll(visibleRange.first, visibleRange.last)
                 }
             }
     }

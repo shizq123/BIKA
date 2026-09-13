@@ -4,7 +4,6 @@ package com.shizq.bika.feature.reader.impl.statemachine
 
 import androidx.lifecycle.SavedStateHandle
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
-import io.github.oshai.kotlinlogging.KotlinLogging
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -14,8 +13,8 @@ import com.shizq.bika.feature.reader.impl.state.ChapterState
 import com.shizq.bika.feature.reader.impl.state.ReaderAction
 import com.shizq.bika.feature.reader.impl.state.ReaderSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderUiState
-import com.shizq.bika.feature.reader.impl.state.SeekState
 import com.shizq.bika.feature.reader.impl.state.UiControlState
+import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -72,11 +71,10 @@ class ReaderStateMachine @Inject constructor(
                             isLoading = true,
                             initialPage = startPage,
                         )
+                        // uiControl 整体重置：切章后浮层应关闭、栏显隐回到默认。
                         copy(
                             chapter = newChapterState,
-                            uiControl = UiControlState(
-                                seekState = SeekState.Idle
-                            )
+                            uiControl = UiControlState(),
                         )
                     }
                 }
@@ -166,11 +164,6 @@ class ReaderStateMachine @Inject constructor(
                 on<ReaderAction.HideSheet> {
                     mutate {
                         copy(uiControl = uiControl.copy(readerSheet = ReaderSheet.None))
-                    }
-                }
-                on<ReaderAction.SeekConsumed> {
-                    mutate {
-                        copy(uiControl = uiControl.copy(seekState = SeekState.Idle))
                     }
                 }
                 onActionEffect<ReaderAction.PersistProgress> {

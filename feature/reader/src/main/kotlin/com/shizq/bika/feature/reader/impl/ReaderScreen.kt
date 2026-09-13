@@ -2,70 +2,44 @@
 
 package com.shizq.bika.feature.reader.impl
 
-import android.content.pm.ActivityInfo
-import android.view.WindowManager
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.core.view.WindowCompat
-import androidx.core.view.WindowInsetsCompat
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
-import coil3.request.crossfade
-import io.github.oshai.kotlinlogging.KotlinLogging
-import com.shizq.bika.core.context.findActivity
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.model.ChapterNavigation
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.ReadingMode
-import com.shizq.bika.core.model.reader.ScreenOrientation
 import com.shizq.bika.core.ui.FullScreenLoading
-import com.shizq.bika.core.ui.composition.LocalWindow
 import com.shizq.bika.feature.reader.impl.autoscroll.AutoScrollControlPanel
 import com.shizq.bika.feature.reader.impl.autoscroll.rememberAutoScrollController
 import com.shizq.bika.feature.reader.impl.bar.ReaderBottomBar
@@ -74,11 +48,11 @@ import com.shizq.bika.feature.reader.impl.components.ChapterList
 import com.shizq.bika.feature.reader.impl.components.ReadingModeSelectBottomSheet
 import com.shizq.bika.feature.reader.impl.components.ReadingSettingsBottomSheet
 import com.shizq.bika.feature.reader.impl.components.ScreenOrientationSelectBottomSheet
+import com.shizq.bika.feature.reader.impl.components.ScrubPreviewOverlay
 import com.shizq.bika.feature.reader.impl.components.StatusBarCapsule
 import com.shizq.bika.feature.reader.impl.gesture.rememberGestureState
 import com.shizq.bika.feature.reader.impl.layout.LocalReaderConfig
 import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
-import com.shizq.bika.feature.reader.impl.layout.ReaderController
 import com.shizq.bika.feature.reader.impl.layout.ReaderLayoutHost
 import com.shizq.bika.feature.reader.impl.layout.SideSheetLayout
 import com.shizq.bika.feature.reader.impl.layout.rememberReaderContext
@@ -95,14 +69,15 @@ import com.shizq.bika.feature.reader.impl.state.ReaderAction.ShowSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.ToggleBarsVisibility
 import com.shizq.bika.feature.reader.impl.state.ReaderSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderUiState
-import com.shizq.bika.feature.reader.impl.state.SeekState
+import com.shizq.bika.feature.reader.impl.system.ReaderSystemEffects
 import com.shizq.bika.feature.reader.impl.util.ChapterAdvancePolicy
 import com.shizq.bika.feature.reader.impl.util.ScrubState
-import com.shizq.bika.feature.reader.impl.util.preload.AdaptivePreloadTracker
 import com.shizq.bika.feature.reader.impl.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
+import com.shizq.bika.feature.reader.impl.util.preload.rememberAdaptivePreloadCount
 import com.shizq.bika.feature.reader.impl.util.rememberScrubState
 import com.shizq.bika.feature.reader.impl.util.rememberTopEndSystemAwarePadding
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
@@ -234,13 +209,6 @@ private fun ReaderReadyContent(
     // TODO: 暂时移除
 //            BackHandler(onBack = onBackClick)
 
-    LaunchedEffect(overlayState.seekState) {
-        if (overlayState.seekState is SeekState.Seeking) {
-            controller.scrollToPage(overlayState.seekState.targetPage.toInt())
-            dispatch(ReaderAction.SeekConsumed)
-        }
-    }
-
     ChapterAutoAdvanceEffect(
         chapterOrder = chapterState.order,
         totalPages = chapterState.totalPages,
@@ -307,9 +275,11 @@ private fun ReaderReadyContent(
                 },
                 floatingMessage = {
                     if (chapterState.totalPages > 0) {
-                        CurrentPageBadge(
-                            controller = controller,
-                            totalPages = chapterState.totalPages
+                        // 复用已提升到本层的 currentPage：原先 CurrentPageBadge 自己
+                        // 又 collect 了一次 visibleItemIndex，同一个 Flow 被订阅两次。
+                        PageIndicatorBadge(
+                            pageNumber = currentPage + 1,
+                            total = chapterState.totalPages,
                         )
                     }
                 },
@@ -432,21 +402,6 @@ private fun ChapterAutoAdvanceEffect(
                 }
             }
     }
-}
-
-/**
- * 根据翻页速率动态调整预载张数：扫读时提高预载数量，精读时降低，参见 [AdaptivePreloadTracker]。
- */
-@Composable
-private fun rememberAdaptivePreloadCount(currentPage: Int, baselineCount: Int): Int {
-    val tracker = remember { AdaptivePreloadTracker() }
-    var preloadCount by remember(baselineCount) { mutableIntStateOf(baselineCount) }
-
-    LaunchedEffect(currentPage) {
-        preloadCount = tracker.onPageChanged(System.currentTimeMillis(), baselineCount)
-    }
-
-    return preloadCount
 }
 
 @Composable
@@ -587,180 +542,4 @@ fun ReaderBottomSheet(
     }
 }
 
-/**
- * 阅读器所需的系统级副作用集合：屏幕方向锁定、常亮、系统栏显隐。
- */
-@Composable
-private fun ReaderSystemEffects(
-    showSystemBars: Boolean,
-    screenOrientation: ScreenOrientation,
-) {
-    SystemBarsEffect(showSystemBars = showSystemBars)
-    KeepScreenOnEffect()
-    OrientationEffect(screenOrientation)
-}
 
-@Composable
-fun OrientationEffect(orientation: ScreenOrientation) {
-    val context = LocalContext.current
-    LaunchedEffect(orientation) {
-        val activity = context.findActivity()
-        activity?.requestedOrientation = when (orientation) {
-            ScreenOrientation.System -> ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
-            ScreenOrientation.Portrait -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
-            ScreenOrientation.Landscape -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-            ScreenOrientation.LockPortrait -> ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
-            ScreenOrientation.LockLandscape -> ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
-            ScreenOrientation.ReversePortrait -> ActivityInfo.SCREEN_ORIENTATION_REVERSE_PORTRAIT
-        }
-    }
-}
-
-@Composable
-fun KeepScreenOnEffect() {
-    val window = LocalWindow.current
-
-    DisposableEffect(Unit) {
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        onDispose {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
-        }
-    }
-}
-
-@Composable
-private fun SystemBarsEffect(showSystemBars: Boolean) {
-    val window = LocalWindow.current
-
-    DisposableEffect(window, showSystemBars) {
-        val controller = WindowCompat.getInsetsController(window, window.decorView)
-        controller.systemBarsBehavior =
-            WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
-
-        if (showSystemBars) {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-        } else {
-            controller.hide(WindowInsetsCompat.Type.systemBars())
-        }
-
-        onDispose {
-            controller.show(WindowInsetsCompat.Type.systemBars())
-        }
-    }
-}
-
-@Composable
-private fun CurrentPageBadge(controller: ReaderController, totalPages: Int) {
-    val currentPageIndex by controller.visibleItemIndex.collectAsState(0)
-    PageIndicatorBadge(pageNumber = currentPageIndex + 1, total = totalPages)
-}
-
-/** 拖动中命中未加载页时，停留超过这个时长才触发真实加载，避免快速划过时刷屏式请求。 */
-private const val ScrubPreviewLoadDebounceMillis = 200L
-
-/**
- * 拖动预览浮层：读取 [ScrubState.previewPageIndex]，独立成一个非 inline 的 Composable，
- * 使拖动过程中的重组只发生在这里，不波及 ReaderReadyContent 整个函数体。
- *
- * 取图优先用 [LazyPagingItems.peek]：它只读已加载缓存，不会把 index 记为“已访问”。
- * pageItems 同时被 [rememberReaderContext]（取 itemCount）、[PagingPreload]（预载）、
- * 实际渲染层（WebtoonLayout/PagerLayout）共享，而 `get()`（即 `pageItems[index]`）会
- * 把 index 写入 Paging 内部的访问记录——[ChapterPagesPagingSource.getRefreshKey] 靠它
- * 算下次刷新的锚点，Paging 自身的 prefetch 也会围绕它触发加载。拖动时 onScrub 每帧调用，
- * 手指划过的每个索引都调 get() 等于每帧一次“污染访问记录 + 可能触发网络请求”，而其中
- * 绝大多数页用户根本不会真的停留。因此只在同一页停留超过 [ScrubPreviewLoadDebounceMillis]
- * 后才退到 get()，此时用户大概率真的要去这一页，触发一次真实加载是合理的。
- */
-@Composable
-private fun ScrubPreviewOverlay(
-    scrubState: ScrubState,
-    pageItems: LazyPagingItems<ChapterPage>,
-    totalPages: Int,
-    modifier: Modifier = Modifier,
-) {
-    val pageIndex = scrubState.previewPageIndex ?: return
-    val cachedUrl = pageItems.peek(pageIndex)?.url
-
-    var settledUrl by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(pageIndex) {
-        settledUrl = null
-        if (cachedUrl == null) {
-            delay(ScrubPreviewLoadDebounceMillis)
-            settledUrl = pageIndex.takeIf { it in 0 until pageItems.itemCount }
-                ?.let { pageItems[it]?.url }
-        }
-    }
-
-    ScrubPreviewCard(
-        pageUrl = cachedUrl ?: settledUrl,
-        previewPageIndex = pageIndex,
-        totalPages = totalPages,
-        modifier = modifier,
-    )
-}
-
-/**
- * @param previewPageIndex 拖动进度条时预览的目标页（0-based），不代表当前实际停留的页
- */
-@Composable
-private fun ScrubPreviewCard(
-    pageUrl: String?,
-    previewPageIndex: Int,
-    totalPages: Int,
-    modifier: Modifier = Modifier
-) {
-    Surface(
-        shape = RoundedCornerShape(8.dp),
-        color = Color.Black.copy(alpha = 0.75f),
-        border = BorderStroke(
-            0.5.dp,
-            Color.White.copy(alpha = 0.15f)
-        ),
-        shadowElevation = 4.dp,
-        modifier = modifier
-            .width(90.dp)
-            .height(130.dp)
-    ) {
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (!pageUrl.isNullOrEmpty()) {
-                AsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(pageUrl)
-                        .crossfade(true)
-                        .build(),
-                    contentDescription = "Preview Page ${previewPageIndex + 1}",
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize()
-                )
-            } else {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.DarkGray.copy(alpha = 0.3f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(24.dp),
-                        strokeWidth = 2.dp
-                    )
-                }
-            }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .align(Alignment.BottomCenter)
-                    .background(Color.Black.copy(alpha = 0.65f))
-                    .padding(vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${previewPageIndex + 1} / $totalPages",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = Color.White,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-        }
-    }
-}

@@ -42,6 +42,7 @@ fun BottomSheet(
         initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     ),
+    footer: @Composable ColumnScope.() -> Unit = {},
     content: @Composable ColumnScope.() -> Unit,
 ) {
     ModalBottomSheet(
@@ -74,10 +75,20 @@ fun BottomSheet(
                     .padding(horizontal = 24.dp, vertical = 24.dp),
                 content = content
             )
+
+            // footer 放在内容 Column **之外**：内容区已有 24.dp 横向内边距，
+            // 嵌进去会让按钮行的边距翻倍。
+            footer()
         }
     }
 }
 
+/**
+ * 带「取消 / 应用」按钮行的选择面板。
+ *
+ * 复用 [BottomSheet] 的骨架（标题 + 分隔线 + 内容），只追加底部按钮行。
+ * 之前这里把整个骨架抄了一遍，两份布局参数需要手工保持一致。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ModeSelectionBottomSheet(
@@ -104,37 +115,12 @@ fun ModeSelectionBottomSheet(
         }
     }
 
-    ModalBottomSheet(
+    BottomSheet(
+        title = title,
         onDismissRequest = onDismissRequest,
-        sheetState = sheetState,
         modifier = modifier,
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .navigationBarsPadding()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 8.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-
-            HorizontalDivider()
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 24.dp),
-                content = content
-            )
-
+        sheetState = sheetState,
+        footer = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -167,8 +153,9 @@ fun ModeSelectionBottomSheet(
                     Text("应用")
                 }
             }
-        }
-    }
+        },
+        content = content,
+    )
 }
 
 @Preview(showBackground = true)

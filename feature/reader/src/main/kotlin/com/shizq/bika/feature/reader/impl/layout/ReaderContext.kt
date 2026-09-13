@@ -22,7 +22,7 @@ import com.shizq.bika.feature.reader.impl.util.preload.SpreadScrollStateProvider
 /**
  * 不再暴露 LazyListState：那会绕过 [ReaderController] 的抽象，
  * 让调用方用 `lazyListState != null` 反推「是不是条漫模式」。
- * 滚动能力查询走 [ReaderController.supportsContinuousScroll]。
+ * 滚动能力查询走 [ReaderController.continuousScroller] 是否为 null。
  */
 @Stable
 class ReaderContext(

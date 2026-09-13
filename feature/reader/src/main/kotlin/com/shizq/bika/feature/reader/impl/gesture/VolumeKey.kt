@@ -34,7 +34,9 @@ fun VolumeKeyNavigation(
     DisposableEffect(view, enabled) {
         if (enabled) {
             val listener = ViewCompat.OnUnhandledKeyEventListenerCompat { _, event ->
-                if (event.action != KeyEvent.ACTION_DOWN) {
+                // repeatCount > 0 是长按产生的重复事件：系统按约 50ms 一次持续投递，
+                // 全部响应会让长按音量键变成一次滚过十几页。只认第一次按下。
+                if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount > 0) {
                    false
                 }else{
                     when (event.keyCode) {

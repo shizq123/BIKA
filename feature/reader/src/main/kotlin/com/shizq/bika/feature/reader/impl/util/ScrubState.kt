@@ -50,6 +50,13 @@ internal class ScrubState(initialPageIndex: Int) {
     }
 }
 
+/**
+ * [initialPageIndex] 同时作为 remember 的 key：切章时必须重建。
+ *
+ * 用无 key 的 `remember {}` 时该参数只在首次组合被读一次，之后永远不再生效——
+ * 切章后滑块仍停在上一章的位置，要等 `syncToPage` 被调用才跟上。而新章的
+ * controller 尚未产出页码，中间这段时间滑块显示的是旧章进度。
+ */
 @Composable
 internal fun rememberScrubState(initialPageIndex: Int): ScrubState =
-    remember { ScrubState(initialPageIndex) }
+    remember(initialPageIndex) { ScrubState(initialPageIndex) }

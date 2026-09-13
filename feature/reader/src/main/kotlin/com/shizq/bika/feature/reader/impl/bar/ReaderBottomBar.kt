@@ -87,10 +87,11 @@ internal fun ReaderBottomBar(
                         ReadingMode.WEBTOON -> Icons.Rounded.Smartphone
                         else -> Icons.Rounded.ViewColumn
                     }
-                    Icon(icon, null)
+                    // 图标本身随模式变化，描述里带上当前模式，读屏用户才能知道处于哪种模式
+                    Icon(icon, contentDescription = "阅读模式：${readingMode.label}")
                 }
                 IconButton(onClick = onOpenOrientation) {
-                    Icon(Icons.Rounded.ScreenRotation, null)
+                    Icon(Icons.Rounded.ScreenRotation, contentDescription = "屏幕方向")
                 }
                 // 下一章
                 IconButton(

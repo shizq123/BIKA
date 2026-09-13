@@ -73,7 +73,11 @@ fun ReadingSettingsBottomSheet(
                             .padding(vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        var localPreloadCount by remember { mutableFloatStateOf(config.preloadCount.toFloat()) }
+                        // key 与下方 localDarkness/localSpeed 保持一致：无 key 时
+                        // 外部改变预载数（或重开面板复用了这次组合）滑块不会跟随。
+                        var localPreloadCount by remember(config.preloadCount) {
+                            mutableFloatStateOf(config.preloadCount.toFloat())
+                        }
                         Slider(
                             value = localPreloadCount,
                             onValueChange = { newValue ->
