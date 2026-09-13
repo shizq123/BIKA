@@ -64,14 +64,11 @@ class AwaitDataRestoreStrategyTest {
 
     @Test
     fun `占位项不算数据到位`() = runTest {
-        // 本项目 PagingConfig.enablePlaceholders = true，itemCount 首屏即等于服务端 total。
-        // 旧判据 `itemCount > targetPage` 在这里为真，会立刻"成功"；
-        // 正确判据 peek(index) != null 仍为假，必须继续等。
+        // 本项目 PagingConfig.enablePlaceholders = true，itemCount 首屏即等于服务端
+        // total（500），但真实加载的只有前 10 项。旧判据 `itemCount > targetPage`
+        // 在这里为真，会立刻"成功"并放开写库闸门；正确判据 peek(400) != null 仍为假。
         val controller = FakeController(initialPage = 0)
-        val dataSource = FakeDataSource(
-            loadedUpTo = 10,       // 只有前 10 项是真实数据
-            declaredCount = 500,   // 但 itemCount 报了 500（含 placeholder）
-        )
+        val dataSource = FakeDataSource(loadedUpTo = 10)
 
         val outcome = strategy.restore(400, dataSource, controller, config)
 
@@ -136,14 +133,13 @@ class AwaitDataRestoreStrategyTest {
     // ── 测试替身 ────────────────────────────────────────────────────────
 
     /**
-     * @param loadedUpTo 前 N 项是真实数据（peek 非 null）
-     * @param reportedCount itemCount 报告值，默认等于 loadedUpTo。
-     *   传入更大的值即模拟 enablePlaceholders=true：itemCount 远大于真实已加载数。
+     * @param loadedUpTo 前 N 项是真实数据（peek 非 null）。
+     *
+     * 注意这个假实现**没有** itemCount 的概念——接口里也没有。真实的
+     * LazyPagingItems 在 enablePlaceholders=true 下 itemCount 会立刻等于服务端
+     * total，与已加载数无关；把它排除在接口外，就不可能再写出依赖它的判据。
      */
-    private class FakeDataSource(
-        loadedUpTo: Int,
-        private val declaredCount: Int? = null,
-    ) : PageDataSource {
+    private class FakeDataSource(loadedUpTo: Int) : PageDataSource {
         private val loaded = MutableStateFlow(loadedUpTo)
 
         fun setLoadedUpTo(value: Int) {
@@ -151,8 +147,6 @@ class AwaitDataRestoreStrategyTest {
         }
 
         override fun isLoaded(index: Int): Boolean = index < loaded.value
-
-        override val reportedCount: Int get() = declaredCount ?: loaded.value
 
         override suspend fun awaitLoaded(index: Int) {
             loaded.first { index < it }

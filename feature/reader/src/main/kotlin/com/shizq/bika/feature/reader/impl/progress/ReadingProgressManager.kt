@@ -4,7 +4,6 @@ import com.shizq.bika.feature.reader.impl.layout.ReaderController
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
 
@@ -42,10 +41,10 @@ class ReadingProgressManager(
     private val restoreStrategy: ProgressRestoreStrategy,
     private val config: ProgressConfig,
 ) : ProgressWriteCoordinator {
-    private val _restoreOutcome = MutableStateFlow<RestoreOutcome?>(null)
 
     /** 恢复结果，null 表示尚未完成。供 UI 展示「恢复中/恢复失败」。 */
-    val restoreOutcome: StateFlow<RestoreOutcome?> = _restoreOutcome.asStateFlow()
+    val restoreOutcome: StateFlow<RestoreOutcome?>
+        field = MutableStateFlow<RestoreOutcome?>(null)
 
     /**
      * 一次章节会话：恢复 → 确认 → 开闸 → 跟踪。
@@ -65,10 +64,10 @@ class ReadingProgressManager(
         dataSource: PageDataSource,
         controller: ReaderController,
     ) {
-        _restoreOutcome.value = null
+        restoreOutcome.value = null
 
         val outcome = restoreStrategy.restore(targetPage, dataSource, controller, config)
-        _restoreOutcome.value = outcome
+        restoreOutcome.value = outcome
 
         when (outcome) {
             is RestoreOutcome.Confirmed -> {
@@ -136,6 +135,6 @@ class ReadingProgressManager(
             }
         }
         writer.closeGate()
-        _restoreOutcome.value = null
+        restoreOutcome.value = null
     }
 }
