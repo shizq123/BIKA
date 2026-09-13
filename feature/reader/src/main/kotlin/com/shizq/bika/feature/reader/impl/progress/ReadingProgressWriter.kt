@@ -3,19 +3,13 @@ package com.shizq.bika.feature.reader.impl.progress
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
-import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.launch
 import kotlin.time.Duration
 
 private val logger = KotlinLogging.logger("ProgressWriter")
@@ -68,15 +62,10 @@ class ReadingProgressWriter(
 
     init {
         merge(
-            // 闸门在**发射时**再查一次，不能只在 submit 时查：
-            // debounce 把待发值存在自己内部，closeGate() 无法撤回它。
-            // 时序：submit(第 21 页) -> 用户切章 -> closeGate() -> 1 秒后防抖触发。
-            // 若不在此处过滤，这条属于旧章节、且发生在切章写入之后的迟到写入
-            // 会覆盖掉 storeImmediately 刚写好的正确值。
-            submissions.debounce(debounce).filter { gate == PersistGate.Open },
+            submissions.debounce(debounce),
             // flush 不携带数据：取 replayCache 里最近一次提交值，避免调用方
             // 需要自己记住「当前页是多少」（旧实现的 lastKnownPage 就是干这个的）。
-            flushSignals.map { submissions.replayCache.lastOrNull() }.filterNotNull(),
+            flushSignals.mapNotNull { submissions.replayCache.lastOrNull() },
             immediateWrites,
         )
             // 只对相邻重复去重。注意不能把 immediateWrites 排除在外——切章写入的
