@@ -1,11 +1,13 @@
 package com.shizq.bika.feature.reader.impl.layout
 
+import android.content.res.Configuration
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.paging.compose.LazyPagingItems
@@ -64,6 +66,40 @@ data class ReaderConfig(
     }
 }
 
+/** 视口宽高比达到此值即视为「宽视口」，AUTO 模式据此启用跨页。 */
+internal const val WideViewportAspectRatio = 1.25f
+
+/**
+ * 视口是否够宽以容纳两页。
+ *
+ * 首帧 containerSize 可能还是 0×0，此时不能让 `0f / 0f`（= NaN）参与比较：
+ * NaN 的任何比较都是 false，会被误判成窄视口。尺寸未知时一律返回 false，
+ * 等真实尺寸到达后重算即可（调用方需把尺寸作为 remember key）。
+ */
+internal fun isWideViewport(widthPx: Int, heightPx: Int, isLandscape: Boolean): Boolean {
+    if (isLandscape) return true
+    if (widthPx <= 0 || heightPx <= 0) return false
+    return widthPx.toFloat() / heightPx.toFloat() >= WideViewportAspectRatio
+}
+
+/**
+ * 跨页（一屏两页）的最终判定。
+ *
+ * 只有翻页类 viewer 支持跨页：条漫是连续滚动，没有「一屏」的概念。
+ */
+internal fun resolveDoublePage(
+    viewerType: ViewerType,
+    bookSpreadsMode: BookSpreadsMode,
+    isWideViewport: Boolean,
+): Boolean {
+    if (viewerType != ViewerType.Pager) return false
+    return when (bookSpreadsMode) {
+        BookSpreadsMode.SINGLE -> false
+        BookSpreadsMode.DOUBLE -> true
+        BookSpreadsMode.AUTO -> isWideViewport
+    }
+}
+
 @Composable
 fun rememberReaderContext(
     readingMode: ReadingMode,
@@ -72,23 +108,25 @@ fun rememberReaderContext(
     initialPageIndex: Int,
     chapterOrder: Int,
 ): ReaderContext {
-    val configuration = LocalConfiguration.current
-    val windowInfo = LocalWindowInfo.current
-    val isLargeOrLandscape = remember(configuration) {
-        val aspect = windowInfo.containerSize.width.toFloat() / windowInfo.containerSize.height.toFloat()
-        aspect >= 1.25f || configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+    val containerSize = LocalWindowInfo.current.containerSize
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    // containerSize 参与计算就必须进 key：原先只 key 了 configuration，
+    // 首帧的 0×0 结果会被永久缓存，竖屏平板（非横屏但宽高比够）的 AUTO
+    // 模式会一直退化成单页，直到一次旋转才纠正。
+    val useDoublePage = remember(
+        containerSize,
+        isLandscape,
+        config.bookSpreadsMode,
+        readingMode.viewerType,
+    ) {
+        resolveDoublePage(
+            viewerType = readingMode.viewerType,
+            bookSpreadsMode = config.bookSpreadsMode,
+            isWideViewport = isWideViewport(containerSize.width, containerSize.height, isLandscape),
+        )
     }
-    val useDoublePage = remember(config.bookSpreadsMode, isLargeOrLandscape, readingMode) {
-        if (readingMode.viewerType != ViewerType.Pager) {
-            false
-        } else {
-            when (config.bookSpreadsMode) {
-                BookSpreadsMode.SINGLE -> false
-                BookSpreadsMode.DOUBLE -> true
-                BookSpreadsMode.AUTO -> isLargeOrLandscape
-            }
-        }
-    }
+
 
     return when (readingMode.viewerType) {
         ViewerType.Scrolling -> {
@@ -166,4 +204,4 @@ fun rememberReaderContext(
     }
 }
 
-val LocalReaderConfig = androidx.compose.runtime.staticCompositionLocalOf { ReaderConfig.Default }
+val LocalReaderConfig = staticCompositionLocalOf { ReaderConfig.Default }

@@ -53,10 +53,10 @@ import coil3.compose.rememberAsyncImagePainter
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
-import io.github.oshai.kotlinlogging.KotlinLogging
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.core.ui.isRetryableError
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
 import me.saket.telephoto.zoomable.EnabledZoomGestures
 import me.saket.telephoto.zoomable.ZoomSpec
@@ -95,7 +95,9 @@ fun ChapterPageLoadStateItem(
                 }
             }
             if (error.isRetryableError()) {
-                val delayMs = (2000L shl autoRetryCount).coerceAtMost(30_000L)
+                // 用 coerceAtMost 前先限制位移量：shl 的右操作数按 mod 32 取模，
+                // autoRetryCount 涨到 32 时 2000L shl 32 会绕回 2000，退避失效。
+                val delayMs = (2000L shl autoRetryCount.coerceAtMost(4)).coerceAtMost(30_000L)
                 autoRetryCount++
                 delay(delayMs)
                 pageItems.retry()
