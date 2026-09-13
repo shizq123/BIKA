@@ -26,6 +26,7 @@ class PagerLayoutStrategy(
     private val direction: Direction,
     private val isRtl: Boolean,
     private val spreadState: PageSpreadState,
+    private val magnifierEnabled: Boolean,
 ) : ReaderLayoutStrategy {
 
     /**
@@ -155,6 +156,7 @@ class PagerLayoutStrategy(
             page = page,
             index = index,
             zoomable = true,
+            magnifierEnabled = magnifierEnabled,
             onTap = onPageTap,
             onSizeLoaded = { width, height ->
                 // anchorPage 取上报**当时**用户所在的真实页码：测出宽页会改变分组，

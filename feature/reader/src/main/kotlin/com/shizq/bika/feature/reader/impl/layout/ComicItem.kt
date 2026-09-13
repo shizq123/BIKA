@@ -137,6 +137,10 @@ fun ChapterPageLoadStateItem(
  *
  * [onTap] 收到的坐标是**根坐标系**下的位置。跨页模式一屏有两页，用页面局部
  * 坐标会把右页的左半边当成「屏幕左侧」，导致点击翻页方向反掉。
+ *
+ * [magnifierEnabled] 显式传入而不是整体读 ReaderConfig：这里只用到 ReaderConfig
+ * 的这一个字段，若整体读 CompositionLocal，护眼深度、自动滚动速度等任何其他
+ * 字段变化都会让每一个可见的 ComicPageItem 一起重组。
  */
 @Composable
 fun ComicPageItem(
@@ -144,10 +148,10 @@ fun ComicPageItem(
     index: Int,
     modifier: Modifier = Modifier,
     zoomable: Boolean = false,
+    magnifierEnabled: Boolean = true,
     onTap: ((PageTapContext) -> Unit)? = null,
     onSizeLoaded: ((width: Float, height: Float) -> Unit)? = null
 ) {
-    val config = LocalReaderConfig.current
     var magnifierCenter by remember { mutableStateOf(Offset.Unspecified) }
 
     // 缩放状态不需要按 page.id 做 key：翻页模式下 Pager 的 key 已经包含页码与
@@ -183,7 +187,7 @@ fun ComicPageItem(
         Modifier
     }
 
-    val magnifierModifier = if (config.magnifierEnabled) {
+    val magnifierModifier = if (magnifierEnabled) {
         Modifier
             .pointerInput(Unit) {
                 detectDragGesturesAfterLongPress(

@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 
 class WebtoonLayoutStrategy(
     private val listState: LazyListState,
-    private val hasPageGap: Boolean
+    private val hasPageGap: Boolean,
+    private val magnifierEnabled: Boolean,
 ) : ReaderLayoutStrategy {
     /** 条漫由容器整体缩放：连续滚动下逐页缩放没有意义。 */
     override val isGestureSelfContained: Boolean = false
@@ -44,7 +45,7 @@ class WebtoonLayoutStrategy(
             ) { index ->
                 pageItems[index]?.let {
                     // 缩放与点击都由容器处理，这里不传 onTap
-                    ComicPageItem(it, index)
+                    ComicPageItem(it, index, magnifierEnabled = magnifierEnabled)
                 } ?: ChapterPageLoadStateItem(pageItems, index)
             }
         }
@@ -97,40 +98,27 @@ class WebtoonController(
     }
 
     /**
-     * 计算当前阅读到的页码（用于进度保存）。
-     *
-     * 规则：
-     * 1. 如果滚动到底部，且最后一项完全可见，强制视为最后一页（解决最后一页较短时无法触发已读的问题）。
-     * 2. 否则取**第一个已经开始进入视口的 item**（firstVisibleItemIndex），
-     *    这代表用户当前正在阅读的起始页。
-     *
-     * 为何不用视口中心线：
-     * - 条漫图片可能极高（超过屏幕高度数倍），用户已滚动到第28页顶部，
-     *   但中心线仍指向第12页，导致进度保存为第12页，与用户感知严重偏差。
-     * - 使用 firstVisibleItemIndex 可确保进度不落后于用户已看到的内容。
-     *   即使第一个可见页尚未看完，下次也只是从该页开始，不会丢失已读内容。
+     * 计算当前阅读到的页码（用于进度保存）。判定规则见 [resolveListReadingPosition]，
+     * 这里只负责把 Compose 的 [LazyListState.layoutInfo] 转成规则需要的快照。
      */
     private fun calculateCurrentPageIndex(): Int {
         val layoutInfo = listState.layoutInfo
         val visibleItems = layoutInfo.visibleItemsInfo
 
-        if (visibleItems.isEmpty() || layoutInfo.totalItemsCount == 0) return lastValidIndex
-
-        val lastVisibleItem = visibleItems.last()
-
-        // 判定是否到底：最后一项可见且底部在视口内
-        val isLastItemVisible = lastVisibleItem.index == layoutInfo.totalItemsCount - 1
-        if (isLastItemVisible) {
-            val isBottomEdgeVisible =
-                (lastVisibleItem.offset + lastVisibleItem.size) <= layoutInfo.viewportEndOffset
-            if (isBottomEdgeVisible) {
-                lastValidIndex = lastVisibleItem.index
-                return lastValidIndex
-            }
-        }
-
-        // 取第一个进入视口的 item（firstVisibleItemIndex）
-        lastValidIndex = visibleItems.first().index
-        return lastValidIndex
+        val result = resolveListReadingPosition(
+            layoutInfo = ListReadingLayoutInfo(
+                firstVisibleItem = visibleItems.firstOrNull()?.let {
+                    VisibleItemSnapshot(index = it.index, offset = it.offset, size = it.size)
+                },
+                lastVisibleItem = visibleItems.lastOrNull()?.let {
+                    VisibleItemSnapshot(index = it.index, offset = it.offset, size = it.size)
+                },
+                totalItemsCount = layoutInfo.totalItemsCount,
+                viewportEndOffset = layoutInfo.viewportEndOffset,
+            ),
+            lastValidIndex = lastValidIndex,
+        )
+        lastValidIndex = result
+        return result
     }
 }

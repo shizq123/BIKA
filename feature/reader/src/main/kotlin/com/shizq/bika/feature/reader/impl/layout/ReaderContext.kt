@@ -7,7 +7,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.paging.compose.LazyPagingItems
@@ -111,22 +110,22 @@ fun rememberReaderContext(
     val containerSize = LocalWindowInfo.current.containerSize
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    // containerSize 参与计算就必须进 key：原先只 key 了 configuration，
-    // 首帧的 0×0 结果会被永久缓存，竖屏平板（非横屏但宽高比够）的 AUTO
-    // 模式会一直退化成单页，直到一次旋转才纠正。
+    // 只用「宽/窄」这个布尔结果做 key，不用整个 containerSize：
+    // 分屏拖拽、折叠屏展开过程中 containerSize 会连续变化，若整个尺寸都进 key，
+    // 每一帧尺寸变化都会重建 PageSpreadState（下面的 spreadState），丢掉已经
+    // 测出的宽页信息。只有跨越宽/窄阈值那一刻才需要重算。
+    val isWideViewport = isWideViewport(containerSize.width, containerSize.height, isLandscape)
     val useDoublePage = remember(
-        containerSize,
-        isLandscape,
+        isWideViewport,
         config.bookSpreadsMode,
         readingMode.viewerType,
     ) {
         resolveDoublePage(
             viewerType = readingMode.viewerType,
             bookSpreadsMode = config.bookSpreadsMode,
-            isWideViewport = isWideViewport(containerSize.width, containerSize.height, isLandscape),
+            isWideViewport = isWideViewport,
         )
     }
-
 
     return when (readingMode.viewerType) {
         ViewerType.Scrolling -> {
@@ -135,10 +134,11 @@ fun rememberReaderContext(
                     initialFirstVisibleItemIndex = initialPageIndex
                 )
 
-                val layout = remember(listState, readingMode.hasPageGap) {
+                val layout = remember(listState, readingMode.hasPageGap, config.magnifierEnabled) {
                     WebtoonLayoutStrategy(
                         listState = listState,
-                        hasPageGap = readingMode.hasPageGap
+                        hasPageGap = readingMode.hasPageGap,
+                        magnifierEnabled = config.magnifierEnabled,
                     )
                 }
                 val controller = remember(listState) { WebtoonController(listState, initialPageIndex) }
@@ -176,12 +176,19 @@ fun rememberReaderContext(
                 ) { spreadState.spreadCount }
 
                 val layout =
-                    remember(pagerState, readingMode.direction, readingMode.isRtl, spreadState) {
+                    remember(
+                        pagerState,
+                        readingMode.direction,
+                        readingMode.isRtl,
+                        spreadState,
+                        config.magnifierEnabled,
+                    ) {
                         PagerLayoutStrategy(
                             pagerState = pagerState,
                             direction = readingMode.direction,
                             isRtl = readingMode.isRtl,
                             spreadState = spreadState,
+                            magnifierEnabled = config.magnifierEnabled,
                         )
                     }
 
@@ -203,5 +210,4 @@ fun rememberReaderContext(
         }
     }
 }
-
-val LocalReaderConfig = staticCompositionLocalOf { ReaderConfig.Default }
+

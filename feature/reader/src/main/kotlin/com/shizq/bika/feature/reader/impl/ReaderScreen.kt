@@ -19,7 +19,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -51,7 +50,6 @@ import com.shizq.bika.feature.reader.impl.components.ScreenOrientationSelectBott
 import com.shizq.bika.feature.reader.impl.components.ScrubPreviewOverlay
 import com.shizq.bika.feature.reader.impl.components.StatusBarCapsule
 import com.shizq.bika.feature.reader.impl.gesture.rememberGestureState
-import com.shizq.bika.feature.reader.impl.layout.LocalReaderConfig
 import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
 import com.shizq.bika.feature.reader.impl.layout.ReaderLayoutHost
 import com.shizq.bika.feature.reader.impl.layout.SideSheetLayout
@@ -238,125 +236,123 @@ private fun ReaderReadyContent(
         preloadCount = preloadCount
     )
 
-    CompositionLocalProvider(LocalReaderConfig provides config) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .drawWithContent {
-                    drawContent()
-                    if (config.eyeCareEnabled) {
-                        drawRect(Color.Black.copy(alpha = config.eyeCareDarkness))
-                    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .drawWithContent {
+                drawContent()
+                if (config.eyeCareEnabled) {
+                    drawRect(Color.Black.copy(alpha = config.eyeCareDarkness))
                 }
-        ) {
-            ReaderScaffold(
-                showMenu = overlayState.showSystemBars,
-                topBar = {
-                    val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
-                    TopBar(title = { Text(title) }, onBackClick = onBackClick)
-                },
-                bottomBar = {
-                    ReaderBottomBarSection(
-                        currentPage = currentPage,
-                        totalPages = chapterState.totalPages,
-                        readingMode = config.readingMode,
-                        navigation = navigation,
-                        dispatch = dispatch,
-                        scrubState = scrubState,
-                        onSeekToPage = { scope.launch { controller.scrollToPage(it) } },
-                        onNoMoreContent = {
-                            Toast.makeText(
-                                context,
-                                ReaderScreenMessages.NoMoreContent,
-                                Toast.LENGTH_SHORT
-                            ).show()
-                        },
-                    )
-                },
-                floatingMessage = {
-                    if (chapterState.totalPages > 0) {
-                        // 复用已提升到本层的 currentPage：原先 CurrentPageBadge 自己
-                        // 又 collect 了一次 visibleItemIndex，同一个 Flow 被订阅两次。
-                        PageIndicatorBadge(
-                            pageNumber = currentPage + 1,
-                            total = chapterState.totalPages,
-                        )
-                    }
-                },
-                sideSheet = {
-                    ReaderChapterListSheet(
-                        visible = overlayState.readerSheet is ReaderSheet.ChapterList,
-                        chapterItems = chapterItems,
-                        currentChapterOrder = chapterState.order,
-                        currentPage = currentPage,
-                        dispatch = dispatch,
-                    )
-                },
-                content = {
-                    val gestureState = rememberGestureState(
-                        layout = config.tapZoneLayout,
-                        isRtl = config.readingMode.isRtl,
-                    )
-                    ReaderLayoutHost(
-                        readerContext = readerContext,
-                        gestureState = gestureState,
-                        pageItems = pageItems,
-                        toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
-                        onHideMenu = {
-                            if (overlayState.showSystemBars) {
-                                dispatch(ToggleBarsVisibility)
-                            }
-                        }
+            }
+    ) {
+        ReaderScaffold(
+            showMenu = overlayState.showSystemBars,
+            topBar = {
+                val title = chapterState.meta?.title ?: "Chapter ${chapterState.order}"
+                TopBar(title = { Text(title) }, onBackClick = onBackClick)
+            },
+            bottomBar = {
+                ReaderBottomBarSection(
+                    currentPage = currentPage,
+                    totalPages = chapterState.totalPages,
+                    readingMode = config.readingMode,
+                    navigation = navigation,
+                    dispatch = dispatch,
+                    scrubState = scrubState,
+                    onSeekToPage = { scope.launch { controller.scrollToPage(it) } },
+                    onNoMoreContent = {
+                        Toast.makeText(
+                            context,
+                            ReaderScreenMessages.NoMoreContent,
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    },
+                )
+            },
+            floatingMessage = {
+                if (chapterState.totalPages > 0) {
+                    // 复用已提升到本层的 currentPage：原先 CurrentPageBadge 自己
+                    // 又 collect 了一次 visibleItemIndex，同一个 Flow 被订阅两次。
+                    PageIndicatorBadge(
+                        pageNumber = currentPage + 1,
+                        total = chapterState.totalPages,
                     )
                 }
-            )
-
-            // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
-            if (config.autoScrollEnabled && autoScroll.isSupported) {
-                AutoScrollControlPanel(
-                    isScrolling = autoScroll.isScrolling,
-                    speed = config.autoScrollSpeed,
-                    onPlayPauseToggle = { autoScroll.togglePause() },
-                    onSpeedUp = {
-                        if (config.autoScrollSpeed < AutoScrollSpeedRange.last) {
-                            dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
+            },
+            sideSheet = {
+                ReaderChapterListSheet(
+                    visible = overlayState.readerSheet is ReaderSheet.ChapterList,
+                    chapterItems = chapterItems,
+                    currentChapterOrder = chapterState.order,
+                    currentPage = currentPage,
+                    dispatch = dispatch,
+                )
+            },
+            content = {
+                val gestureState = rememberGestureState(
+                    layout = config.tapZoneLayout,
+                    isRtl = config.readingMode.isRtl,
+                )
+                ReaderLayoutHost(
+                    readerContext = readerContext,
+                    gestureState = gestureState,
+                    pageItems = pageItems,
+                    toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
+                    onHideMenu = {
+                        if (overlayState.showSystemBars) {
+                            dispatch(ToggleBarsVisibility)
                         }
-                    },
-                    onSpeedDown = {
-                        if (config.autoScrollSpeed > AutoScrollSpeedRange.first) {
-                            dispatch(SetAutoScrollSpeed(config.autoScrollSpeed - 1))
-                        }
-                    },
-                    onClose = {
-                        autoScroll.disableAndPersist()
-                    },
-                    modifier = Modifier.align(Alignment.CenterEnd)
+                    }
                 )
             }
+        )
 
-            if (config.statusBarCapsuleEnabled && !overlayState.showSystemBars) {
-                val padding = rememberTopEndSystemAwarePadding(
-                    includeStatusBarInset = false,
-                    extraTop = 2.dp,
-                    extraEnd = 2.dp
-                )
-                StatusBarCapsule(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(
-                            top = padding.top,
-                            end = padding.end
-                        )
-                )
-            }
-
-            ScrubPreviewOverlay(
-                scrubState = scrubState,
-                pageItems = pageItems,
-                totalPages = chapterState.totalPages,
-                modifier = Modifier.align(Alignment.Center),
+        // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
+        if (config.autoScrollEnabled && autoScroll.isSupported) {
+            AutoScrollControlPanel(
+                isScrolling = autoScroll.isScrolling,
+                speed = config.autoScrollSpeed,
+                onPlayPauseToggle = { autoScroll.togglePause() },
+                onSpeedUp = {
+                    if (config.autoScrollSpeed < AutoScrollSpeedRange.last) {
+                        dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
+                    }
+                },
+                onSpeedDown = {
+                    if (config.autoScrollSpeed > AutoScrollSpeedRange.first) {
+                        dispatch(SetAutoScrollSpeed(config.autoScrollSpeed - 1))
+                    }
+                },
+                onClose = {
+                    autoScroll.disableAndPersist()
+                },
+                modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
+
+        if (config.statusBarCapsuleEnabled && !overlayState.showSystemBars) {
+            val padding = rememberTopEndSystemAwarePadding(
+                includeStatusBarInset = false,
+                extraTop = 2.dp,
+                extraEnd = 2.dp
+            )
+            StatusBarCapsule(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(
+                        top = padding.top,
+                        end = padding.end
+                    )
+            )
+        }
+
+        ScrubPreviewOverlay(
+            scrubState = scrubState,
+            pageItems = pageItems,
+            totalPages = chapterState.totalPages,
+            modifier = Modifier.align(Alignment.Center),
+        )
     }
 }
 
