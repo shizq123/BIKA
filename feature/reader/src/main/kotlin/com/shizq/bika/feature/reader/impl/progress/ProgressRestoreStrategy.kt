@@ -50,8 +50,6 @@ class AwaitDataRestoreStrategy : ProgressRestoreStrategy {
         // 第 0 页无需恢复：任何 viewer 的初始位置就是 0。
         if (targetPage <= 0) return RestoreOutcome.Confirmed(0)
 
-        // 已经在目标页（rememberLazyListState/rememberPagerState 的 initial 值生效了），
-        // 直接确认，省掉一次多余滚动。
         if (currentPageOrNull(controller.visibleItemIndex) == targetPage) {
             return RestoreOutcome.Confirmed(targetPage)
         }

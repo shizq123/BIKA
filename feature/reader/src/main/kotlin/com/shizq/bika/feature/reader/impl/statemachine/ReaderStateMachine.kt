@@ -192,12 +192,9 @@ class ReaderStateMachine @Inject constructor(
     private suspend fun getStartPage(historyId: String, chapterOrder: Int): Int {
         return withContext(Dispatchers.IO) {
             val history = historyDao.getDetailedHistoryById(historyId)
-            logger.debug { "读取历史记录: comic=$historyId history=${history != null} progressCount=${history?.progressList?.size ?: 0}" }
-            history?.progressList?.forEach { entity ->
-                logger.debug { "  章节进度: chapterId=${entity.chapterId} currentPage=${entity.currentPage} pageCount=${entity.pageCount}" }
-            }
-            val progress = history?.asExternalModel()?.progressList
-                ?.find { it.chapterNumber == chapterOrder }
+
+            val progress =
+                history?.asExternalModel()?.progressList?.find { it.chapterNumber == chapterOrder }
             val startPage = progress?.currentPage ?: 0
             logger.debug { "恢复进度: comic=$historyId 章节=$chapterOrder 找到进度=${progress != null} DB进度=${progress?.currentPage}/${progress?.pageCount} 起始页=$startPage" }
             startPage

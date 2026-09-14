@@ -93,7 +93,7 @@ class ReadingProgressStore @Inject constructor(
             lastReadAt = now
         )
         historyDao.upsertChapterProgress(chapterProgress)
-        logger.debug { "写入数据库: $chapterProgress" }
+
         // 如果看完，则同步将该章节的下载任务标记为已查看
         if (isFinished) {
             downloadTaskRepository.markAsViewed("${comicId}_${chapterOrder}")
