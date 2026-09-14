@@ -89,6 +89,14 @@ class ReadingProgressManager(
         when (outcome) {
             is RestoreOutcome.Confirmed -> {
                 logger.debug { "恢复确认，开闸: chapter=${key.chapterOrder} page=${outcome.page}" }
+                // 立即初始化 latestProgress，确保在第一次页码变化前 flush() 也能写入
+                latestProgress = ChapterProgress(
+                    comicId = key.comicId,
+                    chapterOrder = key.chapterOrder,
+                    pageIndex = outcome.page,
+                    totalPages = totalPagesProvider(),
+                    chapterTitle = chapterTitleProvider(),
+                )
                 writer.openGate()
             }
 

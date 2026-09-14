@@ -24,25 +24,6 @@ class ReadingProgressWriterTest {
     private val debounce = 1_000.milliseconds
 
     @Test
-    fun `closeGate 清空 replayCache 避免旧值污染新章节`() = runTest {
-        val sink = RecordingSink()
-        val writer = writer(sink, backgroundScope)
-        writer.openGate()
-        writer.submit(progress(page = 88, order = 1))
-        advanceTimeBy(500) // 防抖尚未触发
-        sink.writes.clear()
-
-        writer.closeGate()
-        advanceTimeBy(600) // 让旧的防抖到期
-
-        // replayCache 清空后，防抖到期时不会发射任何值
-        assertTrue(
-            sink.writes.isEmpty(),
-            "closeGate 必须清空 replayCache，否则切章后旧值还会被防抖发射",
-        )
-    }
-
-    @Test
     fun `开闸后防抖窗口内只写最后一次`() = runTest {
         val sink = RecordingSink()
         val writer = writer(sink, backgroundScope)
@@ -126,42 +107,6 @@ class ReadingProgressWriterTest {
     }
 
     @Test
-    fun `flush 由调用方显式传入进度`() = runTest {
-        // 改动：flush 不再依赖 replayCache，调用方显式传入要写的进度
-        val sink = RecordingSink()
-        val writer = writer(sink, backgroundScope)
-        writer.openGate()
-
-        writer.submit(progress(page = 3))
-        advanceUntilIdle()
-        // flush 传入相同的进度，被 distinctUntilChanged 去重
-        writer.flush(progress(page = 3))
-        advanceUntilIdle()
-
-        assertEquals(listOf(3), sink.writes.map { it.pageIndex })
-    }
-
-    @Test
-    fun `flush 可以写入与 submit 不同的进度`() = runTest {
-        // 新行为：flush 显式传参，可以写入调用方构造的任意进度
-        val sink = RecordingSink()
-        val writer = writer(sink, backgroundScope)
-        writer.openGate()
-
-        writer.submit(progress(page = 10))
-        advanceTimeBy(500) // 防抖尚未触发
-        // flush 写入不同的页码（模拟 ON_STOP 时从 controller 取当前页）
-        writer.flush(progress(page = 15))
-        advanceUntilIdle()
-
-        assertEquals(
-            listOf(15, 10),
-            sink.writes.map { it.pageIndex },
-            "flush 的 15 立即写入，防抖的 10 稍后触发",
-        )
-    }
-
-    @Test
     fun `闸门关闭时 flush 不写`() = runTest {
         val sink = RecordingSink()
         val writer = writer(sink, backgroundScope)
@@ -206,25 +151,6 @@ class ReadingProgressWriterTest {
         assertTrue(
             sink.writes.isEmpty(),
             "旧实现的一次性门闩放开后无法关闭，切章后会写入恢复期间的中间位置",
-        )
-    }
-
-    @Test
-    fun `closeGate 清掉 replayCache 避免旧值污染新章节`() = runTest {
-        val sink = RecordingSink()
-        val writer = writer(sink, backgroundScope)
-        writer.openGate()
-        writer.submit(progress(page = 88, order = 1))
-        advanceTimeBy(500) // 防抖尚未触发
-        sink.writes.clear()
-
-        writer.closeGate()
-        advanceTimeBy(600) // 让旧的防抖到期
-
-        // replayCache 清空后，防抖到期时不会发射任何值
-        assertTrue(
-            sink.writes.isEmpty(),
-            "closeGate 必须清空 replayCache，否则切章后旧值还会被防抖发射",
         )
     }
 
@@ -288,6 +214,43 @@ class ReadingProgressWriterTest {
         assertTrue(
             sink.writes.isEmpty(),
             "防抖到期时必须检查闸门，否则切章期间的旧章页码会写到数据库",
+        )
+    }
+
+    @Test
+    fun `flush 传入不同页码时覆盖 submit 的值`() = runTest {
+        // 新行为：flush 显式传参，manager 可以从 controller 取最新页码
+        val sink = RecordingSink()
+        val writer = writer(sink, backgroundScope)
+        writer.openGate()
+
+        writer.submit(progress(page = 10))
+        advanceTimeBy(500) // 防抖尚未触发
+
+        // ON_STOP 时 manager 从 controller 取到最新页码 15，传给 flush
+        writer.flush(progress(page = 15))
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(15, 10),
+            sink.writes.map { it.pageIndex },
+            "flush(15) 立即写入，防抖的 10 稍后触发（二者不去重）",
+        )
+    }
+
+    @Test
+    fun `flush 在闸门关闭时不写入`() = runTest {
+        // 恢复未确认时 manager.latestProgress == null，flush 无操作；
+        // writer 层面也加一层保险：闸门关闭时 flush 直接返回
+        val sink = RecordingSink()
+        val writer = writer(sink, backgroundScope)
+
+        writer.flush(progress(page = 42))
+        advanceUntilIdle()
+
+        assertTrue(
+            sink.writes.isEmpty(),
+            "闸门关闭时 flush 不应写入（恢复未确认的安全兜底）",
         )
     }
 

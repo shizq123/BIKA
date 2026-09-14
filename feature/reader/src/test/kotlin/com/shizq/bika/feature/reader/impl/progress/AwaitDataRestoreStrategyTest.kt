@@ -204,38 +204,21 @@ class AwaitDataRestoreStrategyTest {
 
         override fun isLoaded(index: Int): Boolean = index < loaded.value
 
-        override suspend fun awaitLoadedOrBounds(index: Int): LoadResult {
+        override suspend fun awaitLoadedOrBounds(index: Int): PageLoadResult {
             return loaded.first { currentLoaded ->
                 when {
+                    index < 0 -> true
                     index < currentLoaded -> true
                     isComplete && index >= totalPages -> true
                     else -> false
                 }
             }.let {
                 when {
-                    index < loaded.value -> LoadResult.Loaded
-                    else -> LoadResult.OutOfBounds(totalPages)
+                    index < 0 -> PageLoadResult.OutOfBounds(totalPages)
+                    index < loaded.value -> PageLoadResult.Loaded
+                    else -> PageLoadResult.OutOfBounds(totalPages)
                 }
             }
-        }
-    }
-
-        override fun isLoaded(index: Int): Boolean = index < loaded.value
-
-    override suspend fun awaitLoadedOrBounds(index: Int): DataLoadResult {
-        return loaded.first { currentLoaded ->
-            when {
-                index < currentLoaded -> true
-                currentLoaded >= totalPages -> true
-                else -> false
-            }
-        }.let {
-            if (index >= totalPages) {
-                DataLoadResult.OutOfBounds(totalPages)
-            } else {
-                DataLoadResult.Loaded
-            }
-        }
         }
     }
 
