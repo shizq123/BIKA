@@ -24,14 +24,22 @@ class ReadingProgressWriterTest {
     private val debounce = 1_000.milliseconds
 
     @Test
-    fun `闸门关闭时提交被丢弃`() = runTest {
+    fun `closeGate 清空 replayCache 避免旧值污染新章节`() = runTest {
         val sink = RecordingSink()
         val writer = writer(sink, backgroundScope)
+        writer.openGate()
+        writer.submit(progress(page = 88, order = 1))
+        advanceTimeBy(500) // 防抖尚未触发
+        sink.writes.clear()
 
-        writer.submit(progress(page = 5))
-        advanceUntilIdle()
+        writer.closeGate()
+        advanceTimeBy(600) // 让旧的防抖到期
 
-        assertTrue(sink.writes.isEmpty(), "恢复未确认前不允许写库")
+        // replayCache 清空后，防抖到期时不会发射任何值
+        assertTrue(
+            sink.writes.isEmpty(),
+            "closeGate 必须清空 replayCache，否则切章后旧值还会被防抖发射",
+        )
     }
 
     @Test
@@ -65,14 +73,14 @@ class ReadingProgressWriterTest {
     }
 
     @Test
-    fun `flush 立即写入最近一次提交值`() = runTest {
+    fun `flush 立即写入显式传入的进度`() = runTest {
         val sink = RecordingSink()
         val writer = writer(sink, backgroundScope)
         writer.openGate()
 
         writer.submit(progress(page = 42))
         // 不等防抖窗口，直接 flush（模拟 ON_STOP）
-        writer.flush()
+        writer.flush(progress(page = 42))
         advanceTimeBy(10)
 
         assertEquals(
@@ -83,19 +91,74 @@ class ReadingProgressWriterTest {
     }
 
     @Test
-    fun `flush 不需要调用方记住页码`() = runTest {
-        // 这是删掉 @Volatile lastKnownPage 的依据：flush 自己从 replayCache 取值。
+    fun `flush 可以传入与 submit 不同的页码`() = runTest {
+        // 模拟 latestProgress 由 manager 缓存，flush 时显式传入。
+        val sink = RecordingSink()
+        val writer = writer(sink, backgroundScope)
+        writer.openGate()
+
+        writer.submit(progress(page = 10))
+        advanceTimeBy(500)
+        // flush 时传入更新的页码（manager 从 controller 读取）
+        writer.flush(progress(page = 15))
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(15),
+            sink.writes.map { it.pageIndex },
+            "flush 应写入显式传入的值，不依赖 submit 的历史"
+        )
+    }
+
+    @Test
+    fun `防抖与 flush 的值相同时被去重`() = runTest {
         val sink = RecordingSink()
         val writer = writer(sink, backgroundScope)
         writer.openGate()
 
         writer.submit(progress(page = 3))
         advanceUntilIdle()
-        writer.flush()
+        writer.flush(progress(page = 3))
         advanceUntilIdle()
 
-        // 防抖已写过 3，flush 取到同一个值，被 distinctUntilChanged 去重
+        // 防抖已写过 3，flush 传入同一个值，被 distinctUntilChanged 去重
         assertEquals(listOf(3), sink.writes.map { it.pageIndex })
+    }
+
+    @Test
+    fun `flush 由调用方显式传入进度`() = runTest {
+        // 改动：flush 不再依赖 replayCache，调用方显式传入要写的进度
+        val sink = RecordingSink()
+        val writer = writer(sink, backgroundScope)
+        writer.openGate()
+
+        writer.submit(progress(page = 3))
+        advanceUntilIdle()
+        // flush 传入相同的进度，被 distinctUntilChanged 去重
+        writer.flush(progress(page = 3))
+        advanceUntilIdle()
+
+        assertEquals(listOf(3), sink.writes.map { it.pageIndex })
+    }
+
+    @Test
+    fun `flush 可以写入与 submit 不同的进度`() = runTest {
+        // 新行为：flush 显式传参，可以写入调用方构造的任意进度
+        val sink = RecordingSink()
+        val writer = writer(sink, backgroundScope)
+        writer.openGate()
+
+        writer.submit(progress(page = 10))
+        advanceTimeBy(500) // 防抖尚未触发
+        // flush 写入不同的页码（模拟 ON_STOP 时从 controller 取当前页）
+        writer.flush(progress(page = 15))
+        advanceUntilIdle()
+
+        assertEquals(
+            listOf(15, 10),
+            sink.writes.map { it.pageIndex },
+            "flush 的 15 立即写入，防抖的 10 稍后触发",
+        )
     }
 
     @Test
@@ -104,7 +167,7 @@ class ReadingProgressWriterTest {
         val writer = writer(sink, backgroundScope)
 
         writer.submit(progress(page = 9))
-        writer.flush()
+        writer.flush(progress(page = 9))
         advanceUntilIdle()
 
         assertTrue(sink.writes.isEmpty())
@@ -147,21 +210,22 @@ class ReadingProgressWriterTest {
     }
 
     @Test
-    fun `closeGate 清掉上一章的 replayCache`() = runTest {
+    fun `closeGate 清掉 replayCache 避免旧值污染新章节`() = runTest {
         val sink = RecordingSink()
         val writer = writer(sink, backgroundScope)
         writer.openGate()
         writer.submit(progress(page = 88, order = 1))
-        advanceUntilIdle()
+        advanceTimeBy(500) // 防抖尚未触发
         sink.writes.clear()
 
         writer.closeGate()
-        writer.openGate()
-        // 未提交任何新值就 flush：不应把上一章的 88 写到新章节名下
-        writer.flush()
-        advanceUntilIdle()
+        advanceTimeBy(600) // 让旧的防抖到期
 
-        assertTrue(sink.writes.isEmpty())
+        // replayCache 清空后，防抖到期时不会发射任何值
+        assertTrue(
+            sink.writes.isEmpty(),
+            "closeGate 必须清空 replayCache，否则切章后旧值还会被防抖发射",
+        )
     }
 
     @Test
@@ -200,6 +264,30 @@ class ReadingProgressWriterTest {
             listOf(25),
             sink.writes.map { it.pageIndex },
             "迟到的第 21 页必须被闸门拦掉，否则它会覆盖切章写入的第 25 页",
+        )
+    }
+
+    @Test
+    fun `防抖到期时检查闸门 避免切章期间的旧值写入`() = runTest {
+        // 核心修复：防抖流在 init 时启动，submit() 只能阻止新值进入 submissions，
+        // 但已进入的值会在防抖到期后无条件发射。如果在防抖期间切章（closeGate），
+        // 必须在防抖流的 onEach 里二次检查闸门。
+        val sink = RecordingSink()
+        val writer = writer(sink, backgroundScope)
+        writer.openGate()
+
+        writer.submit(progress(page = 50, order = 1))
+        advanceTimeBy(500) // 防抖尚未触发
+
+        // 切章：关闸 + 清 replayCache
+        writer.closeGate()
+
+        // 让防抖到期：旧值会从 debounce 流发射，但应被闸门拦截
+        advanceTimeBy(600)
+
+        assertTrue(
+            sink.writes.isEmpty(),
+            "防抖到期时必须检查闸门，否则切章期间的旧章页码会写到数据库",
         )
     }
 

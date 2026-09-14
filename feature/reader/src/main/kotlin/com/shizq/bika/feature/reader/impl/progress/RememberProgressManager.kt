@@ -53,6 +53,7 @@ fun ReadingProgressEffect(
             controller = controller,
         )
     }
+
     val lifecycleOwner = LocalLifecycleOwner.current
     DisposableEffect(lifecycleOwner, controller, dataSource) {
         val observer = LifecycleEventObserver { _, e ->
@@ -63,6 +64,7 @@ fun ReadingProgressEffect(
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            manager.flush()
         }
     }
 }

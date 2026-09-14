@@ -78,6 +78,29 @@ class AwaitDataRestoreStrategyTest {
     }
 
     @Test
+    fun `越界时快速失败`() = runTest {
+        // 数据库记录用户读到第 50 页，但章节实际只有 30 页（服务端删减了内容）。
+        // 旧实现会等满 10 秒超时；新实现检测到 endOfPaginationReached 后快速返回。
+        val controller = FakeController(initialPage = 0)
+        val dataSource = FakeDataSource(loadedUpTo = 30, totalPages = 30, isComplete = true)
+
+        val outcome = strategy.restore(50, dataSource, controller, config)
+
+        assertIs<RestoreOutcome.Unconfirmed>(outcome)
+        assertEquals(50, outcome.targetPage)
+        assertEquals(0, outcome.reachedPage)
+        assertTrue(
+            outcome.reason.contains("超出章节范围"),
+            "实际原因: ${outcome.reason}"
+        )
+        assertTrue(
+            outcome.reason.contains("30"),
+            "应提示实际总页数，实际原因: ${outcome.reason}"
+        )
+        assertTrue(controller.scrollCalls.isEmpty(), "越界不应尝试滚动")
+    }
+
+    @Test
     fun `数据延迟到位仍能确认`() = runTest {
         val controller = FakeController(initialPage = 0)
         val dataSource = FakeDataSource(loadedUpTo = 0)
@@ -130,16 +153,49 @@ class AwaitDataRestoreStrategyTest {
         assertIs<RestoreOutcome.Unconfirmed>(outcome)
     }
 
+    @Test
+    fun `越界快速失败不等超时`() = runTest {
+        // 章节实际只有 15 页，但数据库记录用户读到第 18 页。
+        // 应该快速识别越界（通过 loadState），而不是等 10 秒超时。
+        val controller = FakeController(initialPage = 0)
+        val dataSource = FakeDataSource(loadedUpTo = 15, totalPages = 15)
+
+        val outcome = strategy.restore(18, dataSource, controller, config)
+
+        assertIs<RestoreOutcome.Unconfirmed>(outcome)
+        assertTrue(outcome.reason.contains("超出章节范围"))
+        assertTrue(outcome.reason.contains("15"))
+        assertTrue(controller.scrollCalls.isEmpty(), "越界时不应尝试滚动")
+    }
+
+    @Test
+    fun `越界时 reason 包含实际页数`() = runTest {
+        val controller = FakeController(initialPage = 0)
+        val dataSource = FakeDataSource(loadedUpTo = 20, totalPages = 20)
+
+        val outcome = strategy.restore(25, dataSource, controller, config)
+
+        assertIs<RestoreOutcome.Unconfirmed>(outcome)
+        assertEquals(25, outcome.targetPage)
+        assertTrue(outcome.reason.contains("20"), "错误信息应包含实际页数")
+    }
+
     // ── 测试替身 ────────────────────────────────────────────────────────
 
     /**
      * @param loadedUpTo 前 N 项是真实数据（peek 非 null）。
+     * @param totalPages 章节总页数（模拟 itemCount）。
+     * @param isComplete 是否已加载完成（模拟 endOfPaginationReached）。
      *
      * 注意这个假实现**没有** itemCount 的概念——接口里也没有。真实的
      * LazyPagingItems 在 enablePlaceholders=true 下 itemCount 会立刻等于服务端
      * total，与已加载数无关；把它排除在接口外，就不可能再写出依赖它的判据。
      */
-    private class FakeDataSource(loadedUpTo: Int) : PageDataSource {
+    private class FakeDataSource(
+        loadedUpTo: Int,
+        private val totalPages: Int = 500,
+        private val isComplete: Boolean = false,
+    ) : PageDataSource {
         private val loaded = MutableStateFlow(loadedUpTo)
 
         fun setLoadedUpTo(value: Int) {
@@ -148,8 +204,38 @@ class AwaitDataRestoreStrategyTest {
 
         override fun isLoaded(index: Int): Boolean = index < loaded.value
 
-        override suspend fun awaitLoaded(index: Int) {
-            loaded.first { index < it }
+        override suspend fun awaitLoadedOrBounds(index: Int): LoadResult {
+            return loaded.first { currentLoaded ->
+                when {
+                    index < currentLoaded -> true
+                    isComplete && index >= totalPages -> true
+                    else -> false
+                }
+            }.let {
+                when {
+                    index < loaded.value -> LoadResult.Loaded
+                    else -> LoadResult.OutOfBounds(totalPages)
+                }
+            }
+        }
+    }
+
+        override fun isLoaded(index: Int): Boolean = index < loaded.value
+
+    override suspend fun awaitLoadedOrBounds(index: Int): DataLoadResult {
+        return loaded.first { currentLoaded ->
+            when {
+                index < currentLoaded -> true
+                currentLoaded >= totalPages -> true
+                else -> false
+            }
+        }.let {
+            if (index >= totalPages) {
+                DataLoadResult.OutOfBounds(totalPages)
+            } else {
+                DataLoadResult.Loaded
+            }
+        }
         }
     }
 

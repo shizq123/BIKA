@@ -13,7 +13,7 @@ private val logger = KotlinLogging.logger("ProgressRestore")
 /**
  * 恢复策略：等前置条件成立，再滚一次，然后确认。
  *
- * 与旧的 [RetryRestoreStrategy] 的根本区别：
+ * 与旧的 RetryRestoreStrategy 的根本区别：
  *
  * 旧实现每 100ms 无条件重调 `scrollToPage`，最多 150 次。之所以要重试，是因为
  * `LazyListState.scrollToItem` 对尚未加载的 index 会静默滚到末尾，调用方无法
@@ -22,7 +22,7 @@ private val logger = KotlinLogging.logger("ProgressRestore")
  * 既没有真正等到数据，也没有确认视口位置。
  *
  * 这里改成三段，每段都有可观测的成功判据：
- * 1. 等目标页数据真实到位（peek != null），超时即放弃，不降级成功
+ * 1. 等目标页数据真实到位（peek != null），超时或越界即放弃，不降级成功
  * 2. 滚一次
  * 3. 等 visibleItemIndex 确认到达（容许 tolerance 的误差），超时即 Unconfirmed
  *
@@ -56,17 +56,34 @@ class AwaitDataRestoreStrategy : ProgressRestoreStrategy {
             return RestoreOutcome.Confirmed(targetPage)
         }
 
-        val dataArrived = withTimeoutOrNull(config.dataWaitTimeout) {
-            dataSource.awaitLoaded(targetPage)
-            true
+        val loadResult = withTimeoutOrNull(config.dataWaitTimeout) {
+            dataSource.awaitLoadedOrBounds(targetPage)
         }
-        if (dataArrived == null) {
-            logger.warn { "目标页数据未在 ${config.dataWaitTimeout} 内到位: target=$targetPage" }
-            return RestoreOutcome.Unconfirmed(
-                targetPage = targetPage,
-                reachedPage = currentPageOrNull(controller.visibleItemIndex),
-                reason = "目标页数据加载超时",
-            )
+
+        when (loadResult) {
+            null -> {
+                logger.warn { "目标页数据未在 ${config.dataWaitTimeout} 内到位: target=$targetPage" }
+                return RestoreOutcome.Unconfirmed(
+                    targetPage = targetPage,
+                    reachedPage = currentPageOrNull(controller.visibleItemIndex),
+                    reason = "目标页数据加载超时",
+                )
+            }
+
+            is PageLoadResult.OutOfBounds -> {
+                // 章节缩水（服务端删图/重排）或历史数据本就越界。等下去也不会到位，
+                // 立刻返回，不占满 dataWaitTimeout。
+                logger.warn {
+                    "目标页越界，放弃恢复: target=$targetPage 章节实际=${loadResult.actualTotal} 页"
+                }
+                return RestoreOutcome.Unconfirmed(
+                    targetPage = targetPage,
+                    reachedPage = currentPageOrNull(controller.visibleItemIndex),
+                    reason = "目标页超出章节范围（章节实际 ${loadResult.actualTotal} 页）",
+                )
+            }
+
+            PageLoadResult.Loaded -> Unit // 继续往下滚动
         }
 
         controller.scrollToPage(targetPage)

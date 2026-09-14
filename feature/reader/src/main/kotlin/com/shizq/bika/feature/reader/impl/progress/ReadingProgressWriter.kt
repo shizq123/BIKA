@@ -7,7 +7,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
-import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
 import kotlin.time.Duration
@@ -24,9 +23,10 @@ private val logger = KotlinLogging.logger("ProgressWriter")
  *
  * 这里折叠成一条流：
  * - [submit] 提交「用户现在读到这」，走防抖
- * - [flush] 提交「立刻落库」的信号，不带数据，用最近一次 submit 的值
+ * - [flush] 提交「立刻落库」的信号，显式传入要写的进度
+ * - [storeImmediately] 绕过闸门的强制写入（切章）
  *
- * 两路 merge 进单个 collector，写入顺序天然串行。所有可变字段消失。
+ * 三路 merge 进单个 collector，写入顺序天然串行。所有可变字段消失。
  *
  * scope 必须是 viewModelScope 级别（比 composition 长寿）：旧实现用
  * rememberCoroutineScope()，组合销毁会掐死尚未触发的防抖 job，这正是
@@ -38,17 +38,16 @@ class ReadingProgressWriter(
     private val debounce: Duration,
 ) {
     /**
-     * replay = 1：flush 需要读「最近一次提交的值」。
+     * replay = 1：用于 distinctUntilChanged 比对相邻重复。
      * extraBufferCapacity 给足，配合 tryEmit 让 submit 可以从非挂起上下文调用。
      */
     private val submissions = MutableSharedFlow<ChapterProgress>(
         replay = 1,
         extraBufferCapacity = 16,
     )
-    private val flushSignals = MutableSharedFlow<Unit>(extraBufferCapacity = 8)
 
     /**
-     * 绕过闸门与防抖的直接写入（切章）。仍然走同一个 collector，
+     * 绕过闸门与防抖的直接写入（切章、flush）。仍然走同一个 collector，
      * 因此与防抖写入之间有确定的先后顺序——这是把切章写入「并进」流水线的关键：
      * 若用 scope.launch 直接调 sink，它与 collector 是两个并发写入者，
      * 切章瞬间可能被一条迟到的防抖写入覆盖。
@@ -63,9 +62,6 @@ class ReadingProgressWriter(
     init {
         merge(
             submissions.debounce(debounce),
-            // flush 不携带数据：取 replayCache 里最近一次提交值，避免调用方
-            // 需要自己记住「当前页是多少」（旧实现的 lastKnownPage 就是干这个的）。
-            flushSignals.mapNotNull { submissions.replayCache.lastOrNull() },
             immediateWrites,
         )
             // 只对相邻重复去重。注意不能把 immediateWrites 排除在外——切章写入的
@@ -104,19 +100,20 @@ class ReadingProgressWriter(
     /**
      * 请求立即落库（ON_STOP、返回、组合销毁）。
      *
+     * 改动：不再从 replayCache 取值，调用方显式传入要写的进度。
      * 同步返回、不挂起：调用方可能是 onDispose 这类同步回调。实际写库在
      * [scope]（viewModelScope）里完成，不受组合生命周期影响。
      */
-    fun flush() {
+    fun flush(progress: ChapterProgress) {
         if (gate != PersistGate.Open) return
-        flushSignals.tryEmit(Unit)
+        immediateWrites.tryEmit(progress)
     }
 
     /**
      * 切章前的强制落库：绕过闸门与防抖，直接提交指定进度。
      *
      * 切章是唯一需要绕过闸门的场景——旧章节的进度是已确认的（用户确实读到那），
-     * 与新章节的恢复状态无关。JumpToChapter 走这条路，与其余三条路径共用
+     * 与新章节的恢复状态无关。JumpToChapter 走这条路，与其余路径共用
      * 同一个 sink，因此与防抖写入之间有明确顺序。
      */
     fun storeImmediately(progress: ChapterProgress) {
@@ -132,7 +129,7 @@ class ReadingProgressWriter(
     @OptIn(ExperimentalCoroutinesApi::class)
     fun closeGate() {
         gate = PersistGate.Closed
-        // 清掉上一章的 replayCache，避免 flush 把旧章节的页码写到新章节名下。
+        // 清掉上一章的 replayCache，避免旧章节的值残留。
         submissions.resetReplayCache()
     }
 }

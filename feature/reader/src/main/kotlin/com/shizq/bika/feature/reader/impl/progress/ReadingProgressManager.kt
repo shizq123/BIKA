@@ -46,6 +46,21 @@ class ReadingProgressManager(
         field = MutableStateFlow<RestoreOutcome?>(null)
 
     /**
+     * 最近一次跟踪到的进度，供 [flush] 显式传给 writer。
+     *
+     * 这是把「flush 要写什么」从 writer 的 replayCache 挪到这里的结果：
+     * writer 不再需要 replay 语义来回答这个问题，调用链上只剩一个可变字段，
+     * 且它的生命周期与会话严格对齐（会话开始清空、切章清空）。
+     *
+     * 只在闸门打开后（进入 [trackPageChanges]）才会被赋值，因此非 null 即意味着
+     * 「这一章的恢复曾被确认过」，flush 不需要再查闸门。
+     *
+     * 线程：写在跟踪协程（主线程 dispatcher），读在生命周期回调（主线程），
+     * 二者同线程，无需 @Volatile。
+     */
+    private var latestProgress: ChapterProgress? = null
+
+    /**
      * 一次章节会话：恢复 → 确认 → 开闸 → 跟踪。
      *
      * 必须从 composition 的 LaunchedEffect(chapterKey) 调用，且该 effect 的 key
@@ -64,6 +79,9 @@ class ReadingProgressManager(
         controller: ReaderController,
     ) {
         restoreOutcome.value = null
+        // 新会话开始：上一章的 latestProgress 必须清掉，否则本章恢复失败时
+        // 一次 flush 会把上一章的页码写进来。
+        latestProgress = null
 
         val outcome = restoreStrategy.restore(targetPage, dataSource, controller, config)
         restoreOutcome.value = outcome
@@ -99,20 +117,33 @@ class ReadingProgressManager(
     ) {
         controller.visibleItemIndex
             .collectLatest { page ->
-                writer.submit(
-                    ChapterProgress(
-                        comicId = key.comicId,
-                        chapterOrder = key.chapterOrder,
-                        pageIndex = page,
-                        totalPages = totalPagesProvider(),
-                        chapterTitle = chapterTitleProvider(),
-                    )
+                val progress = ChapterProgress(
+                    comicId = key.comicId,
+                    chapterOrder = key.chapterOrder,
+                    pageIndex = page,
+                    totalPages = totalPagesProvider(),
+                    chapterTitle = chapterTitleProvider(),
                 )
+                latestProgress = progress
+                writer.submit(progress)
             }
     }
 
-    /** ON_STOP / 返回 / 组合销毁：请求立即落库。同步返回。 */
-    fun flush() = writer.flush()
+    /**
+     * ON_STOP / 返回 / 组合销毁：请求立即落库。同步返回。
+     *
+     * 改动：不再依赖 writer 的 replayCache，用本地缓存的 [latestProgress]。
+     * 若它为 null（恢复未确认，从未进入跟踪；或会话刚开始还没有任何页码），
+     * flush 无操作——这符合「未确认不写库」的既定策略。
+     */
+    fun flush() {
+        val progress = latestProgress
+        if (progress == null) {
+            logger.debug { "flush 被调用但本次会话尚无可信进度，跳过" }
+            return
+        }
+        writer.flush(progress)
+    }
 
     /**
      * 切章：把旧章节的已确认进度落库，并关闭闸门等待新章节恢复。
@@ -134,5 +165,7 @@ class ReadingProgressManager(
         }
         writer.closeGate()
         restoreOutcome.value = null
+        // 旧章的进度已经（或不该）写过了，不能留给新章节的 flush 用。
+        latestProgress = null
     }
 }
