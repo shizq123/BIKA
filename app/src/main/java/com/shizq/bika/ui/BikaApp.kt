@@ -24,7 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.core.ui.message.UserMessageEffect
@@ -112,6 +114,10 @@ fun BikaApp(
                     NavDisplay(
                         backStack = navigator.contentBackStack,
                         sceneStrategies = listOf(DialogSceneStrategy()),
+                        entryDecorators = listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator()
+                        ),
                         entryProvider = entryProvider {
                             featureSection(
                                 navigator = navigator,
@@ -123,6 +129,10 @@ fun BikaApp(
                 } else {
                     NavDisplay(
                         backStack = navigator.authenticationBackStack,
+                        entryDecorators = listOf(
+                            rememberSaveableStateHolderNavEntryDecorator(),
+                            rememberViewModelStoreNavEntryDecorator()
+                        ),
                         entryProvider = entryProvider {
                             authenticationSection(
                                 navigateToRegister = {

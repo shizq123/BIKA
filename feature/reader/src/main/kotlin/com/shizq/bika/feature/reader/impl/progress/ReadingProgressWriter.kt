@@ -4,11 +4,11 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.flow.sample
 import kotlin.time.Duration
 
 private val logger = KotlinLogging.logger("ProgressWriter")
@@ -61,7 +61,7 @@ class ReadingProgressWriter(
 
     init {
         merge(
-            submissions.debounce(debounce),
+            submissions.sample(debounce),
             immediateWrites,
         )
             // 只对相邻重复去重。注意不能把 immediateWrites 排除在外——切章写入的
