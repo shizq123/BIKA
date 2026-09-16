@@ -37,7 +37,7 @@ import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.ui.FullScreenLoading
 import com.shizq.bika.feature.reader.impl.autoscroll.AutoScrollControlPanel
-import com.shizq.bika.feature.reader.impl.autoscroll.rememberAutoScrollController
+import com.shizq.bika.feature.reader.impl.autoscroll.rememberAutoScrollState
 import com.shizq.bika.feature.reader.impl.bar.ReaderBottomBar
 import com.shizq.bika.feature.reader.impl.bar.TopBar
 import com.shizq.bika.feature.reader.impl.components.ChapterList
@@ -60,7 +60,6 @@ import com.shizq.bika.feature.reader.impl.progress.ReadingProgressManager
 import com.shizq.bika.feature.reader.impl.state.ReaderAction
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.HideSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.JumpToChapter
-import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetAutoScrollEnabled
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetAutoScrollSpeed
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetOrientation
 import com.shizq.bika.feature.reader.impl.state.ReaderAction.SetReadingMode
@@ -169,17 +168,12 @@ private fun ReaderReadyContent(
     val navigation = state.navigation
     val hasNextChapter = navigation.next != null
 
-    // 自动滚动依赖像素级连续滚动能力（controller.continuousScroller），
-    // Pager 模式下该值为 null，AutoScrollController 会据此保持不可用状态。
-    val autoScroll = rememberAutoScrollController(
+    val autoScroll = rememberAutoScrollState(
         scroller = controller.continuousScroller,
         enabled = config.autoScrollEnabled,
         speed = config.autoScrollSpeed,
         hasNextChapter = hasNextChapter,
-        onReachEnd = {
-            Toast.makeText(context, ReaderScreenMessages.NoMoreContent, Toast.LENGTH_SHORT).show()
-        },
-        onSettingChanged = { dispatch(SetAutoScrollEnabled(it)) },
+        onStop = {},
     )
 
     // 当前位置。直接读 controller 的快照状态，不再 collect 一个冷流——
@@ -308,9 +302,9 @@ private fun ReaderReadyContent(
         // 只在支持连续滚动的模式下展示：Pager 模式下点了不会有任何反应
         if (config.autoScrollEnabled && autoScroll.isSupported) {
             AutoScrollControlPanel(
-                isScrolling = autoScroll.isScrolling,
+                isScrolling = autoScroll.isRunning,
                 speed = config.autoScrollSpeed,
-                onPlayPauseToggle = { autoScroll.togglePause() },
+                onPlayPauseToggle = { autoScroll.togglePlayPause() },
                 onSpeedUp = {
                     if (config.autoScrollSpeed < AutoScrollSpeedRange.last) {
                         dispatch(SetAutoScrollSpeed(config.autoScrollSpeed + 1))
@@ -322,7 +316,7 @@ private fun ReaderReadyContent(
                     }
                 },
                 onClose = {
-                    autoScroll.disableAndPersist()
+                    autoScroll.close()
                 },
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
