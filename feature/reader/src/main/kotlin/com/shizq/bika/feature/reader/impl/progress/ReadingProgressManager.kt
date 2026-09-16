@@ -1,10 +1,13 @@
 package com.shizq.bika.feature.reader.impl.progress
 
 import com.shizq.bika.feature.reader.impl.layout.ReaderController
+import com.shizq.bika.feature.reader.impl.layout.positionFlow
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 
 private val logger = KotlinLogging.logger("ProgressManager")
 
@@ -123,7 +126,11 @@ class ReadingProgressManager(
         chapterTitleProvider: () -> String,
         controller: ReaderController,
     ) {
-        controller.visibleItemIndex
+        // 进度保存取 forProgress（当前屏的起始页）：跨页模式下一屏两页，
+        // 「读到哪」以起始页为准。末页判定用的是另一个端点，见 ChapterAutoAdvanceEffect。
+        controller.positionFlow()
+            .map { it.forProgress }
+            .distinctUntilChanged()
             .collectLatest { page ->
                 val progress = ChapterProgress(
                     comicId = key.comicId,

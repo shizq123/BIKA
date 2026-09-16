@@ -67,10 +67,50 @@ private val pagingLogger = KotlinLogging.logger("ReaderPaging")
 private val imageLogger = KotlinLogging.logger("ReaderImage")
 
 /**
- * 分页数据未就绪时的占位组件：
+ * 章节分页失败后的**唯一**退避重试驱动（间隔 2s/4s/8s/16s/30s 封顶）。
+ *
+ * 必须由宿主调用**一次**，不能放在占位项里。`loadState` 是整个 PagingData 共享的，
+ * 而占位项在屏上通常同时存在若干个：之前每个占位项各持一份 autoRetryCount、
+ * 各起一个 LaunchedEffect、各调 `pageItems.retry()`，于是
+ * - 实际重试间隔变成所有实例中最小的那个，退避形同失效；
+ * - 每轮重试的请求数等于当前可见占位项数量；
+ * - 计数的 `remember(pageItems)` 在滚动复用时被重建，间隔又被拉回 2s。
+ *
+ * 失败原因日志也只在这里记一次，不再按可见占位项数量刷屏。
+ */
+@Composable
+fun ChapterAppendRetryEffect(pageItems: LazyPagingItems<ChapterPage>) {
+    val loadState = pageItems.loadState
+    val error = (loadState.refresh as? LoadState.Error) ?: (loadState.append as? LoadState.Error)
+
+    var autoRetryCount by remember(pageItems) { mutableIntStateOf(0) }
+    LaunchedEffect(error, autoRetryCount) {
+        val throwable = error?.error ?: return@LaunchedEffect
+        if (autoRetryCount == 0) {
+            if (throwable.isRetryableError()) {
+                pagingLogger.error(throwable) { "章节分页加载失败" }
+            } else {
+                // 404 等永久失败：提示后不再自动重试
+                pagingLogger.warn(throwable) { "章节分页永久不可用(不重试)" }
+            }
+        }
+        if (!throwable.isRetryableError()) return@LaunchedEffect
+
+        // 用 coerceAtMost 前先限制位移量：shl 的右操作数按 mod 32 取模，
+        // autoRetryCount 涨到 32 时 2000L shl 32 会绕回 2000，退避失效。
+        val delayMs = (2000L shl autoRetryCount.coerceAtMost(4)).coerceAtMost(30_000L)
+        delay(delayMs)
+        autoRetryCount++
+        pageItems.retry()
+    }
+}
+
+/**
+ * 分页数据未就绪时的占位组件，**纯 UI**：
  * - 加载中：显示进度条
- * - 分页失败：显示可点击的重试按钮，并持续退避重试（间隔 2s/4s/8s/16s/30s 封顶），
- *   网络恢复后无需手动操作即可重新获取数据；首次失败记录原因日志
+ * - 分页失败：显示可点击的重试按钮（用户显式操作立即生效，不走退避）
+ *
+ * 自动退避重试见 [ChapterAppendRetryEffect]。
  */
 @Composable
 fun ChapterPageLoadStateItem(
@@ -78,32 +118,8 @@ fun ChapterPageLoadStateItem(
     index: Int,
     modifier: Modifier = Modifier,
 ) {
-    val refreshError = pageItems.loadState.refresh as? LoadState.Error
-    val appendError = pageItems.loadState.append as? LoadState.Error
-    val isError = refreshError != null || appendError != null
-
-    var autoRetryCount by remember(pageItems) { mutableIntStateOf(0) }
-    LaunchedEffect(isError, autoRetryCount) {
-        if (isError) {
-            val error = refreshError?.error ?: appendError?.error
-            if (autoRetryCount == 0) {
-                if (error.isRetryableError()) {
-                    pagingLogger.error(error) { "章节分页加载失败: 第 ${index + 1} 页" }
-                } else {
-                    // 404 等永久失败：提示后不再自动重试
-                    pagingLogger.warn(error) { "章节分页永久不可用(不重试): 第 ${index + 1} 页" }
-                }
-            }
-            if (error.isRetryableError()) {
-                // 用 coerceAtMost 前先限制位移量：shl 的右操作数按 mod 32 取模，
-                // autoRetryCount 涨到 32 时 2000L shl 32 会绕回 2000，退避失效。
-                val delayMs = (2000L shl autoRetryCount.coerceAtMost(4)).coerceAtMost(30_000L)
-                autoRetryCount++
-                delay(delayMs)
-                pageItems.retry()
-            }
-        }
-    }
+    val loadState = pageItems.loadState
+    val isError = loadState.refresh is LoadState.Error || loadState.append is LoadState.Error
 
     Box(
         modifier = modifier

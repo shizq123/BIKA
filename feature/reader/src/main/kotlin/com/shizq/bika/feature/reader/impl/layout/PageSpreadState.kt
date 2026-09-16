@@ -1,9 +1,7 @@
 package com.shizq.bika.feature.reader.impl.layout
 
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 
@@ -11,57 +9,70 @@ import androidx.compose.runtime.setValue
  * 跨页分组的共享状态，由 [PagerLayoutStrategy]（渲染）和 [PagerController]（页码换算）
  * 共同读取，保证两边看到的是同一份分组。
  *
- * 分组结果是 derived 的：宽页集合或总页数变化时自动重算，调用方不需要手动同步。
- * 之前渲染层各算一次、控制层用 `index * 2` 另算一次，两边会不一致。
+ * 这个类现在只是 [SpreadLayout] 的 Compose 状态外壳：所有判定逻辑都在纯函数
+ * [withMeasurement] / [withPageCount] 里，这里只负责把结果写进快照状态。
+ * 分组与重定位请求来自同一次纯计算，不可能互相不一致。
+ *
+ * 重定位请求**不是**破坏性读取。之前的 `consumePendingAnchor()` 先清空再滚动，
+ * 而滚动前还有一个「分组是否已就绪」的守卫——守卫为假时 anchor 已经没了，
+ * 重定位永久丢失。而那个守卫恰好在最需要重定位的那一帧最可能为假。
+ * 现在改成 [clearRelocation]，只在**确认到位后**由渲染层调用。
  */
 @Stable
 class PageSpreadState(
-    private val doublePage: Boolean,
+    doublePage: Boolean,
     private val pageCountProvider: () -> Int,
 ) {
-    /** 已测量出的宽页页码。用 Map 是因为 Compose 没有 mutableStateSetOf。 */
-    private val widePages = mutableStateMapOf<Int, Boolean>()
-
-    private val spreadsState = derivedStateOf {
-        buildPageSpreads(
-            pageCount = pageCountProvider(),
-            doublePage = doublePage,
-            widePageIndices = widePages.keys,
-        )
-    }
-
-    val spreads: List<PageSpread> get() = spreadsState.value
-
-    /** Pager 的 pageCount，即翻页单位数量。 */
-    val spreadCount: Int get() = spreads.size
-
-    /**
-     * 分组变化后需要重新定位到的**真实页码**，null 表示无待处理的重定位。
-     * 由 [PagerLayoutStrategy] 消费，见 [consumePendingAnchor]。
-     */
-    var pendingAnchorPage: Int? by mutableStateOf(null)
+    var layout: SpreadLayout by mutableStateOf(
+        SpreadLayout.of(pageCount = pageCountProvider(), doublePage = doublePage),
+    )
         private set
 
     /**
-     * 图片解码后上报实际尺寸。只在判定为宽页时写入，避免无谓的重组。
-     *
-     * [anchorPage] 是上报时用户所在的真实页码。测出一个位于它**之前**的宽页会
-     * 让该页独占一屏、后续所有页的分组整体后移一位，此时 pagerState.currentPage
-     * （翻页单位下标）含义漂移，用户会看到画面莫名跳到邻页。这里把当时的真实
-     * 页码记下来，交由渲染层在分组稳定后滚回同一页。
-     *
-     * 只在宽页位于 anchorPage 之前（或就是它）时才记：位于之后的宽页只影响
-     * 尚未看到的分组，当前屏不会变。
+     * 待重定位的**真实页码**，null 表示无待处理请求。
+     * 由 [PagerLayoutStrategy] 在滚动确认到位后调 [clearRelocation] 清除。
      */
-    fun onPageMeasured(pageIndex: Int, width: Float, height: Float, anchorPage: Int? = null) {
-        if (!isWidePage(width, height) || widePages[pageIndex] == true) return
+    var relocateTo: Int? by mutableStateOf(null)
+        private set
 
-        if (anchorPage != null && pageIndex <= anchorPage) {
-            pendingAnchorPage = anchorPage
+    val spreads: List<PageSpread> get() = layout.spreads
+
+    /** Pager 的 pageCount，即翻页单位数量。 */
+    val spreadCount: Int get() = layout.spreadCount
+
+    /**
+     * 同步分页续拉后的页数。
+     *
+     * 由渲染层在组合中调用（`itemCount` 是快照状态，变化会触发重组）。
+     * 之前 spreads 是 `derivedStateOf { pageCountProvider() }`，页数变化自动生效；
+     * 现在分组是普通状态，需要这一步显式推进。代价是多一个调用点，
+     * 换来的是分组变化必须经由 [withMeasurement] / [withPageCount] 这两个纯函数。
+     */
+    fun syncPageCount() {
+        val current = pageCountProvider()
+        if (current != layout.pageCount) {
+            layout = layout.withPageCount(current)
         }
-        widePages[pageIndex] = true
     }
 
-    /** 取出并清空待重定位页码；返回 null 表示无需重定位。 */
-    fun consumePendingAnchor(): Int? = pendingAnchorPage.also { pendingAnchorPage = null }
+    /**
+     * 图片解码后上报实际尺寸。
+     *
+     * @param anchorPage 上报时用户所在的真实页码，须来自不随本次重排变化的来源。
+     */
+    fun onPageMeasured(pageIndex: Int, width: Float, height: Float, anchorPage: Int? = null) {
+        val result = layout.withMeasurement(pageIndex, width, height, anchorPage)
+        if (result.layout === layout) return
+        layout = result.layout
+        // 已有未完成的重定位请求时不覆盖：先到的那个 anchor 才是用户真正的位置，
+        // 后到的是在已经漂移过的分组上算出来的。
+        if (result.relocateTo != null && relocateTo == null) {
+            relocateTo = result.relocateTo
+        }
+    }
+
+    /** 重定位已确认到位，清除请求。未到位时**不要**调用，否则请求会永久丢失。 */
+    fun clearRelocation() {
+        relocateTo = null
+    }
 }

@@ -12,7 +12,7 @@ import kotlin.time.Duration.Companion.seconds
  * 循环里的经验性等待。恢复改成声明式后这三个都不需要了。
  *
  * @property dataWaitTimeout 等目标页数据真实到位（peek != null）的超时
- * @property confirmTimeout 滚动后等 visibleItemIndex 确认到达的超时
+ * @property confirmTimeout 滚动后等 controller.position 确认到达的超时
  * @property confirmTolerance 确认到达时容许的页码误差（条漫下高度未测完会差一两项）
  * @property persistDebounce 翻页保存的防抖延迟
  */

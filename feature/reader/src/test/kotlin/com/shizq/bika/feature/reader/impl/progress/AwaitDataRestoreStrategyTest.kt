@@ -1,9 +1,14 @@
 package com.shizq.bika.feature.reader.impl.progress
 
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshots.Snapshot
 import com.shizq.bika.feature.reader.impl.layout.ContinuousScroller
 import com.shizq.bika.feature.reader.impl.layout.ReaderController
+import com.shizq.bika.feature.reader.impl.layout.ReadingPositionSnapshot
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -222,23 +227,34 @@ class AwaitDataRestoreStrategyTest {
         }
     }
 
+    /**
+     * position 是 Compose 快照状态。测试里直接用 mutableStateOf，读写包在
+     * withMutableSnapshot 里；[positionFlow] 基于 snapshotFlow，需要
+     * Snapshot 的全局写观察者才会发射，故 [scrollToPage] 里显式提交快照。
+     */
     private class FakeController(
         initialPage: Int = 0,
         private val honorScroll: Boolean = true,
         private val scrollLandsAt: (Int) -> Int = { it },
     ) : ReaderController {
-        private val page = MutableStateFlow(initialPage)
+        private var current by mutableStateOf(ReadingPositionSnapshot.single(initialPage))
         val scrollCalls = mutableListOf<Int>()
 
-        override val visibleItemIndex: Flow<Int> = page
+        override val position: ReadingPositionSnapshot get() = current
         override val continuousScroller: ContinuousScroller? = null
+
+        override suspend fun track() = awaitCancellation()
 
         override suspend fun scrollNextPage() = Unit
         override suspend fun scrollPrevPage() = Unit
 
         override suspend fun scrollToPage(index: Int) {
             scrollCalls += index
-            if (honorScroll) page.value = scrollLandsAt(index)
+            if (honorScroll) {
+                Snapshot.withMutableSnapshot {
+                    current = ReadingPositionSnapshot.single(scrollLandsAt(index))
+                }
+            }
         }
     }
 }

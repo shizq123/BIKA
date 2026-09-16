@@ -4,9 +4,14 @@ import android.content.res.Configuration
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.paging.compose.LazyPagingItems
@@ -19,6 +24,7 @@ import com.shizq.bika.core.model.reader.ViewerType
 import com.shizq.bika.feature.reader.impl.util.preload.LazyListScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.ScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.SpreadScrollStateProvider
+import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
  * 不再暴露 LazyListState：那会绕过 [ReaderController] 的抽象，
@@ -141,8 +147,13 @@ fun rememberReaderContext(
                         magnifierEnabled = config.magnifierEnabled,
                     )
                 }
-                val controller = remember(listState) { WebtoonController(listState, initialPageIndex) }
+                val controller =
+                    remember(listState) { WebtoonController(listState, initialPageIndex) }
                 val scrollProvider = remember(listState) { LazyListScrollStateProvider(listState) }
+
+                // position 的唯一写入者。漏掉这一步的表现是页码永远停在初始值，
+                // 不崩不报错，所以放在装配处而不是留给调用方。
+                LaunchedEffect(controller) { controller.track() }
 
                 ReaderContext(
                     layout = layout,
@@ -157,26 +168,36 @@ fun rememberReaderContext(
             // key(chapterOrder) 与 Scrolling 分支对齐：不加的话切章时 pagerState 被复用，
             // initialPage 只在首次创建生效，新章节会停在旧页码上。
             key(chapterOrder) {
-                // 分组状态先建立：pagerState 的 pageCount 要取翻页单位数，
-                // 不能再用 (itemCount + 1) / 2 —— 出现宽页独占一屏时该公式会算少，
-                // 页码从宽页之后开始整体错位。
-                val spreadState = remember(useDoublePage) {
-                    PageSpreadState(
-                        doublePage = useDoublePage,
-                        pageCountProvider = { chapterPages.itemCount },
-                    )
-                }
+                // 跨越宽/窄阈值时（旋屏、折叠屏展开）分组方式改变，pagerState 必须
+                // 一起重建：它的 currentPage 是「翻页单位下标」，而单页↔双页会让这个
+                // 下标的含义整体变化。
+                //
+                // 之前只有 spreadState 的 remember 带 useDoublePage 这个 key，pagerState
+                // 只按 chapterOrder 记忆，于是旋屏后 pagerState 的 pageCount lambda
+                // 仍捕获着**已被丢弃的旧 spreadState 实例**，而 currentPage 的含义
+                // 已经变了却无人重定位。
+                //
+                // 代价是重建会丢掉 pagerState 的位置，所以真实页码要存在 key 之外，
+                // 由重建后的 initialPage 重新换算回来。
+                var retainedPage by remember { mutableIntStateOf(initialPageIndex) }
 
-                val pagerState = rememberPagerState(
-                    // initialPage 只在创建时读一次，此刻 chapterPages.itemCount 往往还是 0、
-                    // 分组结果为空，查 spreadIndexOfPage 只会得到 0。创建时也还没有任何页被
-                    // 测量过，等价于「无宽页」，此时单位下标就是 index/2，直接算即可。
-                    // 真正的进度定位由 ProgressManager 调 scrollToPage 完成（那里会查分组）。
-                    initialPage = if (useDoublePage) initialPageIndex / 2 else initialPageIndex
-                ) { spreadState.spreadCount }
+                key(useDoublePage) {
+                    val spreadState = remember {
+                        PageSpreadState(
+                            doublePage = useDoublePage,
+                            pageCountProvider = { chapterPages.itemCount },
+                        )
+                    }
 
-                val layout =
-                    remember(
+                    val pagerState = rememberPagerState(
+                        // 此刻 itemCount 往往还是 0、分组为空，spreadIndexOfPage 返回 0，
+                        // 与旧的 `initialPageIndex / 2` 相比不会更差，且在**旋屏重建**
+                        // 这条路径上明显更好：那时分组已经建立，换算是准确的。
+                        // 首次进入的精确定位仍由 ProgressManager 的 scrollToPage 负责。
+                        initialPage = spreadState.spreads.spreadIndexOfPage(retainedPage),
+                    ) { spreadState.spreadCount }
+
+                    val layout = remember(
                         pagerState,
                         readingMode.direction,
                         readingMode.isRtl,
@@ -192,22 +213,38 @@ fun rememberReaderContext(
                         )
                     }
 
-                val controller = remember(pagerState, spreadState) {
-                    PagerController(pagerState, spreadState)
-                }
-                // 预载要按真实页码走：跨页时一屏有两页，只报 currentPage 会漏预载右页。
-                val scrollProvider = remember(pagerState, spreadState) {
-                    SpreadScrollStateProvider(spreadState.visibleSpreadRange(pagerState))
-                }
+                    val controller = remember(pagerState, spreadState) {
+                        PagerController(pagerState, spreadState)
+                    }
 
-                ReaderContext(
-                    layout = layout,
-                    controller = controller,
-                    scrollStateProvider = scrollProvider,
-                    config = config,
-                )
+                    LaunchedEffect(controller) { controller.track() }
+
+                    // 跨越阈值重建时要回到同一页，所以位置必须存到 key 之外。
+                    LaunchedEffect(controller) {
+                        snapshotFlow { controller.position.first }
+                            .collect { retainedPage = it }
+                    }
+
+                    // 预载按真实页码走：跨页时一屏两页，只报单位下标会漏预载右页。
+                    // 直接从 controller.position 取——它读了 layout，分组变化会自动
+                    // 重新发射。之前的 visibleSpreadRange 只在 snapshotFlow 里观察
+                    // currentPage，spreads 是在下游 map 里读的（不在快照观察范围内），
+                    // 分组变化不触发重算，预载范围会滞留在旧换算上。
+                    val scrollProvider = remember(controller) {
+                        SpreadScrollStateProvider(
+                            snapshotFlow { controller.position.range }.distinctUntilChanged(),
+                        )
+                    }
+
+                    ReaderContext(
+                        layout = layout,
+                        controller = controller,
+                        scrollStateProvider = scrollProvider,
+                        config = config,
+                    )
+                }
             }
         }
     }
 }
-
+

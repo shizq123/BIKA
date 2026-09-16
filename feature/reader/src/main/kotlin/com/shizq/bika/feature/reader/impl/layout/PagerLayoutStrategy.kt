@@ -9,6 +9,9 @@ import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -18,8 +21,6 @@ import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.Direction
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNotNull
-import kotlinx.coroutines.flow.map
 
 class PagerLayoutStrategy(
     private val pagerState: PagerState,
@@ -29,30 +30,40 @@ class PagerLayoutStrategy(
     private val magnifierEnabled: Boolean,
 ) : ReaderLayoutStrategy {
 
-    /**
-     * 翻页模式由每页自己缩放：容器和页面同时注册缩放手势会互相抢事件。
-     * 跨页模式下也让左右两页各自独立缩放。
-     */
-    override val isGestureSelfContained: Boolean = true
-
     @Composable
     override fun RenderContent(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
     ) {
-        val spreads = spreadState.spreads
+        // 分页续拉让 itemCount 增长时推进分组。itemCount 是快照状态，
+        // 读它即建立订阅，增长会触发重组再走到这里。
+        spreadState.syncPageCount()
+
+        val layout = spreadState.layout
+        val spreads = layout.spreads
 
         // 分组重排后把视口拉回同一张真实页。
-        // 只在 onPageMeasured 判定「宽页出现在当前位置之前」时才有待处理值，
-        // 因此不会与进度恢复（ProgressManager 的 scrollToPage）互相打断：
-        // 分页加载导致的 itemCount 增长只在末尾追加分组，不会触发重定位。
-        val pendingAnchor = spreadState.pendingAnchorPage
-        LaunchedEffect(pendingAnchor, spreads) {
-            val anchor = spreadState.consumePendingAnchor() ?: return@LaunchedEffect
+        //
+        // 与之前的关键差别：请求只在**确认到位后**清除。之前是先 consume 再判
+        // `target < pagerState.pageCount`，守卫为假时 anchor 已丢、滚动没做，
+        // 重定位永久失效——而 pageCount 来自 spreadCount 的 lambda，与 spreads
+        // 的重组之间有一帧窗口，那一帧恰好是最需要重定位的时刻。
+        val relocateTo = spreadState.relocateTo
+        LaunchedEffect(relocateTo, spreads) {
+            val anchor = relocateTo ?: return@LaunchedEffect
+            // 分组还没建立：不清除请求，等下一次重组再试。
+            if (spreads.isEmpty() || pagerState.pageCount == 0) return@LaunchedEffect
+
             val target = spreads.spreadIndexOfPage(anchor)
-            if (target != pagerState.currentPage && target < pagerState.pageCount) {
+            if (target >= pagerState.pageCount) return@LaunchedEffect
+
+            if (pagerState.currentPage != target) {
                 pagerState.scrollToPage(target)
+            }
+            // 到位才清。没到位就留着，下一帧重来。
+            if (pagerState.currentPage == target) {
+                spreadState.clearRelocation()
             }
         }
 
@@ -159,15 +170,22 @@ class PagerLayoutStrategy(
             magnifierEnabled = magnifierEnabled,
             onTap = onPageTap,
             onSizeLoaded = { width, height ->
-                // anchorPage 取上报**当时**用户所在的真实页码：测出宽页会改变分组，
-                // 若该宽页在当前位置之前，pagerState.currentPage 的含义会漂移一位。
+                // anchorPage 取 pagerState.settledPage 换算出的真实页码。
+                //
+                // 不能像之前那样在这里读 `spreadState.spreads` 再查 currentPage：
+                // onSizeLoaded 来自 LaunchedEffect(intrinsicSize)，是异步的，同一帧
+                // 可能有多页同时上报。第二个回调读到的分组已经被第一个改过，
+                // 于是算出一个已经漂移的 anchor，还会覆盖掉先到的那个正确值。
+                //
+                // 用 settledPage 而非 currentPage：currentPage 在滑动过半时就会跳变，
+                // 用户正在滑动中途上报会把 anchor 记成尚未落定的那一屏。
                 spreadState.onPageMeasured(
                     pageIndex = index,
                     width = width,
                     height = height,
-                    anchorPage = spreadState.spreads
-                        .getOrNull(pagerState.currentPage)
-                        ?.startIndex,
+                    anchorPage = spreadState.layout
+                        .positionAt(pagerState.settledPage)
+                        ?.first,
                 )
             },
         )
@@ -186,17 +204,34 @@ class PagerController(
     override val continuousScroller: ContinuousScroller? = null
 
     /**
-     * 当前页码取所在翻页单位的首页。
+     * 当前屏覆盖的真实页码范围。
      *
-     * 分组尚未建立时（章节切换后 itemCount 仍为 0）不发射，而不是发 0。
-     * 发 0 会被下游当成"用户正停在第 1 页"：ReadingProgressManager 会把它
-     * 写进数据库，覆盖掉真实进度；页码徽章也会闪一下 "1 / N"。
-     * 下游用 collectAsState(0) 自带初始值，等真实页码到达即可。
+     * 跨页模式下 first != last，这是「读到第几页」（取 first）与「读完没」
+     * （取 last）能分开回答的前提。之前这里只发 startIndex，末屏是
+     * Double(n-2, n-1) 时永远追不到 totalPages - 1：章节自动衔接不触发、
+     * 「已读完」标记拿不到、页码徽章停在倒数第二页。
+     *
+     * 分组尚未建立时保留上一个已知位置，而不是回落到 0——0 会被
+     * ReadingProgressManager 当成「用户在第 1 页」写进数据库，覆盖真实进度。
      */
-    override val visibleItemIndex = snapshotFlow {
-        spreadState.spreads.getOrNull(pagerState.currentPage)?.startIndex
-    }.filterNotNull().distinctUntilChanged()
+    override var position: ReadingPositionSnapshot by mutableStateOf(
+        spreadState.layout.positionAt(pagerState.currentPage)
+            ?: ReadingPositionSnapshot.single(0),
+    )
+        private set
 
+    override suspend fun track() {
+        snapshotFlow { spreadState.layout.positionAt(pagerState.currentPage) }
+            .distinctUntilChanged()
+            .collect { snapshot ->
+                if (snapshot != null) position = snapshot
+            }
+    }
+
+    /**
+     * 前进一个**翻页单位**。跨页模式下即前进两页，这是正确语义：
+     * 逐页前进会让画面从 1|2 变成 2|3。
+     */
     override suspend fun scrollNextPage() {
         val target = pagerState.currentPage + 1
         if (target < pagerState.pageCount) {
@@ -216,16 +251,5 @@ class PagerController(
         if (spreads.isEmpty() || pagerState.pageCount == 0) return
         val target = spreads.spreadIndexOfPage(index)
         pagerState.scrollToPage(target.coerceIn(0, pagerState.pageCount - 1))
-    }
-}
-
-/** Pager 的可见页范围：跨页模式下一屏包含两页，预载需要知道真实页码。 */
-internal fun PageSpreadState.visibleSpreadRange(pagerState: PagerState) = snapshotFlow {
-    pagerState.currentPage
-}.distinctUntilChanged().map { spreadIndex ->
-    when (val spread = spreads.getOrNull(spreadIndex)) {
-        null -> null
-        is PageSpread.Single -> spread.startIndex..spread.startIndex
-        is PageSpread.Double -> spread.startIndex..spread.secondIndex
     }
 }

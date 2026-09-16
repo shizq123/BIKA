@@ -7,31 +7,60 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import me.saket.telephoto.zoomable.EnabledZoomGestures
+import me.saket.telephoto.zoomable.ZoomSpec
+import me.saket.telephoto.zoomable.rememberZoomableState
+import me.saket.telephoto.zoomable.zoomable
 
 class WebtoonLayoutStrategy(
     private val listState: LazyListState,
     private val hasPageGap: Boolean,
     private val magnifierEnabled: Boolean,
 ) : ReaderLayoutStrategy {
-    /** 条漫由容器整体缩放：连续滚动下逐页缩放没有意义。 */
-    override val isGestureSelfContained: Boolean = false
 
+    /**
+     * 条漫由**容器整体**缩放：连续滚动下逐页缩放没有意义（跨页边界会被撕开）。
+     *
+     * 之前这是宿主读一个 `isGestureSelfContained` 布尔标志、由宿主套上
+     * `Modifier.zoomable` 的方式。改成布局自己套：缩放归属只有一个持有者，
+     * 也不再需要宿主用 `key(layout::class)` 猜策略换没换来复位缩放状态——
+     * zoomableState 现在随本 composable 的节点一起生灭。
+     */
     @Composable
     override fun RenderContent(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
     ) {
+        val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
+        var rootSize by remember { mutableStateOf(IntSize.Zero) }
+
         LazyColumn(
             state = listState,
-            modifier = modifier,
+            modifier = modifier
+                .onSizeChanged { rootSize = it }
+                .zoomable(
+                    state = zoomableState,
+                    gestures = EnabledZoomGestures.ZoomAndPan,
+                    onClick = { offset ->
+                        // 容器级路径：点击坐标本就是视口坐标，直接用。
+                        if (rootSize != IntSize.Zero) {
+                            onPageTap(PageTapContext(position = offset, viewportSize = rootSize))
+                        }
+                    },
+                ),
             verticalArrangement = if (hasPageGap) Arrangement.spacedBy(8.dp) else Arrangement.Top
         ) {
             items(
@@ -54,10 +83,8 @@ class WebtoonLayoutStrategy(
 
 class WebtoonController(
     private val listState: LazyListState,
-    initialPageIndex: Int
+    initialPageIndex: Int,
 ) : ReaderController {
-    
-    private var lastValidIndex: Int = initialPageIndex
 
     override val continuousScroller: ContinuousScroller = object : ContinuousScroller {
         override suspend fun scrollBy(pixels: Float): Float = listState.scrollBy(pixels)
@@ -66,12 +93,40 @@ class WebtoonController(
             get() = listState.isScrollInProgress
 
         override val interactionSource: InteractionSource
-        get() = listState.interactionSource
+            get() = listState.interactionSource
     }
 
-    override val visibleItemIndex: Flow<Int> = snapshotFlow {
-        calculateCurrentPageIndex()
-    }.distinctUntilChanged()
+    /**
+     * 条漫下一屏可能同时露出多页，[ReadingPositionSnapshot.first] 是进度页码，
+     * [ReadingPositionSnapshot.last] 用于末页判定（最后一页很短时靠它才能触发已读完）。
+     */
+    override var position: ReadingPositionSnapshot by mutableStateOf(
+        ReadingPositionSnapshot.single(initialPageIndex),
+    )
+        private set
+
+    /**
+     * [position] 的唯一写入者。
+     *
+     * `lastValidIndex` 这种「取不到就沿用上次」的逻辑必须有唯一写入点，也因此
+     * 不能放在 derivedStateOf 里（那里不允许写外部状态）。之前它是
+     * `snapshotFlow { calculateCurrentPageIndex() }` 里的副作用，而那个冷流被
+     * 四处独立 collect，等于四个协程并发读写同一个字段。
+     */
+    override suspend fun track() {
+        snapshotFlow { readLayoutSnapshot() }
+            .distinctUntilChanged()
+            .collect { info ->
+                val resolved = resolveListReadingPosition(
+                    layoutInfo = info,
+                    lastValidIndex = position.first,
+                )
+                position = ReadingPositionSnapshot(
+                    first = resolved,
+                    last = info.lastVisibleItem?.index?.coerceAtLeast(resolved) ?: resolved,
+                )
+            }
+    }
 
     override suspend fun scrollNextPage() {
         val viewportHeight = listState.layoutInfo.viewportSize.height
@@ -98,27 +153,21 @@ class WebtoonController(
     }
 
     /**
-     * 计算当前阅读到的页码（用于进度保存）。判定规则见 [resolveListReadingPosition]，
-     * 这里只负责把 Compose 的 [LazyListState.layoutInfo] 转成规则需要的快照。
+     * 把 Compose 的 [LazyListState.layoutInfo] 转成判定规则需要的快照。
+     * 判定规则本身见 [resolveListReadingPosition]（纯函数，可单测）。
      */
-    private fun calculateCurrentPageIndex(): Int {
+    private fun readLayoutSnapshot(): ListReadingLayoutInfo {
         val layoutInfo = listState.layoutInfo
         val visibleItems = layoutInfo.visibleItemsInfo
-
-        val result = resolveListReadingPosition(
-            layoutInfo = ListReadingLayoutInfo(
-                firstVisibleItem = visibleItems.firstOrNull()?.let {
-                    VisibleItemSnapshot(index = it.index, offset = it.offset, size = it.size)
-                },
-                lastVisibleItem = visibleItems.lastOrNull()?.let {
-                    VisibleItemSnapshot(index = it.index, offset = it.offset, size = it.size)
-                },
-                totalItemsCount = layoutInfo.totalItemsCount,
-                viewportEndOffset = layoutInfo.viewportEndOffset,
-            ),
-            lastValidIndex = lastValidIndex,
+        return ListReadingLayoutInfo(
+            firstVisibleItem = visibleItems.firstOrNull()?.let {
+                VisibleItemSnapshot(index = it.index, offset = it.offset, size = it.size)
+            },
+            lastVisibleItem = visibleItems.lastOrNull()?.let {
+                VisibleItemSnapshot(index = it.index, offset = it.offset, size = it.size)
+            },
+            totalItemsCount = layoutInfo.totalItemsCount,
+            viewportEndOffset = layoutInfo.viewportEndOffset,
         )
-        lastValidIndex = result
-        return result
     }
 }

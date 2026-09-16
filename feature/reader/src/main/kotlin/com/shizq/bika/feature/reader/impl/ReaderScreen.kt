@@ -1,5 +1,3 @@
-@file:OptIn(kotlinx.coroutines.FlowPreview::class)
-
 package com.shizq.bika.feature.reader.impl
 
 import android.widget.Toast
@@ -20,7 +18,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -50,9 +47,12 @@ import com.shizq.bika.feature.reader.impl.components.ScreenOrientationSelectBott
 import com.shizq.bika.feature.reader.impl.components.ScrubPreviewOverlay
 import com.shizq.bika.feature.reader.impl.components.StatusBarCapsule
 import com.shizq.bika.feature.reader.impl.gesture.rememberGestureState
+import com.shizq.bika.feature.reader.impl.layout.ChapterAppendRetryEffect
 import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
+import com.shizq.bika.feature.reader.impl.layout.ReaderController
 import com.shizq.bika.feature.reader.impl.layout.ReaderLayoutHost
 import com.shizq.bika.feature.reader.impl.layout.SideSheetLayout
+import com.shizq.bika.feature.reader.impl.layout.positionFlow
 import com.shizq.bika.feature.reader.impl.layout.rememberReaderContext
 import com.shizq.bika.feature.reader.impl.progress.ChapterKey
 import com.shizq.bika.feature.reader.impl.progress.ReadingProgressEffect
@@ -77,8 +77,9 @@ import com.shizq.bika.feature.reader.impl.util.preload.rememberAdaptivePreloadCo
 import com.shizq.bika.feature.reader.impl.util.rememberScrubState
 import com.shizq.bika.feature.reader.impl.util.rememberTopEndSystemAwarePadding
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 @Composable
@@ -181,8 +182,14 @@ private fun ReaderReadyContent(
         onSettingChanged = { dispatch(SetAutoScrollEnabled(it)) },
     )
 
-    // 当前页（提升到此层级，用于自动衔接检测）
-    val currentPage by controller.visibleItemIndex.collectAsState(0)
+    // 当前位置。直接读 controller 的快照状态，不再 collect 一个冷流——
+    // 之前这里、章节自动衔接、进度跟踪、恢复确认各 collect 一次同一个冷
+    // snapshotFlow，等于四个协程各跑一遍位置计算。
+    // 分页退避重试只在这里驱动一次。放在占位项里会变成「每个可见占位项一条重试循环」。
+    ChapterAppendRetryEffect(pageItems)
+
+    val position = controller.position
+    val currentPage = position.forProgress
 
     ReaderSystemEffects(
         showSystemBars = overlayState.showSystemBars,
@@ -196,11 +203,12 @@ private fun ReaderReadyContent(
     ChapterAutoAdvanceEffect(
         chapterOrder = chapterState.order,
         totalPages = chapterState.totalPages,
-        visibleItemIndex = controller.visibleItemIndex,
+        controller = controller,
         navigation = navigation,
         onAdvance = { nextChapter, page ->
             dispatch(JumpToChapter(nextChapter, startFromBeginning = true, currentPage = page))
         },
+        // todo 替换成 MessageReporter
         onNoMoreContent = {
             Toast.makeText(context, ReaderScreenMessages.NoMoreContent, Toast.LENGTH_SHORT).show()
         },
@@ -258,10 +266,13 @@ private fun ReaderReadyContent(
             },
             floatingMessage = {
                 if (chapterState.totalPages > 0) {
-                    // 复用已提升到本层的 currentPage：原先 CurrentPageBadge 自己
-                    // 又 collect 了一次 visibleItemIndex，同一个 Flow 被订阅两次。
+                    // 复用已提升到本层的 position：原先 CurrentPageBadge 自己
+                    // 又 collect 了一次页码流，同一个 Flow 被订阅两次。
+                    // 跨页模式一屏两页，显示范围而不是只显示起始页——只显示起始页时
+                    // 末屏永远停在「9 / 10」，用户以为还有一页没读。
                     PageIndicatorBadge(
-                        pageNumber = currentPage + 1,
+                        pageNumber = position.first + 1,
+                        lastPageNumber = position.last + 1,
                         total = chapterState.totalPages,
                     )
                 }
@@ -360,17 +371,23 @@ private object ReaderScreenMessages {
 private fun ChapterAutoAdvanceEffect(
     chapterOrder: Int,
     totalPages: Int,
-    visibleItemIndex: Flow<Int>,
+    controller: ReaderController,
     navigation: ChapterNavigation,
     onAdvance: (nextChapter: Chapter, page: Int) -> Unit,
     onNoMoreContent: () -> Unit,
     policy: ChapterAdvancePolicy = remember { ChapterAdvancePolicy() },
 ) {
     val nextChapter = navigation.next
-    LaunchedEffect(chapterOrder, totalPages, nextChapter) {
+    LaunchedEffect(chapterOrder, totalPages, nextChapter, controller) {
         if (totalPages <= 0) return@LaunchedEffect
-        // 监听页面到达末尾（停留一段时间确认用户确实看到最后一页）
-        visibleItemIndex
+        // 末页判定必须用 forEndOfChapter（当前屏的**最后**一页）。
+        //
+        // 用起始页会让跨页模式永远读不完一章：10 页分成 D(0,1)…D(8,9)，末屏的
+        // 起始页恒为 8，isAtLastPage(8, 10) 判 8 >= 9 为假 —— 自动衔接不触发、
+        // 「已读完」标记拿不到、页码徽章停在 9/10。
+        controller.positionFlow()
+            .map { it.forEndOfChapter }
+            .distinctUntilChanged()
             .debounce(policy.endOfChapterDebounce)
             .collect { page ->
                 if (policy.isAtLastPage(page, totalPages)) {
@@ -471,12 +488,20 @@ private fun ReaderChapterListSheet(
 }
 
 /**
- * @param pageNumber 用于展示的页码，1-based（即 index + 1）
+ * @param pageNumber 当前屏起始页，1-based（即 index + 1）
+ * @param lastPageNumber 当前屏末页，1-based。与 [pageNumber] 相等时只显示一个数字。
+ *   跨页模式一屏两页，显示 "9-10 / 10" 而不是 "9 / 10"——后者会让用户以为
+ *   最后一页没读到。
  */
 @Composable
-fun PageIndicatorBadge(pageNumber: Int, total: Int) {
+fun PageIndicatorBadge(pageNumber: Int, total: Int, lastPageNumber: Int = pageNumber) {
+    val label = if (lastPageNumber > pageNumber) {
+        "$pageNumber-$lastPageNumber / $total"
+    } else {
+        "$pageNumber / $total"
+    }
     Text(
-        text = "$pageNumber / $total",
+        text = label,
         style = MaterialTheme.typography.labelMedium,
         color = Color.White,
         modifier = Modifier

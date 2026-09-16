@@ -1,10 +1,8 @@
 package com.shizq.bika.feature.reader.impl.layout
 
-import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
@@ -13,28 +11,25 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.unit.IntSize
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.TapAction
 import com.shizq.bika.feature.reader.impl.gesture.GestureState
 import com.shizq.bika.feature.reader.impl.gesture.VolumeKeyNavigation
 import kotlinx.coroutines.launch
-import me.saket.telephoto.zoomable.EnabledZoomGestures
-import me.saket.telephoto.zoomable.ZoomSpec
-import me.saket.telephoto.zoomable.rememberZoomableState
-import me.saket.telephoto.zoomable.zoomable
 
+/**
+ * 布局策略：负责页面怎么排、以及**自己**的缩放手势。
+ *
+ * 缩放归属不再由标志位协商。之前接口上有 `isGestureSelfContained`，宿主据此决定
+ * 要不要套容器级 `zoomable`——两层都懂缩放、靠一个布尔约定谁退让，漏配的表现是
+ * 捏合时画面乱跳。现在每个策略在自己内部套 zoomable：翻页模式每页独立缩放
+ * （换页自动复位），条漫模式容器整体缩放。
+ *
+ * 宿主只保留一件事：把点击坐标解析成翻页/菜单动作（[onPageTap]），因为那需要
+ * 阅读方向与点击分区配置，属于跨策略的共享规则。
+ */
 interface ReaderLayoutStrategy {
-    /**
-     * 该布局是否自己处理缩放与点击。
-     *
-     * true 时宿主不再套容器级 `zoomable`——容器和页面同时注册缩放手势会互相
-     * 抢事件，表现为捏合时页面乱跳。翻页模式让每页独立缩放，条漫模式仍由
-     * 容器整体缩放（连续滚动下逐页缩放没有意义）。
-     */
-    val isGestureSelfContained: Boolean get() = false
-
     @Composable
     fun RenderContent(
         pageItems: LazyPagingItems<ChapterPage>,
@@ -49,10 +44,9 @@ fun ReaderLayoutHost(
     gestureState: GestureState,
     pageItems: LazyPagingItems<ChapterPage>,
     toggleMenuVisibility: () -> Unit,
-    onHideMenu: () -> Unit
+    onHideMenu: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
-    val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
     val currentReaderContext by rememberUpdatedState(readerContext)
     val currentGestureState by rememberUpdatedState(gestureState)
     val currentOnHideMenu by rememberUpdatedState(onHideMenu)
@@ -87,7 +81,7 @@ fun ReaderLayoutHost(
         }
     )
 
-    // 点击 -> 动作的映射只有这一处：容器级缩放和页面级缩放两条路径都汇到这里，
+    // 点击 -> 动作的映射只有这一处：两种布局的点击都汇到这里，
     // 避免翻页模式和条漫模式各写一套点击区判定后逐渐长歪。
     val onPageTap: (PageTapContext) -> Unit = remember {
         { tap ->
@@ -108,30 +102,13 @@ fun ReaderLayoutHost(
         }
     }
 
-    BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
-        val viewSize = IntSize(constraints.maxWidth, constraints.maxHeight)
-        val layout = readerContext.layout
-        val gestureModifier = if (layout.isGestureSelfContained) {
-            Modifier
-        } else {
-            Modifier.zoomable(
-                state = zoomableState,
-                gestures = EnabledZoomGestures.ZoomAndPan,
-                onClick = { offset ->
-                    // 容器级路径：点击坐标本就是视口坐标，直接用。
-                    onPageTap(PageTapContext(position = offset, viewportSize = viewSize))
-                }
-            )
-        }
-        key(layout::class) {
-            layout.RenderContent(
-                pageItems = pageItems,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .nestedScroll(nestedScrollConnection)
-                    .then(gestureModifier),
-                onPageTap = onPageTap,
-            )
-        }
-    }
+    // 不再需要 BoxWithConstraints 取视口尺寸：视口尺寸由产生点击的那一层
+    // （页面自身或条漫容器）随 PageTapContext 一起给出。
+    readerContext.layout.RenderContent(
+        pageItems = pageItems,
+        modifier = Modifier
+            .fillMaxSize()
+            .nestedScroll(nestedScrollConnection),
+        onPageTap = onPageTap,
+    )
 }

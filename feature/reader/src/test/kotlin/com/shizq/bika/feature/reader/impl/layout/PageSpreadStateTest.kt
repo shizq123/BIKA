@@ -4,18 +4,17 @@ import androidx.compose.runtime.snapshots.Snapshot
 import org.junit.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertSame
 
 /**
- * [PageSpreadState] 的宽页累积与「分组重排后回到原页」的重定位请求。
+ * [PageSpreadState]：宽页累积 + 「分组重排后回到原页」的重定位请求。
  *
  * 服务端不返回图片尺寸，宽页只能在解码后才知道，因此分组一定会在运行中变化。
- * 变化本身不可避免，危险的是变化发生在**当前位置之前**：此时
- * `pagerState.currentPage`（翻页单位下标）与真实页码的对应关系整体偏移一位，
- * 用户会看到画面无故跳到邻页。[PageSpreadState.pendingAnchorPage] 就是为这种
- * 情况留下"该回到哪一页"的线索，由渲染层消费。
+ * 变化本身不可避免，危险的是变化让**当前屏**对应的真实页码整体偏移——用户会看到
+ * 画面无故跳到邻页。[PageSpreadState.relocateTo] 就是留给渲染层的「该回到哪一页」。
  *
- * 这些属性用了 Compose 的 mutableStateOf / mutableStateMapOf，读写需要在快照
- * 上下文里进行，故统一包一层 [Snapshot.withMutableSnapshot]。
+ * 判定逻辑本体在纯函数 [withMeasurement] 里（见 SpreadLayoutTest），这里只覆盖
+ * 状态外壳的行为：幂等、不覆盖未完成的请求、以及**非破坏性**读取。
  */
 class PageSpreadStateTest {
 
@@ -48,22 +47,23 @@ class PageSpreadStateTest {
         val state = doublePageState(pageCount = 4)
 
         withSnapshot {
+            val before = state.layout
             state.onPageMeasured(pageIndex = 1, width = 800f, height = 1200f)
 
-            assertEquals(2, state.spreadCount)
-            assertNull(state.pendingAnchorPage)
+            assertSame(before, state.layout, "无变化时不应写入新的 layout，避免多余重组")
+            assertNull(state.relocateTo)
         }
     }
 
     @Test
     fun `当前位置之后的宽页不触发重定位`() {
-        // 只影响用户还没看到的分组，当前屏不会变，重定位反而会造成多余的一次滚动。
+        // 只影响用户还没看到的分组，当前屏不变，重定位反而是一次多余的滚动。
         val state = doublePageState(pageCount = 10)
 
         withSnapshot {
             state.onPageMeasured(pageIndex = 8, width = 2000f, height = 1000f, anchorPage = 2)
 
-            assertNull(state.pendingAnchorPage)
+            assertNull(state.relocateTo)
         }
     }
 
@@ -74,19 +74,7 @@ class PageSpreadStateTest {
         withSnapshot {
             state.onPageMeasured(pageIndex = 1, width = 2000f, height = 1000f, anchorPage = 6)
 
-            assertEquals(6, state.pendingAnchorPage, "应记下重排前用户所在的真实页码")
-        }
-    }
-
-    @Test
-    fun `当前页自身是宽页时也请求重定位`() {
-        // 当前页从"与邻页共屏"变成"独占一屏"，自身所在的单位下标同样可能变。
-        val state = doublePageState(pageCount = 10)
-
-        withSnapshot {
-            state.onPageMeasured(pageIndex = 4, width = 2000f, height = 1000f, anchorPage = 4)
-
-            assertEquals(4, state.pendingAnchorPage)
+            assertEquals(6, state.relocateTo, "应记下重排前用户所在的真实页码")
         }
     }
 
@@ -98,7 +86,7 @@ class PageSpreadStateTest {
         withSnapshot {
             state.onPageMeasured(pageIndex = 1, width = 2000f, height = 1000f)
 
-            assertNull(state.pendingAnchorPage)
+            assertNull(state.relocateTo)
         }
     }
 
@@ -109,22 +97,44 @@ class PageSpreadStateTest {
 
         withSnapshot {
             state.onPageMeasured(pageIndex = 1, width = 2000f, height = 1000f, anchorPage = 6)
-            assertEquals(6, state.consumePendingAnchor())
+            assertEquals(6, state.relocateTo)
+            state.clearRelocation()
 
             state.onPageMeasured(pageIndex = 1, width = 2000f, height = 1000f, anchorPage = 6)
-            assertNull(state.pendingAnchorPage, "同一页第二次上报应被短路")
+            assertNull(state.relocateTo, "同一页第二次上报应被短路")
         }
     }
 
     @Test
-    fun `consumePendingAnchor 取出后清空`() {
+    fun `读取重定位请求不清除它`() {
+        // 这是与旧 consumePendingAnchor() 的关键差别。旧实现先清空再滚动，而滚动前
+        // 还有一个「分组是否就绪」的守卫，守卫为假时请求已经没了、滚动也没做，
+        // 重定位永久失效——偏偏那个守卫在最需要重定位的那一帧最可能为假。
         val state = doublePageState(pageCount = 10)
 
         withSnapshot {
             state.onPageMeasured(pageIndex = 0, width = 2000f, height = 1000f, anchorPage = 5)
 
-            assertEquals(5, state.consumePendingAnchor())
-            assertNull(state.consumePendingAnchor(), "第二次取应为 null，避免重复滚动")
+            assertEquals(5, state.relocateTo)
+            assertEquals(5, state.relocateTo, "重复读应仍在，只有确认到位才清")
+
+            state.clearRelocation()
+            assertNull(state.relocateTo)
+        }
+    }
+
+    @Test
+    fun `未完成的重定位请求不被后到的覆盖`() {
+        // 同一帧内多页并发上报时，先到的那个 anchor 才是用户真正的位置；
+        // 后到的是在已经被改过的分组上算出来的。
+        val state = doublePageState(pageCount = 20)
+
+        withSnapshot {
+            state.onPageMeasured(pageIndex = 1, width = 2000f, height = 1000f, anchorPage = 10)
+            assertEquals(10, state.relocateTo)
+
+            state.onPageMeasured(pageIndex = 3, width = 2000f, height = 1000f, anchorPage = 11)
+            assertEquals(10, state.relocateTo, "先到的 anchor 优先")
         }
     }
 
@@ -137,19 +147,39 @@ class PageSpreadStateTest {
             state.onPageMeasured(pageIndex = 2, width = 2000f, height = 1000f, anchorPage = 4)
 
             assertEquals(6, state.spreadCount)
-            assertNull(state.pendingAnchorPage)
+            assertNull(state.relocateTo)
         }
     }
 
     @Test
-    fun `页数增长时分组自动扩展`() {
-        // 分页续拉会让 itemCount 增长，spreads 是 derived 的，应当无需手动同步。
+    fun `syncPageCount 跟进分页续拉`() {
         var pageCount = 4
         val state = PageSpreadState(doublePage = true, pageCountProvider = { pageCount })
 
         withSnapshot { assertEquals(2, state.spreadCount) }
         pageCount = 8
-        withSnapshot { assertEquals(4, state.spreadCount) }
+        withSnapshot {
+            state.syncPageCount()
+            assertEquals(4, state.spreadCount)
+        }
+    }
+
+    @Test
+    fun `syncPageCount 不产生重定位请求`() {
+        // 页数增长只在末尾追加分组，已有分组的边界不变，当前屏不受影响。
+        var pageCount = 4
+        val state = PageSpreadState(doublePage = true, pageCountProvider = { pageCount })
+
+        withSnapshot {
+            state.onPageMeasured(pageIndex = 1, width = 2000f, height = 1000f, anchorPage = 0)
+            state.clearRelocation()
+        }
+        pageCount = 12
+        withSnapshot {
+            state.syncPageCount()
+            assertNull(state.relocateTo)
+            assertEquals(setOf(1), state.layout.widePages, "续拉不应丢掉已测出的宽页")
+        }
     }
 
     // ── 测试辅助 ────────────────────────────────────────────────────────
