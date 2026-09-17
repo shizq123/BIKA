@@ -13,7 +13,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
@@ -45,20 +44,23 @@ class WebtoonLayoutStrategy(
         onPageTap: (PageTapContext) -> Unit,
     ) {
         val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
-        var rootSize by remember { mutableStateOf(IntSize.Zero) }
+        // 视口 = LazyColumn 自身。与翻页模式用同一个 ViewportAnchor 机制，
+        // 保证两条路径喂给 GestureState.calculateAction 的参考系一致。
+        val viewport = remember { ViewportAnchor() }
 
         LazyColumn(
             state = listState,
             modifier = modifier
-                .onSizeChanged { rootSize = it }
+                .viewportAnchor(viewport)
                 .zoomable(
                     state = zoomableState,
                     gestures = EnabledZoomGestures.ZoomAndPan,
                     onClick = { offset ->
-                        // 容器级路径：点击坐标本就是视口坐标，直接用。
-                        if (rootSize != IntSize.Zero) {
-                            onPageTap(PageTapContext(position = offset, viewportSize = rootSize))
-                        }
+                        // 容器级路径：点击坐标本就是视口局部坐标，无需换算，
+                        // 只需取同一节点的尺寸。
+                        val coords = viewport.coordinates ?: return@zoomable
+                        if (!coords.isAttached || coords.size == IntSize.Zero) return@zoomable
+                        onPageTap(PageTapContext(position = offset, viewportSize = coords.size))
                     },
                 ),
             verticalArrangement = if (hasPageGap) Arrangement.spacedBy(8.dp) else Arrangement.Top

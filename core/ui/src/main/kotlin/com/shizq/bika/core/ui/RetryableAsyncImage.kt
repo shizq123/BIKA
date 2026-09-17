@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.Icon
@@ -28,18 +27,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
-import io.github.oshai.kotlinlogging.KotlinLogging
-import kotlinx.coroutines.delay
-
-private val logger = KotlinLogging.logger("RetryableImage")
-
-/**
- * 判断加载失败是否值得自动重试：
- * - HTTP 4xx（404 资源不存在/403 无权限等）是永久性失败，重试无意义，不自动重试；
- * - 其余（网络抖动、超时、DNS 失败、5xx 服务器错误）属于临时性失败，持续退避重试。
- */
-fun Throwable?.isRetryableError(): Boolean =
-    this !is coil3.network.HttpException || response.code >= 500
 
 /**
  * 网络不稳定的图片加载组件：
@@ -61,25 +48,15 @@ fun RetryableAsyncImage(
     val painter = rememberAsyncImagePainter(model = model)
     val state by painter.state.collectAsState()
 
-    var retryCount by remember(model) { mutableIntStateOf(0) }
-    LaunchedEffect(state is AsyncImagePainter.State.Error, retryCount) {
-        if (state is AsyncImagePainter.State.Error) {
-            val error = (state as AsyncImagePainter.State.Error).result.throwable
-            if (retryCount == 0) {
-                if (error.isRetryableError()) {
-                    logger.error(error) { "图片加载失败: $model" }
-                } else {
-                    // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
-                    logger.warn(error) { "图片永久不可用(不重试): $model" }
-                }
-            }
-            if (error.isRetryableError()) {
-                val delayMs = (2000L shl retryCount).coerceAtMost(30_000L)
-                retryCount++
-                delay(delayMs)
-                painter.restart()
-            }
-        }
+    // 手动重试信号：递增即重启退避协程，重试计数归零，用户的显式操作立即生效
+    // 而不用等当前退避走完。计数本身活在协程栈上（见 autoRetryOnError）。
+    var manualRetryNonce by remember(model) { mutableIntStateOf(0) }
+    // key 必须包含 model，不能只有 painter：rememberAsyncImagePainter 在 model
+    // 变化时复用同一个 painter 实例、只改它的 request，painter 的标识是稳定的。
+    // 只按 painter 做 key 时，被 Lazy 列表复用到新 model 上的节点会继承上一张图
+    // 的退避计数与"已记日志"标记——新图第一次失败不记日志，且直接从 30s 起等。
+    LaunchedEffect(model, manualRetryNonce) {
+        painter.autoRetryOnError { model.toString() }
     }
 
     val isError = state is AsyncImagePainter.State.Error
@@ -103,7 +80,10 @@ fun RetryableAsyncImage(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.LightGray.copy(alpha = 0.6f))
-                    .clickable { painter.restart() },
+                    .clickable {
+                        manualRetryNonce++
+                        painter.restart()
+                    },
                 contentAlignment = Alignment.Center
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {

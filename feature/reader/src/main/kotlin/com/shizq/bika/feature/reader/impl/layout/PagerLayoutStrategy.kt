@@ -11,6 +11,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -36,6 +37,10 @@ class PagerLayoutStrategy(
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
     ) {
+        // 视口 = Pager 自身，不是整个窗口。点击分区按比例切这个矩形，
+        // 取窗口会让分区边界随状态栏 inset / scaffold padding 整体平移。
+        val viewport = remember { ViewportAnchor() }
+
         // 分页续拉让 itemCount 增长时推进分组。itemCount 是快照状态，
         // 读它即建立订阅，增长会触发重组再走到这里。
         spreadState.syncPageCount()
@@ -72,14 +77,14 @@ class PagerLayoutStrategy(
             // pageCount 更新与重组之间存在一帧的窗口，越界时退出而不是崩溃。
             val spread = spreads.getOrNull(spreadIndex)
             if (spread != null) {
-                SpreadContent(pageItems, spread, onPageTap)
+                SpreadContent(pageItems, spread, onPageTap, viewport)
             }
         }
 
         if (direction == Direction.Vertical) {
             VerticalPager(
                 state = pagerState,
-                modifier = modifier,
+                modifier = modifier.viewportAnchor(viewport),
                 key = spreadKey(pageItems, spreads),
                 pageContent = { pageContent(it) },
             )
@@ -88,7 +93,7 @@ class PagerLayoutStrategy(
             CompositionLocalProvider(LocalLayoutDirection provides layoutDirection) {
                 HorizontalPager(
                     state = pagerState,
-                    modifier = modifier,
+                    modifier = modifier.viewportAnchor(viewport),
                     key = spreadKey(pageItems, spreads),
                     pageContent = { pageContent(it) },
                 )
@@ -127,13 +132,14 @@ class PagerLayoutStrategy(
         pages: LazyPagingItems<ChapterPage>,
         spread: PageSpread,
         onPageTap: (PageTapContext) -> Unit,
+        viewport: ViewportAnchor,
     ) {
         when (spread) {
             is PageSpread.Single -> Box(
                 modifier = Modifier.fillMaxSize(),
                 contentAlignment = Alignment.Center,
             ) {
-                SinglePage(pages, spread.startIndex, onPageTap)
+                SinglePage(pages, spread.startIndex, onPageTap, viewport)
             }
 
             is PageSpread.Double -> Row(
@@ -143,10 +149,10 @@ class PagerLayoutStrategy(
                 // RTL 下 LocalLayoutDirection 已经翻转了 Row 的排列方向，
                 // 这里按阅读顺序放入即可，不需要手动交换左右。
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    SinglePage(pages, spread.startIndex, onPageTap)
+                    SinglePage(pages, spread.startIndex, onPageTap, viewport)
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    SinglePage(pages, spread.secondIndex, onPageTap)
+                    SinglePage(pages, spread.secondIndex, onPageTap, viewport)
                 }
             }
         }
@@ -157,6 +163,7 @@ class PagerLayoutStrategy(
         pages: LazyPagingItems<ChapterPage>,
         index: Int,
         onPageTap: (PageTapContext) -> Unit,
+        viewport: ViewportAnchor,
     ) {
         val page = if (index < pages.itemCount) pages[index] else null
         if (page == null) {
@@ -169,6 +176,7 @@ class PagerLayoutStrategy(
             zoomable = true,
             magnifierEnabled = magnifierEnabled,
             onTap = onPageTap,
+            viewport = viewport,
             onSizeLoaded = { width, height ->
                 // anchorPage 取 pagerState.settledPage 换算出的真实页码。
                 //

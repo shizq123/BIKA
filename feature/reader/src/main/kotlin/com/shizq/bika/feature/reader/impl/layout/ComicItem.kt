@@ -32,6 +32,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -39,7 +40,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.findRootCoordinates
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
@@ -55,16 +55,18 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.ui.CircularProgressIndicator
+import com.shizq.bika.core.ui.autoRetryOnError
+import com.shizq.bika.core.ui.backoffDelayMillis
 import com.shizq.bika.core.ui.isRetryableError
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import me.saket.telephoto.zoomable.EnabledZoomGestures
 import me.saket.telephoto.zoomable.ZoomSpec
 import me.saket.telephoto.zoomable.rememberZoomableState
 import me.saket.telephoto.zoomable.zoomable
 
 private val pagingLogger = KotlinLogging.logger("ReaderPaging")
-private val imageLogger = KotlinLogging.logger("ReaderImage")
 
 /**
  * 章节分页失败后的**唯一**退避重试驱动（间隔 2s/4s/8s/16s/30s 封顶）。
@@ -80,28 +82,44 @@ private val imageLogger = KotlinLogging.logger("ReaderImage")
  */
 @Composable
 fun ChapterAppendRetryEffect(pageItems: LazyPagingItems<ChapterPage>) {
-    val loadState = pageItems.loadState
-    val error = (loadState.refresh as? LoadState.Error) ?: (loadState.append as? LoadState.Error)
+    // 退避计数活在协程栈上，不是组合状态。
+    //
+    // 之前是 `remember` 计数 + `LaunchedEffect(error, autoRetryCount)`，即 effect
+    // 自己写自己的 key。这里的 `delay` 在 `++` 之前，取消发生在计数写入之前，
+    // 所以侥幸能跑完一轮——但形状与 [ComicPageItem] 里那份（先 `++` 后 `delay`，
+    // 因此重试一次都不发生）完全同构，正确性全靠这两行的相对顺序，
+    // 而这读起来像风格问题、不像正确性问题。换成长活协程后这个类别整体消失。
+    //
+    // 循环自驱动：每轮主动读一次 loadState，不依赖「新的 LoadState.Error 与旧的
+    // 不相等」来推进。每轮必经一次 delay，不会退化成忙循环。
+    LaunchedEffect(pageItems) {
+        var attempt = 0
+        var logged = false
+        while (true) {
+            // loadState 是快照状态，snapshotFlow 会在它变化时重新求值。
+            // refresh 与 append 任一失败都要退避重试。
+            val throwable = snapshotFlow {
+                val loadState = pageItems.loadState
+                ((loadState.refresh as? LoadState.Error)
+                    ?: (loadState.append as? LoadState.Error))?.error
+            }.first { it != null } ?: continue
 
-    var autoRetryCount by remember(pageItems) { mutableIntStateOf(0) }
-    LaunchedEffect(error, autoRetryCount) {
-        val throwable = error?.error ?: return@LaunchedEffect
-        if (autoRetryCount == 0) {
-            if (throwable.isRetryableError()) {
-                pagingLogger.error(throwable) { "章节分页加载失败" }
-            } else {
-                // 404 等永久失败：提示后不再自动重试
-                pagingLogger.warn(throwable) { "章节分页永久不可用(不重试)" }
+            if (!logged) {
+                logged = true
+                if (throwable.isRetryableError()) {
+                    pagingLogger.error(throwable) { "章节分页加载失败" }
+                } else {
+                    // 404 等永久失败：提示后不再自动重试
+                    pagingLogger.warn(throwable) { "章节分页永久不可用(不重试)" }
+                }
             }
-        }
-        if (!throwable.isRetryableError()) return@LaunchedEffect
+            // 永久失败：结束协程。用户点击占位项仍可手动 retry()。
+            if (!throwable.isRetryableError()) return@LaunchedEffect
 
-        // 用 coerceAtMost 前先限制位移量：shl 的右操作数按 mod 32 取模，
-        // autoRetryCount 涨到 32 时 2000L shl 32 会绕回 2000，退避失效。
-        val delayMs = (2000L shl autoRetryCount.coerceAtMost(4)).coerceAtMost(30_000L)
-        delay(delayMs)
-        autoRetryCount++
-        pageItems.retry()
+            delay(backoffDelayMillis(attempt))
+            attempt++
+            pageItems.retry()
+        }
     }
 }
 
@@ -121,12 +139,24 @@ fun ChapterPageLoadStateItem(
     val loadState = pageItems.loadState
     val isError = loadState.refresh is LoadState.Error || loadState.append is LoadState.Error
 
+    // clickable 只在错误态挂上，不写成 `clickable(enabled = isError)`。
+    //
+    // enabled=false 的 clickable 仍然参与 hit test 并消费 down 事件：加载中态
+    // 铺满整个占位项，会把点击静默吞掉——在阅读器里表现为占位项所在的那一屏
+    // 点击不出菜单、也不翻页，而 Pager 模式下点击是主要的翻页方式。
+    // 同样的坑在 core/ui 的 RetryableAsyncImage 里已有注释记录。
+    val errorClickable = if (isError) {
+        Modifier.clickable { pageItems.retry() }
+    } else {
+        Modifier
+    }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
             .aspectRatio(0.75f)
             .background(if (isError) Color.LightGray else Color.Gray.copy(alpha = 0.1f))
-            .clickable(enabled = isError) { pageItems.retry() },
+            .then(errorClickable),
         contentAlignment = Alignment.Center
     ) {
         if (isError) {
@@ -151,8 +181,9 @@ fun ChapterPageLoadStateItem(
  * [zoomable] 为 true 时本页自己承接缩放与点击（翻页模式）：每页独立缩放，
  * 翻到下一页时缩放自动复位。条漫模式传 false，由容器整体缩放。
  *
- * [onTap] 收到的坐标是**根坐标系**下的位置。跨页模式一屏有两页，用页面局部
- * 坐标会把右页的左半边当成「屏幕左侧」，导致点击翻页方向反掉。
+ * [onTap] 收到的坐标换算到 [viewport] 所标记的节点的坐标系，而不是本页的局部
+ * 坐标：跨页模式一屏有两页，用页面局部坐标会把右页的左半边当成「屏幕左侧」，
+ * 导致点击翻页方向反掉。传 [onTap] 时必须一并传 [viewport]，否则无从换算。
  *
  * [magnifierEnabled] 显式传入而不是整体读 ReaderConfig：这里只用到 ReaderConfig
  * 的这一个字段，若整体读 CompositionLocal，护眼深度、自动滚动速度等任何其他
@@ -166,6 +197,7 @@ fun ComicPageItem(
     zoomable: Boolean = false,
     magnifierEnabled: Boolean = true,
     onTap: ((PageTapContext) -> Unit)? = null,
+    viewport: ViewportAnchor? = null,
     onSizeLoaded: ((width: Float, height: Float) -> Unit)? = null
 ) {
     var magnifierCenter by remember { mutableStateOf(Offset.Unspecified) }
@@ -173,28 +205,30 @@ fun ComicPageItem(
     // 缩放状态不需要按 page.id 做 key：翻页模式下 Pager 的 key 已经包含页码与
     // 图片 id，换页就是换节点，state 随节点一起重建，缩放不会残留到下一页。
     val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
-    var rootCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
+    var pageCoordinates by remember { mutableStateOf<LayoutCoordinates?>(null) }
     val currentOnTap by rememberUpdatedState(onTap)
 
     val zoomModifier = if (zoomable) {
         Modifier
             // onGloballyPositioned 必须在 zoomable **之前**：放在之后拿到的是
             // 已经过缩放变换的坐标系，换算出来的点击位置会随缩放倍数漂移。
-            .onGloballyPositioned { rootCoordinates = it }
+            .onGloballyPositioned { pageCoordinates = it }
             .zoomable(
                 state = zoomableState,
                 gestures = EnabledZoomGestures.ZoomAndPan,
                 onClick = { localOffset ->
                     val handler = currentOnTap ?: return@zoomable
-                    val coords = rootCoordinates
+                    val coords = pageCoordinates
                     if (coords == null || !coords.isAttached) return@zoomable
-                    // 转到根坐标系，并取根节点尺寸作为视口尺寸
-                    val root = coords.findRootCoordinates()
-                    val rootOffset = root.localPositionOf(coords, localOffset)
+                    // 换算到视口坐标系。视口由布局策略指定（见 ViewportAnchor），
+                    // 不用 findRootCoordinates()：那取的是整个窗口，阅读器内容区
+                    // 被 inset / scaffold padding 推下去多少，分区边界就偏多少。
+                    val viewportCoords = viewport?.coordinates ?: return@zoomable
+                    if (!viewportCoords.isAttached) return@zoomable
                     handler(
                         PageTapContext(
-                            position = rootOffset,
-                            viewportSize = root.size,
+                            position = viewportCoords.localPositionOf(coords, localOffset),
+                            viewportSize = viewportCoords.size,
                         )
                     )
                 }
@@ -263,29 +297,14 @@ fun ComicPageItem(
 
     val state by painter.state.collectAsState()
 
-    // 重试计数必须在 when 之外：声明在 Error 分支内时，state 一旦离开 Error
-    // （例如重试后短暂进入 Loading）计数就被丢弃，退避永远从 2s 重新开始，
-    // 持续失败的图片会变成固定 2s 一次的无限轮询。
-    var imageRetryCount by remember(page.id) { mutableIntStateOf(0) }
-    val errorState = state as? AsyncImagePainter.State.Error
-    LaunchedEffect(errorState, imageRetryCount) {
-        val error = errorState?.result?.throwable ?: return@LaunchedEffect
-        if (imageRetryCount == 0) {
-            if (error.isRetryableError()) {
-                imageLogger.error(error) { "图片加载失败: 第 ${index + 1} 页 url=${page.url}" }
-            } else {
-                // 404 等永久失败：提示后不再自动重试，避免无效请求与日志刷屏
-                imageLogger.warn(error) { "图片永久不可用(不重试): 第 ${index + 1} 页 url=${page.url}" }
-            }
-        }
-        if (error.isRetryableError()) {
-            // 用 coerceAtMost 前先限制位移量：shl 的右操作数按 mod 32 取模，
-            // imageRetryCount 涨到 32 时 2000L shl 32 会绕回 2000，退避失效。
-            val delayMs = (2000L shl imageRetryCount.coerceAtMost(4)).coerceAtMost(30_000L)
-            imageRetryCount++
-            delay(delayMs)
-            painter.restart()
-        }
+    // 手动重试信号：递增即重启退避协程，重试计数归零，用户的显式操作立即生效
+    // 而不用等当前退避走完。计数本身活在协程栈上，不是组合状态——理由见
+    // [autoRetryOnError]，那里也解释了为什么这个形状不能退回「计数当 key」。
+    var manualRetryNonce by remember(page.id) { mutableIntStateOf(0) }
+    // key 用 imageRequest 而非 painter：painter 实例在 model 变化时会被复用，
+    // 只按它做 key 会让复用到新页的节点继承上一页的退避计数与已记日志标记。
+    LaunchedEffect(imageRequest, manualRetryNonce) {
+        painter.autoRetryOnError { "第 ${index + 1} 页 url=${page.url}" }
     }
 
     Box(
@@ -321,8 +340,9 @@ fun ComicPageItem(
                         .fillMaxSize()
                         .background(Color.LightGray)
                         .clickable {
-                            // 手动重试时重置计数，让用户的显式操作立即生效
-                            imageRetryCount = 0
+                            // 递增 nonce 重启退避协程，attempt 归零，
+                            // 用户的显式操作立即生效而不用等当前退避走完。
+                            manualRetryNonce++
                             painter.restart()
                         },
                     contentAlignment = Alignment.Center
