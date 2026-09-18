@@ -51,9 +51,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.network.dns.BikaDnsDomains
+import com.shizq.bika.core.network.dns.DnsHostResolver
+import com.shizq.bika.core.network.dns.HostLatencyProbe
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,28 +63,7 @@ import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
-import kotlinx.coroutines.withContext
-import kotlinx.serialization.Serializable
 import javax.inject.Inject
-
-@Serializable
-data class DnsResolveResponse(
-    val code: Int,
-    val message: String,
-    val data: DnsResolveData? = null
-)
-
-@Serializable
-data class DnsResolveData(
-    val domain: String,
-    val lines: Map<String, DnsLine>? = null
-)
-
-@Serializable
-data class DnsLine(
-    val ips: List<String> = emptyList(),
-    val status: String = ""
-)
 
 data class IpTestResult(
     val ip: String,
@@ -104,7 +84,9 @@ data class DnsSettingsUiState(
 
 @HiltViewModel
 class DnsSettingsViewModel @Inject constructor(
-    private val userPreferencesDataSource: UserPreferencesDataSource
+    private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val dnsHostResolver: DnsHostResolver,
+    private val hostLatencyProbe: HostLatencyProbe,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(DnsSettingsUiState())
@@ -118,23 +100,8 @@ class DnsSettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isFetching = true, error = null)
             try {
-                val deferred1 = async {
-                    fetchIpsForDomain(
-                        "https://macapi1.com/app/picacomic/dns/resolve?domain=picacomic.com",
-                        "picacomic.com"
-                    )
-                }
-                val deferred2 = async {
-                    fetchIpsForDomain(
-                        "https://macapi2.com/app/picacomic/dns/resolve?domain=picaapi.picacomic.com",
-                        "picaapi.picacomic.com"
-                    )
-                }
-
-                val ips1 = deferred1.await()
-                val ips2 = deferred2.await()
-
-                val combined = (ips1 + ips2).distinctBy { it.first }
+                val combined = dnsHostResolver.resolveHosts()
+                    .distinctBy { Triple(it.ip, it.lineName, it.domain) }
                 if (combined.isEmpty()) {
                     _uiState.value = _uiState.value.copy(
                         isFetching = false,
@@ -147,16 +114,16 @@ class DnsSettingsViewModel @Inject constructor(
                 val currentApiDns = userData.network.dns.apiDnsHosts
                 val currentImageDns = userData.network.dns.imageDnsHosts
 
-                val grouped = combined.groupBy({ it.second }) { (ip, line, domain) ->
+                val grouped = combined.groupBy({ it.lineName }) { host ->
                     IpTestResult(
-                        ip = ip,
-                        lineName = line,
-                        domain = domain,
+                        ip = host.ip,
+                        lineName = host.lineName,
+                        domain = host.domain,
                         latency = null,
-                        isSelected = if (domain == "picacomic.com") {
-                            currentImageDns.contains(ip)
+                        isSelected = if (host.domain == BikaDnsDomains.IMAGE) {
+                            currentImageDns.contains(host.ip)
                         } else {
-                            currentApiDns.contains(ip)
+                            currentApiDns.contains(host.ip)
                         }
                     )
                 }
@@ -178,13 +145,6 @@ class DnsSettingsViewModel @Inject constructor(
         }
     }
 
-    private suspend fun fetchIpsForDomain(
-        url: String,
-        domain: String
-    ): List<Triple<String, String, String>> = withContext(Dispatchers.IO) {
-            emptyList()
-    }
-
     fun startLatencyTest() {
         if (_uiState.value.isTesting) return
         _uiState.value = _uiState.value.copy(isTesting = true)
@@ -195,25 +155,13 @@ class DnsSettingsViewModel @Inject constructor(
             val jobs = allResults.map { result ->
                 launch {
                     semaphore.withPermit {
-                        val latency = testIpLatency(result.ip)
+                        val latency = hostLatencyProbe.measureLatency(result.ip)
                         updateIpLatency(result.ip, latency)
                     }
                 }
             }
             jobs.joinAll()
             _uiState.value = _uiState.value.copy(isTesting = false)
-        }
-    }
-
-    private suspend fun testIpLatency(ip: String): Long = withContext(Dispatchers.IO) {
-        val start = System.currentTimeMillis()
-        try {
-            java.net.Socket().use { socket ->
-                socket.connect(java.net.InetSocketAddress(ip, 443), 2000)
-            }
-            System.currentTimeMillis() - start
-        } catch (e: Exception) {
-            Long.MAX_VALUE
         }
     }
 
@@ -288,14 +236,20 @@ class DnsSettingsViewModel @Inject constructor(
 
     fun applyLowestLatencyIp() {
         val allResults = _uiState.value.lines.values.flatten()
-        val lowestApiResult = allResults
-            .filter { it.domain == "picaapi.picacomic.com" && it.latency != null && it.latency != Long.MAX_VALUE }
+        fun best(domain: String) = allResults
+            .filter { it.domain == domain && it.latency != null && it.latency != Long.MAX_VALUE }
             .minByOrNull { it.latency ?: Long.MAX_VALUE }
-        val lowestApi = lowestApiResult?.ip
 
-        val lowestImageResult = allResults
-            .filter { it.domain == "picacomic.com" && it.latency != null && it.latency != Long.MAX_VALUE }
-            .minByOrNull { it.latency ?: Long.MAX_VALUE }
+        val pairedLine = _uiState.value.lines.mapNotNull { (line, results) ->
+            val api = results.filter { it.domain == BikaDnsDomains.API && it.latency != null && it.latency != Long.MAX_VALUE }
+                .minByOrNull { it.latency ?: Long.MAX_VALUE }
+            val image = results.filter { it.domain == BikaDnsDomains.IMAGE && it.latency != null && it.latency != Long.MAX_VALUE }
+                .minByOrNull { it.latency ?: Long.MAX_VALUE }
+            if (api != null && image != null) Triple(line, api, image) else null
+        }.minByOrNull { (_, api, image) -> (api.latency ?: Long.MAX_VALUE) + (image.latency ?: Long.MAX_VALUE) }
+        val lowestApiResult = pairedLine?.second ?: best(BikaDnsDomains.API)
+        val lowestImageResult = pairedLine?.third ?: best(BikaDnsDomains.IMAGE)
+        val lowestApi = lowestApiResult?.ip
         val lowestImage = lowestImageResult?.ip
 
         viewModelScope.launch {
@@ -305,7 +259,7 @@ class DnsSettingsViewModel @Inject constructor(
             val finalImageDns =
                 if (lowestImage != null) setOf(lowestImage) else currentData.network.dns.imageDnsHosts
 
-            val finalLineName = lowestApiResult?.lineName 
+            val finalLineName = pairedLine?.first ?: lowestApiResult?.lineName
                 ?: lowestImageResult?.lineName
                 ?: currentData.network.dns.activeLine
 

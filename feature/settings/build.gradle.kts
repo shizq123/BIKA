@@ -10,6 +10,7 @@ android {
 dependencies {
     implementation(projects.core.domain)
     implementation(projects.core.download)
+    implementation(projects.core.network)
 
     implementation(libs.coil.compose)
     implementation(libs.flowredux)
