@@ -1,9 +1,7 @@
 package com.shizq.bika.ui.comicinfo.page
 
-import java.text.DecimalFormat
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -14,7 +12,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,30 +24,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material.icons.filled.Download
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.rounded.KeyboardArrowUp
-import androidx.compose.material.icons.rounded.KeyboardArrowDown
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShapeDefaults
-import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
 import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
@@ -62,9 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
@@ -74,22 +57,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.fastForEach
-import coil3.compose.AsyncImage
 import com.shizq.bika.R
+import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
-import com.shizq.bika.core.ui.RetryableAsyncImage
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
+import java.util.Locale
 
-enum class BottomBarButtonType(val id: String, val label: String) {
-    FAVORITE("favorite", "收藏"),
-    DOWNLOAD("download", "下载"),
-    READ("read", "开始阅读")
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun ComicDetailPage(
     detail: ComicDetail,
@@ -111,7 +88,7 @@ fun ComicDetailPage(
             .fillMaxSize()
     ) {
         Column(
-            modifier = modifier
+            modifier = Modifier
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
@@ -352,7 +329,9 @@ fun MediaSummaryPreview() {
 
 private fun formatViews(count: Int): String {
     return if (count >= 10000) {
-        val df = DecimalFormat("#.0")
+        // DecimalFormat 非线程安全，保留每次新建；Locale.ROOT 保证小数点符号
+        // 不随系统语言变化（阿拉伯语等 locale 会用不同的数字符号）
+        val df = DecimalFormat("#.0", DecimalFormatSymbols.getInstance(Locale.ROOT))
         val num = count / 10000.0
         "${df.format(num)}万"
     } else {
@@ -492,217 +471,6 @@ fun ContentSummaryPreview() {
                 isLiked = !isLiked,
                 likeCount = likes
             )
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-fun MangaBottomBar(
-    isFavorited: Boolean,
-    modifier: Modifier = Modifier,
-    showDownload: Boolean = false,
-    isDownloaded: Boolean = false,
-    isContinue: Boolean = false,
-    onFavoriteClick: () -> Unit = {},
-    onReadClick: () -> Unit = {},
-    onDownloadClick: () -> Unit = {},
-) {
-    val context = LocalContext.current
-    val sharedPrefs = remember(context) {
-        context.getSharedPreferences("bottom_bar_prefs", android.content.Context.MODE_PRIVATE)
-    }
-    var buttonOrder by remember {
-        mutableStateOf(
-            sharedPrefs.getString("button_order", "favorite,download,read")
-                ?.split(",")
-                ?.mapNotNull { id ->
-                    BottomBarButtonType.entries.find { it.id == id }
-                } ?: listOf(BottomBarButtonType.FAVORITE, BottomBarButtonType.DOWNLOAD, BottomBarButtonType.READ)
-        )
-    }
-    
-    var showReorderDialog by remember { mutableStateOf(false) }
-
-    if (showReorderDialog) {
-        AlertDialog(
-            onDismissRequest = { showReorderDialog = false },
-            title = { Text("编辑按钮顺序") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("点击箭头调整底部按钮的左右显示顺序（长按底部按钮也可以打开此面板）：", style = MaterialTheme.typography.bodyMedium)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    buttonOrder.forEachIndexed { index, buttonType ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(buttonType.label, fontWeight = FontWeight.Bold)
-                                Row {
-                                    if (index > 0) {
-                                        IconButton(onClick = {
-                                            val newList = buttonOrder.toMutableList()
-                                            val temp = newList[index]
-                                            newList[index] = newList[index - 1]
-                                            newList[index - 1] = temp
-                                            buttonOrder = newList
-                                            sharedPrefs.edit().putString("button_order", newList.joinToString(",") { it.id }).apply()
-                                        }) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.KeyboardArrowUp,
-                                                contentDescription = "上移"
-                                            )
-                                        }
-                                    }
-                                    if (index < buttonOrder.size - 1) {
-                                        IconButton(onClick = {
-                                            val newList = buttonOrder.toMutableList()
-                                            val temp = newList[index]
-                                            newList[index] = newList[index + 1]
-                                            newList[index + 1] = temp
-                                            buttonOrder = newList
-                                            sharedPrefs.edit().putString("button_order", newList.joinToString(",") { it.id }).apply()
-                                        }) {
-                                            Icon(
-                                                imageVector = Icons.Rounded.KeyboardArrowDown,
-                                                contentDescription = "下移"
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { showReorderDialog = false }) {
-                    Text("完成")
-                }
-            }
-        )
-    }
-
-    Surface(
-        tonalElevation = 4.dp,
-        modifier = modifier.fillMaxWidth(),
-        color = Color.Transparent,
-    ) {
-        Row(
-            modifier = Modifier
-                .padding(16.dp)
-                .height(48.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            buttonOrder.forEach { buttonType ->
-                when (buttonType) {
-                    BottomBarButtonType.FAVORITE -> {
-                        val icon = if (isFavorited) Icons.Filled.Favorite else Icons.Filled.FavoriteBorder
-                        val text = if (isFavorited) "已收藏" else "收藏"
-                        val containerColor = if (isFavorited) {
-                            MaterialTheme.colorScheme.primaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.secondaryContainer
-                        }
-                        val contentColor = if (isFavorited) {
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        } else {
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                        }
-                        Surface(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .combinedClickable(
-                                    onClick = onFavoriteClick,
-                                    onLongClick = { showReorderDialog = true }
-                                ),
-                            shape = CircleShape,
-                            color = containerColor,
-                            contentColor = contentColor
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(imageVector = icon, contentDescription = text)
-                                Spacer(Modifier.width(4.dp))
-                                Text(text)
-                            }
-                        }
-                    }
-                    BottomBarButtonType.DOWNLOAD -> {
-                        if (showDownload) {
-                            val buttonText = if (isDownloaded) "已下载" else "下载"
-                            val containerColor = if (isDownloaded) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.secondaryContainer
-                            }
-                            val contentColor = if (isDownloaded) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSecondaryContainer
-                            }
-                            Surface(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .combinedClickable(
-                                        onClick = { if (!isDownloaded) onDownloadClick() },
-                                        onLongClick = { showReorderDialog = true }
-                                    ),
-                                shape = CircleShape,
-                                color = containerColor,
-                                contentColor = contentColor
-                            ) {
-                                Row(
-                                    modifier = Modifier.fillMaxSize(),
-                                    horizontalArrangement = Arrangement.Center,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        imageVector = if (isDownloaded) Icons.Filled.Check else Icons.Filled.Download,
-                                        contentDescription = buttonText
-                                    )
-                                    Spacer(Modifier.width(4.dp))
-                                    Text(buttonText)
-                                }
-                            }
-                        }
-                    }
-                    BottomBarButtonType.READ -> {
-                        Surface(
-                            modifier = Modifier
-                                .weight(1.5f)
-                                .fillMaxHeight()
-                                .combinedClickable(
-                                    onClick = onReadClick,
-                                    onLongClick = { showReorderDialog = true }
-                                ),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primary,
-                            contentColor = MaterialTheme.colorScheme.onPrimary
-                        ) {
-                            Row(
-                                modifier = Modifier.fillMaxSize(),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(if (isContinue) "继续阅读" else "开始阅读", fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                            }
-                        }
-                    }
-                }
-            }
         }
     }
 }

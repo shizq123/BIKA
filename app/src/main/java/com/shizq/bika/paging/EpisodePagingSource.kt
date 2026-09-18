@@ -1,15 +1,18 @@
 package com.shizq.bika.paging
 
-import kotlinx.coroutines.CancellationException
 import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
+import kotlinx.coroutines.CancellationException
 
 class EpisodePagingSource(
     private val api: BikaDataSource,
     private val comicId: String
 ) : PagingSource<Int, Episode>() {
+
+    private val deduplicator = CrossPageDeduplicator<Episode> { it.id }
+
     override suspend fun load(params: LoadParams<Int>): LoadResult<Int, Episode> {
         val currentPage = params.key ?: 1
 
@@ -17,7 +20,7 @@ class EpisodePagingSource(
             val response = api.getComicEpisodes(comicId, currentPage)
 
             val data = response.eps
-            val episodes = data.docs
+            val episodes = deduplicator.retainUnseen(data.docs)
 
             val nextKey = if (currentPage < data.pages) currentPage + 1 else null
 
@@ -33,10 +36,6 @@ class EpisodePagingSource(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, Episode>): Int? {
-        return state.anchorPosition?.let { anchorPosition ->
-            state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
-                ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)
-        }
-    }
+    override fun getRefreshKey(state: PagingState<Int, Episode>): Int? =
+        state.forwardOnlyRefreshKey()
 }

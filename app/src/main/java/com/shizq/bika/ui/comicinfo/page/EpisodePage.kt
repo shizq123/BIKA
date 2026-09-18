@@ -22,6 +22,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -43,7 +44,6 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.isCompleted
 import com.shizq.bika.core.download.model.DownloadTask
@@ -82,6 +82,11 @@ fun EpisodesPage(
         }
     }
 
+    // 原先每个 item 都对整个列表做一次 find，O(n) × item 数
+    val progressByOrder = remember(chapterProgress) {
+        chapterProgress.associateBy { it.chapterId }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         LazyVerticalGrid(
             columns = GridCells.Adaptive(minSize = 140.dp),
@@ -97,14 +102,15 @@ fun EpisodesPage(
         ) {
             items(
                 count = episodes.itemCount,
-                // 服务端分页可能返回重复 id，key 组合 index 保证唯一，避免 "Key was already used" 崩溃
+                // key 只用 id：跨页重复已在 EpisodePagingSource 内去重。
+                // 掺入 index 会让新数据插入后所有后续 item 的身份发生变化。
                 key = { index ->
                     val episode = episodes.peek(index)
-                    if (episode != null) "${index}_${episode.id}" else "placeholder_$index"
+                    if (episode != null) episode.id else "placeholder_$index"
                 }
             ) { index ->
                 episodes[index]?.let { episode ->
-                    val progress = chapterProgress.find { it.chapterId == episode.order }
+                    val progress = progressByOrder[episode.order]
                     EpisodeItem(
                         text = episode.title,
                         progress = progress,
@@ -263,7 +269,7 @@ fun EpisodeItem(
     modifier: Modifier = Modifier,
     progress: ChapterProgressEntity? = null
 ) {
-    androidx.compose.material3.OutlinedCard(
+    OutlinedCard(
         onClick = onClick,
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(8.dp),
@@ -290,52 +296,56 @@ fun EpisodeItem(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
-                
-        if (progress != null) {
-            val isCompleted = progress.isCompleted
-            val progressText = if (isCompleted) "已读完" else "看到第 ${progress.currentPage} 页"
-            val pageText = if (progress.pageCount > 0) "共 ${progress.pageCount} 页" else "页数未知"
-            Text(
-                text = "$pageText · $progressText",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        } else {
-            Text(
-                text = "未阅读",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
+
+                if (progress != null) {
+                    val isCompleted = progress.isCompleted
+                    val progressText =
+                        if (isCompleted) "已读完" else "看到第 ${progress.currentPage} 页"
+                    val pageText =
+                        if (progress.pageCount > 0) "共 ${progress.pageCount} 页" else "页数未知"
+                    Text(
+                        text = "$pageText · $progressText",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                } else {
+                    Text(
+                        text = "未阅读",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            if (progress != null) {
+                val isCompleted = progress.isCompleted
+                Surface(
+                    shape = RoundedCornerShape(4.dp),
+                    color = if (isCompleted) {
+                        MaterialTheme.colorScheme.primaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.secondaryContainer
+                    },
+                    contentColor = if (isCompleted) {
+                        MaterialTheme.colorScheme.onPrimaryContainer
+                    } else {
+                        MaterialTheme.colorScheme.onSecondaryContainer
+                    }
+                ) {
+                    Text(
+                        text = if (isCompleted) "已读完" else "已看",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
         }
     }
-    
-    if (progress != null) {
-        val isCompleted = progress.isCompleted
-        Surface(
-            shape = RoundedCornerShape(4.dp),
-            color = if (isCompleted) 
-                MaterialTheme.colorScheme.primaryContainer 
-            else 
-                MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = if (isCompleted) 
-                MaterialTheme.colorScheme.onPrimaryContainer 
-            else 
-                MaterialTheme.colorScheme.onSecondaryContainer
-        ) {
-            Text(
-                text = if (isCompleted) "已读完" else "已看",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-                fontWeight = FontWeight.Bold
-            )
-        }
-    }
-}
-}
 }
 
 

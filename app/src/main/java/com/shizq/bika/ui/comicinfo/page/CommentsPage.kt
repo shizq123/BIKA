@@ -18,12 +18,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreHoriz
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -33,12 +30,12 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberBottomSheetState
-import androidx.compose.material3.SheetValue
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -61,14 +58,12 @@ import androidx.compose.ui.unit.sp
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
-import androidx.paging.compose.itemKey
-import coil3.compose.AsyncImage
 import com.shizq.bika.R
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
 import com.shizq.bika.core.designsystem.theme.BikaTheme
-import kotlinx.coroutines.flow.flowOf
 import com.shizq.bika.core.ui.RetryableAsyncImage
+import kotlinx.coroutines.flow.flowOf
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -76,11 +71,16 @@ fun CommentsPage(
     pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
     replyList: LazyPagingItems<Comment>,
+    /** 正在查看回复的根评论，来自状态机；null 表示弹窗关闭 */
+    viewingReplies: Comment?,
     modifier: Modifier = Modifier,
-    onToggleCommentLike: (String) -> Unit = {},
-    onExpandReplies: (String) -> Unit = {},
+    onToggleCommentLike: (commentId: String, currentlyLiked: Boolean) -> Unit = { _, _ -> },
+    onExpandReplies: (Comment) -> Unit = {},
+    onCollapseReplies: () -> Unit = {},
     onPostComment: (text: String, replyToCommentId: String?) -> Unit = { _, _ -> },
 ) {
+    // 本地状态只剩"写评论"；"在看哪条回复"归状态机，否则关闭弹窗时
+    // 只重置了本地副本，状态机里的值永远停在最后一次展开
     var actionState by remember {
         mutableStateOf<CommentsPageActionState>(CommentsPageActionState.Idle)
     }
@@ -98,14 +98,11 @@ fun CommentsPage(
             onReplyClick = { comment ->
                 actionState = CommentsPageActionState.WritingComment(comment)
             },
-            onExpandReplies = { comment ->
-                actionState = CommentsPageActionState.ViewingReplies(comment)
-                onExpandReplies(comment.id)
-            }
+            onExpandReplies = onExpandReplies
         )
 
         val (text, setText) = remember { mutableStateOf("") }
-        FakeTextField(
+        CommentComposerEntry(
             text = text,
             modifier = Modifier.align(Alignment.BottomCenter),
             onClick = {
@@ -139,14 +136,12 @@ fun CommentsPage(
             }
         }
 
-        val viewingRepliesForComment =
-            (actionState as? CommentsPageActionState.ViewingReplies)?.comment
-        if (viewingRepliesForComment != null) {
+        if (viewingReplies != null) {
             ReplyDetailsSheet(
-                rootComment = viewingRepliesForComment,
+                rootComment = viewingReplies,
                 replyList = replyList,
                 onToggleReplyLike = onToggleCommentLike,
-                onDismiss = { actionState = CommentsPageActionState.Idle }
+                onDismiss = onCollapseReplies
             )
         }
     }
@@ -157,16 +152,18 @@ fun CommentList(
     pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
     modifier: Modifier = Modifier,
-    onToggleLike: (commentId: String) -> Unit,
+    onToggleLike: (commentId: String, currentlyLiked: Boolean) -> Unit,
     onReplyClick: (comment: Comment) -> Unit,
     onExpandReplies: (comment: Comment) -> Unit
 ) {
     LazyColumn(modifier = modifier) {
-        // 置顶评论：服务端可能返回重复 id，key 组合 index 保证唯一
-        itemsIndexed(pinnedComments, key = { index, comment -> "${index}_${comment.id}" }) { _, comment ->
+        // key 用区段前缀而不是 index：置顶评论同时出现在常规列表里是接口的正常行为，
+        // 两者属于列表的不同位置、不是重复数据。掺入 index 会让新数据插入后
+        // 所有后续 item 的身份发生变化，item 内的 remember 状态和动画随之错位。
+        items(pinnedComments, key = { "pinned_${it.id}" }) { comment ->
             CommentItem(
                 comment = comment,
-                onToggleLike = { onToggleLike(comment.id) },
+                onToggleLike = { onToggleLike(comment.id, comment.isLiked) },
                 onReplyClick = { onReplyClick(comment) },
                 onExpandReplies = { onExpandReplies(comment) }
             )
@@ -177,13 +174,13 @@ fun CommentList(
             count = regularComments.itemCount,
             key = { index ->
                 val comment = regularComments.peek(index)
-                if (comment != null) "${index}_${comment.id}" else "placeholder_$index"
+                if (comment != null) "regular_${comment.id}" else "placeholder_$index"
             }
         ) { index ->
             regularComments[index]?.let { comment ->
                 CommentItem(
                     comment = comment,
-                    onToggleLike = { onToggleLike(comment.id) },
+                    onToggleLike = { onToggleLike(comment.id, comment.isLiked) },
                     onReplyClick = { onReplyClick(comment) },
                     onExpandReplies = { onExpandReplies(comment) }
                 )
@@ -197,31 +194,34 @@ fun CommentList(
     }
 }
 
+/**
+ * 评论输入的入口条。点击后打开真正的输入弹窗，自身不接受输入。
+ *
+ * 原实现用 disabled 的 TextField 加一层透明 Box 承接点击：无障碍树里
+ * 这个控件会被标成"不可用"，再盖一层点击区等于两个信号对着干。
+ * 换成语义正确的按钮（Surface(onClick) 自带 Role.Button）。
+ */
 @Composable
-private fun FakeTextField(
+private fun CommentComposerEntry(
     text: String,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
 ) {
-    Box(modifier = modifier) {
-        TextField(
-            value = text,
-            onValueChange = {},
-            modifier = Modifier.fillMaxWidth(),
-            placeholder = { Text("发表你的评论...") },
-            enabled = false,
-            colors = TextFieldDefaults.colors(
-                disabledTextColor = if (text.isEmpty()) Color.Transparent else MaterialTheme.colorScheme.onSurface,
-                disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
-                disabledIndicatorColor = Color.Transparent,
-                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        )
-
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clickable(onClick = onClick)
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Text(
+            text = text.ifEmpty { "发表你的评论..." },
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (text.isEmpty()) {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            } else {
+                MaterialTheme.colorScheme.onSurface
+            },
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp)
         )
     }
 }
@@ -231,7 +231,7 @@ private fun FakeTextField(
 fun ReplyDetailsSheet(
     rootComment: Comment,
     replyList: LazyPagingItems<Comment>,
-    onToggleReplyLike: (String) -> Unit,
+    onToggleReplyLike: (commentId: String, currentlyLiked: Boolean) -> Unit,
     onDismiss: () -> Unit
 ) {
     val sheetState = rememberBottomSheetState(
@@ -256,9 +256,7 @@ fun ReplyDetailsSheet(
 
 private sealed interface CommentsPageActionState {
     data object Idle : CommentsPageActionState
-    data class Replying(val comment: Comment) : CommentsPageActionState
     data class WritingComment(val replyTo: Comment? = null) : CommentsPageActionState
-    data class ViewingReplies(val comment: Comment) : CommentsPageActionState
 }
 
 
@@ -266,7 +264,7 @@ private sealed interface CommentsPageActionState {
 fun CommentItem(
     comment: Comment,
     modifier: Modifier = Modifier,
-    onToggleLike: (String) -> Unit = {},
+    onToggleLike: () -> Unit = {},
     onExpandReplies: (String) -> Unit = {},
     onReplyClick: (String) -> Unit = {},
     showReplyListButton: Boolean = true
@@ -327,25 +325,14 @@ fun CommentItem(
                     modifier = Modifier.padding(start = 8.dp)
                 )
                 Spacer(modifier = Modifier.weight(1f))
-                // 点赞/举报
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
-                    IconWithText(
-                        isLike = comment.isLiked,
-                        text = comment.likesCount.toString()
-                    ) {
-                        onToggleLike(comment.id)
-                    }
-                    // 举报
-                    Icon(
-                        imageVector = Icons.Default.MoreHoriz,
-                        contentDescription = "更多",
-                        modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+                // 原先这里还有一个 MoreHoriz 图标，注释写"举报"但没有任何 clickable：
+                // 看起来能点、实际点不动比没有更糟。举报接口在 BikaDataSource 里
+                // 也不存在，等功能真正排期时再加回来。
+                IconWithText(
+                    isLike = comment.isLiked,
+                    text = comment.likesCount.toString(),
+                    onLikeChanged = onToggleLike
+                )
             }
             if (showReplyListButton && comment.totalComments > 0) {
                 Spacer(modifier = Modifier.height(12.dp))
@@ -369,14 +356,14 @@ fun ReplySheetContent(
     rootComment: Comment,
     replyList: LazyPagingItems<Comment>,
     modifier: Modifier = Modifier,
-    onToggleReplyLike: (String) -> Unit
+    onToggleReplyLike: (commentId: String, currentlyLiked: Boolean) -> Unit
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
     ) {
         LazyColumn {
-            item {
+            item(key = "root_${rootComment.id}") {
                 CommentItem(
                     comment = rootComment,
                     showReplyListButton = false,
@@ -388,13 +375,13 @@ fun ReplySheetContent(
                 replyList.itemCount,
                 key = { index ->
                     val reply = replyList.peek(index)
-                    if (reply != null) "${index}_${reply.id}" else "placeholder_$index"
+                    if (reply != null) "reply_${reply.id}" else "placeholder_$index"
                 }
             ) { index ->
                 replyList[index]?.let { reply ->
                     CommentItem(
                         comment = reply,
-                        onToggleLike = onToggleReplyLike,
+                        onToggleLike = { onToggleReplyLike(reply.id, reply.isLiked) },
                         onExpandReplies = {},
                         showReplyListButton = false
                     )
@@ -645,8 +632,7 @@ fun CommentsPagePreview() {
                 pinnedComments = pinnedComments,
                 regularComments = regularComments,
                 replyList = regularComments,
-                onToggleCommentLike = {},
-                onExpandReplies = {},
+                viewingReplies = null,
             )
         }
     }

@@ -1,14 +1,9 @@
 package com.shizq.bika.ui.comicinfo
 
 import android.widget.Toast
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.material.icons.Icons
@@ -34,15 +29,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.database.model.ChapterProgressEntity
-import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.ui.ErrorState
@@ -50,7 +42,6 @@ import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.page.ComicDetailPage
 import com.shizq.bika.ui.comicinfo.page.CommentsPage
-import com.shizq.bika.ui.comicinfo.page.EpisodeItem
 import com.shizq.bika.ui.comicinfo.page.EpisodesPage
 import com.shizq.bika.ui.comicinfo.page.PageTab
 import kotlinx.coroutines.launch
@@ -68,7 +59,6 @@ fun ComicDetailScreen(
     val downloadTasks by viewModel.downloadTasks.collectAsStateWithLifecycle()
     val chapterProgress by viewModel.chapterProgress.collectAsStateWithLifecycle()
 
-    val pinnedComments by viewModel.pinnedComments.collectAsStateWithLifecycle()
     val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
 
     val replyList = viewModel.replyList.collectAsLazyPagingItems()
@@ -80,7 +70,6 @@ fun ComicDetailScreen(
         onBackClick = onBackClick,
         navigationToReader = navigationToReader,
         navigationToComicInfo = onForYouClick,
-        pinnedComments = pinnedComments,
         regularComments = regularComments,
         onToggleCommentLike = viewModel::toggleCommentLike,
         dispatch = viewModel::dispatch,
@@ -98,27 +87,29 @@ fun ComicDetailScreen(
     )
 }
 
+// 参数没有默认值是有意的：`= {}` / `= { _, _ -> 0 }` 会让"漏接一根回调"
+// 变成编译期沉默的错误，只能靠人眼比对 ComicDetailScreen 里的赋值列表。
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ComicDetailContent(
     unitedState: UnitedDetailsUiState,
     episodes: LazyPagingItems<Episode>,
-    pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
-    downloadTasks: List<DownloadTask> = emptyList(),
-    chapterProgress: List<ChapterProgressEntity> = emptyList(),
-    onBackClick: () -> Unit = {},
-    navigationToReader: (id: String, index: Int) -> Unit = { _, _ -> },
-    navigationToComicInfo: (String) -> Unit = {},
-    onToggleCommentLike: (String) -> Unit = {},
-    dispatch: (UnitedDetailsAction) -> Unit = {},
     replyList: LazyPagingItems<Comment>,
+    downloadTasks: List<DownloadTask>,
+    chapterProgress: List<ChapterProgressEntity>,
+    onBackClick: () -> Unit,
+    navigationToReader: (id: String, index: Int) -> Unit,
+    navigationToComicInfo: (String) -> Unit,
+    onToggleCommentLike: (commentId: String, currentlyLiked: Boolean) -> Unit,
+    dispatch: (UnitedDetailsAction) -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
-    onFetchAllEpisodes: suspend () -> List<Episode> = { emptyList() },
-    onDownloadAllEpisodes: suspend (String, String) -> Int = { _, _ -> 0 },
-    onDownloadEpisodes: (String, String, List<Episode>) -> Unit = { _, _, _ -> },
-    onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit = { _, _, _ -> },
-    onTagBlocked: (String) -> Unit = {},
+    onFetchAllEpisodes: suspend () -> List<Episode>,
+    onDownloadAllEpisodes: suspend (String, String) -> Int,
+    onDownloadEpisodes: (String, String, List<Episode>) -> Unit,
+    onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit,
+    onTagBlocked: (String) -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     when (unitedState) {
         is UnitedDetailsUiState.Initialize -> LoadingState()
@@ -141,7 +132,7 @@ fun ComicDetailContent(
                         scrollBehavior = scrollBehavior
                     )
                 },
-                modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+                modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
             ) { innerPadding ->
                 Column(
                     modifier = Modifier
@@ -170,14 +161,13 @@ fun ComicDetailContent(
                         key = { it }
                     ) { page ->
                         val context = LocalContext.current
-                        when (page) {
-                            0 -> {
-                                val isComicDownloaded = if (detail.epsCount <= 1) {
-                                    downloadTasks.any { it.status == DownloadStatus.COMPLETED }
-                                } else {
-                                    val completedCount =
-                                        downloadTasks.count { it.status == DownloadStatus.COMPLETED }
-                                    completedCount > 0 && completedCount >= detail.epsCount
+                        // 用枚举而非字面量分支：PageTab 新增成员时这里编译失败，
+                        // 而不是静默错位
+                        when (PageTab.entries[page]) {
+                            PageTab.DETAIL -> {
+                                // remember 避免每次重组都重算一遍整个任务列表
+                                val isComicDownloaded = remember(downloadTasks, detail.epsCount) {
+                                    isComicFullyDownloaded(downloadTasks, detail.epsCount)
                                 }
 
                                 val lastReadChapter = remember(chapterProgress) {
@@ -257,7 +247,7 @@ fun ComicDetailContent(
                                 }
                             }
 
-                            1 -> {
+                            PageTab.EPISODES -> {
                                 EpisodesPage(
                                     episodes = episodes,
                                     downloadTasks = downloadTasks,
@@ -282,17 +272,17 @@ fun ComicDetailContent(
                                 )
                             }
 
-                            2 -> CommentsPage(
-                                pinnedComments = pinnedComments,
+                            PageTab.COMMENT -> CommentsPage(
+                                pinnedComments = unitedState.pinnedComments,
                                 regularComments = regularComments,
                                 onToggleCommentLike = onToggleCommentLike,
                                 replyList = replyList,
+                                viewingReplies = unitedState.viewingReplies,
                                 onExpandReplies = {
-                                    dispatch(
-                                        UnitedDetailsAction.ExpandReplies(
-                                            it
-                                        )
-                                    )
+                                    dispatch(UnitedDetailsAction.ExpandReplies(it))
+                                },
+                                onCollapseReplies = {
+                                    dispatch(UnitedDetailsAction.CollapseReplies)
                                 },
                                 onPostComment = { text, replyToCommentId ->
                                     onPostComment(text, replyToCommentId) { success ->
@@ -313,21 +303,4 @@ fun ComicDetailContent(
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun EpisodeItemPreview() {
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 80.dp),
-        modifier = Modifier.heightIn(max = 400.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp),
-    ) {
-        items(count = 30) { index ->
-            EpisodeItem(
-                text = "第${index}话",
-                onClick = { },
-            )
-        }
-    }
-}
+
