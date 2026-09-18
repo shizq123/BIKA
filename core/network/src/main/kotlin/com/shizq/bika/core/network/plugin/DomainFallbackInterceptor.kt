@@ -1,5 +1,7 @@
 package com.shizq.bika.core.network.plugin
 
+import coil3.annotation.ExperimentalCoilApi
+import coil3.decode.BlackholeDecoder
 import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
 import coil3.request.ImageResult
@@ -11,6 +13,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.joinAll
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import okhttp3.HttpUrl
@@ -36,13 +40,15 @@ private fun Throwable?.isWorthFallback(): Boolean {
     return code >= 500
 }
 
-private class FallbackMarker : AbstractCoroutineContextElement(FallbackMarker) {
+internal class FallbackMarker : AbstractCoroutineContextElement(FallbackMarker) {
     companion object Key : CoroutineContext.Key<FallbackMarker>
 }
 
+@OptIn(ExperimentalCoilApi::class)
 class DomainFallbackInterceptor : Interceptor {
     @Volatile
     private var optimalFallbackHost: String? = null
+    private val fallbackSlots = Semaphore(2)
 
     override suspend fun intercept(chain: Interceptor.Chain): ImageResult = coroutineScope {
         if (coroutineContext[FallbackMarker] != null) {
@@ -77,8 +83,14 @@ class DomainFallbackInterceptor : Interceptor {
         }
 
         // 等一小会儿：主请求可能很快成功，也可能很快失败。
-        val earlyResult =
+        // Disk preloads must not multiply into several downloads just because the mobile
+        // connection is slow. Only try mirrors after the primary actually fails.
+        val diskPreload = chain.request.decoderFactory is BlackholeDecoder.Factory
+        val earlyResult = if (diskPreload) {
+            mainRequest.await()
+        } else {
             withTimeoutOrNull(SLOW_MAIN_THRESHOLD_MS.milliseconds) { mainRequest.await() }
+        }
 
         if (earlyResult is SuccessResult) {
             return@coroutineScope earlyResult
@@ -111,24 +123,16 @@ class DomainFallbackInterceptor : Interceptor {
             logger.warn { "主域名 '$failedHost' 请求失败，开始降级竞速" }
         }
 
-        val raceResult = performFallbackRace(chain, httpUrl, failedHost)
-        if (raceResult != null) {
-            mainRequest.cancel()
-            return@coroutineScope raceResult
+        val fallbackRequest = async {
+            performFallbackRace(chain, httpUrl, failedHost, sequential = diskPreload)
         }
-
-        // 竞速全败。主请求可能还在跑（慢速分支），等它的真实结果，
-        // 而不是再发一次 chain.proceed()。
-        val mainResult = try {
-            mainRequest.await()
-        } catch (e: Exception) {
-            if (e is CancellationException) throw e
-            ErrorResult(null, chain.request, e)
+        // Keep observing the primary while mirrors run. Previously a completed primary
+        // waited for the entire mirror race (and sometimes another timeout) to finish.
+        val result = awaitPrimaryOrFallback(mainRequest, fallbackRequest) { it is SuccessResult }
+        if (result is ErrorResult) {
+            logger.error(result.throwable) { "所有域名均尝试失败: $originalUrl" }
         }
-        if (mainResult is ErrorResult) {
-            logger.error(mainResult.throwable) { "所有域名均尝试失败: $originalUrl" }
-        }
-        mainResult
+        result
     }
 
     /**
@@ -137,7 +141,8 @@ class DomainFallbackInterceptor : Interceptor {
     private suspend fun performFallbackRace(
         chain: Interceptor.Chain,
         httpUrl: HttpUrl,
-        failedHost: String
+        failedHost: String,
+        sequential: Boolean,
     ): ImageResult? {
         val fallbackHosts = DomainConfig.MANAGED_HOSTS.filter { it != failedHost }
         if (fallbackHosts.isEmpty()) return null
@@ -162,6 +167,15 @@ class DomainFallbackInterceptor : Interceptor {
         // 去除刚才已经试过的最佳域名，剩下的一起竞速
         val hostsToRace = fallbackHosts.filter { it != currentOptimal }
         if (hostsToRace.isEmpty()) return null
+
+        if (sequential) {
+            for (host in hostsToRace) {
+                val result = tryFallbackHost(chain, httpUrl, host) ?: continue
+                optimalFallbackHost = host
+                return result
+            }
+            return null
+        }
 
         // 策略 2: Race Path (剩余域名通道并发竞速)
         return raceWithChannel(chain, httpUrl, hostsToRace)
@@ -223,10 +237,12 @@ class DomainFallbackInterceptor : Interceptor {
         val newRequest = chain.request.newBuilder().data(newUrl).build()
 
         return try {
-            withTimeoutOrNull(3000L.milliseconds) {
-                withContext(FallbackMarker()) {
-                    val result = chain.withRequest(newRequest).proceed()
-                    result as? SuccessResult
+            fallbackSlots.withPermit {
+                withTimeoutOrNull(3000L.milliseconds) {
+                    withContext(FallbackMarker()) {
+                        val result = chain.withRequest(newRequest).proceed()
+                        result as? SuccessResult
+                    }
                 }
             }
         } catch (e: Exception) {
