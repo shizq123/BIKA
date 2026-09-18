@@ -23,6 +23,7 @@ import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
 import com.shizq.bika.ui.dashboard.ChangePasswordDialog
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
+import com.shizq.bika.ui.dashboard.DashboardDestination
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.dashboard.EditProfileDialog
 import com.shizq.bika.ui.download.DownloadListScreen
@@ -101,27 +102,7 @@ fun EntryProviderScope<NavKey>.featureSection(
     fun slideTransitionMetadata() = slideTransitionMetadata(useAnimation)
 
     entry<ConnectedRoute.DashboardRoute> {
-        DashboardScreen(
-            navigationToLeaderboard = { navigator.navigate(ConnectedRoute.LeaderboardRoute) },
-            navigateToFavourite = { action ->
-                navigator.navigate(ConnectedRoute.FeedRoute(action))
-            },
-            navigationToHistory = { navigator.navigate(ConnectedRoute.HistoryRoute) },
-            navigationToSettings = { navigator.navigate(ConnectedRoute.SettingsRoute) },
-
-            onSearchClick = { navigator.navigate(ConnectedRoute.SearchRoute) },
-            onChannelPreferenceClick = { navigator.navigate(ChannelSettingsNavKey) },
-            onEditProfileClick = { slogan ->
-                navigator.navigate(EditProfileNavKey(slogan))
-            },
-            onCommentsClick = { navigator.navigate(ConnectedRoute.MineCommentRoute) },
-            onDownloadsClick = { navigator.navigate(ConnectedRoute.DownloadListRoute) },
-            onNotificationsClick = { navigator.navigate(ConnectedRoute.NotificationsRoute) },
-            navigationToReader = { id, order ->
-                navigator.navigate(ConnectedRoute.ReaderRoute(id, order))
-            },
-            onBlockedTagsClick = { navigator.navigate(ConnectedRoute.BlockedTagsRoute) },
-        )
+        DashboardScreen(onNavigate = { navigator.navigate(it.toNavKey()) })
     }
 
 
@@ -299,4 +280,26 @@ fun EntryProviderScope<NavKey>.featureSection(
 
 fun Navigator.navigateToUnitedDetail(id: String) {
     navigate(ConnectedRoute.UnitedDetailRoute(id))
+}
+
+/**
+ * Dashboard 的意图 → 主图路由。
+ *
+ * 映射放在导航层而不是屏幕内：屏幕只声明「想去哪」，路由表仍然只有这里知道。
+ * 穷尽的 `when` 是这个方案的主要收益——[DashboardDestination] 新增成员时这里
+ * 编译失败，而原先的多回调形状只会静默漏接一根线。
+ */
+private fun DashboardDestination.toNavKey(): Connected = when (this) {
+    DashboardDestination.Leaderboard -> ConnectedRoute.LeaderboardRoute
+    is DashboardDestination.Feed -> ConnectedRoute.FeedRoute(action)
+    DashboardDestination.History -> ConnectedRoute.HistoryRoute
+    DashboardDestination.Settings -> ConnectedRoute.SettingsRoute
+    is DashboardDestination.Reader -> ConnectedRoute.ReaderRoute(comicId, chapterOrder)
+    DashboardDestination.Search -> ConnectedRoute.SearchRoute
+    DashboardDestination.ChannelPreference -> ChannelSettingsNavKey
+    is DashboardDestination.EditProfile -> EditProfileNavKey(initialSlogan)
+    DashboardDestination.Comments -> ConnectedRoute.MineCommentRoute
+    DashboardDestination.Downloads -> ConnectedRoute.DownloadListRoute
+    DashboardDestination.Notifications -> ConnectedRoute.NotificationsRoute
+    DashboardDestination.BlockedTags -> ConnectedRoute.BlockedTagsRoute
 }

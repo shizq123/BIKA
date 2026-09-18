@@ -98,50 +98,10 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun DashboardScreen(
-    navigationToLeaderboard: () -> Unit,
-    navigateToFavourite: (DiscoveryAction) -> Unit,
-    navigationToHistory: () -> Unit,
-    navigationToSettings: () -> Unit,
-    onSearchClick: () -> Unit,
-    onChannelPreferenceClick: () -> Unit,
-    onEditProfileClick: (initialSlogan: String) -> Unit,
-    onCommentsClick: () -> Unit,
-    onDownloadsClick: () -> Unit,
-    onNotificationsClick: () -> Unit,
-    navigationToReader: (String, Int) -> Unit,
-    onBlockedTagsClick: () -> Unit = {},
+    onNavigate: (DashboardDestination) -> Unit,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val callbacks = remember(
-        navigationToLeaderboard,
-        navigateToFavourite,
-        navigationToHistory,
-        navigationToSettings,
-        navigationToReader,
-        onSearchClick,
-        onChannelPreferenceClick,
-        onEditProfileClick,
-        onCommentsClick,
-        onDownloadsClick,
-        onNotificationsClick,
-        onBlockedTagsClick,
-    ) {
-        DashboardCallbacks(
-            navigateToLeaderboard = navigationToLeaderboard,
-            navigateToFavourite = navigateToFavourite,
-            navigateToHistory = navigationToHistory,
-            navigateToSettings = navigationToSettings,
-            navigateToReader = navigationToReader,
-            onSearchClick = onSearchClick,
-            onChannelPreferenceClick = onChannelPreferenceClick,
-            onEditProfileClick = onEditProfileClick,
-            onCommentsClick = onCommentsClick,
-            onDownloadsClick = onDownloadsClick,
-            onNotificationsClick = onNotificationsClick,
-            onBlockedTagsClick = onBlockedTagsClick,
-        )
-    }
 
     // 自动打卡：profile 加载成功后 dispatch 一次，实际检查逻辑在 StateMachine 内部完成。
     // key 用 Boolean 而非整个 userProfile：后者每次资料刷新（打卡改了 exp/level、
@@ -167,7 +127,7 @@ fun DashboardScreen(
     DashboardContent(
         state = state,
         onAction = viewModel::dispatch,
-        callbacks = callbacks,
+        onNavigate = onNavigate,
     )
 }
 
@@ -175,7 +135,7 @@ fun DashboardScreen(
 fun DashboardContent(
     state: DashboardState,
     onAction: (DashboardAction) -> Unit,
-    callbacks: DashboardCallbacks,
+    onNavigate: (DashboardDestination) -> Unit,
 ) {
     val drawerState: DrawerState = rememberDrawerState(DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -204,6 +164,16 @@ fun DashboardContent(
     // 修改资料 / 修改密码不在这里：它们是 EditProfileNavKey / ChangePasswordNavKey
     // 两个独立 entry，由导航返回栈托管，因此配置变更和进程死亡都不会丢。
     // 见 DialogNavKey 与 EditProfileViewModel 的注释。
+
+    // 抽屉里的每个入口都要「先等关门动画走完，再导航」，否则新页面进场时抽屉还挂在上面。
+    // 原先这个 launch/close/navigate 三连在 9 处逐字重复。
+    val navigateFromDrawer = { destination: DashboardDestination ->
+        scope.launch {
+            drawerState.close()
+            onNavigate(destination)
+        }
+        Unit
+    }
 
     var showBookmarkDrawer by remember { mutableStateOf(false) }
 
@@ -237,10 +207,7 @@ fun DashboardContent(
                         userProfile = userProfileUiState,
                         lastReadHistory = lastReadHistory,
                         navigationToReader = { comicId, order ->
-                            scope.launch {
-                                drawerState.close()
-                                callbacks.navigateToReader(comicId, order)
-                            }
+                            navigateFromDrawer(DashboardDestination.Reader(comicId, order))
                         },
                         onCheckInClick = {
                             scope.launch {
@@ -249,51 +216,31 @@ fun DashboardContent(
                             }
                         },
                         onEditProfileClick = {
-                            scope.launch {
-                                drawerState.close()
-                                // 签名随 NavKey 传出去，进返回栈；资料未加载成功时给空串，
-                                // 此时抽屉里也点不到编辑入口。
-                                val slogan =
-                                    (userProfileUiState as? UserProfileUiState.Success)
-                                        ?.user?.slogan.orEmpty()
-                                callbacks.onEditProfileClick(slogan)
-                            }
+                            // 签名随 NavKey 传出去，进返回栈；资料未加载成功时给空串，
+                            // 此时抽屉里也点不到编辑入口。
+                            val slogan = (userProfileUiState as? UserProfileUiState.Success)
+                                ?.user?.slogan.orEmpty()
+                            navigateFromDrawer(DashboardDestination.EditProfile(slogan))
                         },
                         onHistoryClick = {
-                            scope.launch {
-                                drawerState.close()
-                                callbacks.navigateToHistory()
-                            }
+                            navigateFromDrawer(DashboardDestination.History)
                         },
                         onFavouriteClick = {
-                            scope.launch {
-                                drawerState.close()
-                                callbacks.navigateToFavourite(DiscoveryAction.ToFavourite)
-                            }
+                            navigateFromDrawer(
+                                DashboardDestination.Feed(DiscoveryAction.ToFavourite)
+                            )
                         },
                         onNotificationsClick = {
-                            scope.launch {
-                                drawerState.close()
-                                callbacks.onNotificationsClick()
-                            }
+                            navigateFromDrawer(DashboardDestination.Notifications)
                         },
                         onCommentsClick = {
-                            scope.launch {
-                                drawerState.close()
-                                callbacks.onCommentsClick()
-                            }
+                            navigateFromDrawer(DashboardDestination.Comments)
                         },
                         onDownloadsClick = {
-                            scope.launch {
-                                drawerState.close()
-                                callbacks.onDownloadsClick()
-                            }
+                            navigateFromDrawer(DashboardDestination.Downloads)
                         },
                         onSettingsClick = {
-                            scope.launch {
-                                drawerState.close()
-                                callbacks.navigateToSettings()
-                            }
+                            navigateFromDrawer(DashboardDestination.Settings)
                         },
                     )
                 }
@@ -305,8 +252,10 @@ fun DashboardContent(
                     DashboardAppBar(
                         scrollBehavior = scrollBehavior,
                         onDrawerOpen = { scope.launch { drawerState.open() } },
-                        onSearchClicked = callbacks.onSearchClick,
-                        onChannelPreferenceClicked = callbacks.onChannelPreferenceClick,
+                        onSearchClicked = { onNavigate(DashboardDestination.Search) },
+                        onChannelPreferenceClicked = {
+                            onNavigate(DashboardDestination.ChannelPreference)
+                        },
                         onBookmarkClicked = { showBookmarkDrawer = true },
                     )
                 },
@@ -328,7 +277,9 @@ fun DashboardContent(
                         item(span = { GridItemSpan(maxLineSpan) }) {
                             QuickResumeCard(
                                 history = history,
-                                onClick = callbacks.navigateToReader,
+                                onClick = { comicId, order ->
+                                    onNavigate(DashboardDestination.Reader(comicId, order))
+                                },
                                 modifier = Modifier
                                     .animateItem()
                             )
@@ -348,10 +299,10 @@ fun DashboardContent(
                         ) {
                             when (val destination = item.toDestination()) {
                                 is ChannelDestination.Feed ->
-                                    callbacks.navigateToFavourite(destination.action)
+                                    onNavigate(DashboardDestination.Feed(destination.action))
 
                                 ChannelDestination.Leaderboard ->
-                                    callbacks.navigateToLeaderboard()
+                                    onNavigate(DashboardDestination.Leaderboard)
 
                                 is ChannelDestination.Unavailable ->
                                     Toast.makeText(
@@ -394,14 +345,14 @@ fun DashboardContent(
                 currentAction = null,
                 onNavigateToFeed = { action ->
                     showBookmarkDrawer = false
-                    callbacks.navigateToFavourite(action)
+                    onNavigate(DashboardDestination.Feed(action))
                 },
                 onAddFavorite = onAddFavorite,
                 onRemoveFavorite = onRemoveFavorite,
                 onUpdateName = onUpdateFavoriteName,
                 onMove = onMoveFavorite,
                 onAddCustom = onAddCustomFavorite,
-                onBlockedTagsClick = callbacks.onBlockedTagsClick,
+                onBlockedTagsClick = { onNavigate(DashboardDestination.BlockedTags) },
                 onClose = { showBookmarkDrawer = false }
             )
         }
