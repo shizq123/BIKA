@@ -13,7 +13,7 @@ import com.shizq.bika.core.download.model.DownloadTask
  *   有任意一条完成即视为下载完，与原实现在这一分支上的行为一致。
  */
 internal fun isComicFullyDownloaded(tasks: List<DownloadTask>, epsCount: Int): Boolean {
-    val completedOrders = tasks.filter { it.isCompleted }.mapTo(HashSet()) { it.episodeOrder }
+    val completedOrders = tasks.filter { it.isCompleted }.mapTo(mutableSetOf()) { it.episodeOrder }
     if (completedOrders.isEmpty()) return false
     // 单话漫画的 epsCount 可能是 0 或 1，此时有一条完成即视为下载完
     return if (epsCount <= 1) true else completedOrders.size >= epsCount

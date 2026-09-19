@@ -35,10 +35,5 @@ class SinglePagePagingSource<Key : Any, V : Any>(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Key, V>): Key? {
-        return state.anchorPosition?.let { anchorPosition ->
-            state.closestPageToPosition(anchorPosition)?.prevKey
-                ?: state.closestPageToPosition(anchorPosition)?.nextKey
-        }
-    }
+    override fun getRefreshKey(state: PagingState<Key, V>): Key? = null
 }

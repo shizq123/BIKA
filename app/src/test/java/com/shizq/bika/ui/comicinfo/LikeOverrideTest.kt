@@ -114,7 +114,8 @@ class LikeOverrideTest {
         assertEquals(original.content, result.content)
         assertEquals(original.createdAt, result.createdAt)
         assertEquals(original.totalComments, result.totalComments)
-        // User 没有实现 equals，这里断言的是"沿用同一引用"而非结构相等
+        // 断言同一引用而非结构相等：copy 只该动点赞相关字段，
+        // 连 user 这种大对象都不必重建
         assertSame(original.user, result.user)
     }
 

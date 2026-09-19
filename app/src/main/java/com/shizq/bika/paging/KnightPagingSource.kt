@@ -38,7 +38,11 @@ class KnightPagingSource @AssistedInject constructor(
             LoadResult.Page<Int, ComicSummary>(
                 data = comicsPage.docs,
                 prevKey = null,
-                nextKey = if (page >= comicsPage.pages) null else page + 1
+                nextKey = if (comicsPage.docs.isEmpty() || page >= comicsPage.pages) {
+                    null
+                } else {
+                    page + 1
+                }
             ).also {
                 onPageInfoLoaded?.invoke(comicsPage.pages, comicsPage.total)
             }
@@ -49,12 +53,13 @@ class KnightPagingSource @AssistedInject constructor(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, ComicSummary>): Int? {
-        return state.anchorPosition?.let { anchorPosition ->
-            state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
-                ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)
-        }
-    }
+    /**
+     * 固定从第一页重新加载。
+     *
+     * 不能用"锚点页 nextKey - 1"：本类 prevKey 恒为 null、无法 prepend，
+     * 刷新后从中间页起加载，它前面的页既不会被加载也补不回来。
+     */
+    override fun getRefreshKey(state: PagingState<Int, ComicSummary>): Int? = null
 
     @AssistedFactory
     interface Factory {

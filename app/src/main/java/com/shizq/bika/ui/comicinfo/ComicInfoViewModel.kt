@@ -11,6 +11,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
 import com.shizq.bika.core.data.model.Comment
+import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.download.model.DownloadTask
@@ -32,16 +33,18 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.flow.take
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlin.coroutines.cancellation.CancellationException
 import kotlin.time.Clock
 
 private const val TAG = "ComicInfoViewModel"
@@ -50,12 +53,20 @@ private const val TAG = "ComicInfoViewModel"
 private const val PAGE_SIZE_COMMENT = 40
 
 /**
- * 回复每页条数，保持原值 5。
+ * 回复每页条数。
  *
- * 它可能与服务端每页实际返回条数（评论侧是 40）不符，会让 Paging 更频繁
- * 触发下一页。但改动它会改变请求量，属于需要单独测量的决策，不搭本次重构的车。
+ * 与评论保持一致：服务端 comments 系列接口一页给 40 条，客户端声明 5
+ * 会让 Paging 基于错误的页尺寸做预取判断，配合去重后的短页更难预测。
  */
-private const val PAGE_SIZE_REPLY = 5
+private const val PAGE_SIZE_REPLY = PAGE_SIZE_COMMENT
+
+/**
+ * [ComicInfoViewModel.fetchAllEpisodes] 的页数硬上限。
+ *
+ * 服务端一页 40 话，500 页足够覆盖任何真实漫画；它的作用是在 `pages`
+ * 字段不可信时给循环一个确定的终点，而不是限制正常数据。
+ */
+private const val MAX_EPISODE_PAGES = 500
 
 @HiltViewModel(assistedFactory = ComicInfoViewModel.Factory::class)
 class ComicInfoViewModel @AssistedInject constructor(
@@ -109,14 +120,55 @@ class ComicInfoViewModel @AssistedInject constructor(
      */
     private val likeOverrides = MutableStateFlow<Map<String, Boolean>>(emptyMap())
 
-    val regularComments: Flow<PagingData<Comment>> = Pager(PagingConfig(PAGE_SIZE_COMMENT)) {
-        commentPagingSourceFactory(comicId, ::onTopCommentsLoaded)
+    val regularComments: Flow<PagingData<Comment>> = Pager(
+        // enablePlaceholders = false：跨页去重会让单页条数小于 pageSize，
+        // 占位符的位置计算失去依据（PagingSource 也给不出准确的 itemsBefore/After）
+        PagingConfig(pageSize = PAGE_SIZE_COMMENT, enablePlaceholders = false)
+    ) {
+        commentPagingSourceFactory(comicId)
     }.flow
         // cachedIn 必须在 combine/map 之前，否则缓存失效、滑动时会重复请求
         .cachedIn(viewModelScope)
         .combine(likeOverrides) { paging, overrides ->
             paging.map { it.applyLikeOverride(overrides) }
         }
+
+    /** 置顶评论的刷新信号，发表评论成功后与常规列表一起刷新 */
+    private val pinnedCommentsRefresh = MutableStateFlow(0)
+
+    /**
+     * 置顶评论。
+     *
+     * 独立于 [regularComments] 请求，不走分页源的旁路回调。置顶评论不分页、
+     * 与页码无关，塞进 PagingSource 只能靠回调往外递，而 Paging 的缓存重放
+     * 不会重跑 `load`，重新订阅时这份数据就丢了。独立成流后它有自己的生命周期，
+     * 也能自然地套上点赞覆盖层。
+     *
+     * 由 UI 直接收集，不再经状态机的 TopCommentsLoaded：置顶评论是网络数据而非
+     * UI 交互状态，绕状态机一圈还得为"Initialize 期间 action 被丢弃"补一套补发逻辑。
+     *
+     * 失败时不发射，保留上一次的值：一次网络抖动不该让已显示的置顶评论消失，
+     * 列表自身的错误态已由 Paging 呈现。
+     */
+    val pinnedComments: StateFlow<List<Comment>> = pinnedCommentsRefresh
+        .flatMapLatest {
+            flow {
+                // page 固定为 1：topComments 只随第一页返回，与分页无关
+                val response = network.getComments(Type.COMIC, comicId, 1)
+                emit(response.topComments.map { it.asExternalModel() })
+            }.catch { e ->
+                if (e is CancellationException) throw e
+                Log.e(TAG, "load pinned comments failed", e)
+            }
+        }
+        .combine(likeOverrides) { pinned, overrides ->
+            pinned.map { it.applyLikeOverride(overrides) }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5_000),
+            initialValue = emptyList()
+        )
 
     val replyList = state
         .viewingRepliesIds()
@@ -125,46 +177,19 @@ class ComicInfoViewModel @AssistedInject constructor(
             if (commentId == null) {
                 flowOf(PagingData.empty())
             } else {
-                Pager(PagingConfig(PAGE_SIZE_REPLY)) {
+                Pager(
+                    PagingConfig(pageSize = PAGE_SIZE_REPLY, enablePlaceholders = false)
+                ) {
                     replyPagingSourceFactory(commentId)
                 }.flow
+                    // cachedIn 放在 flatMapLatest 内部：放外层时所有 commentId
+                    // 共用同一个缓存槽，切换根评论后可能先看到上一条的缓存页
+                    .cachedIn(viewModelScope)
             }
         }
-        .cachedIn(viewModelScope)
         .combine(likeOverrides) { paging, overrides ->
             paging.map { it.applyLikeOverride(overrides) }
         }
-
-    /**
-     * 置顶评论走 dispatch 而不是直写 StateFlow，保证 Content 只有状态机一个写入者。
-     *
-     * 注意时序：评论第一页与漫画详情是并发请求的（collectAsLazyPagingItems 在
-     * ComicDetailScreen 顶层调用，不在评论 tab 里）。若评论先返回，状态机还在
-     * Initialize，没有匹配的 inState，这个 action 会被丢弃、置顶评论静默消失。
-     * 所以缓存最后一次结果，进入 Content 时由下面的 init 补发一次。
-     */
-    @Volatile
-    private var lastTopComments: List<Comment>? = null
-
-    private fun onTopCommentsLoaded(comments: List<Comment>) {
-        lastTopComments = comments
-        dispatch(UnitedDetailsAction.TopCommentsLoaded(comments))
-    }
-
-    init {
-        // Initialize -> Content 的瞬间补发一次，覆盖"评论比详情先返回"的情况
-        viewModelScope.launch {
-            state.filterIsInstance<UnitedDetailsUiState.Content>()
-                .take(1)
-                .collect { content ->
-                    if (shouldReplayTopComments(lastTopComments, content.pinnedComments)) {
-                        stateMachine.dispatch(
-                            UnitedDetailsAction.TopCommentsLoaded(lastTopComments!!)
-                        )
-                    }
-                }
-        }
-    }
 
     fun dispatch(action: UnitedDetailsAction) {
         viewModelScope.launch {
@@ -195,6 +220,11 @@ class ComicInfoViewModel @AssistedInject constructor(
         }
     }
 
+    /** 重新拉取置顶评论，供发表评论成功后与常规列表一起刷新 */
+    fun refreshPinnedComments() {
+        pinnedCommentsRefresh.update { it + 1 }
+    }
+
     fun postComment(text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) {
         viewModelScope.launch {
             try {
@@ -204,6 +234,8 @@ class ComicInfoViewModel @AssistedInject constructor(
                     network.postCommentReply(replyToCommentId, text)
                 }
                 onResult(true)
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.e(TAG, "postComment failed", e)
                 onResult(false)
@@ -213,16 +245,23 @@ class ComicInfoViewModel @AssistedInject constructor(
 
     /**
      * 获取漫画所有章节列表（用于 EpisodesPage 下载选择面板）。
+     *
+     * 两处防止打空转的约束：空页立即停（`pages` 虚高时否则永不满足退出条件），
+     * 以及 [MAX_EPISODE_PAGES] 硬上限。异常直接抛给调用方，由 UI 的 catch 提示重试。
      */
     suspend fun fetchAllEpisodes(): List<Episode> {
         val list = mutableListOf<Episode>()
         var pageIndex = 1
         var hasNext = true
-        while (hasNext) {
+        while (hasNext && pageIndex <= MAX_EPISODE_PAGES) {
             val res = network.getComicEpisodes(comicId, pageIndex)
-            list.addAll(res.eps.docs)
-            hasNext = pageIndex < res.eps.pages
+            val docs = res.eps.docs
+            list.addAll(docs)
+            hasNext = docs.isNotEmpty() && pageIndex < res.eps.pages
             pageIndex++
+        }
+        if (hasNext) {
+            Log.w(TAG, "fetchAllEpisodes 到达 $MAX_EPISODE_PAGES 页上限，章节可能不完整")
         }
         return list
     }
@@ -283,33 +322,6 @@ class ComicInfoViewModel @AssistedInject constructor(
         ): ComicInfoViewModel
     }
 }
-
-/**
- * 首次进入 Content 时是否需要补发一次置顶评论。
- *
- * 背景：评论第一页与漫画详情并发请求。若评论先返回，状态机还在 Initialize，
- * 没有匹配的 inState，[UnitedDetailsAction.TopCommentsLoaded] 会被静默丢弃，
- * 置顶评论永远不出现。所以缓存最后一次回调结果，进入 Content 时补发。
- *
- * 只在"有缓存且与状态里的值不同"时补发：详情先返回的正常路径下
- * 状态里已经是正确值，此时补发只会多一次无意义的 mutate。
- *
- * @param cached PagingSource 最后一次回调带回的置顶评论，null 表示评论还没加载完
- * @param inState 状态机当前持有的置顶评论
- */
-internal fun shouldReplayTopComments(
-    cached: List<Comment>?,
-    inState: List<Comment>,
-): Boolean = cached != null && !cached.sameCommentIdsAs(inState)
-
-/**
- * 按 id 序列比较两份评论列表。
- *
- * 不能直接用 `==`：[Comment.user] 是普通 class，没有实现 equals，
- * 两次网络解析出的 User 实例永不相等，列表比较会恒为 false、每次都补发。
- */
-private fun List<Comment>.sameCommentIdsAs(other: List<Comment>): Boolean =
-    size == other.size && indices.all { this[it].id == other[it].id }
 
 /**
  * 从 UI 状态流里提取"当前在看哪条评论的回复"，null 表示弹窗关闭。

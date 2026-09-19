@@ -21,7 +21,12 @@ class MineCommentPagingSource @Inject constructor(
             LoadResult.Page(
                 data = comments.docs,
                 prevKey = null,
-                nextKey = if (page >= comments.pages) null else page + 1
+                // docs 为空也停：pages 虚高时否则会一直请求空页
+                nextKey = if (comments.docs.isEmpty() || page >= comments.pages) {
+                    null
+                } else {
+                    page + 1
+                }
             )
         } catch (e: CancellationException) {
             throw e
@@ -30,10 +35,11 @@ class MineCommentPagingSource @Inject constructor(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, Comment>): Int? {
-        return state.anchorPosition?.let { anchorPosition ->
-            state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
-                ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)
-        }
-    }
+    /**
+     * 固定从第一页重新加载。
+     *
+     * 不能用"锚点页 nextKey - 1"：本类 prevKey 恒为 null、无法 prepend，
+     * 刷新后从中间页起加载，它前面的页既不会被加载也补不回来。
+     */
+    override fun getRefreshKey(state: PagingState<Int, Comment>): Int? = null
 }

@@ -26,7 +26,11 @@ class ChapterListPagingSource @AssistedInject constructor(
                     Chapter(doc.id, doc.order, doc.title, doc.updatedAt)
                 }.sortedBy { it.order },
                 prevKey = null,
-                nextKey = if (currentPage < epsResponse.pages) currentPage + 1 else null
+                nextKey = if (epsResponse.docs.isEmpty() || currentPage >= epsResponse.pages) {
+                    null
+                } else {
+                    currentPage + 1
+                }
             )
         } catch (e: CancellationException) {
             throw e
@@ -36,12 +40,7 @@ class ChapterListPagingSource @AssistedInject constructor(
 
     }
 
-    override fun getRefreshKey(state: PagingState<Int, Chapter>): Int? {
-        return state.anchorPosition?.let { anchorPosition ->
-            val anchorPage = state.closestPageToPosition(anchorPosition)
-            anchorPage?.prevKey?.plus(1) ?: anchorPage?.nextKey?.minus(1)
-        }
-    }
+    override fun getRefreshKey(state: PagingState<Int, Chapter>): Int? = null
 
     @AssistedFactory
     interface Factory {

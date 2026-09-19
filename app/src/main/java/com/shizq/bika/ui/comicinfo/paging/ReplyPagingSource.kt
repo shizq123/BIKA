@@ -6,7 +6,7 @@ import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.paging.CrossPageDeduplicator
-import com.shizq.bika.paging.forwardOnlyRefreshKey
+import com.shizq.bika.paging.nextPageKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -37,10 +37,15 @@ class ReplyPagingSource @AssistedInject constructor(
 
             LoadResult.Page(
                 data = deduplicator.retainUnseen(
+                    page,
                     commentsPage.docs.map { it.asExternalModel() }
                 ),
                 prevKey = null,
-                nextKey = if (page >= commentsPage.pages) null else page + 1
+                nextKey = nextPageKey(
+                    page = page,
+                    pages = commentsPage.pages,
+                    isEmptyPage = commentsPage.docs.isEmpty(),
+                )
             )
         } catch (e: CancellationException) {
             throw e
@@ -49,8 +54,14 @@ class ReplyPagingSource @AssistedInject constructor(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, Comment>): Int? =
-        state.forwardOnlyRefreshKey()
+    /**
+     * 固定从第一页重新加载，与 [CommentPagingSource.getRefreshKey] 同理。
+     *
+     * 原先用 `forwardOnlyRefreshKey()`（返回锚点页的 `nextKey - 1`），但本类
+     * `prevKey` 恒为 null、无法 prepend：刷新后从中间页起加载，
+     * 它前面的页既不会被加载也补不回来，那些回复会一直缺失。
+     */
+    override fun getRefreshKey(state: PagingState<Int, Comment>): Int? = null
 
     @AssistedFactory
     interface Factory {

@@ -2,7 +2,7 @@ package com.shizq.bika.core.data.model
 
 import com.shizq.bika.core.network.model.UserData
 
-class User(
+data class User(
     val id: String,
     val name: String,
     val gender: String,

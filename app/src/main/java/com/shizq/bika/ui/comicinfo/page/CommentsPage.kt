@@ -1,7 +1,6 @@
 package com.shizq.bika.ui.comicinfo.page
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,6 +34,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -273,10 +273,9 @@ fun CommentItem(
         modifier = modifier
             .fillMaxWidth()
             .padding(start = 16.dp, top = 16.dp, end = 16.dp)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null
-            ) { onReplyClick(comment.id) },
+            // onClickLabel 明确整行的动作是"回复"：行内还有点赞、查看回复两个
+            // 可点区，不给标签的话读屏只会报一个无名可点节点
+            .clickable(onClickLabel = "回复") { onReplyClick(comment.id) },
     ) {
         // 头像：失败自动重试
         RetryableAsyncImage(
@@ -392,6 +391,14 @@ fun ReplySheetContent(
     }
 }
 
+/**
+ * 点赞数与点赞按钮。
+ *
+ * 整行作为一个 toggle 语义节点：图标只有 18dp，单独作为点击区远低于
+ * 48dp 的最小触达尺寸，所以点击挂在 Row 上并补 [minimumInteractiveComponentSize]。
+ * 语义描述随 [isLike] 变化，读屏才能读出当前是"点赞"还是"取消点赞"。
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IconWithText(
     isLike: Boolean,
@@ -400,11 +407,12 @@ fun IconWithText(
     onLikeChanged: () -> Unit
 ) {
     Row(
-        modifier = modifier.clickable(
-            role = Role.Button,
-            interactionSource = remember { MutableInteractionSource() },
-            indication = null,
-        ) { onLikeChanged() },
+        modifier = modifier
+            .minimumInteractiveComponentSize()
+            .clickable(
+                role = Role.Button,
+                onClickLabel = if (isLike) "取消点赞" else "点赞",
+            ) { onLikeChanged() },
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -413,7 +421,8 @@ fun IconWithText(
             } else {
                 painterResource(R.drawable.ic_favorite_border_24)
             },
-            contentDescription = "Like button",
+            // 点击语义与标签已由 Row 承载，图标本身不再重复播报
+            contentDescription = null,
             modifier = Modifier.size(18.dp),
             tint = if (isLike) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
         )

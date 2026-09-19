@@ -27,7 +27,11 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
             LoadResult.Page<Int, ComicSummary>(
                 data = comicsPage.docs,
                 prevKey = null,
-                nextKey = if (page >= comicsPage.pages) null else page + 1
+                nextKey = if (comicsPage.docs.isEmpty() || page >= comicsPage.pages) {
+                    null
+                } else {
+                    page + 1
+                }
             ).also {
                 onPageInfoLoaded?.invoke(comicsPage.pages, comicsPage.total)
             }
@@ -38,12 +42,7 @@ class FavouriteComicsPagingSource @AssistedInject constructor(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, ComicSummary>): Int? {
-        return state.anchorPosition?.let { anchorPosition ->
-            state.closestPageToPosition(anchorPosition)?.prevKey?.plus(1)
-                ?: state.closestPageToPosition(anchorPosition)?.nextKey?.minus(1)
-        }
-    }
+    override fun getRefreshKey(state: PagingState<Int, ComicSummary>): Int? = null
 
     @AssistedFactory
     interface Factory {

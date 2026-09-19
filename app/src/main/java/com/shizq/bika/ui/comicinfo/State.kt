@@ -15,8 +15,6 @@ sealed interface UnitedDetailsUiState {
         val id: String,
         val detail: ComicDetail = ComicDetail(),
         val recommendations: List<ComicSummary> = emptyList(),
-        /** 置顶评论。由 CommentPagingSource 通过 TopCommentsLoaded 派发写入 */
-        val pinnedComments: List<Comment> = emptyList(),
         /**
          * 正在查看回复的根评论，null 表示回复弹窗关闭。
          *

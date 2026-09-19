@@ -60,6 +60,7 @@ fun ComicDetailScreen(
     val chapterProgress by viewModel.chapterProgress.collectAsStateWithLifecycle()
 
     val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
+    val pinnedComments by viewModel.pinnedComments.collectAsStateWithLifecycle()
 
     val replyList = viewModel.replyList.collectAsLazyPagingItems()
     ComicDetailContent(
@@ -71,6 +72,7 @@ fun ComicDetailScreen(
         navigationToReader = navigationToReader,
         navigationToComicInfo = onForYouClick,
         regularComments = regularComments,
+        pinnedComments = pinnedComments,
         onToggleCommentLike = viewModel::toggleCommentLike,
         dispatch = viewModel::dispatch,
         replyList = replyList,
@@ -83,6 +85,7 @@ fun ComicDetailScreen(
             viewModel.downloadEpisodes(title, cover, list)
         },
         onPostComment = viewModel::postComment,
+        onRefreshPinnedComments = viewModel::refreshPinnedComments,
         onTagBlocked = viewModel::addBlockedTag,
     )
 }
@@ -95,6 +98,7 @@ fun ComicDetailContent(
     unitedState: UnitedDetailsUiState,
     episodes: LazyPagingItems<Episode>,
     regularComments: LazyPagingItems<Comment>,
+    pinnedComments: List<Comment>,
     replyList: LazyPagingItems<Comment>,
     downloadTasks: List<DownloadTask>,
     chapterProgress: List<ChapterProgressEntity>,
@@ -108,6 +112,7 @@ fun ComicDetailContent(
     onDownloadAllEpisodes: suspend (String, String) -> Int,
     onDownloadEpisodes: (String, String, List<Episode>) -> Unit,
     onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit,
+    onRefreshPinnedComments: () -> Unit,
     onTagBlocked: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -273,7 +278,7 @@ fun ComicDetailContent(
                             }
 
                             PageTab.COMMENT -> CommentsPage(
-                                pinnedComments = unitedState.pinnedComments,
+                                pinnedComments = pinnedComments,
                                 regularComments = regularComments,
                                 onToggleCommentLike = onToggleCommentLike,
                                 replyList = replyList,
@@ -288,9 +293,18 @@ fun ComicDetailContent(
                                     onPostComment(text, replyToCommentId) { success ->
                                         if (success) {
                                             regularComments.refresh()
+                                            // 置顶评论独立成流，不会随列表 refresh 一起更新
+                                            onRefreshPinnedComments()
                                             if (replyToCommentId != null) {
                                                 replyList.refresh()
                                             }
+                                        } else {
+                                            Toast.makeText(
+                                                context,
+                                                "发表失败，请重试",
+                                                Toast.LENGTH_SHORT
+                                            )
+                                                .show()
                                         }
                                     }
                                 }

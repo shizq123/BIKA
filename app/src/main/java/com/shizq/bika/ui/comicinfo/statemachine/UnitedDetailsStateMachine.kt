@@ -114,9 +114,6 @@ class UnitedDetailsStateMachine @AssistedInject constructor(
                         }
                     )
                 }
-                on<UnitedDetailsAction.TopCommentsLoaded> {
-                    mutate { copy(pinnedComments = it.comments) }
-                }
                 on<UnitedDetailsAction.ExpandReplies> {
                     mutate { copy(viewingReplies = it.comment) }
                 }

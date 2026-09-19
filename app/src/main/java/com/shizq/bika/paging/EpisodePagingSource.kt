@@ -20,9 +20,13 @@ class EpisodePagingSource(
             val response = api.getComicEpisodes(comicId, currentPage)
 
             val data = response.eps
-            val episodes = deduplicator.retainUnseen(data.docs)
+            val episodes = deduplicator.retainUnseen(currentPage, data.docs)
 
-            val nextKey = if (currentPage < data.pages) currentPage + 1 else null
+            val nextKey = if (data.docs.isEmpty() || currentPage >= data.pages) {
+                null
+            } else {
+                currentPage + 1
+            }
 
             LoadResult.Page(
                 data = episodes,
@@ -36,6 +40,5 @@ class EpisodePagingSource(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, Episode>): Int? =
-        state.forwardOnlyRefreshKey()
+    override fun getRefreshKey(state: PagingState<Int, Episode>): Int? = null
 }
