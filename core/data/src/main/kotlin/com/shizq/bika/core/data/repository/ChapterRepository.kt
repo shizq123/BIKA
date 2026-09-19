@@ -24,6 +24,20 @@ interface ChapterRepository {
     fun getChapterCatalog(comicId: String): Flow<ChapterCatalog>
 
     /**
+     * 一次性取回指定漫画的全部章节（非分页、非 Flow）。
+     *
+     * 与 [getChapterCatalog] 的区别只在交付方式：目录是长期订阅、边拉边发、带
+     * [ChapterCatalog.isComplete] 语义，供上下章导航随机访问；这里是一次 suspend
+     * 调用拿到最终结果，供"下载选择"这类打开面板时才需要全量的一次性场景。
+     * 两者共用同一套翻页与上限规则。
+     *
+     * 中途失败不吞：直接抛给调用方，由 UI 决定是否提示重试。这与目录流刻意不同——
+     * 目录流保留已拉到的部分是因为"知道一部分"也比"什么都不知道"强，
+     * 而下载选择面板拿到残缺列表会让用户以为章节就这么多。
+     */
+    suspend fun getAllChapters(comicId: String): List<Chapter>
+
+    /**
      * 获取指定章节的图片列表（分页），以及随分页请求一并返回的章节元信息。
      *
      * @param startPageIndex 恢复阅读进度时的目标页索引（0-based，对应 [ChapterPage] 在

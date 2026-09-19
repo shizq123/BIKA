@@ -44,10 +44,10 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.isCompleted
 import com.shizq.bika.core.download.model.DownloadTask
-import com.shizq.bika.core.network.model.Episode
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.flowOf
 
@@ -56,17 +56,17 @@ private val logger = KotlinLogging.logger("EpisodePage")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodesPage(
-    episodes: LazyPagingItems<Episode>,
+    episodes: LazyPagingItems<Chapter>,
     modifier: Modifier = Modifier,
     downloadTasks: List<DownloadTask> = emptyList(),
     chapterProgress: List<ChapterProgressEntity> = emptyList(),
     navigateToReader: (index: Int) -> Unit = { _ -> },
-    onDownloadClick: (List<Episode>) -> Unit = {},
-    onFetchAllEpisodes: suspend () -> List<Episode> = { emptyList() }
+    onDownloadClick: (List<Chapter>) -> Unit = {},
+    onFetchAllEpisodes: suspend () -> List<Chapter> = { emptyList() }
 ) {
     var showDownloadSelectSheet by remember { mutableStateOf(false) }
     var selectedEpisodeIds by remember { mutableStateOf(setOf<String>()) }
-    var allEpisodes by remember { mutableStateOf<List<Episode>?>(null) }
+    var allEpisodes by remember { mutableStateOf<List<Chapter>?>(null) }
     var isLoadingEpisodes by remember { mutableStateOf(false) }
 
     LaunchedEffect(showDownloadSelectSheet) {
@@ -353,7 +353,7 @@ fun EpisodeItem(
 @Composable
 private fun EpisodesPagePreview() {
     val fakeEpisodes = List(20) { i ->
-        Episode(
+        Chapter(
             id = i.toString(),
             title = "第 ${i + 1} 话",
             order = i + 1,

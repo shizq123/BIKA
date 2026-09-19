@@ -33,10 +33,10 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.download.model.DownloadTask
-import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
@@ -96,7 +96,7 @@ fun ComicDetailScreen(
 @Composable
 fun ComicDetailContent(
     unitedState: UnitedDetailsUiState,
-    episodes: LazyPagingItems<Episode>,
+    episodes: LazyPagingItems<Chapter>,
     regularComments: LazyPagingItems<Comment>,
     pinnedComments: List<Comment>,
     replyList: LazyPagingItems<Comment>,
@@ -108,9 +108,9 @@ fun ComicDetailContent(
     onToggleCommentLike: (commentId: String, currentlyLiked: Boolean) -> Unit,
     dispatch: (UnitedDetailsAction) -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
-    onFetchAllEpisodes: suspend () -> List<Episode>,
+    onFetchAllEpisodes: suspend () -> List<Chapter>,
     onDownloadAllEpisodes: suspend (String, String) -> Int,
-    onDownloadEpisodes: (String, String, List<Episode>) -> Unit,
+    onDownloadEpisodes: (String, String, List<Chapter>) -> Unit,
     onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit,
     onRefreshPinnedComments: () -> Unit,
     onTagBlocked: (String) -> Unit,
@@ -200,7 +200,7 @@ fun ComicDetailContent(
                                                 detail.title,
                                                 detail.cover,
                                                 listOf(
-                                                    Episode(
+                                                    Chapter(
                                                         id = "single_episode",
                                                         title = "全一话",
                                                         order = 1,

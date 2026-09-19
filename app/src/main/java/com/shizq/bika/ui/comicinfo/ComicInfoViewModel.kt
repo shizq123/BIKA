@@ -10,7 +10,9 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
+import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.model.Comment
+import com.shizq.bika.core.data.repository.ChapterRepository
 import com.shizq.bika.core.data.repository.CommentsRepository
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -18,11 +20,8 @@ import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.download.repository.DownloadTaskRepository
 import com.shizq.bika.core.download.scheduler.DownloadScheduler
 import com.shizq.bika.core.network.BikaDataSource
-import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.network.model.Type
-import com.shizq.bika.core.network.model.nextPageKey
 import com.shizq.bika.core.network.runCatchingApi
-import com.shizq.bika.paging.EpisodePagingSource
 import com.shizq.bika.ui.comicinfo.paging.CommentPagingSource
 import com.shizq.bika.ui.comicinfo.paging.ReplyPagingSource
 import com.shizq.bika.ui.comicinfo.statemachine.UnitedDetailsStateMachine
@@ -61,18 +60,11 @@ private const val PAGE_SIZE_COMMENT = 40
  */
 private const val PAGE_SIZE_REPLY = PAGE_SIZE_COMMENT
 
-/**
- * [ComicInfoViewModel.fetchAllEpisodes] 的页数硬上限。
- *
- * 服务端一页 40 话，500 页足够覆盖任何真实漫画；它的作用是在 `pages`
- * 字段不可信时给循环一个确定的终点，而不是限制正常数据。
- */
-private const val MAX_EPISODE_PAGES = 500
-
 @HiltViewModel(assistedFactory = ComicInfoViewModel.Factory::class)
 class ComicInfoViewModel @AssistedInject constructor(
     private val network: BikaDataSource,
     private val commentsRepository: CommentsRepository,
+    private val chapterRepository: ChapterRepository,
     private val commentPagingSourceFactory: CommentPagingSource.Factory,
     private val replyPagingSourceFactory: ReplyPagingSource.Factory,
     stateMachineFactory: UnitedDetailsStateMachine.Factory,
@@ -107,10 +99,13 @@ class ComicInfoViewModel @AssistedInject constructor(
             initialValue = emptyList()
         )
 
-    val episodesFlow: Flow<PagingData<Episode>> = Pager(PagingConfig(40)) {
-        EpisodePagingSource(network, comicId)
-    }
-        .flow
+    /**
+     * 章节列表。
+     *
+     * 分页与页尺寸都由 [ChapterRepository] 决定：原先这里自建 Pager + EpisodePagingSource，
+     * 与 repository 的 getChapterList 打同一个端点做同一件事，两份实现已经分叉。
+     */
+    val episodesFlow: Flow<PagingData<Chapter>> = chapterRepository.getChapterList(comicId)
         .cachedIn(viewModelScope)
 
     /**
@@ -248,29 +243,12 @@ class ComicInfoViewModel @AssistedInject constructor(
     }
 
     /**
-     * 获取漫画所有章节列表（用于 EpisodesPage 下载选择面板）。
+     * 获取漫画所有章节（用于 EpisodesPage 下载选择面板）。
      *
-     * 两处防止打空转的约束：空页立即停（`pages` 虚高时否则永不满足退出条件），
-     * 以及 [MAX_EPISODE_PAGES] 硬上限。异常直接抛给调用方，由 UI 的 catch 提示重试。
+     * 翻页规则、页数上限、空页终止都在 [ChapterRepository.getAllChapters] 里，
+     * 与章节目录共用同一份实现。异常直接抛给调用方，由 UI 的 catch 提示重试。
      */
-    suspend fun fetchAllEpisodes(): List<Episode> {
-        val list = mutableListOf<Episode>()
-        var page: Int? = 1
-        var pagesFetched = 0
-
-        while (page != null) {
-            if (pagesFetched >= MAX_EPISODE_PAGES) {
-                Log.w(TAG, "fetchAllEpisodes 到达 $MAX_EPISODE_PAGES 页上限，章节可能不完整")
-                break
-            }
-            val eps = network.getComicEpisodes(comicId, page).eps
-            list.addAll(eps.docs)
-            pagesFetched++
-            // 与分页源共用同一套终止规则，含"空页立即停"
-            page = eps.nextPageKey(page)
-        }
-        return list
-    }
+    suspend fun fetchAllEpisodes(): List<Chapter> = chapterRepository.getAllChapters(comicId)
 
     /**
      * 将漫画所有章节加入下载队列，返回成功加入的数量。
@@ -285,7 +263,7 @@ class ComicInfoViewModel @AssistedInject constructor(
     /**
      * 将指定的漫画章节列表加入下载队列。
      */
-    fun downloadEpisodes(comicTitle: String, coverUrl: String, episodes: List<Episode>) {
+    fun downloadEpisodes(comicTitle: String, coverUrl: String, episodes: List<Chapter>) {
         if (episodes.isEmpty()) return
         viewModelScope.launch {
             enqueueEpisodes(comicTitle, coverUrl, episodes)
@@ -295,7 +273,7 @@ class ComicInfoViewModel @AssistedInject constructor(
     private suspend fun enqueueEpisodes(
         comicTitle: String,
         coverUrl: String,
-        episodes: List<Episode>,
+        episodes: List<Chapter>,
     ) {
         val now = Clock.System.now()
         episodes.forEach { episode ->
