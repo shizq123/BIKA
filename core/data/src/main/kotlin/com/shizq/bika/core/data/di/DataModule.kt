@@ -4,6 +4,8 @@ import com.shizq.bika.core.data.repository.AppUpdateRepository
 import com.shizq.bika.core.data.repository.AppUpdateRepositoryImpl
 import com.shizq.bika.core.data.repository.ChapterRepository
 import com.shizq.bika.core.data.repository.ChapterRepositoryImpl
+import com.shizq.bika.core.data.repository.CommentsRepository
+import com.shizq.bika.core.data.repository.CommentsRepositoryImpl
 import com.shizq.bika.core.data.repository.DashboardRepository
 import com.shizq.bika.core.data.repository.DashboardRepositoryImpl
 import com.shizq.bika.core.data.repository.UserRepository
@@ -33,4 +35,8 @@ internal abstract class DataModule {
     @Binds
     @Singleton
     abstract fun bindDashboardRepository(impl: DashboardRepositoryImpl): DashboardRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindCommentsRepository(impl: CommentsRepositoryImpl): CommentsRepository
 }

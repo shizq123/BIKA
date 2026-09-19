@@ -11,7 +11,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.map
 import com.shizq.bika.core.data.model.Comment
-import com.shizq.bika.core.data.model.asExternalModel
+import com.shizq.bika.core.data.repository.CommentsRepository
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.download.model.DownloadTask
@@ -20,6 +20,7 @@ import com.shizq.bika.core.download.scheduler.DownloadScheduler
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
 import com.shizq.bika.core.network.model.Type
+import com.shizq.bika.core.network.model.nextPageKey
 import com.shizq.bika.core.network.runCatchingApi
 import com.shizq.bika.paging.EpisodePagingSource
 import com.shizq.bika.ui.comicinfo.paging.CommentPagingSource
@@ -71,6 +72,7 @@ private const val MAX_EPISODE_PAGES = 500
 @HiltViewModel(assistedFactory = ComicInfoViewModel.Factory::class)
 class ComicInfoViewModel @AssistedInject constructor(
     private val network: BikaDataSource,
+    private val commentsRepository: CommentsRepository,
     private val commentPagingSourceFactory: CommentPagingSource.Factory,
     private val replyPagingSourceFactory: ReplyPagingSource.Factory,
     stateMachineFactory: UnitedDetailsStateMachine.Factory,
@@ -149,13 +151,15 @@ class ComicInfoViewModel @AssistedInject constructor(
      *
      * 失败时不发射，保留上一次的值：一次网络抖动不该让已显示的置顶评论消失，
      * 列表自身的错误态已由 Paging 呈现。
+     *
+     * 与列表第一页走同一个 [CommentsRepository]：两者本是同一个接口响应的两半，
+     * 并发请求在数据层合流成一次网络往返（见 CommentsRepository 的说明）。
      */
     val pinnedComments: StateFlow<List<Comment>> = pinnedCommentsRefresh
         .flatMapLatest {
             flow {
                 // page 固定为 1：topComments 只随第一页返回，与分页无关
-                val response = network.getComments(Type.COMIC, comicId, 1)
-                emit(response.topComments.map { it.asExternalModel() })
+                emit(commentsRepository.getCommentPage(comicId, 1).topComments)
             }.catch { e ->
                 if (e is CancellationException) throw e
                 Log.e(TAG, "load pinned comments failed", e)
@@ -251,17 +255,19 @@ class ComicInfoViewModel @AssistedInject constructor(
      */
     suspend fun fetchAllEpisodes(): List<Episode> {
         val list = mutableListOf<Episode>()
-        var pageIndex = 1
-        var hasNext = true
-        while (hasNext && pageIndex <= MAX_EPISODE_PAGES) {
-            val res = network.getComicEpisodes(comicId, pageIndex)
-            val docs = res.eps.docs
-            list.addAll(docs)
-            hasNext = docs.isNotEmpty() && pageIndex < res.eps.pages
-            pageIndex++
-        }
-        if (hasNext) {
-            Log.w(TAG, "fetchAllEpisodes 到达 $MAX_EPISODE_PAGES 页上限，章节可能不完整")
+        var page: Int? = 1
+        var pagesFetched = 0
+
+        while (page != null) {
+            if (pagesFetched >= MAX_EPISODE_PAGES) {
+                Log.w(TAG, "fetchAllEpisodes 到达 $MAX_EPISODE_PAGES 页上限，章节可能不完整")
+                break
+            }
+            val eps = network.getComicEpisodes(comicId, page).eps
+            list.addAll(eps.docs)
+            pagesFetched++
+            // 与分页源共用同一套终止规则，含"空页立即停"
+            page = eps.nextPageKey(page)
         }
         return list
     }
