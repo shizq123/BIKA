@@ -4,6 +4,7 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.model.nextPageKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -26,11 +27,7 @@ class ChapterListPagingSource @AssistedInject constructor(
                     Chapter(doc.id, doc.order, doc.title, doc.updatedAt)
                 }.sortedBy { it.order },
                 prevKey = null,
-                nextKey = if (epsResponse.docs.isEmpty() || currentPage >= epsResponse.pages) {
-                    null
-                } else {
-                    currentPage + 1
-                }
+                nextKey = epsResponse.nextPageKey(currentPage)
             )
         } catch (e: CancellationException) {
             throw e

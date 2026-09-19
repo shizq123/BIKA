@@ -4,6 +4,7 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.NotificationDoc
+import com.shizq.bika.core.network.model.nextPageKey
 import jakarta.inject.Inject
 import kotlinx.coroutines.CancellationException
 
@@ -20,11 +21,7 @@ class NotificationsPagingSource @Inject constructor(
             LoadResult.Page(
                 data = notifications.docs,
                 prevKey = null,
-                nextKey = if (notifications.docs.isEmpty() || page >= notifications.pages) {
-                    null
-                } else {
-                    page + 1
-                }
+                nextKey = notifications.nextPageKey(page),
             )
         } catch (e: CancellationException) {
             throw e
@@ -33,11 +30,5 @@ class NotificationsPagingSource @Inject constructor(
         }
     }
 
-    /**
-     * 固定从第一页重新加载。
-     *
-     * 不能用"锚点页 nextKey - 1"：本类 prevKey 恒为 null、无法 prepend，
-     * 刷新后从中间页起加载，它前面的页既不会被加载也补不回来。
-     */
     override fun getRefreshKey(state: PagingState<Int, NotificationDoc>): Int? = null
 }

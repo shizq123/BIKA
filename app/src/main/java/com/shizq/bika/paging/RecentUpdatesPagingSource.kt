@@ -5,6 +5,7 @@ import androidx.paging.PagingState
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
+import com.shizq.bika.core.network.model.nextPageKey
 import kotlinx.coroutines.CancellationException
 import javax.inject.Inject
 
@@ -28,11 +29,7 @@ class RecentUpdatesPagingSource @Inject constructor(
             LoadResult.Page<Int, ComicSummary>(
                 data = comicsPage.docs,
                 prevKey = null,
-                nextKey = if (comicsPage.docs.isEmpty() || page >= comicsPage.pages) {
-                    null
-                } else {
-                    page + 1
-                }
+                nextKey = comicsPage.nextPageKey(page)
             ).also {
                 onPageInfoLoaded?.invoke(comicsPage.pages, comicsPage.total)
             }

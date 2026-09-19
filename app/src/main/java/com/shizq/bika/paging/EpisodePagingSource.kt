@@ -4,6 +4,7 @@ import androidx.paging.PagingSource
 import androidx.paging.PagingState
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Episode
+import com.shizq.bika.core.network.model.nextPageKey
 import kotlinx.coroutines.CancellationException
 
 class EpisodePagingSource(
@@ -22,16 +23,12 @@ class EpisodePagingSource(
             val data = response.eps
             val episodes = deduplicator.retainUnseen(currentPage, data.docs)
 
-            val nextKey = if (data.docs.isEmpty() || currentPage >= data.pages) {
-                null
-            } else {
-                currentPage + 1
-            }
-
             LoadResult.Page(
                 data = episodes,
                 prevKey = null,
-                nextKey = nextKey
+                // 注意用 data.docs 而非去重后的 episodes 判空：整页都是重复项时
+                // 页本身是有数据的，停在这里会丢掉后面的章节
+                nextKey = data.nextPageKey(currentPage)
             )
         } catch (e: CancellationException) {
             throw e

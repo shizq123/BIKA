@@ -6,8 +6,8 @@ import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.core.network.model.Type
+import com.shizq.bika.core.network.model.nextPageKey
 import com.shizq.bika.paging.CrossPageDeduplicator
-import com.shizq.bika.paging.nextPageKey
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -42,11 +42,7 @@ class CommentPagingSource @AssistedInject constructor(
                     commentsPage.docs.map { it.asExternalModel() }
                 ),
                 prevKey = null,
-                nextKey = nextPageKey(
-                    page = page,
-                    pages = commentsPage.pages,
-                    isEmptyPage = commentsPage.docs.isEmpty(),
-                )
+                nextKey = commentsPage.nextPageKey(page),
             )
         } catch (e: CancellationException) {
             throw e
