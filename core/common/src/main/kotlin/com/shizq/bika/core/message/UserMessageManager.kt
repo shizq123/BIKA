@@ -66,8 +66,7 @@ internal class UserMessageManager @Inject constructor() : UserMessageMonitor {
         }
     }
 
-    /** 清空所有消息，不触发任何回调。用于登出等需要重置 UI 的场景。 */
-    fun clear() {
+    override fun clear() {
         synchronized(lock) {
             queue.clear()
             syncCurrent()

@@ -37,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -44,14 +45,12 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
+import com.shizq.bika.R
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.isCompleted
 import com.shizq.bika.core.download.model.DownloadTask
-import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.flow.flowOf
-
-private val logger = KotlinLogging.logger("EpisodePage")
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -62,20 +61,20 @@ fun EpisodesPage(
     chapterProgress: List<ChapterProgressEntity> = emptyList(),
     navigateToReader: (index: Int) -> Unit = { _ -> },
     onDownloadClick: (List<Chapter>) -> Unit = {},
-    onFetchAllEpisodes: suspend () -> List<Chapter> = { emptyList() }
+    onLoadSelectableEpisodes: suspend () -> List<Chapter>? = { emptyList() }
 ) {
     var showDownloadSelectSheet by remember { mutableStateOf(false) }
     var selectedEpisodeIds by remember { mutableStateOf(setOf<String>()) }
     var allEpisodes by remember { mutableStateOf<List<Chapter>?>(null) }
     var isLoadingEpisodes by remember { mutableStateOf(false) }
 
+    // 失败由 ViewModel 上报提示，这里只负责结束 loading：
+    // allEpisodes 留在 null 会让下一次展开面板重新尝试取数。
     LaunchedEffect(showDownloadSelectSheet) {
         if (showDownloadSelectSheet && allEpisodes == null) {
             isLoadingEpisodes = true
             try {
-                allEpisodes = onFetchAllEpisodes()
-            } catch (e: Exception) {
-                logger.error(e) { "获取全部章节失败" }
+                allEpisodes = onLoadSelectableEpisodes()
             } finally {
                 isLoadingEpisodes = false
             }
@@ -133,7 +132,7 @@ fun EpisodesPage(
         ) {
             Icon(
                 imageVector = Icons.Default.Download,
-                contentDescription = "下载选择"
+                contentDescription = stringResource(R.string.download_select_action)
             )
         }
     }
@@ -156,7 +155,7 @@ fun EpisodesPage(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "选择要下载的章节",
+                        text = stringResource(R.string.download_select_episodes),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -167,14 +166,14 @@ fun EpisodesPage(
                                     selectedEpisodeIds = allEpisodes?.map { it.id }?.toSet() ?: emptySet()
                                 }
                             ) {
-                                Text("全选")
+                                Text(stringResource(R.string.download_select_all))
                             }
                             TextButton(
                                 onClick = {
                                     selectedEpisodeIds = emptySet()
                                 }
                             ) {
-                                Text("清除")
+                                Text(stringResource(R.string.download_clear_selection))
                             }
                         }
                     }
@@ -198,7 +197,10 @@ fun EpisodesPage(
                             .padding(bottom = 16.dp),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("未找到可选章节", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            text = stringResource(R.string.download_no_selectable_episodes),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 } else {
                     val currentEpisodes = allEpisodes!!
@@ -254,7 +256,12 @@ fun EpisodesPage(
                         enabled = selectedEpisodeIds.isNotEmpty(),
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("开始下载所选章节 (${selectedEpisodeIds.size})")
+                        Text(
+                            stringResource(
+                                R.string.download_start_selected,
+                                selectedEpisodeIds.size,
+                            )
+                        )
                     }
                 }
             }

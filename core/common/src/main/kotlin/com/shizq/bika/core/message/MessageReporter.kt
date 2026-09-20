@@ -15,6 +15,15 @@ interface MessageReporter {
 
     /** 主动关闭指定消息。若它正在展示，会触发 [MessageAction.onDismissed]。 */
     fun dismiss(id: MessageId)
+
+    /**
+     * 清空所有消息，不触发任何回调。
+     *
+     * 用于登出这类「上一会话的提示不该再出现」的场景：
+     * 排队中的消息可能携带指向已登出账号的 action。
+     * 与 [dismiss] 的区别正是不触发回调——回调可能依赖已被清掉的会话状态。
+     */
+    fun clear()
 }
 
 /** 消息如何结束的。由 UI 层在消息消失时回传给 [MessageSource.onOutcome]。 */

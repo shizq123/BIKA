@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.message.MessageReporter
 import com.shizq.bika.core.model.theme.DarkThemeConfig
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
 class MainActivityViewModel @Inject constructor(
     private val userCredentialsDataSource: UserCredentialsDataSource,
     userPreferencesDataSource: UserPreferencesDataSource,
+    private val messageReporter: MessageReporter,
 ) : ViewModel() {
     private val loginStateFlow = userCredentialsDataSource.userData
         .map { !it.token.isNullOrBlank() }
@@ -55,6 +57,9 @@ class MainActivityViewModel @Inject constructor(
      */
     fun logout() {
         viewModelScope.launch {
+            // 先清提示：排队中的消息可能带着指向已登出账号的 action，
+            // 切回认证图后弹出来既无意义也可能触发对已失效会话的调用
+            messageReporter.clear()
             userCredentialsDataSource.setToken(null)
         }
     }
