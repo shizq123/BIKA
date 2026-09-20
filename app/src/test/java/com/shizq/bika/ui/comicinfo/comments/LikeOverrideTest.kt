@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo
+package com.shizq.bika.ui.comicinfo.comments
 
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
@@ -130,5 +130,57 @@ class LikeOverrideTest {
         assertEquals(11, liked.likesCount)
         assertEquals(10, rolledBack.likesCount)
         assertFalse(rolledBack.isLiked)
+    }
+
+    // ── 状态级投影 ────────────────────────────────────────────────────
+    // 覆盖层对 pinned / viewingReplies 的应用：状态机存服务端原始值，
+    // 合并统一在读取侧发生。漏掉 viewingReplies 就是"弹窗顶部爱心点了不动"。
+
+    @Test
+    fun `空覆盖层时状态原样返回`() {
+        val state = CommentsState(pinned = listOf(comment()))
+
+        assertSame(state, state.applyLikeOverrides())
+    }
+
+    @Test
+    fun `覆盖层同时作用于置顶评论与回复弹窗根评论`() {
+        val state = CommentsState(
+            pinned = listOf(comment(id = "p1", isLiked = false, likesCount = 5)),
+            viewingReplies = comment(id = "r1", isLiked = false, likesCount = 7),
+            likeOverrides = mapOf("p1" to true, "r1" to true),
+        )
+
+        val result = state.applyLikeOverrides()
+
+        assertTrue(result.pinned.single().isLiked)
+        assertEquals(6, result.pinned.single().likesCount)
+        assertTrue(result.viewingReplies!!.isLiked)
+        assertEquals(8, result.viewingReplies!!.likesCount)
+    }
+
+    @Test
+    fun `状态投影是幂等的`() {
+        // state 每次 mutate 都会重新投影一遍，重复应用不能重复计数
+        val state = CommentsState(
+            pinned = listOf(comment(id = "p1", isLiked = false, likesCount = 5)),
+            likeOverrides = mapOf("p1" to true),
+        )
+
+        val once = state.applyLikeOverrides()
+        val twice = once.applyLikeOverrides()
+
+        assertEquals(6, once.pinned.single().likesCount)
+        assertEquals(6, twice.pinned.single().likesCount)
+    }
+
+    @Test
+    fun `弹窗关闭时投影不会因为 null 根评论出错`() {
+        val state = CommentsState(
+            viewingReplies = null,
+            likeOverrides = mapOf("c1" to true),
+        )
+
+        assertEquals(null, state.applyLikeOverrides().viewingReplies)
     }
 }

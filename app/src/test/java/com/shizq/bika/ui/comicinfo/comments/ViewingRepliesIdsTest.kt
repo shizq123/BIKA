@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo
+package com.shizq.bika.ui.comicinfo.comments
 
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
@@ -13,6 +13,9 @@ import kotlin.test.assertEquals
  *
  * 下游是 flatMapLatest + Pager：这个流每多发射一次，回复列表就被取消重建一次、
  * 回到第一页。所以"不该发射时不发射"本身就是要测的行为。
+ *
+ * 拆出 [CommentsViewModel] 后噪声源变了但没消失：原先是漫画点赞、收藏，
+ * 现在是每一次击键（草稿进了状态），仍然需要 distinctUntilChanged。
  */
 class ViewingRepliesIdsTest {
 
@@ -36,32 +39,28 @@ class ViewingRepliesIdsTest {
         isLiked = false,
     )
 
-    private fun content(
+    private fun state(
         viewingReplies: Comment? = null,
-        isLiked: Boolean = false,
-    ) = UnitedDetailsUiState.Content(
-        id = "comic1",
-        detail = ComicDetail(id = "comic1", isLiked = isLiked),
+        composer: Composer = Composer.Closed,
+        pinned: List<Comment> = emptyList(),
+    ) = CommentsState(
+        composer = composer,
         viewingReplies = viewingReplies,
+        pinned = pinned,
     )
 
     @Test
-    fun `Initialize 与 Error 投影为 null`() = runTest {
-        val result = flowOf(
-            UnitedDetailsUiState.Initialize,
-            UnitedDetailsUiState.Error(RuntimeException("boom")),
-        ).viewingRepliesIds().toList()
+    fun `初始状态投影为 null`() = runTest {
+        val result = flowOf(state()).viewingRepliesIds().toList()
 
-        // 两个都是 null，distinctUntilChanged 合成一次发射
         assertEquals(listOf(null), result)
     }
 
     @Test
     fun `展开回复后发射对应 id`() = runTest {
         val result = flowOf(
-            UnitedDetailsUiState.Initialize,
-            content(),
-            content(viewingReplies = comment("c1")),
+            state(),
+            state(viewingReplies = comment("c1")),
         ).viewingRepliesIds().toList()
 
         assertEquals(listOf(null, "c1"), result)
@@ -70,8 +69,8 @@ class ViewingRepliesIdsTest {
     @Test
     fun `关闭回复后回到 null`() = runTest {
         val result = flowOf(
-            content(viewingReplies = comment("c1")),
-            content(viewingReplies = null),
+            state(viewingReplies = comment("c1")),
+            state(viewingReplies = null),
         ).viewingRepliesIds().toList()
 
         // 原实现用 filterNotNull，这里会只剩 "c1"，
@@ -80,25 +79,35 @@ class ViewingRepliesIdsTest {
     }
 
     @Test
-    fun `漫画点赞导致的 state 变化不触发发射`() = runTest {
+    fun `草稿击键不触发回复列表重建`() = runTest {
         val target = comment("c1")
         val result = flowOf(
-            content(viewingReplies = target, isLiked = false),
-            // 用户点赞漫画：state 变了，但在看的回复没变
-            content(viewingReplies = target, isLiked = true),
-            content(viewingReplies = target, isLiked = false),
+            state(viewingReplies = target, composer = Composer.Open(draft = "")),
+            state(viewingReplies = target, composer = Composer.Open(draft = "你")),
+            state(viewingReplies = target, composer = Composer.Open(draft = "你好")),
         ).viewingRepliesIds().toList()
 
-        // 这是 #5 的核心：原实现缺 distinctUntilChanged，
-        // 每次点赞都会让回复列表被拉回第一页
+        // 每次击键一次 dispatch、一次新 state。缺 distinctUntilChanged
+        // 的话在回复弹窗里打字会把回复列表逐字拉回第一页
+        assertEquals(listOf("c1"), result)
+    }
+
+    @Test
+    fun `置顶评论到达不触发回复列表重建`() = runTest {
+        val target = comment("c1")
+        val result = flowOf(
+            state(viewingReplies = target),
+            state(viewingReplies = target, pinned = listOf(comment("p1"))),
+        ).viewingRepliesIds().toList()
+
         assertEquals(listOf("c1"), result)
     }
 
     @Test
     fun `切换到另一条评论时发射新 id`() = runTest {
         val result = flowOf(
-            content(viewingReplies = comment("c1")),
-            content(viewingReplies = comment("c2")),
+            state(viewingReplies = comment("c1")),
+            state(viewingReplies = comment("c2")),
         ).viewingRepliesIds().toList()
 
         assertEquals(listOf("c1", "c2"), result)
@@ -109,8 +118,8 @@ class ViewingRepliesIdsTest {
         // 评论列表刷新后 Comment 实例会变（点赞数更新等），
         // 但只要还在看同一条评论，Pager 就不该重建
         val result = flowOf(
-            content(viewingReplies = comment("c1")),
-            content(viewingReplies = comment("c1")),
+            state(viewingReplies = comment("c1")),
+            state(viewingReplies = comment("c1")),
         ).viewingRepliesIds().toList()
 
         assertEquals(listOf("c1"), result)
@@ -119,9 +128,9 @@ class ViewingRepliesIdsTest {
     @Test
     fun `关闭后重新打开同一条会重新发射`() = runTest {
         val result = flowOf(
-            content(viewingReplies = comment("c1")),
-            content(viewingReplies = null),
-            content(viewingReplies = comment("c1")),
+            state(viewingReplies = comment("c1")),
+            state(viewingReplies = null),
+            state(viewingReplies = comment("c1")),
         ).viewingRepliesIds().toList()
 
         // 中间经过 null，所以第二次打开是一次真实的状态变化，

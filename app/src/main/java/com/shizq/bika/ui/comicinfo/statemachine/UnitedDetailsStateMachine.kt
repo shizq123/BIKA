@@ -114,12 +114,6 @@ class UnitedDetailsStateMachine @AssistedInject constructor(
                         }
                     )
                 }
-                on<UnitedDetailsAction.ExpandReplies> {
-                    mutate { copy(viewingReplies = it.comment) }
-                }
-                on<UnitedDetailsAction.CollapseReplies> {
-                    mutate { copy(viewingReplies = null) }
-                }
             }
 
             inState<UnitedDetailsUiState.Error> {

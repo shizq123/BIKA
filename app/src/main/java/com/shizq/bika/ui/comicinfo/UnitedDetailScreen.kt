@@ -34,35 +34,30 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.data.model.Chapter
-import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.page.ComicDetailPage
-import com.shizq.bika.ui.comicinfo.page.CommentsPage
+import com.shizq.bika.ui.comicinfo.page.CommentsTab
 import com.shizq.bika.ui.comicinfo.page.EpisodesPage
 import com.shizq.bika.ui.comicinfo.page.PageTab
 import kotlinx.coroutines.launch
 
 @Composable
 fun ComicDetailScreen(
-    viewModel: ComicInfoViewModel = hiltViewModel(),
     navigationToReader: (id: String, index: Int) -> Unit,
     onForYouClick: (String) -> Unit,
     onBackClick: () -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
+    viewModel: ComicInfoViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
     val downloadTasks by viewModel.downloadTasks.collectAsStateWithLifecycle()
     val chapterProgress by viewModel.chapterProgress.collectAsStateWithLifecycle()
 
-    val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
-    val pinnedComments by viewModel.pinnedComments.collectAsStateWithLifecycle()
-
-    val replyList = viewModel.replyList.collectAsLazyPagingItems()
     ComicDetailContent(
         unitedState = state,
         episodes = episodes,
@@ -71,11 +66,7 @@ fun ComicDetailScreen(
         onBackClick = onBackClick,
         navigationToReader = navigationToReader,
         navigationToComicInfo = onForYouClick,
-        regularComments = regularComments,
-        pinnedComments = pinnedComments,
-        onToggleCommentLike = viewModel::toggleCommentLike,
         dispatch = viewModel::dispatch,
-        replyList = replyList,
         navigationToFeed = navigationToFeed,
         onFetchAllEpisodes = { viewModel.fetchAllEpisodes() },
         onDownloadAllEpisodes = { title, cover ->
@@ -84,8 +75,6 @@ fun ComicDetailScreen(
         onDownloadEpisodes = { title, cover, list ->
             viewModel.downloadEpisodes(title, cover, list)
         },
-        onPostComment = viewModel::postComment,
-        onRefreshPinnedComments = viewModel::refreshPinnedComments,
         onTagBlocked = viewModel::addBlockedTag,
     )
 }
@@ -97,22 +86,16 @@ fun ComicDetailScreen(
 fun ComicDetailContent(
     unitedState: UnitedDetailsUiState,
     episodes: LazyPagingItems<Chapter>,
-    regularComments: LazyPagingItems<Comment>,
-    pinnedComments: List<Comment>,
-    replyList: LazyPagingItems<Comment>,
     downloadTasks: List<DownloadTask>,
     chapterProgress: List<ChapterProgressEntity>,
     onBackClick: () -> Unit,
     navigationToReader: (id: String, index: Int) -> Unit,
     navigationToComicInfo: (String) -> Unit,
-    onToggleCommentLike: (commentId: String, currentlyLiked: Boolean) -> Unit,
     dispatch: (UnitedDetailsAction) -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
     onFetchAllEpisodes: suspend () -> List<Chapter>,
     onDownloadAllEpisodes: suspend (String, String) -> Int,
     onDownloadEpisodes: (String, String, List<Chapter>) -> Unit,
-    onPostComment: (text: String, replyToCommentId: String?, onResult: (Boolean) -> Unit) -> Unit,
-    onRefreshPinnedComments: () -> Unit,
     onTagBlocked: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -166,8 +149,6 @@ fun ComicDetailContent(
                         key = { it }
                     ) { page ->
                         val context = LocalContext.current
-                        // 用枚举而非字面量分支：PageTab 新增成员时这里编译失败，
-                        // 而不是静默错位
                         when (PageTab.entries[page]) {
                             PageTab.DETAIL -> {
                                 // remember 避免每次重组都重算一遍整个任务列表
@@ -277,38 +258,7 @@ fun ComicDetailContent(
                                 )
                             }
 
-                            PageTab.COMMENT -> CommentsPage(
-                                pinnedComments = pinnedComments,
-                                regularComments = regularComments,
-                                onToggleCommentLike = onToggleCommentLike,
-                                replyList = replyList,
-                                viewingReplies = unitedState.viewingReplies,
-                                onExpandReplies = {
-                                    dispatch(UnitedDetailsAction.ExpandReplies(it))
-                                },
-                                onCollapseReplies = {
-                                    dispatch(UnitedDetailsAction.CollapseReplies)
-                                },
-                                onPostComment = { text, replyToCommentId ->
-                                    onPostComment(text, replyToCommentId) { success ->
-                                        if (success) {
-                                            regularComments.refresh()
-                                            // 置顶评论独立成流，不会随列表 refresh 一起更新
-                                            onRefreshPinnedComments()
-                                            if (replyToCommentId != null) {
-                                                replyList.refresh()
-                                            }
-                                        } else {
-                                            Toast.makeText(
-                                                context,
-                                                "发表失败，请重试",
-                                                Toast.LENGTH_SHORT
-                                            )
-                                                .show()
-                                        }
-                                    }
-                                }
-                            )
+                            PageTab.COMMENT -> CommentsTab(comicId = detail.id)
                         }
                     }
                 }

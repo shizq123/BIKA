@@ -1,7 +1,6 @@
 package com.shizq.bika.ui.comicinfo
 
 import androidx.compose.runtime.Immutable
-import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.network.model.ComicData
 import com.shizq.bika.core.network.model.ComicData.Comic.Creator
 import com.shizq.bika.core.network.model.RecommendComicDto
@@ -15,13 +14,6 @@ sealed interface UnitedDetailsUiState {
         val id: String,
         val detail: ComicDetail = ComicDetail(),
         val recommendations: List<ComicSummary> = emptyList(),
-        /**
-         * 正在查看回复的根评论，null 表示回复弹窗关闭。
-         *
-         * 存整个 Comment 而不是 id：弹窗需要展示根评论的作者、内容、点赞数，
-         * 只存 id 的话 UI 还得自己留一份映射，又会变成第二个真相源。
-         */
-        val viewingReplies: Comment? = null
     ) : UnitedDetailsUiState
 
     data class Error(val cause: Throwable) : UnitedDetailsUiState

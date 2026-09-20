@@ -41,7 +41,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -55,6 +54,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.paging.PagingData
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
@@ -63,70 +64,120 @@ import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
 import com.shizq.bika.core.designsystem.theme.BikaTheme
 import com.shizq.bika.core.ui.RetryableAsyncImage
+import com.shizq.bika.ui.comicinfo.comments.CommentsAction
+import com.shizq.bika.ui.comicinfo.comments.CommentsState
+import com.shizq.bika.ui.comicinfo.comments.CommentsViewModel
+import com.shizq.bika.ui.comicinfo.comments.Composer
 import kotlinx.coroutines.flow.flowOf
 
+/**
+ * 评论 tab 的入口：自己取 VM，不从详情屏往下穿。
+ *
+ * 作用域仍是 NavEntry 而非 composition —— pager 分支里的
+ * `LocalViewModelStoreOwner` 就是这个 NavEntry，页被 dispose 不会清空它的
+ * ViewModelStore。所以草稿、点赞覆盖层、回复弹窗在切 tab 和转屏后都还在。
+ *
+ * 两个收益：详情屏不再持有四个与它无关的参数；评论状态的收集点落在这棵子树里，
+ * 打字时的重组不会再穿过整个 Scaffold。
+ *
+ * key 用 comicId：同一路由里只有一个评论域，换漫画就是换 NavEntry。
+ */
+@Composable
+fun CommentsTab(comicId: String, modifier: Modifier = Modifier) {
+    val viewModel = hiltViewModel<CommentsViewModel, CommentsViewModel.Factory>(
+        key = comicId,
+    ) { factory ->
+        factory.create(comicId)
+    }
+
+    val state by viewModel.state.collectAsStateWithLifecycle()
+    val regularComments = viewModel.regularComments.collectAsLazyPagingItems()
+    val replyList = viewModel.replyList.collectAsLazyPagingItems()
+
+    CommentsPage(
+        state = state,
+        regularComments = regularComments,
+        replyList = replyList,
+        modifier = modifier,
+        dispatch = viewModel::dispatch,
+    )
+}
+
+/**
+ * 评论页。
+ *
+ * 除 Paging 列表外没有本地状态：草稿、输入器开合、在看哪条回复全在
+ * [CommentsState] 里。原先草稿留在 `remember` 而"在看哪条回复"在状态机，
+ * 两处真相源的后果是关闭弹窗只重置了本地副本、状态机的值停在最后一次展开。
+ *
+ * 保持无状态、不取 VM：预览和 UI 测试要能直接喂 [CommentsState]。
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CommentsPage(
-    pinnedComments: List<Comment>,
+    state: CommentsState,
     regularComments: LazyPagingItems<Comment>,
     replyList: LazyPagingItems<Comment>,
-    /** 正在查看回复的根评论，来自状态机；null 表示弹窗关闭 */
-    viewingReplies: Comment?,
     modifier: Modifier = Modifier,
-    onToggleCommentLike: (commentId: String, currentlyLiked: Boolean) -> Unit = { _, _ -> },
-    onExpandReplies: (Comment) -> Unit = {},
-    onCollapseReplies: () -> Unit = {},
-    onPostComment: (text: String, replyToCommentId: String?) -> Unit = { _, _ -> },
+    dispatch: (CommentsAction) -> Unit = {},
 ) {
-    // 本地状态只剩"写评论"；"在看哪条回复"归状态机，否则关闭弹窗时
-    // 只重置了本地副本，状态机里的值永远停在最后一次展开
-    var actionState by remember {
-        mutableStateOf<CommentsPageActionState>(CommentsPageActionState.Idle)
-    }
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
-    val showBottomSheet = actionState is CommentsPageActionState.WritingComment
     val focusRequester = remember { FocusRequester() }
+    val composer = state.composer
+
+    // 发表成功后由状态机自增 token，refresh() 只能从 UI 侧调用。
+    // 跳过初始的 0，否则进页面就会多刷一次。
+    LaunchedEffect(state.listRefreshToken) {
+        if (state.listRefreshToken > 0) {
+            regularComments.refresh()
+            if (state.viewingReplies != null) {
+                replyList.refresh()
+            }
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         CommentList(
-            pinnedComments = pinnedComments,
+            pinnedComments = state.pinned,
             regularComments = regularComments,
             modifier = Modifier.fillMaxSize(),
-            onToggleLike = onToggleCommentLike,
-//            contentPadding = PaddingValues(bottom = 72.dp),
-            onReplyClick = { comment ->
-                actionState = CommentsPageActionState.WritingComment(comment)
+            onToggleLike = { id, liked ->
+                dispatch(CommentsAction.ToggleLike(id, liked))
             },
-            onExpandReplies = onExpandReplies
+            onReplyClick = { comment ->
+                dispatch(
+                    CommentsAction.OpenComposer(
+                        replyToId = comment.id,
+                        replyToName = comment.user.name,
+                    )
+                )
+            },
+            onExpandReplies = { dispatch(CommentsAction.ExpandReplies(it)) }
         )
 
-        val (text, setText) = remember { mutableStateOf("") }
         CommentComposerEntry(
-            text = text,
+            // 入口条回显草稿：输入器关着时草稿一般是空的，
+            // 但发送失败后草稿仍在，此时入口条该显示它而不是占位符
+            text = (composer as? Composer.Open)?.draft.orEmpty(),
             modifier = Modifier.align(Alignment.BottomCenter),
-            onClick = {
-                actionState = CommentsPageActionState.WritingComment(null)
-            }
+            onClick = { dispatch(CommentsAction.OpenComposer()) }
         )
-        if (showBottomSheet) {
-            val writingState = actionState as CommentsPageActionState.WritingComment
+
+        if (composer is Composer.Open) {
             ModalBottomSheet(
-                onDismissRequest = { actionState = CommentsPageActionState.Idle },
+                onDismissRequest = { dispatch(CommentsAction.DismissComposer) },
                 sheetState = sheetState,
                 dragHandle = null,
                 shape = BottomSheetDefaults.HiddenShape,
                 modifier = Modifier.imePadding()
             ) {
                 ReplyTextField(
-                    text = text,
-                    onTextChange = setText,
-                    replyingTo = writingState.replyTo?.user?.name,
-                    onSend = {
-                        onPostComment(text, writingState.replyTo?.id)
-                        setText("")
-                        actionState = CommentsPageActionState.Idle
-                    },
+                    text = composer.draft,
+                    onTextChange = { dispatch(CommentsAction.DraftChanged(it)) },
+                    replyingTo = composer.replyToName,
+                    sending = composer.sending,
+                    error = composer.error,
+                    onSend = { dispatch(CommentsAction.Send) },
                     focusRequester = focusRequester
                 )
             }
@@ -136,12 +187,15 @@ fun CommentsPage(
             }
         }
 
+        val viewingReplies = state.viewingReplies
         if (viewingReplies != null) {
             ReplyDetailsSheet(
                 rootComment = viewingReplies,
                 replyList = replyList,
-                onToggleReplyLike = onToggleCommentLike,
-                onDismiss = onCollapseReplies
+                onToggleReplyLike = { id, liked ->
+                    dispatch(CommentsAction.ToggleLike(id, liked))
+                },
+                onDismiss = { dispatch(CommentsAction.CollapseReplies) }
             )
         }
     }
@@ -252,11 +306,6 @@ fun ReplyDetailsSheet(
             onToggleReplyLike = onToggleReplyLike,
         )
     }
-}
-
-private sealed interface CommentsPageActionState {
-    data object Idle : CommentsPageActionState
-    data class WritingComment(val replyTo: Comment? = null) : CommentsPageActionState
 }
 
 
@@ -454,6 +503,13 @@ fun CommentReplyButton(totalComments: Int, onReplyClick: () -> Unit) {
     }
 }
 
+/**
+ * 评论输入框。
+ *
+ * @param sending 发送中：禁用发送按钮，避免重复提交
+ * @param error 上一次发送的失败原因，null 表示无错误。就地显示而不是弹 Toast：
+ *   草稿还在框里，错误提示离它越近越好
+ */
 @Composable
 fun ReplyTextField(
     text: String,
@@ -462,6 +518,8 @@ fun ReplyTextField(
     onSend: () -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    sending: Boolean = false,
+    error: Throwable? = null,
 ) {
     Card(
         modifier = modifier
@@ -498,7 +556,7 @@ fun ReplyTextField(
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
                 keyboardActions = KeyboardActions(
                     onSend = {
-                        if (text.isNotBlank()) {
+                        if (text.isNotBlank() && !sending) {
                             onSend()
                         }
                     }
@@ -513,12 +571,20 @@ fun ReplyTextField(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (error != null) {
+                        Text(
+                            text = "发表失败，请重试",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(end = 12.dp)
+                        )
+                    }
                     Button(
                         onClick = { onSend() },
-                        enabled = text.isNotBlank(),
+                        enabled = text.isNotBlank() && !sending,
                         contentPadding = PaddingValues(horizontal = 24.dp)
                     ) {
-                        Text("发送")
+                        Text(if (sending) "发送中" else "发送")
                     }
                 }
             }
@@ -638,10 +704,9 @@ fun CommentsPagePreview() {
     BikaTheme {
         Surface {
             CommentsPage(
-                pinnedComments = pinnedComments,
+                state = CommentsState(pinned = pinnedComments),
                 regularComments = regularComments,
                 replyList = regularComments,
-                viewingReplies = null,
             )
         }
     }
