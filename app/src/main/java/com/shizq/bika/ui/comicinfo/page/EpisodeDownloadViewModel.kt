@@ -29,35 +29,40 @@ class EpisodeDownloadViewModel @AssistedInject constructor(
     private val chapterRepository: ChapterRepository,
     private val episodeDownloadManager: ComicDownloadEnqueuer,
     private val messageReporter: MessageReporter,
-    @Assisted private val comicId: String,
-    @Assisted private val comicTitle: String,
-    @Assisted private val coverUrl: String,
+    @Assisted("id") private val comicId: String,
+    @Assisted("title") private val comicTitle: String,
+    @Assisted("url") private val coverUrl: String,
 ) : ViewModel() {
-    private val _uiState = MutableStateFlow(EpisodeDownloadUiState())
+    // TODO: 使用 flowreudx2 重构 
+    private val _uiState = MutableStateFlow<EpisodeDownloadUiState>(EpisodeDownloadUiState.Initial)
     val uiState = _uiState.asStateFlow()
 
     fun load() {
-        val state = _uiState.value
-        if (state.isLoading || state.hasLoaded) return
+        when (_uiState.value) {
+            EpisodeDownloadUiState.Initial,
+            EpisodeDownloadUiState.LoadError,
+                -> Unit
+
+            EpisodeDownloadUiState.Loading,
+            EpisodeDownloadUiState.Empty,
+            is EpisodeDownloadUiState.Content,
+                -> return
+        }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, error = null) }
+            _uiState.value = EpisodeDownloadUiState.Loading
             try {
                 val episodes = chapterRepository.getAllChapters(comicId)
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        hasLoaded = true,
-                        episodes = episodes,
-                    )
+                _uiState.value = if (episodes.isEmpty()) {
+                    EpisodeDownloadUiState.Empty
+                } else {
+                    EpisodeDownloadUiState.Content(episodes = episodes)
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.error(e) { "获取可选章节失败: comicId=$comicId" }
-                _uiState.update {
-                    it.copy(isLoading = false, error = "获取章节失败，请重试")
-                }
+                _uiState.value = EpisodeDownloadUiState.LoadError
                 messageReporter.reportError(
                     UiText.of(R.string.download_fetch_chapters_failed),
                     duration = MessageDuration.Long,
@@ -67,40 +72,55 @@ class EpisodeDownloadViewModel @AssistedInject constructor(
     }
 
     fun retry() {
-        _uiState.update { it.copy(hasLoaded = false, error = null) }
+        if (_uiState.value is EpisodeDownloadUiState.Content) return
+        _uiState.value = EpisodeDownloadUiState.Initial
         load()
     }
 
     fun toggleEpisode(id: String) {
-        if (_uiState.value.isSubmitting) return
         _uiState.update { state ->
-            val selected = if (id in state.selectedIds) {
-                state.selectedIds - id
+            val content = state as? EpisodeDownloadUiState.Content ?: return@update state
+            if (content.submission is SubmissionState.Submitting) return@update state
+
+            val selectedIds = if (id in content.selectedIds) {
+                content.selectedIds - id
             } else {
-                state.selectedIds + id
+                content.selectedIds + id
             }
-            state.copy(selectedIds = selected)
+            content.copy(selectedIds = selectedIds)
         }
     }
 
     fun selectAll() {
-        if (_uiState.value.isSubmitting) return
-        _uiState.update { state -> state.copy(selectedIds = state.episodes.map { it.id }.toSet()) }
+        _uiState.update { state ->
+            val content = state as? EpisodeDownloadUiState.Content ?: return@update state
+            if (content.submission is SubmissionState.Submitting) return@update state
+            content.copy(selectedIds = content.episodes.map { it.id }.toSet())
+        }
     }
 
     fun clearSelection() {
-        if (_uiState.value.isSubmitting) return
-        _uiState.update { it.copy(selectedIds = emptySet()) }
+        _uiState.update { state ->
+            val content = state as? EpisodeDownloadUiState.Content ?: return@update state
+            if (content.submission is SubmissionState.Submitting) return@update state
+            content.copy(selectedIds = emptySet())
+        }
     }
 
     fun downloadSelected() {
-        val state = _uiState.value
-        if (state.isSubmitting || state.selectedIds.isEmpty()) return
+        val content = _uiState.value as? EpisodeDownloadUiState.Content ?: return
+        if (content.submission is SubmissionState.Submitting || content.selectedIds.isEmpty()) return
+
+        val selected = content.episodes.filter { it.id in content.selectedIds }
+        if (selected.isEmpty()) return
+
+        _uiState.update { state ->
+            val current = state as? EpisodeDownloadUiState.Content ?: return@update state
+            current.copy(submission = SubmissionState.Submitting)
+        }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmitting = true, error = null) }
             try {
-                val selected = state.episodes.filter { it.id in state.selectedIds }
                 episodeDownloadManager.enqueue(comicId, comicTitle, coverUrl, selected)
                 messageReporter.reportInfo(
                     if (selected.size == 1) {
@@ -109,35 +129,63 @@ class EpisodeDownloadViewModel @AssistedInject constructor(
                         UiText.of(R.string.download_episodes_enqueued, selected.size)
                     }
                 )
-                _uiState.update { it.copy(isSubmitting = false, completed = true) }
+                _uiState.update { state ->
+                    val current = state as? EpisodeDownloadUiState.Content ?: return@update state
+                    current.copy(submission = SubmissionState.Completed)
+                }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.error(e) { "下载章节入队失败: comicId=$comicId" }
-                _uiState.update {
-                    it.copy(isSubmitting = false, error = "下载失败，请重试")
+                _uiState.update { state ->
+                    val current = state as? EpisodeDownloadUiState.Content ?: return@update state
+                    current.copy(submission = SubmissionState.Error)
                 }
-                messageReporter.reportError(UiText.of(R.string.download_fetch_chapters_failed))
+                messageReporter.reportError(
+                    UiText.of(R.string.download_enqueue_failed),
+                    duration = MessageDuration.Long,
+                )
             }
         }
     }
 
     fun clearCompleted() {
-        _uiState.update { it.copy(completed = false) }
+        _uiState.update { state ->
+            val content = state as? EpisodeDownloadUiState.Content ?: return@update state
+            if (content.submission is SubmissionState.Completed) {
+                content.copy(submission = SubmissionState.Idle)
+            } else {
+                state
+            }
+        }
     }
 
     @AssistedFactory
     interface Factory {
-        fun create(comicId: String, comicTitle: String, coverUrl: String): EpisodeDownloadViewModel
+        fun create(
+            @Assisted("id") comicId: String,
+            @Assisted("title") comicTitle: String,
+            @Assisted("url") coverUrl: String,
+        ): EpisodeDownloadViewModel
     }
 }
 
-data class EpisodeDownloadUiState(
-    val episodes: List<Chapter> = emptyList(),
-    val selectedIds: Set<String> = emptySet(),
-    val isLoading: Boolean = false,
-    val isSubmitting: Boolean = false,
-    val hasLoaded: Boolean = false,
-    val completed: Boolean = false,
-    val error: String? = null,
-)
+sealed interface EpisodeDownloadUiState {
+    data object Initial : EpisodeDownloadUiState
+    data object Loading : EpisodeDownloadUiState
+    data object Empty : EpisodeDownloadUiState
+    data object LoadError : EpisodeDownloadUiState
+
+    data class Content(
+        val episodes: List<Chapter>,
+        val selectedIds: Set<String> = emptySet(),
+        val submission: SubmissionState = SubmissionState.Idle,
+    ) : EpisodeDownloadUiState
+}
+
+sealed interface SubmissionState {
+    data object Idle : SubmissionState
+    data object Submitting : SubmissionState
+    data object Completed : SubmissionState
+    data object Error : SubmissionState
+}

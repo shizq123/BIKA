@@ -86,6 +86,7 @@
     <string name="download_fetching_chapters">正在获取章节列表，准备全部下载…</string>
     <string name="download_all_enqueued">已成功将所有 %1$d 个章节加入下载队列</string>
     <string name="download_fetch_chapters_failed">获取章节失败，请重试</string>
+    <string name="download_enqueue_failed">下载失败，请重试</string>
     <string name="download_no_chapters">未找到可下载的章节</string>
     <string name="download_select_episodes">选择要下载的章节</string>
     <string name="download_select_all">全选</string>

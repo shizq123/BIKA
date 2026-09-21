@@ -42,8 +42,10 @@ fun EpisodeDownloadSheet(
         viewModel.load()
     }
 
-    LaunchedEffect(uiState.completed) {
-        if (uiState.completed) {
+    LaunchedEffect(uiState) {
+        if (uiState is EpisodeDownloadUiState.Content &&
+            (uiState as EpisodeDownloadUiState.Content).submission is SubmissionState.Completed
+        ) {
             onDismiss()
             viewModel.clearCompleted()
         }
@@ -84,16 +86,17 @@ fun EpisodeDownloadSheetContent(
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold,
             )
-            if (!uiState.isLoading && uiState.episodes.isNotEmpty()) {
+            val content = uiState as? EpisodeDownloadUiState.Content
+            if (content != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(
-                        enabled = !uiState.isSubmitting,
+                        enabled = content.submission !is SubmissionState.Submitting,
                         onClick = onSelectAll,
                     ) {
                         Text(stringResource(R.string.download_select_all))
                     }
                     TextButton(
-                        enabled = !uiState.isSubmitting,
+                        enabled = content.submission !is SubmissionState.Submitting,
                         onClick = onClearSelection,
                     ) {
                         Text(stringResource(R.string.download_clear_selection))
@@ -102,76 +105,94 @@ fun EpisodeDownloadSheetContent(
             }
         }
 
-        when {
-            uiState.isLoading -> LoadingContent()
-            uiState.error != null -> ErrorContent(onRetry = onRetry)
-            uiState.episodes.isEmpty() -> EmptyContent()
-            else -> {
-                LazyVerticalGrid(
-                    columns = GridCells.Adaptive(minSize = 100.dp),
-                    modifier = Modifier.weight(1f, fill = false),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    contentPadding = PaddingValues(bottom = 16.dp),
-                ) {
-                    items(uiState.episodes.size) { index ->
-                        val episode = uiState.episodes[index]
-                        val isSelected = episode.id in uiState.selectedIds
-                        Surface(
-                            onClick = { onToggleEpisode(episode.id) },
-                            enabled = !uiState.isSubmitting,
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(
-                                width = 1.dp,
-                                color = if (isSelected) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    MaterialTheme.colorScheme.outline
-                                },
-                            ),
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.primaryContainer
-                            } else {
-                                Color.Transparent
-                            },
-                            contentColor = if (isSelected) {
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            } else {
-                                MaterialTheme.colorScheme.onSurface
-                            },
-                        ) {
-                            Box(
-                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Text(
-                                    text = episode.title,
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                            }
-                        }
-                    }
-                }
+        when (uiState) {
+            EpisodeDownloadUiState.Initial,
+            EpisodeDownloadUiState.Loading,
+                -> LoadingContent()
 
-                Button(
-                    onClick = onDownload,
-                    enabled = uiState.selectedIds.isNotEmpty() && !uiState.isSubmitting,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    if (uiState.isSubmitting) {
-                        CircularProgressIndicator()
+            EpisodeDownloadUiState.Empty -> EmptyContent()
+            EpisodeDownloadUiState.LoadError -> ErrorContent(onRetry = onRetry)
+            is EpisodeDownloadUiState.Content -> EpisodeSelectionContent(
+                content = uiState,
+                modifier = Modifier.weight(1f, fill = false),
+                onToggleEpisode = onToggleEpisode,
+                onDownload = onDownload,
+            )
+        }
+    }
+}
+
+@Composable
+private fun EpisodeSelectionContent(
+    content: EpisodeDownloadUiState.Content,
+    modifier: Modifier = Modifier,
+    onToggleEpisode: (String) -> Unit,
+    onDownload: () -> Unit,
+) {
+    val isSubmitting = content.submission is SubmissionState.Submitting
+
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(minSize = 100.dp),
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(bottom = 16.dp),
+    ) {
+        items(content.episodes.size) { index ->
+            val episode = content.episodes[index]
+            val isSelected = episode.id in content.selectedIds
+            Surface(
+                onClick = { onToggleEpisode(episode.id) },
+                enabled = !isSubmitting,
+                shape = RoundedCornerShape(8.dp),
+                border = BorderStroke(
+                    width = 1.dp,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
                     } else {
-                        Text(
-                            stringResource(
-                                R.string.download_start_selected,
-                                uiState.selectedIds.size,
-                            )
-                        )
-                    }
+                        MaterialTheme.colorScheme.outline
+                    },
+                ),
+                color = if (isSelected) {
+                    MaterialTheme.colorScheme.primaryContainer
+                } else {
+                    Color.Transparent
+                },
+                contentColor = if (isSelected) {
+                    MaterialTheme.colorScheme.onPrimaryContainer
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+            ) {
+                Box(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = episode.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
             }
+        }
+    }
+
+    Button(
+        onClick = onDownload,
+        enabled = content.selectedIds.isNotEmpty() && !isSubmitting,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        if (isSubmitting) {
+            CircularProgressIndicator()
+        } else {
+            Text(
+                stringResource(
+                    R.string.download_start_selected,
+                    content.selectedIds.size,
+                )
+            )
         }
     }
 }

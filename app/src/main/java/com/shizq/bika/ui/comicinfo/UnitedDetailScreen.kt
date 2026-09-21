@@ -67,7 +67,7 @@ fun ComicDetailScreen(
         },
         navigationToTagBlock = navigationToTagBlock,
         navigationToEpisodeDownload = navigationToEpisodeDownload,
-
+        downloadTasks = downloadTasks,
     )
 }
 
@@ -157,7 +157,7 @@ fun ComicDetailContent(
                                 },
                                 navigationToTagBlock = navigationToTagBlock,
 
-                            )
+                                )
 
                             PageTab.EPISODES -> EpisodesPage(
                                 episodes = episodes,
