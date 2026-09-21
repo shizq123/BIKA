@@ -35,7 +35,7 @@ import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.detail.CommentsTab
 import com.shizq.bika.ui.comicinfo.detail.DetailTab
 import com.shizq.bika.ui.comicinfo.detail.PageTab
-import com.shizq.bika.ui.comicinfo.page.EpisodesPage
+import com.shizq.bika.ui.comicinfo.episodes.EpisodesPage
 import kotlinx.coroutines.launch
 
 @Composable
