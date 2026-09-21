@@ -25,3 +25,6 @@ data class EditProfileNavKey(val initialSlogan: String) : DialogNavKey
 
 @Serializable
 data object ChangePasswordNavKey : DialogNavKey
+
+@Serializable
+data class TagBlockDialogNavKey(val tag: String) : DialogNavKey
