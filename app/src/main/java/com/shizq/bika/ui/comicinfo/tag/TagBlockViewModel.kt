@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo.page
+package com.shizq.bika.ui.comicinfo.tag
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope

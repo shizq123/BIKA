@@ -23,7 +23,7 @@ import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
 import com.shizq.bika.ui.comicinfo.page.EpisodeDownloadSheet
 import com.shizq.bika.ui.comicinfo.page.EpisodeDownloadViewModel
-import com.shizq.bika.ui.comicinfo.page.TagBlockDialog
+import com.shizq.bika.ui.comicinfo.tag.TagBlockDialog
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
 import com.shizq.bika.ui.dashboard.ChangePasswordDialog
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog

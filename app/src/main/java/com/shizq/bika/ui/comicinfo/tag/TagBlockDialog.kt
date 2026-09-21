@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo.page
+package com.shizq.bika.ui.comicinfo.tag
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.AlertDialog
