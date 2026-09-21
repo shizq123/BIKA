@@ -9,7 +9,6 @@ import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
 import com.shizq.bika.ui.comicinfo.isComicFullyDownloaded
-import com.shizq.bika.ui.comicinfo.page.ComicDetailPage
 
 /**
  * 详情分页。

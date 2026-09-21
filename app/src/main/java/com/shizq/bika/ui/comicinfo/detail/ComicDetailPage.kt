@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo.page
+package com.shizq.bika.ui.comicinfo.detail
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
@@ -63,7 +63,6 @@ import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
-import com.shizq.bika.ui.comicinfo.detail.MangaBottomBar
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale

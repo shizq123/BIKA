@@ -26,6 +26,7 @@ import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
+import com.shizq.bika.ui.comicinfo.detail.ComicDetailPage
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
