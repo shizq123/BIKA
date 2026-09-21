@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo.page
+package com.shizq.bika.ui.comicinfo.download
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement

@@ -1,9 +1,8 @@
-package com.shizq.bika.ui.comicinfo.page
+package com.shizq.bika.ui.comicinfo.download
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.R
-import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.repository.ChapterRepository
 import com.shizq.bika.core.message.MessageDuration
 import com.shizq.bika.core.message.MessageReporter
@@ -168,24 +167,4 @@ class EpisodeDownloadViewModel @AssistedInject constructor(
             @Assisted("url") coverUrl: String,
         ): EpisodeDownloadViewModel
     }
-}
-
-sealed interface EpisodeDownloadUiState {
-    data object Initial : EpisodeDownloadUiState
-    data object Loading : EpisodeDownloadUiState
-    data object Empty : EpisodeDownloadUiState
-    data object LoadError : EpisodeDownloadUiState
-
-    data class Content(
-        val episodes: List<Chapter>,
-        val selectedIds: Set<String> = emptySet(),
-        val submission: SubmissionState = SubmissionState.Idle,
-    ) : EpisodeDownloadUiState
-}
-
-sealed interface SubmissionState {
-    data object Idle : SubmissionState
-    data object Submitting : SubmissionState
-    data object Completed : SubmissionState
-    data object Error : SubmissionState
 }
