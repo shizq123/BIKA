@@ -32,10 +32,10 @@ import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.DiscoveryAction
-import com.shizq.bika.ui.comicinfo.page.CommentsTab
-import com.shizq.bika.ui.comicinfo.page.DetailTab
+import com.shizq.bika.ui.comicinfo.detail.CommentsTab
+import com.shizq.bika.ui.comicinfo.detail.DetailTab
+import com.shizq.bika.ui.comicinfo.detail.PageTab
 import com.shizq.bika.ui.comicinfo.page.EpisodesPage
-import com.shizq.bika.ui.comicinfo.page.PageTab
 import kotlinx.coroutines.launch
 
 @Composable

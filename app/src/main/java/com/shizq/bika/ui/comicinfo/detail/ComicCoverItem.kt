@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo
+package com.shizq.bika.ui.comicinfo.detail
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box

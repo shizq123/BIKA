@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo.page
+package com.shizq.bika.ui.comicinfo.detail
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -9,6 +9,7 @@ import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.ui.comicinfo.ComicDetail
 import com.shizq.bika.ui.comicinfo.ComicSummary
 import com.shizq.bika.ui.comicinfo.isComicFullyDownloaded
+import com.shizq.bika.ui.comicinfo.page.ComicDetailPage
 
 /**
  * 详情分页。

@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo.page
+package com.shizq.bika.ui.comicinfo.detail
 
 enum class PageTab(val title: String) {
     DETAIL("详情"),
