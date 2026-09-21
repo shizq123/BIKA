@@ -6,6 +6,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
@@ -20,6 +21,8 @@ import com.shizq.bika.feature.settings.impl.SettingsScreen
 import com.shizq.bika.feature.settings.impl.StorageManagerScreen
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
+import com.shizq.bika.ui.comicinfo.page.EpisodeDownloadSheet
+import com.shizq.bika.ui.comicinfo.page.EpisodeDownloadViewModel
 import com.shizq.bika.ui.comicinfo.page.TagBlockDialog
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
 import com.shizq.bika.ui.dashboard.ChangePasswordDialog
@@ -95,6 +98,7 @@ private fun slideTransitionMetadata(useAnimation: Boolean = true) = metadata {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 fun EntryProviderScope<NavKey>.featureSection(
     navigator: Navigator,
     onLogout: () -> Unit,
@@ -241,7 +245,12 @@ fun EntryProviderScope<NavKey>.featureSection(
             },
             navigationToTagBlock = {
                 navigator.navigate(TagBlockDialogNavKey(it))
-            }
+            },
+            navigationToEpisodeDownload = { comicId, title, coverUrl ->
+                navigator.navigate(
+                    EpisodeDownloadSheetNavKey(comicId, title, coverUrl)
+                )
+            },
         )
     }
     entry<ConnectedRoute.NotificationsRoute>(
@@ -278,6 +287,19 @@ fun EntryProviderScope<NavKey>.featureSection(
             onDismiss = navigator::goBack,
         )
     }
+    entry<EpisodeDownloadSheetNavKey>(
+        metadata = BottomSheetSceneStrategy.bottomSheet(),
+    ) { key ->
+        EpisodeDownloadSheet(
+            onDismiss = navigator::goBack,
+            viewModel = hiltViewModel<EpisodeDownloadViewModel, EpisodeDownloadViewModel.Factory>(
+                key = key.toString(),
+            ) { factory ->
+                factory.create(key.comicId, key.comicTitle, key.coverUrl)
+            },
+        )
+    }
+
     entry<TagBlockDialogNavKey>(
         metadata = DialogSceneStrategy.dialog(),
     ) { key ->

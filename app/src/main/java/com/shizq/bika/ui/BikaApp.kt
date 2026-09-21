@@ -29,6 +29,7 @@ import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.core.ui.message.UserMessageSnackbarHost
 import com.shizq.bika.navigation.AuthenticationRoute
+import com.shizq.bika.navigation.BottomSheetSceneStrategy
 import com.shizq.bika.navigation.authenticationSection
 import com.shizq.bika.navigation.featureSection
 
@@ -106,7 +107,10 @@ fun BikaApp(
                 if (isLoggedIn) {
                     NavDisplay(
                         backStack = navigator.contentBackStack,
-                        sceneStrategies = listOf(DialogSceneStrategy()),
+                        sceneStrategies = listOf(
+                            BottomSheetSceneStrategy(),
+                            DialogSceneStrategy(),
+                        ),
                         entryDecorators = listOf(
                             rememberSaveableStateHolderNavEntryDecorator(),
                             rememberViewModelStoreNavEntryDecorator(),
