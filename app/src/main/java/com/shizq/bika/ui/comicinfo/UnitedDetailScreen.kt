@@ -42,8 +42,9 @@ import kotlinx.coroutines.launch
 fun ComicDetailScreen(
     navigationToReader: (id: String, index: Int) -> Unit,
     onForYouClick: (String) -> Unit,
-    onBackClick: () -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
+    navigationToTagBlock: (String) -> Unit,
+    onBackClick: () -> Unit,
     viewModel: ComicInfoViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -68,12 +69,10 @@ fun ComicDetailScreen(
         onDownloadEpisodes = { title, cover, list ->
             viewModel.downloadEpisodes(title, cover, list)
         },
-        onTagBlocked = viewModel::addBlockedTag,
+        navigationToTagBlock = navigationToTagBlock,
     )
 }
 
-// 参数没有默认值是有意的：`= {}` / `= { _, _ -> 0 }` 会让"漏接一根回调"
-// 变成编译期沉默的错误，只能靠人眼比对 ComicDetailScreen 里的赋值列表。
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ComicDetailContent(
@@ -89,7 +88,7 @@ fun ComicDetailContent(
     onLoadSelectableEpisodes: suspend () -> List<Chapter>?,
     onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
     onDownloadEpisodes: (String, String, List<Chapter>) -> Unit,
-    onTagBlocked: (String) -> Unit,
+    navigationToTagBlock: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (unitedState) {
@@ -159,7 +158,8 @@ fun ComicDetailContent(
                                         detail.epsCount,
                                     )
                                 },
-                                onTagBlocked = onTagBlocked,
+                                navigationToTagBlock = navigationToTagBlock,
+
                             )
 
                             PageTab.EPISODES -> EpisodesPage(

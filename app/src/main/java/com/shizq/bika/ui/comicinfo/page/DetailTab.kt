@@ -1,16 +1,8 @@
 package com.shizq.bika.ui.comicinfo.page
 
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import com.shizq.bika.R
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.navigation.DiscoveryAction
@@ -42,7 +34,7 @@ fun DetailTab(
     navigationToComicInfo: (String) -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
     onDownloadWholeComic: () -> Unit,
-    onTagBlocked: (String) -> Unit,
+    navigationToTagBlock: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // remember 避免每次重组都重算一遍整个任务列表
@@ -56,8 +48,6 @@ fun DetailTab(
     val lastReadChapterOrder = lastReadChapter?.chapterId ?: 1
     val isContinue = lastReadChapter != null
 
-    var tagToBlock by remember { mutableStateOf<String?>(null) }
-
     ComicDetailPage(
         detail = detail,
         modifier = modifier,
@@ -70,31 +60,6 @@ fun DetailTab(
         navigationToComicInfo = navigationToComicInfo,
         navigationToFeed = navigationToFeed,
         onDownloadClick = onDownloadWholeComic,
-        onTagLongClick = { tagToBlock = it },
+        onTagLongClick = navigationToTagBlock,
     )
-
-    // 用局部 val 承接，避免 confirmButton 触发后读到已被置空的 tagToBlock
-    val pendingTag = tagToBlock
-    if (pendingTag != null) {
-        AlertDialog(
-            onDismissRequest = { tagToBlock = null },
-            title = { Text(stringResource(R.string.tag_block_title)) },
-            text = { Text(stringResource(R.string.tag_block_message, pendingTag)) },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        onTagBlocked(pendingTag)
-                        tagToBlock = null
-                    },
-                ) {
-                    Text(stringResource(R.string.confirm))
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { tagToBlock = null }) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-        )
-    }
 }

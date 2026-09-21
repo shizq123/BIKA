@@ -20,6 +20,7 @@ import com.shizq.bika.feature.settings.impl.SettingsScreen
 import com.shizq.bika.feature.settings.impl.StorageManagerScreen
 import com.shizq.bika.ui.comicinfo.ComicDetailScreen
 import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
+import com.shizq.bika.ui.comicinfo.page.TagBlockDialog
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
 import com.shizq.bika.ui.dashboard.ChangePasswordDialog
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
@@ -237,6 +238,9 @@ fun EntryProviderScope<NavKey>.featureSection(
             onForYouClick = { navigator.navigateToUnitedDetail(it) },
             navigationToFeed = { action ->
                 navigator.navigate(ConnectedRoute.FeedRoute(action))
+            },
+            navigationToTagBlock = {
+                navigator.navigate(TagBlockDialogNavKey(it))
             }
         )
     }
@@ -271,6 +275,14 @@ fun EntryProviderScope<NavKey>.featureSection(
         metadata = DialogSceneStrategy.dialog(),
     ) {
         ChangePasswordDialog(
+            onDismiss = navigator::goBack,
+        )
+    }
+    entry<TagBlockDialogNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) { key ->
+        TagBlockDialog(
+            tag = key.tag,
             onDismiss = navigator::goBack,
         )
     }
