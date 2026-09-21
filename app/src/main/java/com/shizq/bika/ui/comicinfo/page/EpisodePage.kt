@@ -8,35 +8,22 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -49,37 +36,16 @@ import com.shizq.bika.R
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.database.model.isCompleted
-import com.shizq.bika.core.download.model.DownloadTask
 import kotlinx.coroutines.flow.flowOf
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun EpisodesPage(
     episodes: LazyPagingItems<Chapter>,
     modifier: Modifier = Modifier,
-    downloadTasks: List<DownloadTask> = emptyList(),
     chapterProgress: List<ChapterProgressEntity> = emptyList(),
     navigateToReader: (index: Int) -> Unit = { _ -> },
-    onDownloadClick: (List<Chapter>) -> Unit = {},
-    onLoadSelectableEpisodes: suspend () -> List<Chapter>? = { emptyList() }
+    onDownloadSelectionClick: () -> Unit = {},
 ) {
-    var showDownloadSelectSheet by remember { mutableStateOf(false) }
-    var selectedEpisodeIds by remember { mutableStateOf(setOf<String>()) }
-    var allEpisodes by remember { mutableStateOf<List<Chapter>?>(null) }
-    var isLoadingEpisodes by remember { mutableStateOf(false) }
-
-    // 失败由 ViewModel 上报提示，这里只负责结束 loading：
-    // allEpisodes 留在 null 会让下一次展开面板重新尝试取数。
-    LaunchedEffect(showDownloadSelectSheet) {
-        if (showDownloadSelectSheet && allEpisodes == null) {
-            isLoadingEpisodes = true
-            try {
-                allEpisodes = onLoadSelectableEpisodes()
-            } finally {
-                isLoadingEpisodes = false
-            }
-        }
-    }
 
     // 原先每个 item 都对整个列表做一次 find，O(n) × item 数
     val progressByOrder = remember(chapterProgress) {
@@ -123,7 +89,7 @@ fun EpisodesPage(
 
         // 右下角新增下载选择悬浮按钮
         FloatingActionButton(
-            onClick = { showDownloadSelectSheet = true },
+            onClick = onDownloadSelectionClick,
             modifier = Modifier
                 .align(Alignment.BottomEnd)
                 .padding(24.dp),
@@ -137,136 +103,6 @@ fun EpisodesPage(
         }
     }
 
-    if (showDownloadSelectSheet) {
-        val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
-        ModalBottomSheet(
-            onDismissRequest = { showDownloadSelectSheet = false },
-            sheetState = sheetState
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = stringResource(R.string.download_select_episodes),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                    if (!isLoadingEpisodes && !allEpisodes.isNullOrEmpty()) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(
-                                onClick = {
-                                    selectedEpisodeIds = allEpisodes?.map { it.id }?.toSet() ?: emptySet()
-                                }
-                            ) {
-                                Text(stringResource(R.string.download_select_all))
-                            }
-                            TextButton(
-                                onClick = {
-                                    selectedEpisodeIds = emptySet()
-                                }
-                            ) {
-                                Text(stringResource(R.string.download_clear_selection))
-                            }
-                        }
-                    }
-                }
-
-                if (isLoadingEpisodes) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 200.dp)
-                            .padding(bottom = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        CircularProgressIndicator()
-                    }
-                } else if (allEpisodes.isNullOrEmpty()) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .heightIn(min = 200.dp)
-                            .padding(bottom = 16.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = stringResource(R.string.download_no_selectable_episodes),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                } else {
-                    val currentEpisodes = allEpisodes!!
-                    LazyVerticalGrid(
-                        columns = GridCells.Adaptive(minSize = 100.dp),
-                        modifier = Modifier.weight(1f, fill = false),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                        contentPadding = PaddingValues(bottom = 16.dp)
-                    ) {
-                        items(currentEpisodes.size) { index ->
-                            val episode = currentEpisodes[index]
-                            val isSelected = episode.id in selectedEpisodeIds
-
-                            Surface(
-                                onClick = {
-                                    selectedEpisodeIds = if (isSelected) {
-                                        selectedEpisodeIds - episode.id
-                                    } else {
-                                        selectedEpisodeIds + episode.id
-                                    }
-                                },
-                                shape = RoundedCornerShape(8.dp),
-                                border = BorderStroke(
-                                    width = 1.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
-                                ),
-                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
-                                contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface
-                            ) {
-                                Box(
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = episode.title,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                }
-                            }
-                        }
-                    }
-
-                    Button(
-                        onClick = {
-                            val selectedList = currentEpisodes.filter { it.id in selectedEpisodeIds }
-                            onDownloadClick(selectedList)
-                            showDownloadSelectSheet = false
-                            selectedEpisodeIds = emptySet()
-                        },
-                        enabled = selectedEpisodeIds.isNotEmpty(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            stringResource(
-                                R.string.download_start_selected,
-                                selectedEpisodeIds.size,
-                            )
-                        )
-                    }
-                }
-            }
-        }
-    }
 }
 
 @Composable

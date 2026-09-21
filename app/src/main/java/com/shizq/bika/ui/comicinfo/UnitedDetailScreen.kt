@@ -44,6 +44,7 @@ fun ComicDetailScreen(
     onForYouClick: (String) -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
     navigationToTagBlock: (String) -> Unit,
+    navigationToEpisodeDownload: (String, String, String) -> Unit,
     onBackClick: () -> Unit,
     viewModel: ComicInfoViewModel = hiltViewModel(),
 ) {
@@ -55,21 +56,18 @@ fun ComicDetailScreen(
     ComicDetailContent(
         unitedState = state,
         episodes = episodes,
-        downloadTasks = downloadTasks,
         chapterProgress = chapterProgress,
         onBackClick = onBackClick,
         navigationToReader = navigationToReader,
         navigationToComicInfo = onForYouClick,
         dispatch = viewModel::dispatch,
         navigationToFeed = navigationToFeed,
-        onLoadSelectableEpisodes = { viewModel.loadSelectableEpisodes() },
         onDownloadWholeComic = { title, cover, epsCount ->
             viewModel.downloadWholeComic(title, cover, epsCount)
         },
-        onDownloadEpisodes = { title, cover, list ->
-            viewModel.downloadEpisodes(title, cover, list)
-        },
         navigationToTagBlock = navigationToTagBlock,
+        navigationToEpisodeDownload = navigationToEpisodeDownload,
+
     )
 }
 
@@ -85,10 +83,9 @@ fun ComicDetailContent(
     navigationToComicInfo: (String) -> Unit,
     dispatch: (UnitedDetailsAction) -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
-    onLoadSelectableEpisodes: suspend () -> List<Chapter>?,
     onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
-    onDownloadEpisodes: (String, String, List<Chapter>) -> Unit,
     navigationToTagBlock: (String) -> Unit,
+    navigationToEpisodeDownload: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (unitedState) {
@@ -164,19 +161,17 @@ fun ComicDetailContent(
 
                             PageTab.EPISODES -> EpisodesPage(
                                 episodes = episodes,
-                                downloadTasks = downloadTasks,
                                 chapterProgress = chapterProgress,
                                 navigateToReader = {
                                     navigationToReader(detail.id, it)
                                 },
-                                onDownloadClick = { selectedEpisodes ->
-                                    onDownloadEpisodes(
+                                onDownloadSelectionClick = {
+                                    navigationToEpisodeDownload(
+                                        detail.id,
                                         detail.title,
                                         detail.cover,
-                                        selectedEpisodes,
                                     )
                                 },
-                                onLoadSelectableEpisodes = onLoadSelectableEpisodes,
                             )
 
                             PageTab.COMMENT -> CommentsTab(comicId = detail.id)
