@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import androidx.navigation3.runtime.result.rememberResultEventBusNavEntryDecorator
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.core.ui.message.UserMessageSnackbarHost
@@ -108,7 +109,8 @@ fun BikaApp(
                         sceneStrategies = listOf(DialogSceneStrategy()),
                         entryDecorators = listOf(
                             rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator()
+                            rememberViewModelStoreNavEntryDecorator(),
+                            rememberResultEventBusNavEntryDecorator()
                         ),
                         entryProvider = entryProvider {
                             featureSection(
