@@ -49,6 +49,43 @@ class ReaderPreloadSessionTest {
     }
 
     @Test
+    fun `a newer generation resets the old session window`() = runTest {
+        val requested = mutableListOf<Int>()
+        val session = ReaderPreloadSession(
+            scope = backgroundScope,
+            dataProvider = FakeDataProvider(100),
+            modelProvider = RecordingModelProvider(requested),
+            enqueuer = RecordingEnqueuer(),
+            closeEnqueuer = {},
+        )
+
+        session.submitViewport(
+            ViewportSnapshot(
+                visibleRange = 40..44,
+                direction = ScrollDirection.Backward,
+                cause = ViewportChangeCause.UserScroll,
+                generation = 0,
+            ),
+            preloadCount = 2,
+        )
+        runCurrent()
+        requested.clear()
+
+        session.submitViewport(
+            ViewportSnapshot(
+                visibleRange = 0..4,
+                cause = ViewportChangeCause.DataRefresh,
+                generation = 1,
+            ),
+            preloadCount = 2,
+        )
+        runCurrent()
+
+        assertEquals(listOf(5, 6), requested)
+        session.close()
+    }
+
+    @Test
     fun `closing the session releases the executor and ignores later input`() = runTest {
         var closed = false
         val requested = mutableListOf<Int>()
@@ -84,11 +121,11 @@ class ReaderPreloadSessionTest {
     }
 
     private class RecordingEnqueuer : PreloadRequestEnqueuer {
-        val windows = mutableListOf<List<ImageRequest>>()
+        val windows = mutableListOf<List<PreloadRequest>>()
 
         override fun updateWindow(
-            requests: List<ImageRequest>,
-            visibleRequests: List<ImageRequest>,
+            requests: List<PreloadRequest>,
+            visibleRequests: List<PreloadRequest>,
         ) {
             windows += requests
         }

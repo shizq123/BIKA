@@ -220,6 +220,9 @@ class ListPreloaderTest {
     }
 
     private class NoopEnqueuer : PreloadRequestEnqueuer {
-        override fun updateWindow(requests: List<ImageRequest>, visibleRequests: List<ImageRequest>) = Unit
+        override fun updateWindow(
+            requests: List<PreloadRequest>,
+            visibleRequests: List<PreloadRequest>,
+        ) = Unit
     }
 }

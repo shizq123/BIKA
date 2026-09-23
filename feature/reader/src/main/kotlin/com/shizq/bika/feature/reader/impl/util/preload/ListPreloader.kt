@@ -11,7 +11,12 @@ import kotlinx.coroutines.CoroutineScope
 
 interface PreloadModelProvider<T> {
     fun getPreloadRequest(item: T): ImageRequest?
+
+    /** 阅读会话内的稳定页面身份；不能使用列表下标。 */
+    fun getPreloadKey(item: T, request: ImageRequest): String =
+        request.diskCacheKey ?: request.data.toString()
 }
+
 
 interface PreloadDataProvider<T> {
     /** 列表中的项目总数。 */
@@ -29,8 +34,18 @@ interface PreloadDataProvider<T> {
  * 静默少预载（用户侧只感觉偶尔卡顿），线上很难察觉。
  */
 interface PreloadRequestEnqueuer {
-    fun updateWindow(requests: List<ImageRequest>, visibleRequests: List<ImageRequest> = emptyList())
+    fun updateWindow(
+        requests: List<PreloadRequest>,
+        visibleRequests: List<PreloadRequest> = emptyList(),
+    )
 }
+
+data class PreloadRequest(
+    val index: Int,
+    val key: String,
+    val request: ImageRequest,
+)
+
 
 internal class CoilPreloadRequestEnqueuer(
     context: Context,
@@ -39,10 +54,10 @@ internal class CoilPreloadRequestEnqueuer(
     private val imageLoader = context.imageLoader
     private val queue = PreloadQueue(
         scope = scope,
-        keyOf = { request: ImageRequest -> request.diskCacheKey ?: request.data.toString() },
+        keyOf = { request: PreloadRequest -> request.key },
         execute = { request ->
             try {
-                when (imageLoader.execute(request)) {
+                when (imageLoader.execute(request.request)) {
                     is SuccessResult -> true
                     is ErrorResult -> false
                 }
@@ -55,22 +70,23 @@ internal class CoilPreloadRequestEnqueuer(
         },
     )
 
-    override fun updateWindow(requests: List<ImageRequest>, visibleRequests: List<ImageRequest>) {
-        queue.update(requests, visibleRequests.mapTo(mutableSetOf()) {
-            it.diskCacheKey ?: it.data.toString()
-        })
+    override fun updateWindow(
+        requests: List<PreloadRequest>,
+        visibleRequests: List<PreloadRequest>,
+    ) {
+        queue.update(
+            items = requests,
+            retainRunning = visibleRequests.mapTo(mutableSetOf(), PreloadRequest::key),
+        )
     }
 
     fun close() = queue.close()
 }
 
 /**
- * 按滚动方向预载列表前方（或后方）的若干项。
- *
- * 实例持有 [lastFirstVisibleIndex] 这一跨调用状态，用于判断滚动方向。它必须
- * 随「一段连续的滚动上下文」一起销毁：切章后沿用旧值会让第一次回调把方向判反
- * （新章从第 0 页开始，firstVisible 通常小于上一章的位置，被当成向后滚），
- * 于是首屏之后的页漏掉一轮预载。调用方通过重建实例来重置，见 [PagingPreload]。
+ * 预载窗口由 [PreloadPlanner] 计算，任务身份由 [PreloadModelProvider.getPreloadKey] 提供。
+ * 下标只用于从 Paging 数据源取出项目，不再作为队列去重身份。
+
  */
 class ListPreloader<T>(
     private val dataProvider: PreloadDataProvider<T>,
@@ -80,13 +96,22 @@ class ListPreloader<T>(
 ) {
     private var lastFirstVisibleIndex = -1
     private var isScrollingForward = true
-    private var previousRequests = emptyMap<Int, ImageRequest>()
+    private var previousRequests = emptyMap<String, PreloadRequest>()
     private val planner = PreloadPlanner()
 
 
+    internal fun reset() {
+        lastFirstVisibleIndex = -1
+        isScrollingForward = true
+        planner.reset()
+        previousRequests = emptyMap()
+        enqueuer.updateWindow(emptyList())
+    }
+
     internal fun onViewport(snapshot: ViewportSnapshot) {
-        if (snapshot.visibleRange == null) {
-            onScroll(-1, -1)
+        if (snapshot.visibleRange == null || maxPreload <= 0 || dataProvider.itemCount <= 0) {
+            previousRequests = emptyMap()
+            enqueuer.updateWindow(emptyList())
             return
         }
 
@@ -96,7 +121,6 @@ class ListPreloader<T>(
             itemCount = dataProvider.itemCount,
         )
         preload(
-            itemCount = dataProvider.itemCount,
             indices = plan.indices,
             visibleRange = snapshot.visibleRange,
         )
@@ -106,54 +130,48 @@ class ListPreloader<T>(
         firstVisible: Int,
         lastVisible: Int,
     ) {
-        onScroll(firstVisible, lastVisible, updateDirection = true)
-    }
-
-    private fun onScroll(
-        firstVisible: Int,
-        lastVisible: Int,
-        updateDirection: Boolean,
-    ) {
         if (firstVisible < 0 || lastVisible < firstVisible) {
             previousRequests = emptyMap()
             enqueuer.updateWindow(emptyList())
             return
         }
 
-        // Image size changes and newly loaded paging data can repeat the same first index.
-        // They must not reverse the reading direction or cancel useful forward downloads.
-        if (updateDirection && firstVisible != lastFirstVisibleIndex) {
+        if (firstVisible != lastFirstVisibleIndex) {
             isScrollingForward = firstVisible > lastFirstVisibleIndex
         }
-        val totalCount = dataProvider.itemCount
-
-        val (startIndex, directionAndCount) = if (isScrollingForward) {
-            (lastVisible + 1) to maxPreload
-        } else {
-            (firstVisible - 1) to -maxPreload
-        }
-
         lastFirstVisibleIndex = firstVisible
 
-        if (maxPreload <= 0 || totalCount == 0) {
-            previousRequests = emptyMap()
-            enqueuer.updateWindow(emptyList())
-            return
-        }
-
-        preload(totalCount, startIndex, directionAndCount, firstVisible..lastVisible)
+        onViewport(
+            ViewportSnapshot(
+                visibleRange = firstVisible..lastVisible,
+                direction = if (isScrollingForward) {
+                    ScrollDirection.Forward
+                } else {
+                    ScrollDirection.Backward
+                },
+                cause = ViewportChangeCause.UserScroll,
+            )
+        )
     }
+
 
     private fun preload(
         indices: List<Int>,
         visibleRange: IntRange,
     ) {
-        val visibleRequests = previousRequests.filterKeys { it in visibleRange }
-        val requests = linkedMapOf<Int, ImageRequest>()
+        val visibleRequests = previousRequests.values
+            .filter { it.index in visibleRange }
+            .associateByTo(linkedMapOf(), PreloadRequest::key)
+        val requests = linkedMapOf<String, PreloadRequest>()
         for (index in indices) {
             val item = dataProvider.getItem(index) ?: continue
             val request = modelProvider.getPreloadRequest(item) ?: continue
-            requests[index] = request
+            val preloadRequest = PreloadRequest(
+                index = index,
+                key = modelProvider.getPreloadKey(item, request),
+                request = request,
+            )
+            requests[preloadRequest.key] = preloadRequest
         }
         enqueuer.updateWindow(requests.values.toList(), visibleRequests.values.toList())
         previousRequests = visibleRequests + requests

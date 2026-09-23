@@ -23,7 +23,7 @@ internal class ReaderPreloadSession<T : Any>(
     dataProvider: PreloadDataProvider<T>,
     modelProvider: PreloadModelProvider<T>,
     enqueuer: PreloadRequestEnqueuer,
-    closeEnqueuer: () -> Unit,
+    private val closeEnqueuer: () -> Unit,
 ) {
     private sealed interface Event {
         data class ViewportChanged(
@@ -41,8 +41,8 @@ internal class ReaderPreloadSession<T : Any>(
         enqueuer = enqueuer,
         maxPreload = 0,
     )
-    private val closeEnqueuer = closeEnqueuer
     private var closed = false
+    private var latestGeneration = Long.MIN_VALUE
 
     private val worker: Job = scope.launch {
         for (event in events) {
@@ -64,6 +64,12 @@ internal class ReaderPreloadSession<T : Any>(
     }
 
     private fun handle(event: Event.ViewportChanged) {
+        val generation = event.snapshot.generation
+        if (generation < latestGeneration) return
+        if (generation > latestGeneration) {
+            latestGeneration = generation
+            preloader.reset()
+        }
         preloader.maxPreload = event.preloadCount
         preloader.onViewport(event.snapshot)
     }

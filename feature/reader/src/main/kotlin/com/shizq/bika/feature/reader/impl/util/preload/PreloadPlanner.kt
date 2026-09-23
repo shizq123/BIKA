@@ -17,6 +17,10 @@ internal data class PreloadPlan(
 internal class PreloadPlanner {
     private var direction: ScrollDirection = ScrollDirection.Forward
 
+    fun reset() {
+        direction = ScrollDirection.Forward
+    }
+
     fun plan(
         viewport: ViewportSnapshot,
         preloadCount: Int,

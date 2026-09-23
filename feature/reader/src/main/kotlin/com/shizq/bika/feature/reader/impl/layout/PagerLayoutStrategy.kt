@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.Direction
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportChangeCause
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportEventMarker
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 class PagerLayoutStrategy(
@@ -203,6 +205,7 @@ class PagerLayoutStrategy(
 class PagerController(
     private val pagerState: PagerState,
     private val spreadState: PageSpreadState,
+    private val viewportEventMarker: ViewportEventMarker = ViewportEventMarker(),
 ) : ReaderController {
 
     /**
@@ -241,6 +244,7 @@ class PagerController(
      * 逐页前进会让画面从 1|2 变成 2|3。
      */
     override suspend fun scrollNextPage() {
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         val target = pagerState.currentPage + 1
         if (target < pagerState.pageCount) {
             pagerState.animateScrollToPage(target)
@@ -248,6 +252,7 @@ class PagerController(
     }
 
     override suspend fun scrollPrevPage() {
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         val target = pagerState.currentPage - 1
         if (target >= 0) {
             pagerState.animateScrollToPage(target)
@@ -255,6 +260,7 @@ class PagerController(
     }
 
     override suspend fun scrollToPage(index: Int) {
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         val spreads = spreadState.spreads
         if (spreads.isEmpty() || pagerState.pageCount == 0) return
         val target = spreads.spreadIndexOfPage(index)

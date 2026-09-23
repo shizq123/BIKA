@@ -30,6 +30,35 @@ data class ViewportSnapshot(
 )
 
 /**
+ * Controller 在执行跳页等程序行为前写入标记，状态提供者在下一次视口变化时消费。
+ * 标记与对应的滚动状态由同一 UI 线程访问，不需要额外同步。
+ */
+class ViewportEventMarker {
+    private var pendingCause: ViewportChangeCause? = null
+    private var generation: Long = 0L
+
+    fun mark(cause: ViewportChangeCause, advanceGeneration: Boolean = false) {
+        pendingCause = cause
+        if (advanceGeneration) generation++
+    }
+
+    fun snapshot(
+        visibleRange: IntRange?,
+        direction: ScrollDirection?,
+        defaultCause: ViewportChangeCause,
+    ): ViewportSnapshot {
+        val cause = pendingCause ?: defaultCause
+        pendingCause = null
+        return ViewportSnapshot(
+            visibleRange = visibleRange,
+            direction = direction,
+            cause = cause,
+            generation = generation,
+        )
+    }
+}
+
+/**
  * 新的内部视口契约。公开的 [ScrollStateProvider] 保持不变，旧实现可以继续只提供范围。
  */
 internal interface ViewportEventProvider {
@@ -51,7 +80,8 @@ interface ScrollStateProvider {
  * ScrollStateProvider 的 LazyListState 实现。
  */
 internal class LazyListScrollStateProvider(
-    private val listState: LazyListState
+    private val listState: LazyListState,
+    internal val eventMarker: ViewportEventMarker = ViewportEventMarker(),
 ) : ScrollStateProvider, ViewportEventProvider {
     private data class RawViewport(
         val range: IntRange?,
@@ -81,10 +111,10 @@ internal class LazyListScrollStateProvider(
             current.firstOffset > previous.firstOffset -> ScrollDirection.Backward
             else -> previousEvent?.direction
         }
-        val event = ViewportSnapshot(
+        val event = eventMarker.snapshot(
             visibleRange = current.range,
             direction = direction,
-            cause = ViewportChangeCause.UserScroll,
+            defaultCause = ViewportChangeCause.UserScroll,
         )
         current to event
     }.mapNotNull { it.second }.distinctUntilChanged()
@@ -106,7 +136,8 @@ internal class LazyListScrollStateProvider(
  * 单页模式同样走这里：分组会退化成每页一个单位，行为与直接用 currentPage 一致。
  */
 internal class SpreadScrollStateProvider(
-    override val visibleItemsRange: Flow<IntRange?>
+    override val visibleItemsRange: Flow<IntRange?>,
+    internal val eventMarker: ViewportEventMarker = ViewportEventMarker(),
 ) : ScrollStateProvider, ViewportEventProvider {
     override val viewportEvents: Flow<ViewportSnapshot> = visibleItemsRange
         .runningFold(
@@ -119,12 +150,10 @@ internal class SpreadScrollStateProvider(
                 current.first < previousRange.first -> ScrollDirection.Backward
                 else -> state.second?.direction
             }
-            val event = ViewportSnapshot(
+            val event = eventMarker.snapshot(
                 visibleRange = current,
                 direction = direction,
-                // Pager 的分组变化会导致真实页码范围变化，但没有像素位移；
-                // 先保守标记为 Unknown，由会话层保留已有阅读方向。
-                cause = ViewportChangeCause.Unknown,
+                defaultCause = ViewportChangeCause.Unknown,
             )
             current to event
         }

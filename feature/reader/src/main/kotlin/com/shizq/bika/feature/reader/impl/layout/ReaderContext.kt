@@ -24,6 +24,7 @@ import com.shizq.bika.core.model.reader.ViewerType
 import com.shizq.bika.feature.reader.impl.util.preload.LazyListScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.ScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.SpreadScrollStateProvider
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportEventMarker
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 /**
@@ -147,9 +148,13 @@ fun rememberReaderContext(
                         magnifierEnabled = config.magnifierEnabled,
                     )
                 }
-                val controller =
-                    remember(listState) { WebtoonController(listState, initialPageIndex) }
-                val scrollProvider = remember(listState) { LazyListScrollStateProvider(listState) }
+                val viewportEventMarker = remember(listState) { ViewportEventMarker() }
+                val controller = remember(listState, viewportEventMarker) {
+                    WebtoonController(listState, initialPageIndex, viewportEventMarker)
+                }
+                val scrollProvider = remember(listState, viewportEventMarker) {
+                    LazyListScrollStateProvider(listState, viewportEventMarker)
+                }
 
                 // position 的唯一写入者。漏掉这一步的表现是页码永远停在初始值，
                 // 不崩不报错，所以放在装配处而不是留给调用方。
@@ -213,8 +218,19 @@ fun rememberReaderContext(
                         )
                     }
 
-                    val controller = remember(pagerState, spreadState) {
-                        PagerController(pagerState, spreadState)
+                    val viewportEventMarker = remember(pagerState) { ViewportEventMarker() }
+                    LaunchedEffect(spreadState, viewportEventMarker) {
+                        snapshotFlow { spreadState.generation }
+                            .distinctUntilChanged()
+                            .collect {
+                                viewportEventMarker.mark(
+                                    cause = com.shizq.bika.feature.reader.impl.util.preload.ViewportChangeCause.LayoutReflow,
+                                    advanceGeneration = true,
+                                )
+                            }
+                    }
+                    val controller = remember(pagerState, spreadState, viewportEventMarker) {
+                        PagerController(pagerState, spreadState, viewportEventMarker)
                     }
 
                     LaunchedEffect(controller) { controller.track() }
@@ -230,9 +246,11 @@ fun rememberReaderContext(
                     // 重新发射。之前的 visibleSpreadRange 只在 snapshotFlow 里观察
                     // currentPage，spreads 是在下游 map 里读的（不在快照观察范围内），
                     // 分组变化不触发重算，预载范围会滞留在旧换算上。
-                    val scrollProvider = remember(controller) {
+                    val scrollProvider = remember(controller, viewportEventMarker) {
                         SpreadScrollStateProvider(
-                            snapshotFlow { controller.position.range }.distinctUntilChanged(),
+                            visibleItemsRange = snapshotFlow { controller.position.range }
+                                .distinctUntilChanged(),
+                            eventMarker = viewportEventMarker,
                         )
                     }
 
