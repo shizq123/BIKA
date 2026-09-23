@@ -2,11 +2,12 @@ package com.shizq.bika.feature.reader.impl.util.preload
 
 import android.content.Context
 import coil3.imageLoader
+import coil3.request.ErrorResult
 import coil3.request.ImageRequest
+import coil3.request.SuccessResult
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
-import kotlin.math.abs
 
 interface PreloadModelProvider<T> {
     fun getPreloadRequest(item: T): ImageRequest?
@@ -41,11 +42,15 @@ internal class CoilPreloadRequestEnqueuer(
         keyOf = { request: ImageRequest -> request.diskCacheKey ?: request.data.toString() },
         execute = { request ->
             try {
-                imageLoader.execute(request)
+                when (imageLoader.execute(request)) {
+                    is SuccessResult -> true
+                    is ErrorResult -> false
+                }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
                 KotlinLogging.logger("ReaderPreload").warn(error) { "预载失败，留给可见页请求重试" }
+                false
             }
         },
     )
@@ -76,10 +81,38 @@ class ListPreloader<T>(
     private var lastFirstVisibleIndex = -1
     private var isScrollingForward = true
     private var previousRequests = emptyMap<Int, ImageRequest>()
+    private val planner = PreloadPlanner()
+
+
+    internal fun onViewport(snapshot: ViewportSnapshot) {
+        if (snapshot.visibleRange == null) {
+            onScroll(-1, -1)
+            return
+        }
+
+        val plan = planner.plan(
+            viewport = snapshot,
+            preloadCount = maxPreload,
+            itemCount = dataProvider.itemCount,
+        )
+        preload(
+            itemCount = dataProvider.itemCount,
+            indices = plan.indices,
+            visibleRange = snapshot.visibleRange,
+        )
+    }
 
     fun onScroll(
         firstVisible: Int,
         lastVisible: Int,
+    ) {
+        onScroll(firstVisible, lastVisible, updateDirection = true)
+    }
+
+    private fun onScroll(
+        firstVisible: Int,
+        lastVisible: Int,
+        updateDirection: Boolean,
     ) {
         if (firstVisible < 0 || lastVisible < firstVisible) {
             previousRequests = emptyMap()
@@ -89,7 +122,7 @@ class ListPreloader<T>(
 
         // Image size changes and newly loaded paging data can repeat the same first index.
         // They must not reverse the reading direction or cancel useful forward downloads.
-        if (firstVisible != lastFirstVisibleIndex) {
+        if (updateDirection && firstVisible != lastFirstVisibleIndex) {
             isScrollingForward = firstVisible > lastFirstVisibleIndex
         }
         val totalCount = dataProvider.itemCount
@@ -112,27 +145,18 @@ class ListPreloader<T>(
     }
 
     private fun preload(
-        itemCount: Int,
-        startIndex: Int,
-        directionAndCount: Int,
+        indices: List<Int>,
         visibleRange: IntRange,
     ) {
-        val step = if (directionAndCount > 0) 1 else -1
-        val count = abs(directionAndCount)
-
         val visibleRequests = previousRequests.filterKeys { it in visibleRange }
         val requests = linkedMapOf<Int, ImageRequest>()
-        for (i in 0 until count) {
-            val index = startIndex + (i * step)
-            if (index in 0 until itemCount) {
-                val item = dataProvider.getItem(index) ?: continue
-                val request = modelProvider.getPreloadRequest(item) ?: continue
-                requests[index] = request
-            } else {
-                break
-            }
+        for (index in indices) {
+            val item = dataProvider.getItem(index) ?: continue
+            val request = modelProvider.getPreloadRequest(item) ?: continue
+            requests[index] = request
         }
         enqueuer.updateWindow(requests.values.toList(), visibleRequests.values.toList())
         previousRequests = visibleRequests + requests
     }
+
 }

@@ -8,6 +8,8 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
 import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
+
 
 @Composable
 fun <T : Any> PagingPreload(
@@ -25,33 +27,32 @@ fun <T : Any> PagingPreload(
     // 不能仅以 pagingItems 为 key：章节切换时它的引用可能不变。
     LaunchedEffect(context, pagingItems, scrollStateProvider, modelProvider) {
         val enqueuer = CoilPreloadRequestEnqueuer(context, this)
-        val preloader = ListPreloader(
+        val session = ReaderPreloadSession(
+            scope = this,
             dataProvider = PagingPreloadDataProvider(pagingItems),
             modelProvider = modelProvider,
             enqueuer = enqueuer,
-            maxPreload = currentPreloadCount,
+            closeEnqueuer = enqueuer::close,
         )
         try {
             // Start immediately, even during continuous scrolling. Also refresh when
             // placeholders receive URLs, without requiring another swipe from the reader.
+            val viewportEvents = (scrollStateProvider as? ViewportEventProvider)
+                ?.viewportEvents
+                ?: scrollStateProvider.visibleItemsRange.map { ViewportSnapshot(it) }
             combine(
-                scrollStateProvider.visibleItemsRange,
+                viewportEvents,
                 snapshotFlow { pagingItems.itemSnapshotList },
                 snapshotFlow { currentPreloadCount },
-            ) { visibleRange, _, count -> visibleRange to count }
-                .collect { (visibleRange, count) ->
-                    preloader.maxPreload = count
-                    if (visibleRange != null) {
-                        preloader.onScroll(visibleRange.first, visibleRange.last)
-                    } else {
-                        enqueuer.updateWindow(emptyList())
-                    }
+            ) { viewport, _, count -> viewport to count }
+                .collect { (viewport, count) ->
+                    session.submitViewport(viewport, count)
                 }
         } finally {
-            // Leaving the reader, changing chapter/mode or disabling the window releases
-            // pending downloads; overlapping pages within a window keep their progress.
-            enqueuer.close()
+            // Closing the session cancels the worker and releases pending downloads.
+            session.close()
         }
+
     }
 }
 

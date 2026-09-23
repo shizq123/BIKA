@@ -4,6 +4,37 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.snapshotFlow
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
+import kotlinx.coroutines.flow.runningFold
+
+/** 视口变化的来源，用于避免把程序行为误判成用户滚动。 */
+enum class ViewportChangeCause {
+    UserScroll,
+    ProgrammaticJump,
+    LayoutReflow,
+    DataRefresh,
+    Unknown,
+}
+
+enum class ScrollDirection {
+    Forward,
+    Backward,
+}
+
+data class ViewportSnapshot(
+    val visibleRange: IntRange?,
+    val direction: ScrollDirection? = null,
+    val cause: ViewportChangeCause = ViewportChangeCause.Unknown,
+    val generation: Long = 0L,
+)
+
+/**
+ * 新的内部视口契约。公开的 [ScrollStateProvider] 保持不变，旧实现可以继续只提供范围。
+ */
+internal interface ViewportEventProvider {
+    val viewportEvents: Flow<ViewportSnapshot>
+}
 
 /**
  * 一个抽象接口，用于提供列表的滚动状态。
@@ -21,13 +52,46 @@ interface ScrollStateProvider {
  */
 internal class LazyListScrollStateProvider(
     private val listState: LazyListState
-) : ScrollStateProvider {
-    override val visibleItemsRange: Flow<IntRange?> = snapshotFlow {
-        val layoutInfo = listState.layoutInfo
-        val first = layoutInfo.visibleItemsInfo.firstOrNull()?.index
-        val last = layoutInfo.visibleItemsInfo.lastOrNull()?.index
-        if (first != null && last != null) first..last else null
-    }.distinctUntilChanged()
+) : ScrollStateProvider, ViewportEventProvider {
+    private data class RawViewport(
+        val range: IntRange?,
+        val firstIndex: Int?,
+        val firstOffset: Int,
+    )
+
+    override val viewportEvents: Flow<ViewportSnapshot> = snapshotFlow {
+        val visibleItems = listState.layoutInfo.visibleItemsInfo
+        val first = visibleItems.firstOrNull()
+        val last = visibleItems.lastOrNull()
+        RawViewport(
+            range = if (first != null && last != null) first.index..last.index else null,
+            firstIndex = first?.index,
+            firstOffset = first?.offset ?: 0,
+        )
+    }.runningFold(
+        initial = Pair<RawViewport?, ViewportSnapshot?>(null, null),
+    ) { state, current ->
+        val previous = state.first
+        val previousEvent = state.second
+        val direction = when {
+            previous == null || current.firstIndex == null || previous.firstIndex == null -> null
+            current.firstIndex > previous.firstIndex -> ScrollDirection.Forward
+            current.firstIndex < previous.firstIndex -> ScrollDirection.Backward
+            current.firstOffset < previous.firstOffset -> ScrollDirection.Forward
+            current.firstOffset > previous.firstOffset -> ScrollDirection.Backward
+            else -> previousEvent?.direction
+        }
+        val event = ViewportSnapshot(
+            visibleRange = current.range,
+            direction = direction,
+            cause = ViewportChangeCause.UserScroll,
+        )
+        current to event
+    }.mapNotNull { it.second }.distinctUntilChanged()
+
+    override val visibleItemsRange: Flow<IntRange?> = viewportEvents
+        .map { it.visibleRange }
+        .distinctUntilChanged()
 }
 
 /**
@@ -43,4 +107,27 @@ internal class LazyListScrollStateProvider(
  */
 internal class SpreadScrollStateProvider(
     override val visibleItemsRange: Flow<IntRange?>
-) : ScrollStateProvider
+) : ScrollStateProvider, ViewportEventProvider {
+    override val viewportEvents: Flow<ViewportSnapshot> = visibleItemsRange
+        .runningFold(
+            initial = Pair<IntRange?, ViewportSnapshot?>(null, null),
+        ) { state, current ->
+            val previousRange = state.first
+            val direction = when {
+                previousRange == null || current == null -> null
+                current.first > previousRange.first -> ScrollDirection.Forward
+                current.first < previousRange.first -> ScrollDirection.Backward
+                else -> state.second?.direction
+            }
+            val event = ViewportSnapshot(
+                visibleRange = current,
+                direction = direction,
+                // Pager 的分组变化会导致真实页码范围变化，但没有像素位移；
+                // 先保守标记为 Unknown，由会话层保留已有阅读方向。
+                cause = ViewportChangeCause.Unknown,
+            )
+            current to event
+        }
+        .mapNotNull { it.second }
+        .distinctUntilChanged()
+}
