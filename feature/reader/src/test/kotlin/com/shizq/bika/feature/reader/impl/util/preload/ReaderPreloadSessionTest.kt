@@ -86,6 +86,102 @@ class ReaderPreloadSessionTest {
     }
 
     @Test
+    fun `placeholder items are skipped without stopping the planned window`() = runTest {
+        val requested = mutableListOf<Int>()
+        val session = ReaderPreloadSession(
+            scope = backgroundScope,
+            dataProvider = FakeDataProvider(100, unavailable = setOf(6, 7)),
+            modelProvider = RecordingModelProvider(requested),
+            enqueuer = RecordingEnqueuer(),
+            closeEnqueuer = {},
+        )
+
+        session.submitViewport(
+            ViewportSnapshot(
+                visibleRange = 0..4,
+                direction = ScrollDirection.Forward,
+                cause = ViewportChangeCause.UserScroll,
+            ),
+            preloadCount = 4,
+        )
+        runCurrent()
+
+        assertEquals(listOf(5, 8), requested)
+        session.close()
+    }
+
+    @Test
+    fun `zero preload count clears the active window`() = runTest {
+        val enqueuer = RecordingEnqueuer()
+        val session = ReaderPreloadSession(
+            scope = backgroundScope,
+            dataProvider = FakeDataProvider(100),
+            modelProvider = RecordingModelProvider(mutableListOf()),
+            enqueuer = enqueuer,
+            closeEnqueuer = {},
+        )
+
+        session.submitViewport(0..4, preloadCount = 0)
+        runCurrent()
+
+        assertEquals(listOf(emptyList()), enqueuer.windows)
+        session.close()
+    }
+
+    @Test
+    fun `older generation is ignored after a newer window`() = runTest {
+        val requested = mutableListOf<Int>()
+        val session = ReaderPreloadSession(
+            scope = backgroundScope,
+            dataProvider = FakeDataProvider(100),
+            modelProvider = RecordingModelProvider(requested),
+            enqueuer = RecordingEnqueuer(),
+            closeEnqueuer = {},
+        )
+
+        session.submitViewport(
+            ViewportSnapshot(visibleRange = 20..24, generation = 2),
+            preloadCount = 2,
+        )
+        runCurrent()
+        requested.clear()
+
+        session.submitViewport(
+            ViewportSnapshot(visibleRange = 0..4, generation = 1),
+            preloadCount = 2,
+        )
+        runCurrent()
+
+        assertTrue(requested.isEmpty())
+        session.close()
+    }
+
+    @Test
+    fun `older generation is rejected before conflation can replace a newer event`() = runTest {
+        val requested = mutableListOf<Int>()
+        val session = ReaderPreloadSession(
+            scope = backgroundScope,
+            dataProvider = FakeDataProvider(100),
+            modelProvider = RecordingModelProvider(requested),
+            enqueuer = RecordingEnqueuer(),
+            closeEnqueuer = {},
+        )
+
+        session.submitViewport(
+            ViewportSnapshot(visibleRange = 20..24, generation = 2),
+            preloadCount = 2,
+        )
+        session.submitViewport(
+            ViewportSnapshot(visibleRange = 0..4, generation = 1),
+            preloadCount = 2,
+        )
+        runCurrent()
+
+        assertEquals(listOf(25, 26), requested)
+        session.close()
+    }
+
+    @Test
     fun `closing the session releases the executor and ignores later input`() = runTest {
         var closed = false
         val requested = mutableListOf<Int>()
@@ -107,8 +203,10 @@ class ReaderPreloadSessionTest {
 
     private class FakeDataProvider(
         override val itemCount: Int,
+        private val unavailable: Set<Int> = emptySet(),
     ) : PreloadDataProvider<Int> {
-        override fun getItem(index: Int): Int = index
+        override fun getItem(index: Int): Int? =
+            if (index in unavailable) null else index
     }
 
     private class RecordingModelProvider(
