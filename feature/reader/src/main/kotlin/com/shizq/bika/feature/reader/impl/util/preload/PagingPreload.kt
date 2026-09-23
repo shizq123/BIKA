@@ -6,10 +6,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
+import androidx.paging.ItemSnapshotList
 import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
-
 
 @Composable
 fun <T : Any> PagingPreload(
@@ -22,8 +22,7 @@ fun <T : Any> PagingPreload(
     val currentPreloadCount by rememberUpdatedState(preloadCount)
 
     // scrollStateProvider 是 key：它随章节重建（rememberReaderContext 里包了
-    // key(chapterOrder)），据此重建 preloader 才能重置其内部的滚动方向状态。
-    // 缺了它的话切章后第一次回调会把方向判反，漏掉一轮预载。
+    // key(chapterOrder)），据此重建预载会话，避免跨章节复用旧的方向和请求窗口。
     // 不能仅以 pagingItems 为 key：章节切换时它的引用可能不变。
     LaunchedEffect(context, pagingItems, scrollStateProvider, modelProvider) {
         val enqueuer = CoilPreloadRequestEnqueuer(context, this)
@@ -38,7 +37,7 @@ fun <T : Any> PagingPreload(
             val viewportEvents = (scrollStateProvider as? ViewportEventProvider)
                 ?.viewportEvents
                 ?: scrollStateProvider.visibleItemsRange.map { ViewportSnapshot(it) }
-            var previousSnapshot: Any? = null
+            var previousSnapshot: ItemSnapshotList<T>? = null
             var previousSnapshotInitialized = false
             combine(
                 viewportEvents,

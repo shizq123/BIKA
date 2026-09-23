@@ -57,11 +57,6 @@ internal class ReaderPreloadSession<T : Any>(
         events.trySend(Event.ViewportChanged(snapshot, preloadCount))
     }
 
-    /** 仅用于旧的范围型调用方；新的调用方应提交完整的 [ViewportSnapshot]。 */
-    fun submitViewport(range: IntRange?, preloadCount: Int) {
-        submitViewport(ViewportSnapshot(visibleRange = range), preloadCount)
-    }
-
     private fun handle(event: Event.ViewportChanged) {
         val snapshot = event.snapshot
         val generation = snapshot.generation

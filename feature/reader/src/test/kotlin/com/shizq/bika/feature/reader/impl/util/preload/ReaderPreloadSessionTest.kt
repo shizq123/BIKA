@@ -22,8 +22,14 @@ class ReaderPreloadSessionTest {
             closeEnqueuer = {},
         )
 
-        session.submitViewport(0..4, preloadCount = 2)
-        session.submitViewport(10..14, preloadCount = 3)
+        session.submitViewport(
+            ViewportSnapshot(visibleRange = 0..4),
+            preloadCount = 2,
+        )
+        session.submitViewport(
+            ViewportSnapshot(visibleRange = 10..14),
+            preloadCount = 3,
+        )
         runCurrent()
 
         assertEquals(listOf(15, 16, 17), requested)
@@ -41,7 +47,10 @@ class ReaderPreloadSessionTest {
             closeEnqueuer = {},
         )
 
-        session.submitViewport(null, preloadCount = 3)
+        session.submitViewport(
+            ViewportSnapshot(visibleRange = null),
+            preloadCount = 3,
+        )
         runCurrent()
 
         assertEquals(listOf(emptyList()), enqueuer.windows)
@@ -121,7 +130,7 @@ class ReaderPreloadSessionTest {
             closeEnqueuer = {},
         )
 
-        session.submitViewport(0..4, preloadCount = 0)
+        session.submitViewport(ViewportSnapshot(visibleRange = 0..4), preloadCount = 0)
         runCurrent()
 
         assertEquals(listOf(emptyList()), enqueuer.windows)
@@ -194,7 +203,7 @@ class ReaderPreloadSessionTest {
         )
 
         session.close()
-        session.submitViewport(0..4, preloadCount = 3)
+        session.submitViewport(ViewportSnapshot(0..4), preloadCount = 3)
         runCurrent()
 
         assertTrue(closed)
