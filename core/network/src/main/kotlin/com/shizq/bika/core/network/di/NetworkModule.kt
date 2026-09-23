@@ -3,6 +3,7 @@ package com.shizq.bika.core.network.di
 import android.content.Context
 import androidx.tracing.trace
 import coil3.ImageLoader
+import coil3.annotation.ExperimentalCoilApi
 import coil3.network.okhttp.OkHttpNetworkFetcherFactory
 import coil3.util.DebugLogger
 import com.shizq.bika.core.datastore.UserCredentialsDataSource
@@ -16,6 +17,7 @@ import com.shizq.bika.core.network.dns.appChannelHeaderFor
 import com.shizq.bika.core.network.plugin.ApiEnvelopePlugin
 import com.shizq.bika.core.network.plugin.DirectDns
 import com.shizq.bika.core.network.plugin.DomainFallbackInterceptor
+import com.shizq.bika.core.network.plugin.ImageDownloadCoordinator
 import com.shizq.bika.core.network.plugin.bikaAuth
 import dagger.Module
 import dagger.Provides
@@ -154,13 +156,17 @@ internal object NetworkModule {
 
     @Provides
     @Singleton
+    @OptIn(ExperimentalCoilApi::class)
     fun imageLoader(
         @ImageClient okHttpClient: OkHttpClient,
         @ApplicationContext application: Context,
     ): ImageLoader = trace("ImageLoader") {
         ImageLoader.Builder(application)
             .components {
-                add(OkHttpNetworkFetcherFactory(okHttpClient))
+                add(OkHttpNetworkFetcherFactory(
+                    callFactory = { okHttpClient },
+                    concurrentRequestStrategy = { ImageDownloadCoordinator() },
+                ))
                 add(DomainFallbackInterceptor())
             }
             .apply {

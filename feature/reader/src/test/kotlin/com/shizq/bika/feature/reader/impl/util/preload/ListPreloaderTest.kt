@@ -22,6 +22,36 @@ import kotlin.test.assertTrue
 class ListPreloaderTest {
 
     @Test
+    fun `首个可见页不变时尺寸变化仍向前预载`() {
+        val f = fixture(itemCount = 100, maxPreload = 3)
+        f.preloader.onScroll(firstVisible = 2, lastVisible = 4)
+        f.clear()
+        f.preloader.onScroll(firstVisible = 2, lastVisible = 5)
+        assertEquals(listOf(6, 7, 8), f.requested())
+    }
+
+    @Test
+    fun `分页数据更新时保留向后阅读的方向`() {
+        val f = fixture(itemCount = 100, maxPreload = 2)
+        f.preloader.onScroll(firstVisible = 20, lastVisible = 24)
+        f.preloader.onScroll(firstVisible = 15, lastVisible = 19)
+        f.clear()
+        f.preloader.onScroll(firstVisible = 15, lastVisible = 19)
+        assertEquals(listOf(14, 13), f.requested())
+    }
+
+    @Test
+    fun `自适应数量变化不重置阅读方向`() {
+        val f = fixture(itemCount = 100, maxPreload = 2)
+        f.preloader.onScroll(firstVisible = 20, lastVisible = 24)
+        f.preloader.onScroll(firstVisible = 15, lastVisible = 19)
+        f.clear()
+        f.preloader.maxPreload = 3
+        f.preloader.onScroll(firstVisible = 15, lastVisible = 19)
+        assertEquals(listOf(14, 13, 12), f.requested())
+    }
+
+    @Test
     fun `首次回调按向前滚动预载后方若干项`() {
         val f = fixture(itemCount = 100, maxPreload = 3)
 
@@ -190,6 +220,6 @@ class ListPreloaderTest {
     }
 
     private class NoopEnqueuer : PreloadRequestEnqueuer {
-        override fun enqueue(request: ImageRequest) = Unit
+        override fun updateWindow(requests: List<ImageRequest>, visibleRequests: List<ImageRequest>) = Unit
     }
 }
