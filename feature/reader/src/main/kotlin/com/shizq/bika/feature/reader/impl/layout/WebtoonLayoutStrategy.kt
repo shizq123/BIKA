@@ -134,10 +134,10 @@ class WebtoonController(
     }
 
     override suspend fun scrollNextPage() {
-        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         val viewportHeight = listState.layoutInfo.viewportSize.height
         // 如果布局还未完成，直接返回
         if (viewportHeight == 0) return
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
 
         val scrollDistance = viewportHeight * 0.8f
         listState.animateScrollBy(scrollDistance)
@@ -153,11 +153,13 @@ class WebtoonController(
     }
 
     override suspend fun scrollToPage(index: Int) {
+        val target = index.coerceAtLeast(0)
+        if (position.contains(target)) return
         viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         // 不能用 layoutInfo.totalItemsCount 做 clamp：它在布局后才会更新，可能滞后于
         // paging 的 itemCount，导致目标页被 clamp 到已布局末尾、滚动落空。
         // scrollToItem 对超界 index 会滚动到末尾，调用方应确保数据已加载到目标页。
-        listState.scrollToItem(index.coerceAtLeast(0))
+        listState.scrollToItem(target)
     }
 
     /**

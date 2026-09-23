@@ -14,6 +14,7 @@ data class SpreadLayout(
     val doublePage: Boolean,
     val widePages: Set<Int>,
     val spreads: List<PageSpread>,
+    val generation: Long,
 ) {
     val spreadCount: Int get() = spreads.size
 
@@ -32,6 +33,7 @@ data class SpreadLayout(
                 doublePage = doublePage,
                 widePages = widePages,
                 spreads = buildPageSpreads(pageCount, doublePage, widePages),
+                generation = 0L,
             )
     }
 }
@@ -55,7 +57,11 @@ data class RegroupResult(
  */
 fun SpreadLayout.withPageCount(newPageCount: Int): SpreadLayout =
     if (newPageCount == pageCount) this
-    else SpreadLayout.of(newPageCount, doublePage, widePages)
+    else copy(
+        pageCount = newPageCount,
+        spreads = buildPageSpreads(newPageCount, doublePage, widePages),
+        generation = generation + 1,
+    )
 
 /**
  * 上报一页的实测尺寸，重算分组并判断当前屏是否需要重定位。
@@ -87,7 +93,11 @@ fun SpreadLayout.withMeasurement(
     // 幂等：onSizeLoaded 会随重组反复触发，重复上报不得再次请求重定位。
     if (pageIndex in widePages) return RegroupResult(this, null)
 
-    val next = SpreadLayout.of(pageCount, doublePage = true, widePages = widePages + pageIndex)
+    val next = copy(
+        spreads = buildPageSpreads(pageCount, doublePage = true, widePages = widePages + pageIndex),
+        widePages = widePages + pageIndex,
+        generation = generation + 1,
+    )
 
     if (anchorPage == null) return RegroupResult(next, null)
 

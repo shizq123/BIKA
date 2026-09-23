@@ -40,9 +40,7 @@ class PageSpreadState(
     /** Pager 的 pageCount，即翻页单位数量。 */
     val spreadCount: Int get() = layout.spreadCount
 
-    /** 当前布局代次，供预载层丢弃过期的视口事件。 */
-    var generation: Long by mutableStateOf(0L)
-        private set
+    val generation: Long get() = layout.generation
 
     /**
      * 同步分页续拉后的页数。
@@ -56,7 +54,6 @@ class PageSpreadState(
         val current = pageCountProvider()
         if (current != layout.pageCount) {
             layout = layout.withPageCount(current)
-            generation++
         }
     }
 
@@ -69,7 +66,6 @@ class PageSpreadState(
         val result = layout.withMeasurement(pageIndex, width, height, anchorPage)
         if (result.layout === layout) return
         layout = result.layout
-        generation++
         // 已有未完成的重定位请求时不覆盖：先到的那个 anchor 才是用户真正的位置，
         // 后到的是在已经漂移过的分组上算出来的。
         if (result.relocateTo != null && relocateTo == null) {

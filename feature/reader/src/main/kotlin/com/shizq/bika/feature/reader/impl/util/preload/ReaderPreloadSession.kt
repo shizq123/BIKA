@@ -55,6 +55,7 @@ internal class ReaderPreloadSession<T : Any>(
 
     fun submitViewport(snapshot: ViewportSnapshot, preloadCount: Int) {
         if (closed) return
+        if (snapshot.generation < latestGeneration) return
         events.trySend(Event.ViewportChanged(snapshot, preloadCount))
     }
 

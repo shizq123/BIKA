@@ -244,26 +244,28 @@ class PagerController(
      * 逐页前进会让画面从 1|2 变成 2|3。
      */
     override suspend fun scrollNextPage() {
-        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         val target = pagerState.currentPage + 1
         if (target < pagerState.pageCount) {
+            viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
             pagerState.animateScrollToPage(target)
         }
     }
 
     override suspend fun scrollPrevPage() {
-        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         val target = pagerState.currentPage - 1
         if (target >= 0) {
+            viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
             pagerState.animateScrollToPage(target)
         }
     }
 
     override suspend fun scrollToPage(index: Int) {
-        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         val spreads = spreadState.spreads
         if (spreads.isEmpty() || pagerState.pageCount == 0) return
         val target = spreads.spreadIndexOfPage(index)
-        pagerState.scrollToPage(target.coerceIn(0, pagerState.pageCount - 1))
+            .coerceIn(0, pagerState.pageCount - 1)
+        if (target == pagerState.currentPage) return
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
+        pagerState.scrollToPage(target)
     }
 }

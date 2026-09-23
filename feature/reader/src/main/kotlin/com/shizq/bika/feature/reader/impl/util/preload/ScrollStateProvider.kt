@@ -37,9 +37,16 @@ class ViewportEventMarker {
     private var pendingCause: ViewportChangeCause? = null
     private var generation: Long = 0L
 
-    fun mark(cause: ViewportChangeCause, advanceGeneration: Boolean = false) {
+    fun mark(
+        cause: ViewportChangeCause,
+        generation: Long? = null,
+        advanceGeneration: Boolean = false,
+    ) {
         pendingCause = cause
-        if (advanceGeneration) generation++
+        when {
+            generation != null -> this.generation = maxOf(this.generation, generation)
+            advanceGeneration -> this.generation++
+        }
     }
 
     fun snapshot(
@@ -153,7 +160,7 @@ internal class SpreadScrollStateProvider(
             val event = eventMarker.snapshot(
                 visibleRange = current,
                 direction = direction,
-                defaultCause = ViewportChangeCause.Unknown,
+                defaultCause = ViewportChangeCause.UserScroll,
             )
             current to event
         }

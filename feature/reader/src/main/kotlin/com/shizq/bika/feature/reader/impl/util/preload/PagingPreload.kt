@@ -35,18 +35,26 @@ fun <T : Any> PagingPreload(
             closeEnqueuer = enqueuer::close,
         )
         try {
-            // Start immediately, even during continuous scrolling. Also refresh when
-            // placeholders receive URLs, without requiring another swipe from the reader.
             val viewportEvents = (scrollStateProvider as? ViewportEventProvider)
                 ?.viewportEvents
                 ?: scrollStateProvider.visibleItemsRange.map { ViewportSnapshot(it) }
+            var previousSnapshot: Any? = null
+            var previousSnapshotInitialized = false
             combine(
                 viewportEvents,
                 snapshotFlow { pagingItems.itemSnapshotList },
                 snapshotFlow { currentPreloadCount },
-            ) { viewport, _, count -> viewport to count }
-                .collect { (viewport, count) ->
-                    session.submitViewport(viewport, count)
+            ) { viewport, snapshot, count -> Triple(viewport, snapshot, count) }
+                .collect { (viewport, snapshot, count) ->
+                    val dataChanged = previousSnapshotInitialized && snapshot != previousSnapshot
+                    previousSnapshot = snapshot
+                    previousSnapshotInitialized = true
+                    val effectiveViewport = if (dataChanged) {
+                        viewport.copy(cause = ViewportChangeCause.DataRefresh)
+                    } else {
+                        viewport
+                    }
+                    session.submitViewport(effectiveViewport, count)
                 }
         } finally {
             // Closing the session cancels the worker and releases pending downloads.

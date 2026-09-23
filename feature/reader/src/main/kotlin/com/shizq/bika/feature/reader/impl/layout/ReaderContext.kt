@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalConfiguration
@@ -24,8 +25,10 @@ import com.shizq.bika.core.model.reader.ViewerType
 import com.shizq.bika.feature.reader.impl.util.preload.LazyListScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.ScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.SpreadScrollStateProvider
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportChangeCause
 import com.shizq.bika.feature.reader.impl.util.preload.ViewportEventMarker
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 
 /**
  * 不再暴露 LazyListState：那会绕过 [ReaderController] 的抽象，
@@ -184,7 +187,7 @@ fun rememberReaderContext(
                 //
                 // 代价是重建会丢掉 pagerState 的位置，所以真实页码要存在 key 之外，
                 // 由重建后的 initialPage 重新换算回来。
-                var retainedPage by remember { mutableIntStateOf(initialPageIndex) }
+                var retainedPage by retain { mutableIntStateOf(initialPageIndex) }
 
                 key(useDoublePage) {
                     val spreadState = remember {
@@ -222,10 +225,11 @@ fun rememberReaderContext(
                     LaunchedEffect(spreadState, viewportEventMarker) {
                         snapshotFlow { spreadState.generation }
                             .distinctUntilChanged()
-                            .collect {
+                            .drop(1)
+                            .collect { generation ->
                                 viewportEventMarker.mark(
-                                    cause = com.shizq.bika.feature.reader.impl.util.preload.ViewportChangeCause.LayoutReflow,
-                                    advanceGeneration = true,
+                                    cause = ViewportChangeCause.LayoutReflow,
+                                    generation = generation,
                                 )
                             }
                     }
