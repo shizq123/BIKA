@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo.detail
+package com.shizq.bika.ui.comicinfo.comments
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -65,10 +65,6 @@ import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
 import com.shizq.bika.core.designsystem.theme.BikaTheme
 import com.shizq.bika.core.ui.RetryableAsyncImage
-import com.shizq.bika.ui.comicinfo.comments.CommentsAction
-import com.shizq.bika.ui.comicinfo.comments.CommentsState
-import com.shizq.bika.ui.comicinfo.comments.CommentsViewModel
-import com.shizq.bika.ui.comicinfo.comments.Composer
 import kotlinx.coroutines.flow.flowOf
 
 /**
