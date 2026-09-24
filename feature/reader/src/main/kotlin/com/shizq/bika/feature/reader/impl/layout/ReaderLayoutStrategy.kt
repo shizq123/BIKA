@@ -2,9 +2,9 @@ package com.shizq.bika.feature.reader.impl.layout
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -16,7 +16,9 @@ import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.TapAction
 import com.shizq.bika.feature.reader.impl.gesture.GestureState
 import com.shizq.bika.feature.reader.impl.gesture.VolumeKeyNavigation
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.channels.Channel
+import kotlinx.coroutines.flow.receiveAsFlow
 
 /**
  * 布局策略：负责页面怎么排、以及**自己**的缩放手势。
@@ -38,6 +40,11 @@ interface ReaderLayoutStrategy {
     )
 }
 
+private enum class ReaderNavigationEvent {
+    NextPage,
+    PrevPage,
+}
+
 @Composable
 fun ReaderLayoutHost(
     readerContext: ReaderContext,
@@ -46,11 +53,27 @@ fun ReaderLayoutHost(
     toggleMenuVisibility: () -> Unit,
     onHideMenu: () -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
     val currentReaderContext by rememberUpdatedState(readerContext)
     val currentGestureState by rememberUpdatedState(gestureState)
     val currentOnHideMenu by rememberUpdatedState(onHideMenu)
     val currentToggleMenu by rememberUpdatedState(toggleMenuVisibility)
+    val navigationEvents = remember(readerContext.controller) {
+        Channel<ReaderNavigationEvent>(
+            capacity = 1,
+            onBufferOverflow = BufferOverflow.DROP_OLDEST,
+        )
+    }
+
+    LaunchedEffect(readerContext.controller, navigationEvents) {
+        navigationEvents.receiveAsFlow().collect { event ->
+            currentOnHideMenu()
+            when (event) {
+                ReaderNavigationEvent.NextPage -> currentReaderContext.controller.scrollNextPage()
+                ReaderNavigationEvent.PrevPage -> currentReaderContext.controller.scrollPrevPage()
+            }
+        }
+    }
+
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
@@ -68,33 +91,24 @@ fun ReaderLayoutHost(
             }
         }
     }
-    // 回调是 suspend 的，VolumeKeyNavigation 内部已负责调度，这里不再套 scope.launch
+    // 点击和音量键共用同一条导航事件流；执行期间只保留最新的一次导航意图。
     VolumeKeyNavigation(
         enabled = readerContext.config.volumeKeyNavigation,
         onVolumeUp = {
-            currentOnHideMenu()
-            currentReaderContext.controller.scrollPrevPage()
+            navigationEvents.trySend(ReaderNavigationEvent.PrevPage)
         },
         onVolumeDown = {
-            currentOnHideMenu()
-            currentReaderContext.controller.scrollNextPage()
+            navigationEvents.trySend(ReaderNavigationEvent.NextPage)
         }
     )
 
     // 点击 -> 动作的映射只有这一处：两种布局的点击都汇到这里，
     // 避免翻页模式和条漫模式各写一套点击区判定后逐渐长歪。
-    val onPageTap: (PageTapContext) -> Unit = remember {
+    val onPageTap: (PageTapContext) -> Unit = remember(navigationEvents) {
         { tap ->
             when (currentGestureState.calculateAction(tap.position, tap.viewportSize)) {
-                TapAction.NextPage -> scope.launch {
-                    currentOnHideMenu()
-                    currentReaderContext.controller.scrollNextPage()
-                }
-
-                TapAction.PrevPage -> scope.launch {
-                    currentOnHideMenu()
-                    currentReaderContext.controller.scrollPrevPage()
-                }
+                TapAction.NextPage -> navigationEvents.trySend(ReaderNavigationEvent.NextPage)
+                TapAction.PrevPage -> navigationEvents.trySend(ReaderNavigationEvent.PrevPage)
 
                 TapAction.ToggleMenu -> currentToggleMenu()
                 TapAction.None -> Unit
