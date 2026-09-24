@@ -88,13 +88,15 @@ fun SpreadLayout.withMeasurement(
 ): RegroupResult {
     // 单页模式下分组恒等于页码，宽页不影响任何换算。
     if (!doublePage) return RegroupResult(this, null)
-    if (pageIndex < 0 || pageIndex >= pageCount) return RegroupResult(this, null)
+    if (pageIndex !in 0..<pageCount) return RegroupResult(this, null)
     if (!isWidePage(width, height)) return RegroupResult(this, null)
     // 幂等：onSizeLoaded 会随重组反复触发，重复上报不得再次请求重定位。
     if (pageIndex in widePages) return RegroupResult(this, null)
 
     val next = copy(
-        spreads = buildPageSpreads(pageCount, doublePage = true, widePages = widePages + pageIndex),
+        spreads = buildPageSpreads(
+            pageCount, doublePage = true, widePageIndices = widePages + pageIndex
+        ),
         widePages = widePages + pageIndex,
         generation = generation + 1,
     )
