@@ -3,6 +3,7 @@ package com.shizq.bika.feature.reader.impl.layout
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -46,15 +47,12 @@ class WebtoonLayoutStrategy(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
-        onContentScroll: () -> Unit,
+        onUserScroll: () -> Unit,
     ) {
-        val currentOnContentScroll by rememberUpdatedState(onContentScroll)
-        LaunchedEffect(listState) {
-            snapshotFlow { listState.isScrollInProgress }
-                .distinctUntilChanged()
-                .collect { isScrolling ->
-                    if (isScrolling) currentOnContentScroll()
-                }
+        val currentOnUserScroll by rememberUpdatedState(onUserScroll)
+        val isUserDragging by listState.interactionSource.collectIsDraggedAsState()
+        LaunchedEffect(isUserDragging) {
+            if (isUserDragging) currentOnUserScroll()
         }
 
         val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))

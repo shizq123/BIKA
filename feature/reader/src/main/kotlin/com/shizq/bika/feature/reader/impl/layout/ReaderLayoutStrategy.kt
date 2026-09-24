@@ -24,8 +24,8 @@ import kotlinx.coroutines.flow.receiveAsFlow
  * 捏合时画面乱跳。现在每个策略在自己内部套 zoomable：翻页模式每页独立缩放
  * （换页自动复位），条漫模式容器整体缩放。
  *
- * 宿主只保留一件事：把点击坐标解析成翻页/菜单动作（[onPageTap]），因为那需要
- * 阅读方向与点击分区配置，属于跨策略的共享规则。
+ * 宿主负责把点击坐标解析成翻页/菜单动作（[onPageTap]），因为那需要阅读方向与
+ * 点击分区配置；布局策略负责识别自身的用户拖动，并通过 [onUserScroll] 通知宿主。
  */
 interface ReaderLayoutStrategy {
     @Composable
@@ -33,7 +33,7 @@ interface ReaderLayoutStrategy {
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
-        onContentScroll: () -> Unit,
+        onUserScroll: () -> Unit,
     )
 }
 
@@ -105,6 +105,6 @@ fun ReaderLayoutHost(
         pageItems = pageItems,
         modifier = Modifier.fillMaxSize(),
         onPageTap = onPageTap,
-        onContentScroll = currentOnHideMenu,
+        onUserScroll = currentOnHideMenu,
     )
 }

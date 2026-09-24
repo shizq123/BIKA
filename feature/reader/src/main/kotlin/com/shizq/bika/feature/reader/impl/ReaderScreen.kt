@@ -37,6 +37,7 @@ import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.ReadingMode
 import com.shizq.bika.core.ui.FullScreenLoading
 import com.shizq.bika.feature.reader.impl.autoscroll.AutoScrollControlPanel
+import com.shizq.bika.feature.reader.impl.autoscroll.AutoScrollSpeedRange
 import com.shizq.bika.feature.reader.impl.autoscroll.rememberAutoScrollState
 import com.shizq.bika.feature.reader.impl.bar.ReaderBottomBar
 import com.shizq.bika.feature.reader.impl.bar.TopBar
@@ -346,9 +347,6 @@ private fun ReaderReadyContent(
         )
     }
 }
-
-/** 自动滚动速度可调范围（含端点），对应设置面板中的加速/减速按钮。 */
-private val AutoScrollSpeedRange = 1..10
 
 private object ReaderScreenMessages {
     const val NoMoreContent = "后面没有内容了"

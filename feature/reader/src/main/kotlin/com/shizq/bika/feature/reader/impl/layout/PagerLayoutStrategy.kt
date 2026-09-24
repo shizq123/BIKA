@@ -1,5 +1,6 @@
 package com.shizq.bika.feature.reader.impl.layout
 
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -39,15 +40,12 @@ class PagerLayoutStrategy(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
-        onContentScroll: () -> Unit,
+        onUserScroll: () -> Unit,
     ) {
-        val currentOnContentScroll by rememberUpdatedState(onContentScroll)
-        LaunchedEffect(pagerState) {
-            snapshotFlow { pagerState.isScrollInProgress }
-                .distinctUntilChanged()
-                .collect { isScrolling ->
-                    if (isScrolling) currentOnContentScroll()
-                }
+        val currentOnUserScroll by rememberUpdatedState(onUserScroll)
+        val isUserDragging by pagerState.interactionSource.collectIsDraggedAsState()
+        LaunchedEffect(isUserDragging) {
+            if (isUserDragging) currentOnUserScroll()
         }
 
         // 视口 = Pager 自身，不是整个窗口。点击分区按比例切这个矩形，
