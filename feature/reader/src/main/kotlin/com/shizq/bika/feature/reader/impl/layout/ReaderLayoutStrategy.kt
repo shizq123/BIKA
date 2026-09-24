@@ -2,21 +2,17 @@ package com.shizq.bika.feature.reader.impl.layout
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
-import androidx.compose.ui.input.nestedscroll.NestedScrollSource
-import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.TapAction
 import com.shizq.bika.feature.reader.impl.gesture.GestureState
 import com.shizq.bika.feature.reader.impl.gesture.VolumeKeyNavigation
-import kotlinx.coroutines.channels.BufferOverflow
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.receiveAsFlow
 
@@ -37,6 +33,7 @@ interface ReaderLayoutStrategy {
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
+        onContentScroll: () -> Unit,
     )
 }
 
@@ -53,62 +50,48 @@ fun ReaderLayoutHost(
     toggleMenuVisibility: () -> Unit,
     onHideMenu: () -> Unit,
 ) {
-    val currentReaderContext by rememberUpdatedState(readerContext)
     val currentGestureState by rememberUpdatedState(gestureState)
     val currentOnHideMenu by rememberUpdatedState(onHideMenu)
     val currentToggleMenu by rememberUpdatedState(toggleMenuVisibility)
     val navigationEvents = remember(readerContext.controller) {
-        Channel<ReaderNavigationEvent>(
-            capacity = 1,
-            onBufferOverflow = BufferOverflow.DROP_OLDEST,
-        )
+        Channel<ReaderNavigationEvent>(capacity = Channel.CONFLATED)
+    }
+    val dispatchNavigation: (ReaderNavigationEvent) -> Unit = remember(navigationEvents) {
+        { event -> navigationEvents.trySend(event) }
+    }
+
+    DisposableEffect(navigationEvents) {
+        onDispose { navigationEvents.close() }
     }
 
     LaunchedEffect(readerContext.controller, navigationEvents) {
         navigationEvents.receiveAsFlow().collect { event ->
             currentOnHideMenu()
             when (event) {
-                ReaderNavigationEvent.NextPage -> currentReaderContext.controller.scrollNextPage()
-                ReaderNavigationEvent.PrevPage -> currentReaderContext.controller.scrollPrevPage()
+                ReaderNavigationEvent.NextPage -> readerContext.controller.scrollNextPage()
+                ReaderNavigationEvent.PrevPage -> readerContext.controller.scrollPrevPage()
             }
         }
     }
 
-    val nestedScrollConnection = remember {
-        object : NestedScrollConnection {
-            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (source == NestedScrollSource.UserInput) {
-
-                    // 计算滑动的总距离 (包含 x 轴和 y 轴)
-                    // getDistance() 等于 sqrt(x*x + y*y)
-                    val distance = available.getDistance()
-
-                    if (distance > 10f) {
-                        currentOnHideMenu()
-                    }
-                }
-                return Offset.Zero
-            }
-        }
-    }
     // 点击和音量键共用同一条导航事件流；执行期间只保留最新的一次导航意图。
     VolumeKeyNavigation(
         enabled = readerContext.config.volumeKeyNavigation,
         onVolumeUp = {
-            navigationEvents.trySend(ReaderNavigationEvent.PrevPage)
+            dispatchNavigation(ReaderNavigationEvent.PrevPage)
         },
         onVolumeDown = {
-            navigationEvents.trySend(ReaderNavigationEvent.NextPage)
+            dispatchNavigation(ReaderNavigationEvent.NextPage)
         }
     )
 
     // 点击 -> 动作的映射只有这一处：两种布局的点击都汇到这里，
     // 避免翻页模式和条漫模式各写一套点击区判定后逐渐长歪。
-    val onPageTap: (PageTapContext) -> Unit = remember(navigationEvents) {
+    val onPageTap: (PageTapContext) -> Unit = remember(dispatchNavigation) {
         { tap ->
             when (currentGestureState.calculateAction(tap.position, tap.viewportSize)) {
-                TapAction.NextPage -> navigationEvents.trySend(ReaderNavigationEvent.NextPage)
-                TapAction.PrevPage -> navigationEvents.trySend(ReaderNavigationEvent.PrevPage)
+                TapAction.NextPage -> dispatchNavigation(ReaderNavigationEvent.NextPage)
+                TapAction.PrevPage -> dispatchNavigation(ReaderNavigationEvent.PrevPage)
 
                 TapAction.ToggleMenu -> currentToggleMenu()
                 TapAction.None -> Unit
@@ -120,9 +103,8 @@ fun ReaderLayoutHost(
     // （页面自身或条漫容器）随 PageTapContext 一起给出。
     readerContext.layout.RenderContent(
         pageItems = pageItems,
-        modifier = Modifier
-            .fillMaxSize()
-            .nestedScroll(nestedScrollConnection),
+        modifier = Modifier.fillMaxSize(),
         onPageTap = onPageTap,
+        onContentScroll = currentOnHideMenu,
     )
 }

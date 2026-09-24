@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -44,7 +46,17 @@ class WebtoonLayoutStrategy(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
+        onContentScroll: () -> Unit,
     ) {
+        val currentOnContentScroll by rememberUpdatedState(onContentScroll)
+        LaunchedEffect(listState) {
+            snapshotFlow { listState.isScrollInProgress }
+                .distinctUntilChanged()
+                .collect { isScrolling ->
+                    if (isScrolling) currentOnContentScroll()
+                }
+        }
+
         val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
         // 视口 = LazyColumn 自身。与翻页模式用同一个 ViewportAnchor 机制，
         // 保证两条路径喂给 GestureState.calculateAction 的参考系一致。

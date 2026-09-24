@@ -12,6 +12,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -38,7 +39,17 @@ class PagerLayoutStrategy(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
+        onContentScroll: () -> Unit,
     ) {
+        val currentOnContentScroll by rememberUpdatedState(onContentScroll)
+        LaunchedEffect(pagerState) {
+            snapshotFlow { pagerState.isScrollInProgress }
+                .distinctUntilChanged()
+                .collect { isScrolling ->
+                    if (isScrolling) currentOnContentScroll()
+                }
+        }
+
         // 视口 = Pager 自身，不是整个窗口。点击分区按比例切这个矩形，
         // 取窗口会让分区边界随状态栏 inset / scaffold padding 整体平移。
         val viewport = remember { ViewportAnchor() }
