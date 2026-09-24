@@ -1,13 +1,18 @@
 package com.shizq.bika.feature.reader.impl.util.preload
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import coil3.request.ImageRequest
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
+@RunWith(RobolectricTestRunner::class)
 @OptIn(ExperimentalCoroutinesApi::class)
 class ReaderPreloadSessionTest {
 
@@ -191,6 +196,69 @@ class ReaderPreloadSessionTest {
     }
 
     @Test
+    fun `same preload key is emitted only once`() = runTest {
+        val enqueuer = RecordingEnqueuer()
+        val session = ReaderPreloadSession(
+            scope = backgroundScope,
+            dataProvider = FakeDataProvider(100),
+            modelProvider = SameKeyModelProvider,
+            enqueuer = enqueuer,
+            closeEnqueuer = {},
+        )
+
+        session.submitViewport(
+            ViewportSnapshot(
+                visibleRange = 0..1,
+                direction = ScrollDirection.Forward,
+                cause = ViewportChangeCause.UserScroll,
+            ),
+            preloadCount = 3,
+        )
+        runCurrent()
+
+        assertEquals(1, enqueuer.windows.single().size)
+        assertEquals("same-page", enqueuer.windows.single().single().key)
+        session.close()
+    }
+
+    @Test
+    fun `visible requests are forwarded separately from the next preload window`() = runTest {
+        val enqueuer = RecordingEnqueuer()
+        val session = ReaderPreloadSession(
+            scope = backgroundScope,
+            dataProvider = FakeDataProvider(100),
+            modelProvider = RecordingRequestModelProvider,
+            enqueuer = enqueuer,
+            closeEnqueuer = {},
+        )
+
+        session.submitViewport(
+            ViewportSnapshot(
+                visibleRange = 0..0,
+                direction = ScrollDirection.Forward,
+                cause = ViewportChangeCause.UserScroll,
+            ),
+            preloadCount = 1,
+        )
+        runCurrent()
+
+        session.submitViewport(
+            ViewportSnapshot(
+                visibleRange = 1..1,
+                direction = ScrollDirection.Forward,
+                cause = ViewportChangeCause.UserScroll,
+            ),
+            preloadCount = 1,
+        )
+        runCurrent()
+
+        assertEquals(listOf(1), enqueuer.windows[0].map(PreloadRequest::index))
+        assertEquals(listOf(2), enqueuer.windows[1].map(PreloadRequest::index))
+        assertEquals(listOf(1), enqueuer.visibleWindows[1].map(PreloadRequest::index))
+        session.close()
+    }
+
+    @Test
     fun `closing the session releases the executor and ignores later input`() = runTest {
         var closed = false
         val requested = mutableListOf<Int>()
@@ -203,7 +271,10 @@ class ReaderPreloadSessionTest {
         )
 
         session.close()
-        session.submitViewport(ViewportSnapshot(0..4), preloadCount = 3)
+        session.submitViewport(
+            ViewportSnapshot(visibleRange = 0..4),
+            preloadCount = 3,
+        )
         runCurrent()
 
         assertTrue(closed)
@@ -227,14 +298,42 @@ class ReaderPreloadSessionTest {
         }
     }
 
+    private object SameKeyModelProvider : PreloadModelProvider<Int> {
+        private val context: Context
+            get() = ApplicationProvider.getApplicationContext()
+
+        override fun getPreloadRequest(item: Int): ImageRequest =
+            ImageRequest.Builder(context)
+                .data(item)
+                .build()
+
+        override fun getPreloadKey(item: Int, request: ImageRequest): String =
+            "same-page"
+    }
+
+    private object RecordingRequestModelProvider : PreloadModelProvider<Int> {
+        private val context: Context
+            get() = ApplicationProvider.getApplicationContext()
+
+        override fun getPreloadRequest(item: Int): ImageRequest =
+            ImageRequest.Builder(context)
+                .data(item)
+                .build()
+
+        override fun getPreloadKey(item: Int, request: ImageRequest): String =
+            "page-$item"
+    }
+
     private class RecordingEnqueuer : PreloadRequestEnqueuer {
         val windows = mutableListOf<List<PreloadRequest>>()
+        val visibleWindows = mutableListOf<List<PreloadRequest>>()
 
         override fun updateWindow(
             requests: List<PreloadRequest>,
             visibleRequests: List<PreloadRequest>,
         ) {
             windows += requests
+            visibleWindows += visibleRequests
         }
     }
 }

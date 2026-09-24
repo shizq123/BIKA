@@ -65,22 +65,21 @@ class ViewportEventMarker {
     }
 }
 
-/**
- * 新的内部视口契约。公开的 [ScrollStateProvider] 保持不变，旧实现可以继续只提供范围。
- */
-internal interface ViewportEventProvider {
-    val viewportEvents: Flow<ViewportSnapshot>
-}
-
-/**
- * 一个抽象接口，用于提供列表的滚动状态。
- */
 interface ScrollStateProvider {
     /**
      * 一个 Flow，持续发射当前可见项的索引范围 (first..last)。
      * 如果列表为空或未布局，可以发射 null。
      */
     val visibleItemsRange: Flow<IntRange?>
+
+    /**
+     * 包含方向、变化原因和 generation 的完整视口事件。
+     *
+     * 只实现 [visibleItemsRange] 的提供者会自动退化为 Unknown 类型的视口事件；
+     * 阅读器内置实现应覆盖此属性，以保留滚动方向和程序跳转等信息。
+     */
+    val viewportEvents: Flow<ViewportSnapshot>
+        get() = visibleItemsRange.map { ViewportSnapshot(visibleRange = it) }
 }
 
 /**
@@ -89,7 +88,7 @@ interface ScrollStateProvider {
 internal class LazyListScrollStateProvider(
     private val listState: LazyListState,
     internal val eventMarker: ViewportEventMarker = ViewportEventMarker(),
-) : ScrollStateProvider, ViewportEventProvider {
+) : ScrollStateProvider {
     private data class RawViewport(
         val range: IntRange?,
         val firstIndex: Int?,
@@ -145,7 +144,7 @@ internal class LazyListScrollStateProvider(
 internal class SpreadScrollStateProvider(
     override val visibleItemsRange: Flow<IntRange?>,
     internal val eventMarker: ViewportEventMarker = ViewportEventMarker(),
-) : ScrollStateProvider, ViewportEventProvider {
+) : ScrollStateProvider {
     override val viewportEvents: Flow<ViewportSnapshot> = visibleItemsRange
         .runningFold(
             initial = Pair<IntRange?, ViewportSnapshot?>(null, null),

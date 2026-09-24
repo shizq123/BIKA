@@ -19,4 +19,6 @@ dependencies {
     implementation(libs.telephoto)
 
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.androidx.test.core)
+    testImplementation(libs.robolectric)
 }

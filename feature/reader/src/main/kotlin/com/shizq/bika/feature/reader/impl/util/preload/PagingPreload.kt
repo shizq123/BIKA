@@ -9,7 +9,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.paging.ItemSnapshotList
 import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 
 @Composable
 fun <T : Any> PagingPreload(
@@ -34,9 +33,7 @@ fun <T : Any> PagingPreload(
             closeEnqueuer = enqueuer::close,
         )
         try {
-            val viewportEvents = (scrollStateProvider as? ViewportEventProvider)
-                ?.viewportEvents
-                ?: scrollStateProvider.visibleItemsRange.map { ViewportSnapshot(it) }
+            val viewportEvents = scrollStateProvider.viewportEvents
             var previousSnapshot: ItemSnapshotList<T>? = null
             var previousSnapshotInitialized = false
             combine(
