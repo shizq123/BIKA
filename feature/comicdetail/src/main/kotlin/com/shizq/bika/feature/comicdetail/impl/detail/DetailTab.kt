@@ -5,6 +5,8 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -120,15 +122,9 @@ fun DetailTab(
         onAuthorClick = { onAuthorClick(detail.author) },
         onTeamClick = { onUploaderClick(detail.chineseTeam, detail.creator.id) },
         onTagClick = onTranslateClick,
-    )
-
-    // 这些回调由其它详情模块使用，保留在公共参数中以兼容现有页面路由。
-    @Suppress("UNUSED_VARIABLE")
-    val unusedCallbacks = listOf(
-        recommendations,
-        onRecommendedComicClick,
-        onDownloadWholeComic,
-        navigationToTagBlock,
+        recommendations = recommendations,
+        onRecommendedComicClick = onRecommendedComicClick,
+        onTagLongClick = navigationToTagBlock,
     )
 }
 
@@ -144,6 +140,9 @@ private fun ComicDetailBody(
     onAuthorClick: () -> Unit,
     onTeamClick: () -> Unit,
     onTagClick: (String) -> Unit,
+    recommendations: List<ComicSummary>,
+    onRecommendedComicClick: (String) -> Unit,
+    onTagLongClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -186,7 +185,15 @@ private fun ComicDetailBody(
             TagsCard(
                 tags = (detail.tags + detail.categories).distinct(),
                 onTagClick = onTagClick,
+                onTagLongClick = onTagLongClick,
             )
+
+            if (recommendations.isNotEmpty()) {
+                RecommendationsCard(
+                    recommendations = recommendations,
+                    onComicClick = onRecommendedComicClick,
+                )
+            }
 
             MetadataCard(detail = detail)
             Spacer(Modifier.height(44.dp))
@@ -432,7 +439,11 @@ private fun DescriptionCard(description: String) {
 }
 
 @Composable
-private fun TagsCard(tags: List<String>, onTagClick: (String) -> Unit) {
+private fun TagsCard(
+    tags: List<String>,
+    onTagClick: (String) -> Unit,
+    onTagLongClick: (String) -> Unit,
+) {
     DetailCard(title = "标签") {
         if (tags.isEmpty()) {
             Text("暂无标签", color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -442,7 +453,62 @@ private fun TagsCard(tags: List<String>, onTagClick: (String) -> Unit) {
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 tags.forEach { tag ->
-                    StatusPill(text = tag, onClick = { onTagClick(tag) })
+                    StatusPill(
+                        text = tag,
+                        onClick = { onTagClick(tag) },
+                        onLongClick = { onTagLongClick(tag) },
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecommendationsCard(
+    recommendations: List<ComicSummary>,
+    onComicClick: (String) -> Unit,
+) {
+    DetailCard(title = "猜你喜欢") {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            recommendations.forEach { comic ->
+                Column(
+                    modifier = Modifier
+                        .width(112.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .clickable { onComicClick(comic.id) },
+                    verticalArrangement = Arrangement.spacedBy(7.dp),
+                ) {
+                    RetryableAsyncImage(
+                        model = comic.coverUrl,
+                        contentDescription = comic.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(150.dp)
+                            .clip(RoundedCornerShape(14.dp)),
+                    )
+                    Text(
+                        text = comic.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (comic.author.isNotBlank()) {
+                        Text(
+                            text = comic.author,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
             }
         }
@@ -526,9 +592,20 @@ private fun StatusPill(
     text: String,
     emphasized: Boolean = false,
     onClick: (() -> Unit)? = null,
+    onLongClick: (() -> Unit)? = null,
 ) {
+    val interactionModifier = when {
+        onLongClick != null -> Modifier.combinedClickable(
+            onClick = onClick ?: {},
+            onLongClick = onLongClick,
+        )
+
+        onClick != null -> Modifier.clickable(onClick = onClick)
+        else -> Modifier
+    }
+
     Surface(
-        modifier = if (onClick == null) Modifier else Modifier.clickable(onClick = onClick),
+        modifier = interactionModifier,
         shape = RoundedCornerShape(50),
         color = if (emphasized) MaterialTheme.colorScheme.primaryContainer
         else MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -582,6 +659,12 @@ private fun ComicDetailSuccessPreview() {
             onAuthorClick = {},
             onTeamClick = {},
             onTagClick = {},
+            recommendations = listOf(
+                ComicSummary("1", "安达与岛村", "", "入间人间"),
+                ComicSummary("2", "终将成为你 佐伯沙弥香的追忆", "", "入间人间"),
+            ),
+            onRecommendedComicClick = {},
+            onTagLongClick = {},
         )
     }
 }
