@@ -27,6 +27,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.ThumbUp
@@ -125,6 +126,7 @@ fun DetailTab(
         recommendations = recommendations,
         onRecommendedComicClick = onRecommendedComicClick,
         onTagLongClick = navigationToTagBlock,
+        onDownloadWholeComic = onDownloadWholeComic,
     )
 }
 
@@ -143,6 +145,7 @@ private fun ComicDetailBody(
     recommendations: List<ComicSummary>,
     onRecommendedComicClick: (String) -> Unit,
     onTagLongClick: (String) -> Unit,
+    onDownloadWholeComic: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -170,6 +173,7 @@ private fun ComicDetailBody(
                 onRead = onRead,
                 onToggleFavourite = onToggleFavourite,
                 onToggleLike = onToggleLike,
+                onDownloadWholeComic = onDownloadWholeComic,
             )
 
             StatsCard(
@@ -297,6 +301,7 @@ private fun ActionBar(
     onRead: () -> Unit,
     onToggleFavourite: () -> Unit,
     onToggleLike: () -> Unit,
+    onDownloadWholeComic: () -> Unit,
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
@@ -329,6 +334,50 @@ private fun ActionBar(
             selectedTint = MaterialTheme.colorScheme.tertiary,
             onClick = onToggleLike,
         )
+        DownloadAction(
+            isDownloaded = isDownloaded,
+            onClick = onDownloadWholeComic,
+        )
+    }
+}
+
+@Composable
+private fun DownloadAction(
+    isDownloaded: Boolean,
+    onClick: () -> Unit,
+) {
+    Surface(
+        modifier = Modifier
+            .size(52.dp)
+            .clip(CircleShape)
+            .clickable(onClick = onClick),
+        shape = CircleShape,
+        color = if (isDownloaded) {
+            MaterialTheme.colorScheme.secondaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        },
+        border = BorderStroke(
+            1.dp,
+            if (isDownloaded) {
+                MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f)
+            } else {
+                MaterialTheme.colorScheme.outlineVariant
+            },
+        ),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = Icons.Filled.Download,
+                contentDescription = if (isDownloaded) "重新下载" else "下载整本",
+                tint = if (isDownloaded) {
+                    MaterialTheme.colorScheme.secondary
+                } else {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                },
+                modifier = Modifier.size(22.dp),
+            )
+        }
     }
 }
 
@@ -659,12 +708,10 @@ private fun ComicDetailSuccessPreview() {
             onAuthorClick = {},
             onTeamClick = {},
             onTagClick = {},
-            recommendations = listOf(
-                ComicSummary("1", "安达与岛村", "", "入间人间"),
-                ComicSummary("2", "终将成为你 佐伯沙弥香的追忆", "", "入间人间"),
-            ),
+            recommendations = emptyList(),
             onRecommendedComicClick = {},
             onTagLongClick = {},
+            onDownloadWholeComic = {},
         )
     }
 }
