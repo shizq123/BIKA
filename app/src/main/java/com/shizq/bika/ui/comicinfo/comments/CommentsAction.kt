@@ -4,14 +4,12 @@ import com.shizq.bika.core.data.model.Comment
 
 sealed interface CommentsAction {
 
-    /**
-     * 打开输入器。
-     *
-     * @param replyToId null 表示发主评论；否则是被回复的根评论 id
-     */
-    data class OpenComposer(
-        val replyToId: String? = null,
-        val replyToName: String? = null,
+    /** 打开发表主评论输入器。 */
+    data object OpenMainCommentComposer : CommentsAction
+
+    /** 打开回复输入器。 */
+    data class OpenReplyComposer(
+        val target: ReplyTarget,
     ) : CommentsAction
 
     /**

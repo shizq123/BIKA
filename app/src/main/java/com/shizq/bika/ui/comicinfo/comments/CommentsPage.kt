@@ -118,16 +118,17 @@ fun CommentsPage(
     modifier: Modifier = Modifier,
     dispatch: (CommentsAction) -> Unit = {},
 ) {
-    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
-    val focusRequester = remember { FocusRequester() }
+    val standaloneSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+    val standaloneFocusRequester = remember { FocusRequester() }
     val composer = state.composer
+    val viewingReplies = state.viewingReplies
 
     // 发表成功后由状态机自增 token，refresh() 只能从 UI 侧调用。
     // 跳过初始的 0，否则进页面就会多刷一次。
     LaunchedEffect(state.listRefreshToken) {
         if (state.listRefreshToken > 0) {
             regularComments.refresh()
-            if (state.viewingReplies != null) {
+            if (viewingReplies != null) {
                 replyList.refresh()
             }
         }
@@ -138,14 +139,17 @@ fun CommentsPage(
             pinnedComments = state.pinned,
             regularComments = regularComments,
             modifier = Modifier.fillMaxSize(),
-            onToggleLike = { id, liked ->
-                dispatch(CommentsAction.ToggleLike(id, liked))
+            onToggleLike = { comment ->
+                dispatch(CommentsAction.ToggleLike(comment.id, comment.isLiked))
             },
             onReplyClick = { comment ->
                 dispatch(
-                    CommentsAction.OpenComposer(
-                        replyToId = comment.id,
-                        replyToName = comment.user.name,
+                    CommentsAction.OpenReplyComposer(
+                        ReplyTarget(
+                            rootCommentId = comment.id,
+                            targetCommentId = comment.id,
+                            targetUserName = comment.user.name,
+                        )
                     )
                 )
             },
@@ -153,47 +157,61 @@ fun CommentsPage(
         )
 
         CommentComposerEntry(
-            // 入口条回显草稿：输入器关着时草稿一般是空的，
-            // 但发送失败后草稿仍在，此时入口条该显示它而不是占位符
-            text = (composer as? Composer.Open)?.draft.orEmpty(),
+            text = (composer as? Composer.MainComment)?.draft.orEmpty(),
             modifier = Modifier.align(Alignment.BottomCenter),
-            onClick = { dispatch(CommentsAction.OpenComposer()) }
+            onClick = { dispatch(CommentsAction.OpenMainCommentComposer) }
         )
 
-        if (composer is Composer.Open) {
-            ModalBottomSheet(
-                onDismissRequest = { dispatch(CommentsAction.DismissComposer) },
-                sheetState = sheetState,
-                dragHandle = null,
-                shape = BottomSheetDefaults.HiddenShape,
-                modifier = Modifier.imePadding()
-            ) {
-                ReplyTextField(
-                    text = composer.draft,
-                    onTextChange = { dispatch(CommentsAction.DraftChanged(it)) },
-                    replyingTo = composer.replyToName,
-                    sending = composer.sending,
-                    error = composer.error,
+        // 回复详情和独立输入器互斥，避免两个 ModalBottomSheet 同时进入 Composition。
+        when {
+            viewingReplies != null -> {
+                ReplyDetailsSheet(
+                    rootComment = viewingReplies,
+                    replyList = replyList,
+                    composer = composer as? Composer.Reply,
+                    onToggleLike = { comment ->
+                        dispatch(CommentsAction.ToggleLike(comment.id, comment.isLiked))
+                    },
+                    onReplyClick = { clickedComment ->
+                        dispatch(
+                            CommentsAction.OpenReplyComposer(
+                                ReplyTarget(
+                                    rootCommentId = viewingReplies.id,
+                                    targetCommentId = clickedComment.id,
+                                    targetUserName = clickedComment.user.name,
+                                )
+                            )
+                        )
+                    },
+                    onDraftChanged = { dispatch(CommentsAction.DraftChanged(it)) },
                     onSend = { dispatch(CommentsAction.Send) },
-                    focusRequester = focusRequester
+                    onDismiss = { dispatch(CommentsAction.CollapseReplies) },
                 )
             }
 
-            LaunchedEffect(Unit) {
-                focusRequester.requestFocus()
-            }
-        }
+            composer is Composer.Open -> {
+                ModalBottomSheet(
+                    onDismissRequest = { dispatch(CommentsAction.DismissComposer) },
+                    sheetState = standaloneSheetState,
+                    dragHandle = null,
+                    shape = BottomSheetDefaults.HiddenShape,
+                    modifier = Modifier.imePadding()
+                ) {
+                    ReplyTextField(
+                        text = composer.draft,
+                        onTextChange = { dispatch(CommentsAction.DraftChanged(it)) },
+                        replyingTo = (composer as? Composer.Reply)?.target?.targetUserName,
+                        sending = composer.sending,
+                        error = composer.error,
+                        onSend = { dispatch(CommentsAction.Send) },
+                        focusRequester = standaloneFocusRequester
+                    )
+                }
 
-        val viewingReplies = state.viewingReplies
-        if (viewingReplies != null) {
-            ReplyDetailsSheet(
-                rootComment = viewingReplies,
-                replyList = replyList,
-                onToggleReplyLike = { id, liked ->
-                    dispatch(CommentsAction.ToggleLike(id, liked))
-                },
-                onDismiss = { dispatch(CommentsAction.CollapseReplies) }
-            )
+                LaunchedEffect(Unit) {
+                    standaloneFocusRequester.requestFocus()
+                }
+            }
         }
     }
 }
@@ -203,7 +221,7 @@ fun CommentList(
     pinnedComments: List<Comment>,
     regularComments: LazyPagingItems<Comment>,
     modifier: Modifier = Modifier,
-    onToggleLike: (commentId: String, currentlyLiked: Boolean) -> Unit,
+    onToggleLike: (comment: Comment) -> Unit,
     onReplyClick: (comment: Comment) -> Unit,
     onExpandReplies: (comment: Comment) -> Unit
 ) {
@@ -214,9 +232,9 @@ fun CommentList(
         items(pinnedComments, key = { "pinned_${it.id}" }) { comment ->
             CommentItem(
                 comment = comment,
-                onToggleLike = { onToggleLike(comment.id, comment.isLiked) },
+                onToggleLike = { onToggleLike(comment) },
                 onReplyClick = { onReplyClick(comment) },
-                onExpandReplies = { onExpandReplies(comment) }
+                onExpandReplies = { onExpandReplies(comment) },
             )
             HorizontalDivider(color = Color.LightGray.copy(alpha = 0.3f))
         }
@@ -231,7 +249,7 @@ fun CommentList(
             regularComments[index]?.let { comment ->
                 CommentItem(
                     comment = comment,
-                    onToggleLike = { onToggleLike(comment.id, comment.isLiked) },
+                    onToggleLike = { onToggleLike(comment) },
                     onReplyClick = { onReplyClick(comment) },
                     onExpandReplies = { onExpandReplies(comment) }
                 )
@@ -282,17 +300,24 @@ private fun CommentComposerEntry(
 fun ReplyDetailsSheet(
     rootComment: Comment,
     replyList: LazyPagingItems<Comment>,
-    onToggleReplyLike: (commentId: String, currentlyLiked: Boolean) -> Unit,
-    onDismiss: () -> Unit
+    composer: Composer.Reply?,
+    onToggleLike: (Comment) -> Unit,
+    onReplyClick: (Comment) -> Unit,
+    onDraftChanged: (String) -> Unit,
+    onSend: () -> Unit,
+    onDismiss: () -> Unit,
 ) {
     val sheetState = rememberBottomSheetState(
         initialValue = SheetValue.Hidden,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     )
+    val focusRequester = remember { FocusRequester() }
 
     ModalBottomSheet(
         onDismissRequest = onDismiss,
-        modifier = Modifier.statusBarsPadding(),
+        modifier = Modifier
+            .statusBarsPadding()
+            .imePadding(),
         sheetState = sheetState,
         dragHandle = null,
         shape = BottomSheetDefaults.HiddenShape
@@ -300,8 +325,19 @@ fun ReplyDetailsSheet(
         ReplySheetContent(
             rootComment = rootComment,
             replyList = replyList,
-            onToggleReplyLike = onToggleReplyLike,
+            composer = composer,
+            focusRequester = focusRequester,
+            onToggleLike = onToggleLike,
+            onReplyClick = onReplyClick,
+            onDraftChanged = onDraftChanged,
+            onSend = onSend,
         )
+    }
+
+    if (composer != null) {
+        LaunchedEffect(composer.target.targetCommentId) {
+            focusRequester.requestFocus()
+        }
     }
 }
 
@@ -310,9 +346,9 @@ fun ReplyDetailsSheet(
 fun CommentItem(
     comment: Comment,
     modifier: Modifier = Modifier,
-    onToggleLike: () -> Unit = {},
-    onExpandReplies: (String) -> Unit = {},
-    onReplyClick: (String) -> Unit = {},
+    onToggleLike: (Comment) -> Unit = {},
+    onExpandReplies: (Comment) -> Unit = {},
+    onReplyClick: (Comment) -> Unit = {},
     showReplyListButton: Boolean = true
 ) {
     Row(
@@ -321,7 +357,7 @@ fun CommentItem(
             .padding(start = 16.dp, top = 16.dp, end = 16.dp)
             // onClickLabel 明确整行的动作是"回复"：行内还有点赞、查看回复两个
             // 可点区，不给标签的话读屏只会报一个无名可点节点
-            .clickable(onClickLabel = "回复") { onReplyClick(comment.id) },
+            .clickable(onClickLabel = "回复") { onReplyClick(comment) },
     ) {
         // 头像：失败自动重试
         RetryableAsyncImage(
@@ -376,14 +412,14 @@ fun CommentItem(
                 IconWithText(
                     isLike = comment.isLiked,
                     text = comment.likesCount.toString(),
-                    onLikeChanged = onToggleLike
+                    onLikeChanged = { onToggleLike(comment) }
                 )
             }
             if (showReplyListButton && comment.totalComments > 0) {
                 Spacer(modifier = Modifier.height(12.dp))
                 CommentReplyButton(
                     totalComments = comment.totalComments,
-                    onReplyClick = { onExpandReplies(comment.id) }
+                    onReplyClick = { onExpandReplies(comment) }
                 )
             }
         }
@@ -400,19 +436,25 @@ fun CommentItem(
 fun ReplySheetContent(
     rootComment: Comment,
     replyList: LazyPagingItems<Comment>,
+    composer: Composer.Reply?,
+    focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
-    onToggleReplyLike: (commentId: String, currentlyLiked: Boolean) -> Unit
+    onToggleLike: (Comment) -> Unit,
+    onReplyClick: (Comment) -> Unit,
+    onDraftChanged: (String) -> Unit,
+    onSend: () -> Unit,
 ) {
     Column(
-        modifier = modifier
-            .fillMaxSize()
+        modifier = modifier.fillMaxSize()
     ) {
-        LazyColumn {
+        LazyColumn(modifier = Modifier.weight(1f)) {
             item(key = "root_${rootComment.id}") {
                 CommentItem(
                     comment = rootComment,
                     showReplyListButton = false,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    modifier = Modifier.padding(bottom = 4.dp),
+                    onToggleLike = onToggleLike,
+                    onReplyClick = onReplyClick,
                 )
                 HorizontalDivider(thickness = 8.dp)
             }
@@ -426,14 +468,50 @@ fun ReplySheetContent(
                 replyList[index]?.let { reply ->
                     CommentItem(
                         comment = reply,
-                        onToggleLike = { onToggleReplyLike(reply.id, reply.isLiked) },
+                        onToggleLike = onToggleLike,
+                        onReplyClick = onReplyClick,
                         onExpandReplies = {},
-                        showReplyListButton = false
+                        showReplyListButton = false,
                     )
                     HorizontalDivider(color = Color.LightGray.copy(alpha = 0.2f))
                 }
             }
         }
+
+        if (composer == null) {
+            ReplyComposerEntry(
+                onClick = { onReplyClick(rootComment) },
+            )
+        } else {
+            ReplyTextField(
+                text = composer.draft,
+                onTextChange = onDraftChanged,
+                replyingTo = composer.target.targetUserName,
+                sending = composer.sending,
+                error = composer.error,
+                onSend = onSend,
+                focusRequester = focusRequester,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ReplyComposerEntry(
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surfaceVariant,
+    ) {
+        Text(
+            text = "回复这条评论...",
+            style = MaterialTheme.typography.bodyLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 18.dp),
+        )
     }
 }
 

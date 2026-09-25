@@ -54,22 +54,19 @@ class CommentsStateMachine @AssistedInject constructor(
                 }
 
                 // ── 输入器 ────────────────────────────────────────────────
-                on<CommentsAction.OpenComposer> { action ->
-                    mutate {
-                        copy(
-                            composer = Composer.Open(
-                                replyToId = action.replyToId,
-                                replyToName = action.replyToName,
-                            )
-                        )
-                    }
+                on<CommentsAction.OpenMainCommentComposer> {
+                    mutate { copy(composer = Composer.MainComment()) }
+                }
+
+                on<CommentsAction.OpenReplyComposer> { action ->
+                    mutate { copy(composer = Composer.Reply(target = action.target)) }
                 }
 
                 on<CommentsAction.DraftChanged> { action ->
                     mutate {
                         // 输入器已关闭时丢弃：可能是关闭动画期间迟到的击键
                         val open = composer as? Composer.Open ?: return@mutate this
-                        copy(composer = open.copy(draft = action.text))
+                        copy(composer = open.withDraft(action.text))
                     }
                 }
 
@@ -89,13 +86,17 @@ class CommentsStateMachine @AssistedInject constructor(
                         // 网络往返期间草稿可能又变了
                         mutate {
                             val current = composer as? Composer.Open ?: return@mutate this
-                            copy(composer = current.copy(sending = true, error = null))
+                            copy(composer = current.withSending(true).withError(null))
                         }
                         runCatchingApi {
-                            if (open.replyToId == null) {
-                                network.postComment(Type.COMIC, comicId, text)
-                            } else {
-                                network.postCommentReply(open.replyToId, text)
+                            when (open) {
+                                is Composer.MainComment -> {
+                                    network.postComment(Type.COMIC, comicId, text)
+                                }
+
+                                is Composer.Reply -> {
+                                    network.postCommentReply(open.target.rootCommentId, text)
+                                }
                             }
                         }.fold(
                             onSuccess = {
@@ -115,7 +116,9 @@ class CommentsStateMachine @AssistedInject constructor(
                                 mutate {
                                     val current = composer as? Composer.Open
                                         ?: return@mutate this
-                                    copy(composer = current.copy(sending = false, error = e))
+                                    copy(
+                                        composer = current.withSending(false).withError(e)
+                                    )
                                 }
                             }
                         )
@@ -156,7 +159,12 @@ class CommentsStateMachine @AssistedInject constructor(
                 }
 
                 on<CommentsAction.CollapseReplies> {
-                    mutate { copy(viewingReplies = null) }
+                    mutate {
+                        copy(
+                            viewingReplies = null,
+                            composer = Composer.Closed,
+                        )
+                    }
                 }
             }
         }
@@ -180,4 +188,19 @@ class CommentsStateMachine @AssistedInject constructor(
     interface Factory {
         fun create(comicId: String): CommentsStateMachine
     }
+}
+
+private fun Composer.Open.withDraft(draft: String): Composer.Open = when (this) {
+    is Composer.MainComment -> copy(draft = draft)
+    is Composer.Reply -> copy(draft = draft)
+}
+
+private fun Composer.Open.withSending(sending: Boolean): Composer.Open = when (this) {
+    is Composer.MainComment -> copy(sending = sending)
+    is Composer.Reply -> copy(sending = sending)
+}
+
+private fun Composer.Open.withError(error: Throwable?): Composer.Open = when (this) {
+    is Composer.MainComment -> copy(error = error)
+    is Composer.Reply -> copy(error = error)
 }

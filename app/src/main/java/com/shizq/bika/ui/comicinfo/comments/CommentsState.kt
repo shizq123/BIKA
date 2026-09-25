@@ -54,22 +54,40 @@ data class CommentsState(
     val listRefreshToken: Int = 0,
 )
 
+/**
+ * 一次回复操作的目标。
+ *
+ * [rootCommentId] 是服务端 `postCommentReply` 接受的根评论 id；
+ * [targetCommentId] 是用户实际点击的评论，当前仅用于保留准确的交互语义；
+ * [targetUserName] 用于输入框提示，不参与请求。
+ */
+@Immutable
+data class ReplyTarget(
+    val rootCommentId: String,
+    val targetCommentId: String,
+    val targetUserName: String,
+)
+
 /** 评论输入器。草稿活在状态里，所以切 tab、转屏都不丢，发送失败也原样保留。 */
 sealed interface Composer {
     data object Closed : Composer
 
-    /**
-     * @param replyToId 被回复的根评论 id，null 表示发主评论。
-     *   服务端 `postCommentReply` 只收根评论 id，不支持楼中楼再分层。
-     * @param replyToName 仅用于占位符文案，不参与请求
-     * @param error 上一次发送的失败原因，null 表示无错误。
-     *   发送成功会直接关闭输入器，所以这里不需要 success 态。
-     */
-    data class Open(
-        val draft: String = "",
-        val replyToId: String? = null,
-        val replyToName: String? = null,
-        val sending: Boolean = false,
-        val error: Throwable? = null,
-    ) : Composer
+    sealed interface Open : Composer {
+        val draft: String
+        val sending: Boolean
+        val error: Throwable?
+    }
+
+    data class MainComment(
+        override val draft: String = "",
+        override val sending: Boolean = false,
+        override val error: Throwable? = null,
+    ) : Open
+
+    data class Reply(
+        val target: ReplyTarget,
+        override val draft: String = "",
+        override val sending: Boolean = false,
+        override val error: Throwable? = null,
+    ) : Open
 }

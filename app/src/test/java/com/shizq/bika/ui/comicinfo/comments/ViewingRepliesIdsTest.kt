@@ -81,10 +81,17 @@ class ViewingRepliesIdsTest {
     @Test
     fun `草稿击键不触发回复列表重建`() = runTest {
         val target = comment("c1")
+        val replyComposer = Composer.Reply(
+            target = ReplyTarget(
+                rootCommentId = "c1",
+                targetCommentId = "c1",
+                targetUserName = "用户",
+            )
+        )
         val result = flowOf(
-            state(viewingReplies = target, composer = Composer.Open(draft = "")),
-            state(viewingReplies = target, composer = Composer.Open(draft = "你")),
-            state(viewingReplies = target, composer = Composer.Open(draft = "你好")),
+            state(viewingReplies = target, composer = replyComposer.copy(draft = "")),
+            state(viewingReplies = target, composer = replyComposer.copy(draft = "你")),
+            state(viewingReplies = target, composer = replyComposer.copy(draft = "你好")),
         ).viewingRepliesIds().toList()
 
         // 每次击键一次 dispatch、一次新 state。缺 distinctUntilChanged
