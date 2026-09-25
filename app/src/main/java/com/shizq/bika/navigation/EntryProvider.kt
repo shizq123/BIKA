@@ -243,7 +243,7 @@ fun EntryProviderScope<NavKey>.featureSection(
             navigationToFeed = { action ->
                 navigator.navigate(ConnectedRoute.FeedRoute(action))
             },
-            navigationToTagBlock = {
+            onTagClick = {
                 navigator.navigate(TagBlockDialogNavKey(it))
             },
             navigationToEpisodeDownload = { comicId, title, coverUrl ->

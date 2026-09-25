@@ -43,7 +43,7 @@ fun ComicDetailScreen(
     navigationToReader: (id: String, index: Int) -> Unit,
     onForYouClick: (String) -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
-    navigationToTagBlock: (String) -> Unit,
+    onTagClick: (String) -> Unit,
     navigationToEpisodeDownload: (String, String, String) -> Unit,
     onBackClick: () -> Unit,
     viewModel: ComicInfoViewModel = hiltViewModel(),
@@ -59,13 +59,13 @@ fun ComicDetailScreen(
         chapterProgress = chapterProgress,
         onBackClick = onBackClick,
         navigationToReader = navigationToReader,
-        navigationToComicInfo = onForYouClick,
+        onRecommendedComicClick = onForYouClick,
         dispatch = viewModel::dispatch,
         navigationToFeed = navigationToFeed,
         onDownloadWholeComic = { title, cover, epsCount ->
             viewModel.downloadWholeComic(title, cover, epsCount)
         },
-        navigationToTagBlock = navigationToTagBlock,
+        onTagClick = onTagClick,
         navigationToEpisodeDownload = navigationToEpisodeDownload,
         downloadTasks = downloadTasks,
     )
@@ -80,11 +80,11 @@ fun ComicDetailContent(
     chapterProgress: List<ChapterProgressEntity>,
     onBackClick: () -> Unit,
     navigationToReader: (id: String, index: Int) -> Unit,
-    navigationToComicInfo: (String) -> Unit,
+    onRecommendedComicClick: (String) -> Unit,
     dispatch: (UnitedDetailsAction) -> Unit,
     navigationToFeed: (DiscoveryAction) -> Unit,
     onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
-    navigationToTagBlock: (String) -> Unit,
+    onTagClick: (String) -> Unit,
     navigationToEpisodeDownload: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -146,7 +146,7 @@ fun ComicDetailContent(
                                 onFavoriteClick = { dispatch(UnitedDetailsAction.ToggleFavorite) },
                                 onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
                                 navigationToReader = { navigationToReader(detail.id, it) },
-                                navigationToComicInfo = navigationToComicInfo,
+                                onRecommendedComicClick = onRecommendedComicClick,
                                 navigationToFeed = navigationToFeed,
                                 onDownloadWholeComic = {
                                     onDownloadWholeComic(
@@ -155,7 +155,7 @@ fun ComicDetailContent(
                                         detail.epsCount,
                                     )
                                 },
-                                navigationToTagBlock = navigationToTagBlock,
+                                navigationToTagBlock = onTagClick,
 
                                 )
 
