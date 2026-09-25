@@ -64,9 +64,8 @@ class CommentsStateMachine @AssistedInject constructor(
 
                 on<CommentsAction.DraftChanged> { action ->
                     mutate {
-                        // 输入器已关闭时丢弃：可能是关闭动画期间迟到的击键
-                        val open = composer as? Composer.Open ?: return@mutate this
-                        copy(composer = open.withDraft(action.text))
+                        // 输入器已关闭时忽略迟到的击键
+                        updateOpenComposer { it.withDraft(action.text) }
                     }
                 }
 
@@ -85,8 +84,9 @@ class CommentsStateMachine @AssistedInject constructor(
                         // sending 置位用接收者的 composer，不写回捕获的 open：
                         // 网络往返期间草稿可能又变了
                         mutate {
-                            val current = composer as? Composer.Open ?: return@mutate this
-                            copy(composer = current.withSending(true).withError(null))
+                            updateOpenComposer {
+                                it.withSending(true).withError(null)
+                            }
                         }
                         runCatchingApi {
                             when (open) {
@@ -114,11 +114,9 @@ class CommentsStateMachine @AssistedInject constructor(
                             onFailure = { e ->
                                 logger.error(e) { "发表评论失败" }
                                 mutate {
-                                    val current = composer as? Composer.Open
-                                        ?: return@mutate this
-                                    copy(
-                                        composer = current.withSending(false).withError(e)
-                                    )
+                                    updateOpenComposer {
+                                        it.withSending(false).withError(e)
+                                    }
                                 }
                             }
                         )
@@ -188,6 +186,13 @@ class CommentsStateMachine @AssistedInject constructor(
     interface Factory {
         fun create(comicId: String): CommentsStateMachine
     }
+}
+
+private inline fun CommentsState.updateOpenComposer(
+    transform: (Composer.Open) -> Composer.Open,
+): CommentsState {
+    val open = composer as? Composer.Open ?: return this
+    return copy(composer = transform(open))
 }
 
 private fun Composer.Open.withDraft(draft: String): Composer.Open = when (this) {
