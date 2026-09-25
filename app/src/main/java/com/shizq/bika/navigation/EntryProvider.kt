@@ -13,17 +13,17 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
+import com.shizq.bika.feature.comicdetail.impl.ComicDetailScreen
+import com.shizq.bika.feature.comicdetail.impl.ComicInfoViewModel
+import com.shizq.bika.feature.comicdetail.impl.download.EpisodeDownloadSheet
+import com.shizq.bika.feature.comicdetail.impl.download.EpisodeDownloadViewModel
+import com.shizq.bika.feature.comicdetail.impl.tag.TagBlockDialog
 import com.shizq.bika.feature.reader.impl.ReaderScreen
 import com.shizq.bika.feature.reader.impl.ReaderViewModel
 import com.shizq.bika.feature.settings.impl.BlockedTagsScreen
 import com.shizq.bika.feature.settings.impl.DnsSettingsScreen
 import com.shizq.bika.feature.settings.impl.SettingsScreen
 import com.shizq.bika.feature.settings.impl.StorageManagerScreen
-import com.shizq.bika.ui.comicinfo.ComicDetailScreen
-import com.shizq.bika.ui.comicinfo.ComicInfoViewModel
-import com.shizq.bika.ui.comicinfo.download.EpisodeDownloadSheet
-import com.shizq.bika.ui.comicinfo.download.EpisodeDownloadViewModel
-import com.shizq.bika.ui.comicinfo.tag.TagBlockDialog
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
 import com.shizq.bika.ui.dashboard.ChangePasswordDialog
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
@@ -221,7 +221,13 @@ fun EntryProviderScope<NavKey>.featureSection(
             onBackClick = navigator::goBack,
             onComicClick = { comicId, order ->
                 // 跳转到下载阅读器（仅限已下载章节导航）
-                navigator.navigate(ConnectedRoute.ReaderRoute(comicId, order, downloadedOnly = true))
+                navigator.navigate(
+                    ConnectedRoute.ReaderRoute(
+                        comicId,
+                        order,
+                        downloadedOnly = true
+                    )
+                )
             }
         )
     }
@@ -240,8 +246,8 @@ fun EntryProviderScope<NavKey>.featureSection(
                 navigator.navigate(ConnectedRoute.ReaderRoute(id, index))
             },
             onForYouClick = { navigator.navigateToUnitedDetail(it) },
-            navigationToFeed = { action ->
-                navigator.navigate(ConnectedRoute.FeedRoute(action))
+            navigationToFeed = {
+                navigator.navigate(ConnectedRoute.FeedRoute(DiscoveryAction.AdvancedSearch(it)))
             },
             onTagClick = {
                 navigator.navigate(TagBlockDialogNavKey(it))
@@ -250,6 +256,12 @@ fun EntryProviderScope<NavKey>.featureSection(
                 navigator.navigate(
                     EpisodeDownloadSheetNavKey(comicId, title, coverUrl)
                 )
+            },
+            onAuthorClick = {
+                navigator.navigate(ConnectedRoute.FeedRoute(DiscoveryAction.AdvancedSearch(it)))
+            },
+            onUploaderClick = { name, id ->
+                navigator.navigate(ConnectedRoute.FeedRoute(DiscoveryAction.Knight(name, id)))
             },
         )
     }
@@ -309,7 +321,6 @@ fun EntryProviderScope<NavKey>.featureSection(
         )
     }
 }
-
 
 
 fun Navigator.navigateToUnitedDetail(id: String) {

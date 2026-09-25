@@ -9,7 +9,9 @@ android {
 
 dependencies {
     implementation(projects.core.domain)
-    
+
+    implementation(libs.androidx.paging.compose)
+    implementation(libs.coil.compose)
     implementation(libs.flowredux)
 
     testImplementation(libs.androidx.test.core)

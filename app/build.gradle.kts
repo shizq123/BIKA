@@ -83,6 +83,7 @@ dependencies {
     implementation(projects.core.ui)
     implementation(projects.sync.work)
 
+    implementation(projects.feature.comicdetail)
     implementation(projects.feature.reader)
     implementation(projects.feature.settings)
 

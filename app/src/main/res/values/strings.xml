@@ -76,27 +76,5 @@
 
     <string name="chat_min_level">等级限制：</string>
     <string name="chat_min_register_days">注册天数限制：</string>
-    <string name="comic_author_label">作者</string>
-    <string name="comic_uploader_label">上传者</string>
     <string name="comic_creator_avatar">头像</string>
-
-    <string name="retry">重试</string>
-    <string name="download_enqueued">已加入下载队列</string>
-    <string name="download_episodes_enqueued">已成功将 %1$d 个章节加入下载队列</string>
-    <string name="download_fetching_chapters">正在获取章节列表，准备全部下载…</string>
-    <string name="download_all_enqueued">已成功将所有 %1$d 个章节加入下载队列</string>
-    <string name="download_fetch_chapters_failed">获取章节失败，请重试</string>
-    <string name="download_enqueue_failed">下载失败，请重试</string>
-    <string name="download_no_chapters">未找到可下载的章节</string>
-    <string name="download_select_episodes">选择要下载的章节</string>
-    <string name="download_select_all">全选</string>
-    <string name="download_clear_selection">清除</string>
-    <string name="download_no_selectable_episodes">未找到可选章节</string>
-    <string name="download_start_selected">开始下载所选章节 (%1$d)</string>
-    <string name="download_select_action">下载选择</string>
-    <string name="tag_block_title">屏蔽标签</string>
-    <string name="tag_block_message">确认屏蔽标签“%1$s”吗？屏蔽后，所有含有此标签的漫画将不再展示在列表中。</string>
-    <string name="tag_blocked">已屏蔽标签“%1$s”</string>
-    <string name="confirm">确定</string>
-    <string name="cancel">取消</string>
 </resources>
