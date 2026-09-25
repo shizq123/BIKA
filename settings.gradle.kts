@@ -39,6 +39,7 @@ include(":core:network")
 include(":core:testing")
 include(":core:ui")
 
+include(":feature:comicdetail")
 include(":feature:reader")
 include(":feature:settings")
 
