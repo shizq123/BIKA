@@ -190,9 +190,9 @@ class CommentsStateMachine @AssistedInject constructor(
 
 private inline fun CommentsState.updateOpenComposer(
     transform: (Composer.Open) -> Composer.Open,
-): CommentsState {
-    val open = composer as? Composer.Open ?: return this
-    return copy(composer = transform(open))
+): CommentsState = when (val current = composer) {
+    Composer.Closed -> this
+    is Composer.Open -> copy(composer = transform(current))
 }
 
 private fun Composer.Open.withDraft(draft: String): Composer.Open = when (this) {

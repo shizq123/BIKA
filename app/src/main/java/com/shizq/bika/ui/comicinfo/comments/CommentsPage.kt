@@ -118,7 +118,7 @@ fun CommentsPage(
     modifier: Modifier = Modifier,
     dispatch: (CommentsAction) -> Unit = {},
 ) {
-    val standaloneSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
+    val standaloneSheetState = rememberBottomSheetState(initialValue = SheetValue.Expanded)
     val standaloneFocusRequester = remember { FocusRequester() }
     val composer = state.composer
     val viewingReplies = state.viewingReplies
@@ -308,7 +308,7 @@ fun ReplyDetailsSheet(
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberBottomSheetState(
-        initialValue = SheetValue.Hidden,
+        initialValue = SheetValue.Expanded,
         enabledValues = setOf(SheetValue.Hidden, SheetValue.Expanded)
     )
     val focusRequester = remember { FocusRequester() }
