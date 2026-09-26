@@ -366,10 +366,10 @@ private fun FeedContent(
                         state = listState,
                         modifier = Modifier.weight(1f)
                     ) {
-                        items(
+                        itemsIndexed(
                             items = comics,
-                            key = { comic -> comic.id }
-                        ) { comic ->
+                            key = { index, comic -> "${index}_${comic.id}" }
+                        ) { _, comic ->
                             val enrichedComic = remember(comic, historyMap) {
                                 comic.injectFromHistoryMap(historyMap)
                             }
