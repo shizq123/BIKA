@@ -40,6 +40,8 @@ class PageSpreadState(
     /** Pager 的 pageCount，即翻页单位数量。 */
     val spreadCount: Int get() = layout.spreadCount
 
+    val generation: Long get() = layout.generation
+
     /**
      * 同步分页续拉后的页数。
      *

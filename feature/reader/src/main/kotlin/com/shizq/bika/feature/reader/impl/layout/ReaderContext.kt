@@ -10,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalConfiguration
@@ -24,7 +25,10 @@ import com.shizq.bika.core.model.reader.ViewerType
 import com.shizq.bika.feature.reader.impl.util.preload.LazyListScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.ScrollStateProvider
 import com.shizq.bika.feature.reader.impl.util.preload.SpreadScrollStateProvider
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportChangeCause
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportEventMarker
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 
 /**
  * 不再暴露 LazyListState：那会绕过 [ReaderController] 的抽象，
@@ -147,9 +151,13 @@ fun rememberReaderContext(
                         magnifierEnabled = config.magnifierEnabled,
                     )
                 }
-                val controller =
-                    remember(listState) { WebtoonController(listState, initialPageIndex) }
-                val scrollProvider = remember(listState) { LazyListScrollStateProvider(listState) }
+                val viewportEventMarker = remember(listState) { ViewportEventMarker() }
+                val controller = remember(listState, viewportEventMarker) {
+                    WebtoonController(listState, initialPageIndex, viewportEventMarker)
+                }
+                val scrollProvider = remember(listState, viewportEventMarker) {
+                    LazyListScrollStateProvider(listState, viewportEventMarker)
+                }
 
                 // position 的唯一写入者。漏掉这一步的表现是页码永远停在初始值，
                 // 不崩不报错，所以放在装配处而不是留给调用方。
@@ -179,7 +187,7 @@ fun rememberReaderContext(
                 //
                 // 代价是重建会丢掉 pagerState 的位置，所以真实页码要存在 key 之外，
                 // 由重建后的 initialPage 重新换算回来。
-                var retainedPage by remember { mutableIntStateOf(initialPageIndex) }
+                var retainedPage by retain { mutableIntStateOf(initialPageIndex) }
 
                 key(useDoublePage) {
                     val spreadState = remember {
@@ -213,8 +221,20 @@ fun rememberReaderContext(
                         )
                     }
 
-                    val controller = remember(pagerState, spreadState) {
-                        PagerController(pagerState, spreadState)
+                    val viewportEventMarker = remember(pagerState) { ViewportEventMarker() }
+                    LaunchedEffect(spreadState, viewportEventMarker) {
+                        snapshotFlow { spreadState.generation }
+                            .distinctUntilChanged()
+                            .drop(1)
+                            .collect { generation ->
+                                viewportEventMarker.mark(
+                                    cause = ViewportChangeCause.LayoutReflow,
+                                    generation = generation,
+                                )
+                            }
+                    }
+                    val controller = remember(pagerState, spreadState, viewportEventMarker) {
+                        PagerController(pagerState, spreadState, viewportEventMarker)
                     }
 
                     LaunchedEffect(controller) { controller.track() }
@@ -230,9 +250,11 @@ fun rememberReaderContext(
                     // 重新发射。之前的 visibleSpreadRange 只在 snapshotFlow 里观察
                     // currentPage，spreads 是在下游 map 里读的（不在快照观察范围内），
                     // 分组变化不触发重算，预载范围会滞留在旧换算上。
-                    val scrollProvider = remember(controller) {
+                    val scrollProvider = remember(controller, viewportEventMarker) {
                         SpreadScrollStateProvider(
-                            snapshotFlow { controller.position.range }.distinctUntilChanged(),
+                            visibleItemsRange = snapshotFlow { controller.position.range }
+                                .distinctUntilChanged(),
+                            eventMarker = viewportEventMarker,
                         )
                     }
 

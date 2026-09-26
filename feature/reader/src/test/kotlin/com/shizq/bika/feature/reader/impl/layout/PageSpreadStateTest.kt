@@ -152,7 +152,32 @@ class PageSpreadStateTest {
     }
 
     @Test
-    fun `syncPageCount 跟进分页续拉`() {
+    fun `布局变化递增 generation 且无变化不递增`() {
+        val state = doublePageState(pageCount = 4)
+
+        withSnapshot {
+            assertEquals(0L, state.generation)
+            state.onPageMeasured(pageIndex = 1, width = 2000f, height = 1000f)
+            assertEquals(1L, state.generation)
+            state.onPageMeasured(pageIndex = 1, width = 2000f, height = 1000f)
+            assertEquals(1L, state.generation)
+        }
+    }
+
+    @Test
+    fun `分页续拉递增 generation`() {
+        var pageCount = 2
+        val state = PageSpreadState(doublePage = true, pageCountProvider = { pageCount })
+
+        pageCount = 6
+        withSnapshot {
+            state.syncPageCount()
+            assertEquals(1L, state.generation)
+        }
+    }
+
+    @Test
+    fun `syncPageCount 更新翻页单位数量`() {
         var pageCount = 4
         val state = PageSpreadState(doublePage = true, pageCountProvider = { pageCount })
 

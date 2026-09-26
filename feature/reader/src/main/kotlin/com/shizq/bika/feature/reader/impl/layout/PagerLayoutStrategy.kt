@@ -1,5 +1,6 @@
 package com.shizq.bika.feature.reader.impl.layout
 
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -12,6 +13,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -21,6 +23,8 @@ import androidx.compose.ui.unit.LayoutDirection
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.model.reader.Direction
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportChangeCause
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportEventMarker
 import kotlinx.coroutines.flow.distinctUntilChanged
 
 class PagerLayoutStrategy(
@@ -36,7 +40,14 @@ class PagerLayoutStrategy(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
+        onUserScroll: () -> Unit,
     ) {
+        val currentOnUserScroll by rememberUpdatedState(onUserScroll)
+        val isUserDragging by pagerState.interactionSource.collectIsDraggedAsState()
+        LaunchedEffect(isUserDragging) {
+            if (isUserDragging) currentOnUserScroll()
+        }
+
         // 视口 = Pager 自身，不是整个窗口。点击分区按比例切这个矩形，
         // 取窗口会让分区边界随状态栏 inset / scaffold padding 整体平移。
         val viewport = remember { ViewportAnchor() }
@@ -203,6 +214,7 @@ class PagerLayoutStrategy(
 class PagerController(
     private val pagerState: PagerState,
     private val spreadState: PageSpreadState,
+    private val viewportEventMarker: ViewportEventMarker = ViewportEventMarker(),
 ) : ReaderController {
 
     /**
@@ -243,6 +255,7 @@ class PagerController(
     override suspend fun scrollNextPage() {
         val target = pagerState.currentPage + 1
         if (target < pagerState.pageCount) {
+            viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
             pagerState.animateScrollToPage(target)
         }
     }
@@ -250,6 +263,7 @@ class PagerController(
     override suspend fun scrollPrevPage() {
         val target = pagerState.currentPage - 1
         if (target >= 0) {
+            viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
             pagerState.animateScrollToPage(target)
         }
     }
@@ -258,6 +272,9 @@ class PagerController(
         val spreads = spreadState.spreads
         if (spreads.isEmpty() || pagerState.pageCount == 0) return
         val target = spreads.spreadIndexOfPage(index)
-        pagerState.scrollToPage(target.coerceIn(0, pagerState.pageCount - 1))
+            .coerceIn(0, pagerState.pageCount - 1)
+        if (target == pagerState.currentPage) return
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
+        pagerState.scrollToPage(target)
     }
 }

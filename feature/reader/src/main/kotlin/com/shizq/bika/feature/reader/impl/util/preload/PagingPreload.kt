@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.platform.LocalContext
+import androidx.paging.ItemSnapshotList
 import androidx.paging.compose.LazyPagingItems
 import kotlinx.coroutines.flow.combine
 
@@ -20,38 +21,42 @@ fun <T : Any> PagingPreload(
     val currentPreloadCount by rememberUpdatedState(preloadCount)
 
     // scrollStateProvider 是 key：它随章节重建（rememberReaderContext 里包了
-    // key(chapterOrder)），据此重建 preloader 才能重置其内部的滚动方向状态。
-    // 缺了它的话切章后第一次回调会把方向判反，漏掉一轮预载。
+    // key(chapterOrder)），据此重建预载会话，避免跨章节复用旧的方向和请求窗口。
     // 不能仅以 pagingItems 为 key：章节切换时它的引用可能不变。
     LaunchedEffect(context, pagingItems, scrollStateProvider, modelProvider) {
         val enqueuer = CoilPreloadRequestEnqueuer(context, this)
-        val preloader = ListPreloader(
+        val session = ReaderPreloadSession(
+            scope = this,
             dataProvider = PagingPreloadDataProvider(pagingItems),
             modelProvider = modelProvider,
             enqueuer = enqueuer,
-            maxPreload = currentPreloadCount,
+            closeEnqueuer = enqueuer::close,
         )
         try {
-            // Start immediately, even during continuous scrolling. Also refresh when
-            // placeholders receive URLs, without requiring another swipe from the reader.
+            val viewportEvents = scrollStateProvider.viewportEvents
+            var previousSnapshot: ItemSnapshotList<T>? = null
+            var previousSnapshotInitialized = false
             combine(
-                scrollStateProvider.visibleItemsRange,
+                viewportEvents,
                 snapshotFlow { pagingItems.itemSnapshotList },
                 snapshotFlow { currentPreloadCount },
-            ) { visibleRange, _, count -> visibleRange to count }
-                .collect { (visibleRange, count) ->
-                    preloader.maxPreload = count
-                    if (visibleRange != null) {
-                        preloader.onScroll(visibleRange.first, visibleRange.last)
+            ) { viewport, snapshot, count -> Triple(viewport, snapshot, count) }
+                .collect { (viewport, snapshot, count) ->
+                    val dataChanged = previousSnapshotInitialized && snapshot != previousSnapshot
+                    previousSnapshot = snapshot
+                    previousSnapshotInitialized = true
+                    val effectiveViewport = if (dataChanged) {
+                        viewport.copy(cause = ViewportChangeCause.DataRefresh)
                     } else {
-                        enqueuer.updateWindow(emptyList())
+                        viewport
                     }
+                    session.submitViewport(effectiveViewport, count)
                 }
         } finally {
-            // Leaving the reader, changing chapter/mode or disabling the window releases
-            // pending downloads; overlapping pages within a window keep their progress.
-            enqueuer.close()
+            // Closing the session cancels the worker and releases pending downloads.
+            session.close()
         }
+
     }
 }
 

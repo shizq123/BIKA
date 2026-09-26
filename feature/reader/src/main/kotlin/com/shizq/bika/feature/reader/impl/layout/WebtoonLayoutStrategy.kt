@@ -3,13 +3,16 @@ package com.shizq.bika.feature.reader.impl.layout
 import androidx.compose.foundation.gestures.animateScrollBy
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.interaction.InteractionSource
+import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
@@ -17,6 +20,8 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.paging.compose.LazyPagingItems
 import com.shizq.bika.core.data.paging.ChapterPage
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportChangeCause
+import com.shizq.bika.feature.reader.impl.util.preload.ViewportEventMarker
 import kotlinx.coroutines.flow.distinctUntilChanged
 import me.saket.telephoto.zoomable.EnabledZoomGestures
 import me.saket.telephoto.zoomable.ZoomSpec
@@ -42,7 +47,14 @@ class WebtoonLayoutStrategy(
         pageItems: LazyPagingItems<ChapterPage>,
         modifier: Modifier,
         onPageTap: (PageTapContext) -> Unit,
+        onUserScroll: () -> Unit,
     ) {
+        val currentOnUserScroll by rememberUpdatedState(onUserScroll)
+        val isUserDragging by listState.interactionSource.collectIsDraggedAsState()
+        LaunchedEffect(isUserDragging) {
+            if (isUserDragging) currentOnUserScroll()
+        }
+
         val zoomableState = rememberZoomableState(ZoomSpec(maxZoomFactor = 4f))
         // 视口 = LazyColumn 自身。与翻页模式用同一个 ViewportAnchor 机制，
         // 保证两条路径喂给 GestureState.calculateAction 的参考系一致。
@@ -86,6 +98,7 @@ class WebtoonLayoutStrategy(
 class WebtoonController(
     private val listState: LazyListState,
     initialPageIndex: Int,
+    private val viewportEventMarker: ViewportEventMarker = ViewportEventMarker(),
 ) : ReaderController {
 
     override val continuousScroller: ContinuousScroller = object : ContinuousScroller {
@@ -134,12 +147,14 @@ class WebtoonController(
         val viewportHeight = listState.layoutInfo.viewportSize.height
         // 如果布局还未完成，直接返回
         if (viewportHeight == 0) return
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
 
         val scrollDistance = viewportHeight * 0.8f
         listState.animateScrollBy(scrollDistance)
     }
 
     override suspend fun scrollPrevPage() {
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         val viewportHeight = listState.layoutInfo.viewportSize.height
         if (viewportHeight == 0) return
 
@@ -148,10 +163,13 @@ class WebtoonController(
     }
 
     override suspend fun scrollToPage(index: Int) {
+        val target = index.coerceAtLeast(0)
+        if (position.contains(target)) return
+        viewportEventMarker.mark(ViewportChangeCause.ProgrammaticJump)
         // 不能用 layoutInfo.totalItemsCount 做 clamp：它在布局后才会更新，可能滞后于
         // paging 的 itemCount，导致目标页被 clamp 到已布局末尾、滚动落空。
         // scrollToItem 对超界 index 会滚动到末尾，调用方应确保数据已加载到目标页。
-        listState.scrollToItem(index.coerceAtLeast(0))
+        listState.scrollToItem(target)
     }
 
     /**

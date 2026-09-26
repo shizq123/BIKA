@@ -10,6 +10,9 @@ import com.shizq.bika.core.data.paging.ChapterPage
 
 @OptIn(ExperimentalCoilApi::class)
 class ChapterPagePreloadProvider(private val context: Context) : PreloadModelProvider<ChapterPage> {
+    override fun getPreloadKey(item: ChapterPage, request: ImageRequest): String =
+        "chapter-page:${item.id}:${item.url}"
+
     override fun getPreloadRequest(item: ChapterPage): ImageRequest {
         return ImageRequest.Builder(context)
             .data(item.url)

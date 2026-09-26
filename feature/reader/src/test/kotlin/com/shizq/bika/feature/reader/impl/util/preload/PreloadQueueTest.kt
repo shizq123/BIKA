@@ -139,6 +139,30 @@ class PreloadQueueTest {
         assertEquals(2, f.peakConcurrency)
     }
 
+    @Test
+    fun `failed task is not marked completed and retries after leaving the window`() = runTest {
+        val started = mutableListOf<Int>()
+        val queue = PreloadQueue(
+            scope = backgroundScope,
+            keyOf = { page: Int -> page },
+            execute = { page ->
+                started += page
+                false
+            },
+        )
+
+        queue.update(listOf(1))
+        runCurrent()
+        queue.update(listOf(1))
+        runCurrent()
+        assertEquals(listOf(1), started, "同一窗口内失败后不应形成忙重试")
+
+        queue.update(emptyList())
+        queue.update(listOf(1))
+        runCurrent()
+        assertEquals(listOf(1, 1), started, "离开窗口再返回时应允许重试")
+    }
+
     private class Fixture(scope: TestScope) {
         val started = mutableListOf<Int>()
         val cancelled = mutableListOf<Int>()
@@ -156,7 +180,9 @@ class PreloadQueueTest {
                 peakConcurrency = maxOf(peakConcurrency, concurrency)
                 try {
                     completions.getOrPut(page) { CompletableDeferred() }.await()
+                    true
                 } finally {
+
                     concurrency--
                     if (!currentCoroutineContext().isActive) cancelled += page
                 }
