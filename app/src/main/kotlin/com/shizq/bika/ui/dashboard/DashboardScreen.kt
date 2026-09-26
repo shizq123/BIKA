@@ -99,9 +99,22 @@ import kotlinx.coroutines.launch
 @Composable
 fun DashboardScreen(
     onNavigate: (DashboardDestination) -> Unit,
+    addFavoriteResults: kotlinx.coroutines.flow.Flow<String>,
+    renameFavoriteResults: kotlinx.coroutines.flow.Flow<Pair<FavoriteTag, String>>,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+
+    LaunchedEffect(renameFavoriteResults) {
+        renameFavoriteResults.collect { (tag, name) ->
+            viewModel.dispatch(DashboardAction.UpdateFavoriteTagName(tag, name))
+        }
+    }
+    LaunchedEffect(addFavoriteResults) {
+        addFavoriteResults.collect { name ->
+            viewModel.dispatch(DashboardAction.AddCustomFavoriteTag(name))
+        }
+    }
 
     // 自动打卡：profile 加载成功后 dispatch 一次，实际检查逻辑在 StateMachine 内部完成。
     // key 用 Boolean 而非整个 userProfile：后者每次资料刷新（打卡改了 exp/level、
@@ -113,13 +126,13 @@ fun DashboardScreen(
         }
     }
 
-    // 打卡结果对话框（状态驱动）
+    // 打卡结果通过 DialogNavKey 进入导航返回栈，避免页面内嵌套 AlertDialog。
     val checkInResult = state.checkInResult
-    if (checkInResult != null) {
-        CheckInResultDialog(
-            result = checkInResult,
-            onDismiss = { viewModel.dispatch(DashboardAction.DismissCheckInResult) },
-        )
+    LaunchedEffect(checkInResult) {
+        checkInResult?.let {
+            onNavigate(DashboardDestination.CheckInResult(it.message))
+            viewModel.dispatch(DashboardAction.DismissCheckInResult)
+        }
     }
 
     UpdateHost()
@@ -151,15 +164,11 @@ fun DashboardContent(
     val onCheckInClick = { onAction(DashboardAction.CheckIn) }
     val onAddFavorite = { tag: FavoriteTag -> onAction(DashboardAction.AddFavoriteTag(tag)) }
     val onRemoveFavorite = { tag: FavoriteTag -> onAction(DashboardAction.RemoveFavoriteTag(tag)) }
-    val onUpdateFavoriteName = { tag: FavoriteTag, name: String ->
-        onAction(DashboardAction.UpdateFavoriteTagName(tag, name))
-    }
+
     val onMoveFavorite = { from: Int, to: Int ->
         onAction(DashboardAction.MoveFavoriteTag(from, to))
     }
-    val onAddCustomFavorite = { name: String ->
-        onAction(DashboardAction.AddCustomFavoriteTag(name))
-    }
+
 
     // 修改资料 / 修改密码不在这里：它们是 EditProfileNavKey / ChangePasswordNavKey
     // 两个独立 entry，由导航返回栈托管，因此配置变更和进程死亡都不会丢。
@@ -349,9 +358,13 @@ fun DashboardContent(
                 },
                 onAddFavorite = onAddFavorite,
                 onRemoveFavorite = onRemoveFavorite,
-                onUpdateName = onUpdateFavoriteName,
+                onRenameRequest = { tag ->
+                    onNavigate(DashboardDestination.RenameFavoriteTag(tag))
+                },
                 onMove = onMoveFavorite,
-                onAddCustom = onAddCustomFavorite,
+                onAddCustomRequest = {
+                    onNavigate(DashboardDestination.AddFavoriteTag)
+                },
                 onBlockedTagsClick = { onNavigate(DashboardDestination.BlockedTags) },
                 onClose = { showBookmarkDrawer = false }
             )

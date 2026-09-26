@@ -6,6 +6,11 @@ import androidx.compose.runtime.remember
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
+import com.shizq.bika.core.model.FavoriteTag
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 
 /**
  * 创建可跨配置变更与进程死亡存活的导航状态。
@@ -49,6 +54,47 @@ class Navigator(
     val authenticationBackStack: NavBackStack<NavKey>,
     val contentBackStack: NavBackStack<NavKey>,
 ) {
+    private val dialogResults = MutableSharedFlow<DialogResult>(extraBufferCapacity = 1)
+    private val textDialogResults = MutableSharedFlow<TextDialogResult>(extraBufferCapacity = 1)
+    private val renameFavoriteResults =
+        MutableSharedFlow<RenameFavoriteResult>(extraBufferCapacity = 1)
+
+    /**
+     * 监听指定请求的整型弹窗结果。requestId 由发起页面生成，防止多个同类页面串结果。
+     */
+    fun intDialogResults(requestId: String): Flow<Int> = dialogResults
+        .filter { it.requestId == requestId }
+        .map { it.value }
+
+    /** 发布结果后由弹窗 entry 统一出栈。 */
+    fun finishDialogWithIntResult(requestId: String, value: Int) {
+        dialogResults.tryEmit(DialogResult(requestId, value))
+        goBack()
+    }
+
+    fun textDialogResults(requestId: String): Flow<String> = textDialogResults
+        .filter { it.requestId == requestId }
+        .map { it.value }
+
+    fun finishDialogWithTextResult(requestId: String, value: String) {
+        textDialogResults.tryEmit(TextDialogResult(requestId, value))
+        goBack()
+    }
+
+    fun renameFavoriteDialogResults(requestId: String): Flow<Pair<FavoriteTag, String>> =
+        renameFavoriteResults
+            .filter { it.requestId == requestId }
+            .map { it.tag to it.name }
+
+    fun finishRenameFavoriteDialog(
+        requestId: String,
+        tag: FavoriteTag,
+        name: String,
+    ) {
+        renameFavoriteResults.tryEmit(RenameFavoriteResult(requestId, tag, name))
+        goBack()
+    }
+
     /**
      * 在认证图内导航。
      */
@@ -100,3 +146,19 @@ class Navigator(
         contentBackStack.add(ConnectedRoute.DashboardRoute)
     }
 }
+
+private data class DialogResult(
+    val requestId: String,
+    val value: Int,
+)
+
+private data class TextDialogResult(
+    val requestId: String,
+    val value: String,
+)
+
+private data class RenameFavoriteResult(
+    val requestId: String,
+    val tag: FavoriteTag,
+    val name: String,
+)

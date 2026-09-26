@@ -7,7 +7,7 @@ import androidx.compose.runtime.Composable
 
 @Composable
 fun CheckInResultDialog(
-    result: CheckInResult,
+    message: String,
     onDismiss: () -> Unit,
 ) {
     AlertDialog(
@@ -18,6 +18,6 @@ fun CheckInResultDialog(
             }
         },
         title = { Text("打哔咔提示") },
-        text = { Text(result.message) },
+        text = { Text(message) },
     )
 }

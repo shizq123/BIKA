@@ -26,8 +26,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
@@ -41,7 +40,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.StarBorder
-import androidx.compose.material3.AlertDialog
+
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -51,7 +50,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
+
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.SuggestionChipDefaults
@@ -62,18 +61,19 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardType
+
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
@@ -99,12 +99,27 @@ fun FeedScreen(
     onComicClick: (String) -> Unit,
     onNavigateToFeed: (DiscoveryAction) -> Unit = {},
     onBlockedTagsClick: () -> Unit = {},
+    onPageJumpRequest: (currentPage: Int, totalPages: Int) -> Unit,
+    pageJumpResults: kotlinx.coroutines.flow.Flow<Int>,
+    onAddCustomFavoriteRequest: () -> Unit,
+    addCustomFavoriteResults: kotlinx.coroutines.flow.Flow<String>,
+    onRenameFavoriteRequest: (FavoriteTag) -> Unit,
+    renameFavoriteResults: kotlinx.coroutines.flow.Flow<Pair<FavoriteTag, String>>,
     viewModel: FeedViewModel,
     title: String
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     var showDrawer by remember { mutableStateOf(false) }
+
+    LaunchedEffect(addCustomFavoriteResults) {
+        addCustomFavoriteResults.collect(viewModel::addCustomFavoriteTag)
+    }
+    LaunchedEffect(renameFavoriteResults) {
+        renameFavoriteResults.collect { (tag, name) ->
+            viewModel.updateFavoriteTagName(tag, name)
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         FeedContent(
@@ -113,6 +128,8 @@ fun FeedScreen(
             onBackClick = onBackClick,
             onComicClick = onComicClick,
             onIntent = viewModel::dispatch,
+            onPageJumpRequest = onPageJumpRequest,
+            pageJumpResults = pageJumpResults,
             onBookmarkClick = { showDrawer = true }
         )
 
@@ -148,9 +165,9 @@ fun FeedScreen(
                 },
                 onAddFavorite = viewModel::addFavoriteTag,
                 onRemoveFavorite = viewModel::removeFavoriteTag,
-                onUpdateName = viewModel::updateFavoriteTagName,
+                onRenameRequest = onRenameFavoriteRequest,
                 onMove = viewModel::moveFavoriteTag,
-                onAddCustom = viewModel::addCustomFavoriteTag,
+                onAddCustomRequest = onAddCustomFavoriteRequest,
                 onBlockedTagsClick = onBlockedTagsClick,
                 onClose = { showDrawer = false }
             )
@@ -226,15 +243,13 @@ private fun FeedContent(
     onComicClick: (comicId: String) -> Unit,
     onBackClick: () -> Unit,
     onIntent: (FeedIntent) -> Unit,
+    onPageJumpRequest: (currentPage: Int, totalPages: Int) -> Unit,
+    pageJumpResults: kotlinx.coroutines.flow.Flow<Int>,
     onBookmarkClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
-
-    var showPageJumpDialog by remember { mutableStateOf(false) }
-    var pageJumpInputText by remember { mutableStateOf("") }
-    var pageJumpInputError by remember { mutableStateOf<String?>(null) }
 
     val page = state.page
     val currentPage = state.query.page
@@ -245,70 +260,11 @@ private fun FeedContent(
         state.detailedHistories.associateBy { it.history.id }
     }
 
-    if (showPageJumpDialog) {
-        fun handlePageJump() {
-            val targetPage = pageJumpInputText.trim().toIntOrNull()
-            when {
-                targetPage == null -> pageJumpInputError = "请输入有效数字"
-                targetPage < 1 -> pageJumpInputError = "页码不能小于 1"
-                targetPage > totalPages -> pageJumpInputError = "页码不能超过 $totalPages"
-                else -> {
-                    onIntent(FeedIntent.ChangePage(targetPage))
-                    scope.launch { listState.scrollToItem(0) }
-                    showPageJumpDialog = false
-                    pageJumpInputText = ""
-                    pageJumpInputError = null
-                }
-            }
+    LaunchedEffect(pageJumpResults) {
+        pageJumpResults.collect { targetPage ->
+            onIntent(FeedIntent.ChangePage(targetPage))
+            listState.scrollToItem(0)
         }
-
-        AlertDialog(
-            onDismissRequest = {
-                showPageJumpDialog = false
-                pageJumpInputText = ""
-                pageJumpInputError = null
-            },
-            title = { Text("跳转到指定页码") },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text(
-                        text = "当前共 $totalPages 页，请输入页码（1 ~ $totalPages）",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    OutlinedTextField(
-                        value = pageJumpInputText,
-                        onValueChange = {
-                            pageJumpInputText = it
-                            pageJumpInputError = null
-                        },
-                        label = { Text("页码") },
-                        singleLine = true,
-                        isError = pageJumpInputError != null,
-                        supportingText = pageJumpInputError?.let { { Text(it) } },
-                        keyboardOptions = KeyboardOptions(
-                            keyboardType = KeyboardType.Number,
-                            imeAction = ImeAction.Go
-                        ),
-                        keyboardActions = KeyboardActions(onGo = { handlePageJump() }),
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                TextButton(onClick = { handlePageJump() }) { Text("跳转") }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        showPageJumpDialog = false
-                        pageJumpInputText = ""
-                        pageJumpInputError = null
-                    }
-                ) { Text("取消") }
-            }
-        )
     }
 
     Scaffold(
@@ -339,7 +295,7 @@ private fun FeedContent(
                 totalCount = totalCount,
                 currentPage = currentPage,
                 totalPages = totalPages,
-                onCountChipClick = { showPageJumpDialog = true },
+                onCountChipClick = { onPageJumpRequest(currentPage, totalPages) },
                 excludeTopicsGlobal = state.excludeTopicsGlobal,
                 onExcludeTopicsGlobalChanged = {
                     onIntent(FeedIntent.SetGlobalTopicFilter(it))
@@ -395,7 +351,9 @@ private fun FeedContent(
                         onIntent(FeedIntent.ChangePage(targetPage))
                         scope.launch { listState.scrollToItem(0) }
                     },
-                    onPageIndicatorClick = { showPageJumpDialog = true },
+                    onPageIndicatorClick = {
+                        onPageJumpRequest(currentPage, totalPages)
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp, top = 8.dp, start = 16.dp, end = 16.dp)
@@ -519,16 +477,15 @@ fun FavoriteTagsDrawer(
     onNavigateToFeed: (DiscoveryAction) -> Unit,
     onAddFavorite: (FavoriteTag) -> Unit,
     onRemoveFavorite: (FavoriteTag) -> Unit,
-    onUpdateName: (FavoriteTag, String) -> Unit,
+    onRenameRequest: (FavoriteTag) -> Unit,
     onMove: (fromIndex: Int, toIndex: Int) -> Unit,
-    onAddCustom: (String) -> Unit,
+    onAddCustomRequest: () -> Unit,
     onBlockedTagsClick: () -> Unit = {},
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     var isEditMode by remember { mutableStateOf(false) }
-    var showAddCustomDialog by remember { mutableStateOf(false) }
-    var tagToRename by remember { mutableStateOf<FavoriteTag?>(null) }
+
 
     val currentTag = remember(currentAction) { currentAction?.toFavoriteTag() }
     val isCurrentFavorited = remember(favoriteTags, currentTag) {
@@ -562,7 +519,7 @@ fun FavoriteTagsDrawer(
                 IconButton(onClick = onBlockedTagsClick) {
                     Icon(Icons.Rounded.Block, contentDescription = "标签屏蔽管理")
                 }
-                IconButton(onClick = { showAddCustomDialog = true }) {
+                IconButton(onClick = onAddCustomRequest) {
                     Icon(Icons.Rounded.Add, contentDescription = "新增标签")
                 }
                 IconButton(onClick = onClose) {
@@ -708,7 +665,7 @@ fun FavoriteTagsDrawer(
                             if (isEditMode) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     IconButton(
-                                        onClick = { tagToRename = tag },
+                                        onClick = { onRenameRequest(tag) },
                                         modifier = Modifier.size(36.dp)
                                     ) {
                                         Icon(
@@ -745,73 +702,5 @@ fun FavoriteTagsDrawer(
                 }
             }
         }
-    }
-
-    if (showAddCustomDialog) {
-        var nameInput by remember { mutableStateOf("") }
-        AlertDialog(
-            onDismissRequest = { showAddCustomDialog = false },
-            title = { Text("新增自定义标签") },
-            text = {
-                OutlinedTextField(
-                    value = nameInput,
-                    onValueChange = { nameInput = it },
-                    label = { Text("标签名称") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (nameInput.isNotBlank()) {
-                            onAddCustom(nameInput.trim())
-                            showAddCustomDialog = false
-                        }
-                    }
-                ) {
-                    Text("添加")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showAddCustomDialog = false }) {
-                    Text("取消")
-                }
-            }
-        )
-    }
-
-    if (tagToRename != null) {
-        var renameInput by remember { mutableStateOf(tagToRename?.name.orEmpty()) }
-        AlertDialog(
-            onDismissRequest = { tagToRename = null },
-            title = { Text("重命名标签") },
-            text = {
-                OutlinedTextField(
-                    value = renameInput,
-                    onValueChange = { renameInput = it },
-                    label = { Text("新名称") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        if (renameInput.isNotBlank() && tagToRename != null) {
-                            onUpdateName(tagToRename!!, renameInput.trim())
-                            tagToRename = null
-                        }
-                    }
-                ) {
-                    Text("保存")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { tagToRename = null }) {
-                    Text("取消")
-                }
-            }
-        )
     }
 }

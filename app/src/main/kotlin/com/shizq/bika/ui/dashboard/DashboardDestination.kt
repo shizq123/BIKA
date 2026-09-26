@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.dashboard
 
+import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.navigation.DiscoveryAction
 
 /**
@@ -40,4 +41,10 @@ sealed interface DashboardDestination {
     data object Notifications : DashboardDestination
 
     data object BlockedTags : DashboardDestination
+
+    data object AddFavoriteTag : DashboardDestination
+
+    data class RenameFavoriteTag(val tag: FavoriteTag) : DashboardDestination
+
+    data class CheckInResult(val message: String) : DashboardDestination
 }
