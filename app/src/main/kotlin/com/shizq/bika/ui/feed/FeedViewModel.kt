@@ -2,12 +2,8 @@ package com.shizq.bika.ui.feed
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.paging.Pager
-import androidx.paging.PagingConfig
-import androidx.paging.PagingData
-import androidx.paging.PagingSource
-import androidx.paging.cachedIn
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
@@ -20,143 +16,115 @@ import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
-import com.shizq.bika.paging.AdvancedSearchPagingSource
-import com.shizq.bika.paging.ChannelPagingSource
-import com.shizq.bika.paging.FavouriteComicsPagingSource
-import com.shizq.bika.paging.KnightPagingSource
-import com.shizq.bika.paging.PageInfoReporting
-import com.shizq.bika.paging.PageInfoTracker
-import com.shizq.bika.paging.RecentUpdatesPagingSource
-import com.shizq.bika.paging.SinglePagePagingSource
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Provider
-import androidx.paging.filter as pagingFilter
 
 @HiltViewModel(assistedFactory = FeedViewModel.Factory::class)
 class FeedViewModel @AssistedInject constructor(
     private val api: BikaDataSource,
-    private val channelPagingSourceFactory: ChannelPagingSource.Factory,
-    private val favouriteComicsPagingSourceFactory: FavouriteComicsPagingSource.Factory,
-    private val advancedSearchPagingSourceFactory: AdvancedSearchPagingSource.Factory,
-    private val knightPagingSourceFactory: KnightPagingSource.Factory,
-    private val recentUpdatesPagingSourceProvider: Provider<RecentUpdatesPagingSource>,
     private val historyDao: ReadingHistoryDao,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     @Assisted private val action: DiscoveryAction,
 ) : ViewModel() {
-    val currentSortOrder: StateFlow<SortOrder>
-        field = MutableStateFlow(SortOrder.NEWEST)
+    private val query = MutableStateFlow(FeedQuery())
+    private val reloadSignal = MutableStateFlow(0)
+    private var loadJob: Job? = null
 
-    private val localFilterSelections = MutableStateFlow<FilterSelections>(emptyMap())
+    private val _uiState = MutableStateFlow(FeedUiState())
+    val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
-    val filterSelections: StateFlow<FilterSelections> = combine(
-        localFilterSelections,
-        userPreferencesDataSource.userData
-    ) { local, prefs ->
-        if (!prefs.filter.globalTopicBlockEnabled) return@combine local
-        val globalTopics = prefs.filter.globalBlockedTopics.map(FilterOption::Topic)
-        // 全局主题为空时移除该键，而不是写入空列表，避免下游出现"键存在但值为空"
-        if (globalTopics.isEmpty()) {
-            local - FilterGroup.ExcludeTopic
-        } else {
-            local + (FilterGroup.ExcludeTopic to globalTopics)
-        }
-    }.stateIn(
-        scope = viewModelScope,
-        started = SharingStarted.WhileSubscribed(5_000),
-        initialValue = emptyMap()
-    )
+    val currentAction: DiscoveryAction = action
 
-    val excludeTopicsGlobal: StateFlow<Boolean> = userPreferencesDataSource.userData
-        .map { it.filter.globalTopicBlockEnabled }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = false
-        )
-
-    val currentPage: StateFlow<Int>
-        field = MutableStateFlow(1)
-
-    private val pageInfoTracker = PageInfoTracker()
-
-    /** 总页数由分页源在加载线程上旁路上报，[PageInfoTracker] 负责屏蔽过期数据源的回写。 */
-    val totalPages: StateFlow<Int> = pageInfoTracker.totalPages
-
-    // 合并 sort、page、filter、blockedTags 变化，构建统一的分页数据流。
-    // 注意：PagingData 不能在 cachedIn 之后再次被 combine/map，否则会运行时崩溃。
-    // 因此将所有 map/filter 操作放在 cachedIn 之前。
-    val pagedComics: Flow<PagingData<ComicSummary>> = combine(
-        currentSortOrder,
-        currentPage,
-        filterSelections,
-        userPreferencesDataSource.userData.map { it.filter.blockedTags }.distinctUntilChanged()
-    ) { sort, page, filters, blockedTags ->
-        FeedQuery(sort, page, filters, blockedTags)
-    }.flatMapLatest { state ->
-        Pager(
-            config = PagingConfig(
-                pageSize = 40
-            ),
-            initialKey = state.page
-        ) {
-            createPagingSource(action, state.sort)
-        }.flow.map { pd ->
-            val step1 = if (state.filters.hasAnySelection) {
-                pd.pagingFilter { comic -> matchesFilters(comic, state.filters) }
-            } else {
-                pd
-            }
-            if (state.blockedTags.isEmpty()) {
-                step1
-            } else {
-                step1.pagingFilter { comic -> comic.tags.none { it in state.blockedTags } }
+    init {
+        viewModelScope.launch {
+            historyDao.getDetailedHistories().collect { histories ->
+                _uiState.update { it.copy(detailedHistories = histories) }
             }
         }
-    }.cachedIn(viewModelScope)
 
-    val detailedHistories = historyDao.getDetailedHistories()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList()
-        )
+        viewModelScope.launch {
+            userPreferencesDataSource.userData.collect { preferences ->
+                _uiState.update {
+                    it.copy(
+                        favoriteTags = preferences.filter.favoriteTags,
+                        excludeTopicsGlobal = preferences.filter.globalTopicBlockEnabled,
+                    )
+                }
+            }
+        }
 
-    fun toggleFilter(group: FilterGroup, option: FilterOption) {
-        // 排除主题处于全局模式时，选中态的唯一来源是 DataStore，不写本地状态
-        if (group is FilterGroup.ExcludeTopic && excludeTopicsGlobal.value) {
+        viewModelScope.launch {
+            combine(
+                query,
+                userPreferencesDataSource.userData,
+                reloadSignal,
+            ) { currentQuery, preferences, _ ->
+                val effectiveFilters = currentQuery.localFilters.withGlobalTopics(
+                    enabled = preferences.filter.globalTopicBlockEnabled,
+                    topics = preferences.filter.globalBlockedTopics,
+                )
+                FeedLoadRequest(
+                    query = currentQuery,
+                    effectiveFilters = effectiveFilters,
+                    blockedTags = preferences.filter.blockedTags,
+                )
+            }.collectLatest(::load)
+        }
+    }
+
+    fun dispatch(intent: FeedIntent) {
+        when (intent) {
+            FeedIntent.Retry -> reloadSignal.update { it + 1 }
+            is FeedIntent.ChangePage -> changePage(intent.page)
+            is FeedIntent.ChangeSort -> query.update {
+                it.copy(page = 1, sort = intent.sort)
+            }
+
+            is FeedIntent.ToggleFilter -> toggleFilter(intent.group, intent.option)
+            is FeedIntent.SetGlobalTopicFilter -> setGlobalTopicFilter(intent.enabled)
+        }
+    }
+
+    private fun changePage(page: Int) {
+        val totalPages = _uiState.value.page?.totalPages ?: 1
+        query.update { it.copy(page = page.coerceIn(1, totalPages.coerceAtLeast(1))) }
+    }
+
+    private fun toggleFilter(group: FilterGroup, option: FilterOption) {
+        if (group is FilterGroup.ExcludeTopic && _uiState.value.excludeTopicsGlobal) {
             val topic = (option as? FilterOption.Topic)?.name ?: return
+            query.update { it.copy(page = 1) }
             viewModelScope.launch {
                 userPreferencesDataSource.toggleGlobalExcludedTopic(topic)
             }
             return
         }
 
-        currentPage.value = 1
-        localFilterSelections.update { it.toggle(group, option) }
+        query.update {
+            it.copy(
+                page = 1,
+                localFilters = it.localFilters.toggle(group, option),
+            )
+        }
     }
 
-    fun toggleExcludeTopicsGlobal(enabled: Boolean) {
+    private fun setGlobalTopicFilter(enabled: Boolean) {
+        query.update { it.copy(page = 1) }
         viewModelScope.launch {
             if (enabled) {
-                // 开启与写入初始主题必须是同一次写入，否则会短暂出现「已开启但主题为旧值」的状态，
-                // 触发一次多余的 Pager 重建。
-                val localExcluded = localFilterSelections.value[FilterGroup.ExcludeTopic]
+                val localExcluded = query.value.localFilters[FilterGroup.ExcludeTopic]
                     .orEmpty()
                     .filterIsInstance<FilterOption.Topic>()
                     .map { it.name }
@@ -165,37 +133,110 @@ class FeedViewModel @AssistedInject constructor(
                 userPreferencesDataSource.setExcludeTopicsGlobal(false)
                 val globalExcluded =
                     userPreferencesDataSource.userData.first().filter.globalBlockedTopics
-                // 关闭全局后，把原全局主题落回本地状态，避免用户看到筛选被清空
-                localFilterSelections.update { current ->
-                    if (globalExcluded.isEmpty()) {
-                        current - FilterGroup.ExcludeTopic
-                    } else {
-                        current + (FilterGroup.ExcludeTopic to globalExcluded.map(FilterOption::Topic))
-                    }
+                query.update { current ->
+                    current.copy(
+                        page = 1,
+                        localFilters = if (globalExcluded.isEmpty()) {
+                            current.localFilters - FilterGroup.ExcludeTopic
+                        } else {
+                            current.localFilters + (
+                                    FilterGroup.ExcludeTopic to
+                                            globalExcluded.map(FilterOption::Topic)
+                                    )
+                        },
+                    )
                 }
             }
         }
     }
 
-    fun updateSortOrder(newSort: SortOrder) {
-        currentPage.value = 1
-        currentSortOrder.update { newSort }
+    private suspend fun load(request: FeedLoadRequest) {
+        val previousPage = _uiState.value.page
+        _uiState.update {
+            it.copy(
+                query = request.query,
+                filterSelections = request.effectiveFilters,
+                page = previousPage,
+                isLoading = true,
+                error = null,
+            )
+        }
+
+        try {
+            val rawPage = loadPage(request.query)
+            val visibleItems = rawPage.items
+                .filter { comic ->
+                    !request.effectiveFilters.hasAnySelection ||
+                            matchesFilters(comic, request.effectiveFilters)
+                }
+                .filter { comic ->
+                    request.blockedTags.isEmpty() ||
+                            comic.tags.none { it in request.blockedTags }
+                }
+
+            _uiState.update {
+                it.copy(
+                    query = request.query,
+                    filterSelections = request.effectiveFilters,
+                    page = rawPage.copy(items = visibleItems),
+                    isLoading = false,
+                    error = null,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            _uiState.update {
+                it.copy(
+                    query = request.query,
+                    filterSelections = request.effectiveFilters,
+                    isLoading = false,
+                    error = FeedError.LoadFailed,
+                )
+            }
+        }
     }
 
-    fun updatePage(page: Int) {
-        val target = page.coerceIn(1, totalPages.value.coerceAtLeast(1))
-        currentPage.value = target
+    private suspend fun loadPage(query: FeedQuery): FeedPage = when (val target = action) {
+        is DiscoveryAction.Channel -> api.searchComics(
+            topic = target.name,
+            sort = query.sort,
+            page = query.page,
+        ).comics.toFeedPage(query.page)
+
+        is DiscoveryAction.Knight -> api.searchComics(
+            knightId = target.id,
+            sort = query.sort,
+            page = query.page,
+        ).comics.toFeedPage(query.page)
+
+        is DiscoveryAction.AdvancedSearch -> api.advancedSearch(
+            content = target.name,
+            categories = emptyList(),
+            sort = query.sort,
+            page = query.page,
+        ).comics.toFeedPage(query.page)
+
+        DiscoveryAction.ToFavourite -> api.getFavouriteComics(
+            sort = query.sort,
+            page = query.page,
+        ).comics.toFeedPage(query.page)
+
+        DiscoveryAction.ToRecent -> api.searchComics(
+            sort = SortOrder.NEWEST,
+            page = query.page,
+        ).comics.toFeedPage(query.page)
+
+        DiscoveryAction.ToCollections -> {
+            val items = api.getCollections().collections.firstOrNull()?.comics.orEmpty()
+            FeedPage(items = items, page = 1, totalPages = 1, totalCount = items.size)
+        }
+
+        DiscoveryAction.ToRandom -> {
+            val items = api.getRandomComics().comics
+            FeedPage(items = items, page = 1, totalPages = 1, totalCount = items.size)
+        }
     }
-
-    val currentAction: DiscoveryAction = action
-
-    val favoriteTags: StateFlow<List<FavoriteTag>> = userPreferencesDataSource.userData
-        .map { it.filter.favoriteTags }
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
-            initialValue = emptyList()
-        )
 
     fun addFavoriteTag(tag: FavoriteTag) {
         viewModelScope.launch {
@@ -239,68 +280,80 @@ class FeedViewModel @AssistedInject constructor(
         addFavoriteTag(
             FavoriteTag(
                 name = name,
-                actionType = FeedActionType.AdvancedSearch.storageValue
+                actionType = FeedActionType.AdvancedSearch.storageValue,
             )
         )
     }
 
-    private fun createPagingSource(
-        action: DiscoveryAction,
-        sort: SortOrder
-    ): PagingSource<Int, ComicSummary> =
-    // tracked() 的上界是 PageInfoReporting，本函数的返回类型是 PagingSource，
-    // 两者合起来由编译器保证：新增分页源必须同时满足二者，漏实现上报接口会编译失败。
-    // 这替代了原先按具体类型逐个匹配的 when + else 兜底——那种写法漏掉一个分支不会报错，
-        // 只会让总页数静默退化成 1，「跳转到指定页」随之失效。
-        when (action) {
-            is DiscoveryAction.Channel ->
-                channelPagingSourceFactory.create(action.name, sort).tracked()
-
-            // 按 id 查，不是按 name。见 KnightPagingSource 的类注释。
-            is DiscoveryAction.Knight ->
-                knightPagingSourceFactory.create(action.id, sort).tracked()
-
-            is DiscoveryAction.AdvancedSearch ->
-                advancedSearchPagingSourceFactory.create(action.name, sort).tracked()
-
-            is DiscoveryAction.ToFavourite ->
-                favouriteComicsPagingSourceFactory.create(sort).tracked()
-
-            DiscoveryAction.ToCollections -> SinglePagePagingSource<Int, ComicSummary> {
-                api.getCollections().collections.firstOrNull()?.comics ?: emptyList()
-            }.tracked()
-
-            DiscoveryAction.ToRandom -> SinglePagePagingSource<Int, ComicSummary> {
-                api.getRandomComics().comics
-            }.tracked()
-
-            DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get().tracked()
-        }
-
-    /**
-     * 逐分支装配而非在 when 外整体包一层：包在外面时 when 的期望类型是 track 的类型变量 T，
-     * [SinglePagePagingSource] 的 Key 会失去推断依据。放在分支内，期望类型就是本函数声明的
-     * PagingSource<Int, ComicSummary>，各分支独立定型。
-     */
-    private fun <T : PageInfoReporting> T.tracked(): T = pageInfoTracker.track(this)
-
     @AssistedFactory
     interface Factory {
-        fun create(
-            action: DiscoveryAction,
-        ): FeedViewModel
+        fun create(action: DiscoveryAction): FeedViewModel
     }
 }
 
-/**
- * 决定 Pager 是否需要重建的完整查询键。
- *
- * 四个字段任一变化都会经 flatMapLatest 重建 Pager，因此新增影响查询结果的维度时必须加进这里，
- * 否则改动不会生效。
- */
-private data class FeedQuery(
-    val sort: SortOrder,
+private fun com.shizq.bika.core.network.model.PageData<ComicSummary>.toFeedPage(
+    requestedPage: Int,
+): FeedPage = FeedPage(
+    items = docs,
+    page = requestedPage.coerceAtLeast(1),
+    totalPages = pages.coerceAtLeast(1),
+    totalCount = total,
+)
+
+private fun FilterSelections.withGlobalTopics(
+    enabled: Boolean,
+    topics: List<String>,
+): FilterSelections {
+    if (!enabled) return this
+    return if (topics.isEmpty()) {
+        this - FilterGroup.ExcludeTopic
+    } else {
+        this + (FilterGroup.ExcludeTopic to topics.map(FilterOption::Topic))
+    }
+}
+
+data class FeedQuery(
+    val page: Int = 1,
+    val sort: SortOrder = SortOrder.NEWEST,
+    val localFilters: FilterSelections = emptyMap(),
+)
+
+data class FeedPage(
+    val items: List<ComicSummary>,
     val page: Int,
-    val filters: FilterSelections,
-    val blockedTags: Set<String>
+    val totalPages: Int,
+    val totalCount: Int?,
+)
+
+data class FeedUiState(
+    val query: FeedQuery = FeedQuery(),
+    val filterSelections: FilterSelections = emptyMap(),
+    val page: FeedPage? = null,
+    val detailedHistories: List<DetailedHistory> = emptyList(),
+    val favoriteTags: List<FavoriteTag> = emptyList(),
+    val excludeTopicsGlobal: Boolean = false,
+    val isLoading: Boolean = true,
+    val error: FeedError? = null,
+)
+
+sealed interface FeedIntent {
+    data object Retry : FeedIntent
+    data class ChangePage(val page: Int) : FeedIntent
+    data class ChangeSort(val sort: SortOrder) : FeedIntent
+    data class ToggleFilter(
+        val group: FilterGroup,
+        val option: FilterOption,
+    ) : FeedIntent
+
+    data class SetGlobalTopicFilter(val enabled: Boolean) : FeedIntent
+}
+
+sealed interface FeedError {
+    data object LoadFailed : FeedError
+}
+
+private data class FeedLoadRequest(
+    val query: FeedQuery,
+    val effectiveFilters: FilterSelections,
+    val blockedTags: Set<String>,
 )

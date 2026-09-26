@@ -62,7 +62,6 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -78,16 +77,9 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.LoadState
-import androidx.paging.compose.LazyPagingItems
-import androidx.paging.compose.collectAsLazyPagingItems
-import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
-import com.shizq.bika.core.domain.filter.FilterSelections
-import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.ui.ComicCard
@@ -107,36 +99,20 @@ fun FeedScreen(
     onComicClick: (String) -> Unit,
     onNavigateToFeed: (DiscoveryAction) -> Unit = {},
     onBlockedTagsClick: () -> Unit = {},
-    viewModel: FeedViewModel = hiltViewModel(),
+    viewModel: FeedViewModel,
     title: String
 ) {
-    val pagedComics = viewModel.pagedComics.collectAsLazyPagingItems()
-    val detailedHistories by viewModel.detailedHistories.collectAsStateWithLifecycle()
-    val currentSortOrder by viewModel.currentSortOrder.collectAsStateWithLifecycle()
-    val filterSelections by viewModel.filterSelections.collectAsStateWithLifecycle()
-    val excludeTopicsGlobal by viewModel.excludeTopicsGlobal.collectAsStateWithLifecycle()
-    val favoriteTags by viewModel.favoriteTags.collectAsStateWithLifecycle()
-    val currentPage by viewModel.currentPage.collectAsStateWithLifecycle()
-    val totalPages by viewModel.totalPages.collectAsStateWithLifecycle()
+    val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     var showDrawer by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         FeedContent(
             title = title,
-            pagedComics = pagedComics,
-            detailedHistories = detailedHistories,
+            state = state,
             onBackClick = onBackClick,
             onComicClick = onComicClick,
-            currentSortOrder = currentSortOrder,
-            onSortOrderChanged = viewModel::updateSortOrder,
-            filterSelections = filterSelections,
-            onFilterChanged = viewModel::toggleFilter,
-            excludeTopicsGlobal = excludeTopicsGlobal,
-            onExcludeTopicsGlobalChanged = viewModel::toggleExcludeTopicsGlobal,
-            currentPage = currentPage,
-            totalPages = totalPages,
-            onPageChanged = viewModel::updatePage,
+            onIntent = viewModel::dispatch,
             onBookmarkClick = { showDrawer = true }
         )
 
@@ -164,7 +140,7 @@ fun FeedScreen(
                 .align(Alignment.CenterEnd)
         ) {
             FavoriteTagsDrawer(
-                favoriteTags = favoriteTags,
+                favoriteTags = state.favoriteTags,
                 currentAction = viewModel.currentAction,
                 onNavigateToFeed = { action ->
                     showDrawer = false
@@ -246,19 +222,10 @@ private fun FeedAppBar(
 @OptIn(ExperimentalMaterial3Api::class)
 private fun FeedContent(
     title: String,
-    pagedComics: LazyPagingItems<ComicSummary>,
-    detailedHistories: List<DetailedHistory>,
-    currentSortOrder: SortOrder,
-    onSortOrderChanged: (SortOrder) -> Unit,
+    state: FeedUiState,
     onComicClick: (comicId: String) -> Unit,
     onBackClick: () -> Unit,
-    filterSelections: FilterSelections,
-    onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
-    excludeTopicsGlobal: Boolean,
-    onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
-    currentPage: Int,
-    totalPages: Int,
-    onPageChanged: (Int) -> Unit,
+    onIntent: (FeedIntent) -> Unit,
     onBookmarkClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 ) {
@@ -269,32 +236,24 @@ private fun FeedContent(
     var pageJumpInputText by remember { mutableStateOf("") }
     var pageJumpInputError by remember { mutableStateOf<String?>(null) }
 
-    val totalCount = pagedComics.itemCount
-
-    // 阅读历史 id 映射只构建一次，滚动时每个列表项 O(1) 查找本地状态
-    val historyMap = remember(detailedHistories) {
-        detailedHistories.associateBy { it.history.id }
-    }
-
-    // 动态计算当前可视项所属的页码
-    val visiblePage by remember(currentPage, totalPages) {
-        derivedStateOf {
-            val firstIndex = listState.firstVisibleItemIndex
-            val computed = currentPage + (firstIndex / 40)
-            computed.coerceIn(1, totalPages.coerceAtLeast(1))
-        }
+    val page = state.page
+    val currentPage = state.query.page
+    val totalPages = page?.totalPages ?: 1
+    val totalCount = page?.totalCount ?: page?.items?.size ?: 0
+    val comics = page?.items.orEmpty()
+    val historyMap = remember(state.detailedHistories) {
+        state.detailedHistories.associateBy { it.history.id }
     }
 
     if (showPageJumpDialog) {
-        // 页码校验+跳转逻辑，提取为局部函数避免重复
         fun handlePageJump() {
-            val page = pageJumpInputText.trim().toIntOrNull()
+            val targetPage = pageJumpInputText.trim().toIntOrNull()
             when {
-                page == null -> pageJumpInputError = "请输入有效数字"
-                page < 1 -> pageJumpInputError = "页码不能小于 1"
-                page > totalPages -> pageJumpInputError = "页码不能超过 $totalPages"
+                targetPage == null -> pageJumpInputError = "请输入有效数字"
+                targetPage < 1 -> pageJumpInputError = "页码不能小于 1"
+                targetPage > totalPages -> pageJumpInputError = "页码不能超过 $totalPages"
                 else -> {
-                    onPageChanged(page)
+                    onIntent(FeedIntent.ChangePage(targetPage))
                     scope.launch { listState.scrollToItem(0) }
                     showPageJumpDialog = false
                     pageJumpInputText = ""
@@ -358,8 +317,8 @@ private fun FeedContent(
                 title = title,
                 scrollBehavior = scrollBehavior,
                 onBackClick = onBackClick,
-                currentSortOrder = currentSortOrder,
-                onSortOrderChanged = onSortOrderChanged,
+                currentSortOrder = state.query.sort,
+                onSortOrderChanged = { onIntent(FeedIntent.ChangeSort(it)) },
                 onBookmarkClick = onBookmarkClick
             )
         },
@@ -370,58 +329,56 @@ private fun FeedContent(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            val filterState = rememberFilterState(filterSelections)
+            val filterState = rememberFilterState(state.filterSelections)
 
             FilterRow(
                 filterState = filterState,
-                onFilterChanged = onFilterChanged,
+                onFilterChanged = { group, option ->
+                    onIntent(FeedIntent.ToggleFilter(group, option))
+                },
                 totalCount = totalCount,
-                currentPage = visiblePage,
+                currentPage = currentPage,
                 totalPages = totalPages,
                 onCountChipClick = { showPageJumpDialog = true },
-                excludeTopicsGlobal = excludeTopicsGlobal,
-                onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
+                excludeTopicsGlobal = state.excludeTopicsGlobal,
+                onExcludeTopicsGlobalChanged = {
+                    onIntent(FeedIntent.SetGlobalTopicFilter(it))
+                },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
             )
 
-            when (pagedComics.loadState.refresh) {
-                is LoadState.Loading -> {
+            when {
+                state.isLoading && page == null -> {
                     LoadingState(Modifier.weight(1f))
                 }
 
-                is LoadState.Error -> {
+                state.error != null && page == null -> {
                     ErrorState(
-                        onRetry = pagedComics::retry,
+                        onRetry = { onIntent(FeedIntent.Retry) },
                         modifier = Modifier.weight(1f)
                     )
                 }
 
-                is LoadState.NotLoading -> {
+                else -> {
                     LazyColumn(
                         state = listState,
                         modifier = Modifier.weight(1f)
                     ) {
                         items(
-                            count = pagedComics.itemCount,
-                            // 网络重试/镜像站分页可能返回重复 id，key 组合 index 保证唯一，避免 "Key was already used" 崩溃
-                            key = { index ->
-                                val item = pagedComics.peek(index)
-                                if (item != null) "${index}_${item.id}" else "placeholder_$index"
+                            items = comics,
+                            key = { comic -> comic.id }
+                        ) { comic ->
+                            val enrichedComic = remember(comic, historyMap) {
+                                comic.injectFromHistoryMap(historyMap)
                             }
-                        ) { index ->
-                            pagedComics[index]?.let { item ->
-                                val enrichedItem = remember(item, historyMap) {
-                                    item.injectFromHistoryMap(historyMap)
-                                }
-                                ComicCard(comic = enrichedItem) {
-                                    onComicClick(item.id)
-                                }
+                            ComicCard(comic = enrichedComic) {
+                                onComicClick(comic.id)
                             }
                         }
 
-                        if (pagedComics.loadState.append is LoadState.Loading) {
+                        if (state.isLoading) {
                             item {
                                 LoadingState(Modifier.wrapContentHeight())
                             }
@@ -430,12 +387,12 @@ private fun FeedContent(
                 }
             }
 
-            if (totalPages > 1 && pagedComics.loadState.refresh is LoadState.NotLoading) {
+            if (totalPages > 1 && page != null) {
                 PaginationBar(
-                    currentPage = visiblePage,
+                    currentPage = currentPage,
                     totalPages = totalPages,
-                    onPageChanged = { page ->
-                        onPageChanged(page)
+                    onPageChanged = { targetPage ->
+                        onIntent(FeedIntent.ChangePage(targetPage))
                         scope.launch { listState.scrollToItem(0) }
                     },
                     onPageIndicatorClick = { showPageJumpDialog = true },
