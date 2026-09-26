@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import java.io.IOException
+import kotlin.time.Duration.Companion.milliseconds
 
 private val logger = KotlinLogging.logger("ImageRetry")
 
@@ -74,10 +75,15 @@ class ImageRetryController(
 
         try {
             while (currentGeneration == generation) {
+                // 必须等本轮 restart 发出 Loading，不能消费上一轮残留的 Success/Error。
+                painter.state.first {
+                    it is AsyncImagePainter.State.Loading
+                }
                 val terminalState = painter.state.first {
                     it is AsyncImagePainter.State.Error ||
                             it is AsyncImagePainter.State.Success
                 }
+
 
                 if (terminalState is AsyncImagePainter.State.Success) {
                     _state.value = ImageLoadState.Success
@@ -114,7 +120,7 @@ class ImageRetryController(
 
                 val nextAttempt = attempt + 1
                 _state.value = ImageLoadState.Retrying(nextAttempt)
-                delay(backoffDelayMillis(attempt))
+                delay(backoffDelayMillis(attempt).milliseconds)
 
                 if (currentGeneration != generation) return
                 attempt = nextAttempt
@@ -132,4 +138,4 @@ class ImageRetryController(
 
 /** 日志中只保留不可逆的短标识，不记录原始 URL、token 或请求对象。 */
 private fun safeImageKey(value: String): String =
-    value.hashCode().toUInt().toString(16)
+    value.substringBefore('?').substringBefore('#').hashCode().toUInt().toString(16)

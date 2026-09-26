@@ -1,6 +1,7 @@
 package com.shizq.bika.core.ui
 
 import org.junit.Test
+import java.io.IOException
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
@@ -47,6 +48,12 @@ class BackoffDelayTest {
         assertEquals(2_000L, backoffDelayMillis(Int.MIN_VALUE))
     }
 
+    @Test
+    fun `明确错误分类`() {
+        assertEquals(ImageRetryDecision.Retry, IOException().retryDecision())
+        assertEquals(ImageRetryDecision.Stop, IllegalArgumentException().retryDecision())
+        assertEquals(ImageRetryDecision.Stop, null.retryDecision())
+    }
     @Test
     fun `曲线单调不减且恒为正`() {
         var previous = 0L
