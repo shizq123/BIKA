@@ -1,3 +1,4 @@
+import com.android.build.api.variant.FilterConfiguration
 import com.android.build.api.variant.impl.VariantOutputImpl
 import java.util.Properties
 
@@ -48,6 +49,15 @@ android {
         }
     }
 
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("armeabi-v7a", "arm64-v8a")
+            isUniversalApk = false
+        }
+    }
+
     buildFeatures {
         buildConfig = true
     }
@@ -70,7 +80,13 @@ android {
 androidComponents {
     onVariants { variant ->
         variant.outputs.forEach { output ->
-            (output as? VariantOutputImpl)?.outputFileName = "BIKA_v${output.versionName.get()}.apk"
+            val abi = output.filters.find { it.filterType == FilterConfiguration.FilterType.ABI }?.identifier
+            val suffix = when (abi) {
+                "arm64-v8a" -> "_arm64-v8a"
+                "armeabi-v7a" -> "_armeabi-v7a"
+                else -> if (!abi.isNullOrEmpty()) "_$abi" else ""
+            }
+            (output as? VariantOutputImpl)?.outputFileName = "BIKA_v${output.versionName.get()}$suffix.apk"
         }
     }
 }
