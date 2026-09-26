@@ -2,8 +2,17 @@ name: Build
 
 on:
   workflow_dispatch:
+    inputs:
+      force_build:
+        description: '强制执行打包（即使该版本号已发布过）'
+        required: false
+        type: boolean
+        default: false
   push:
-  pull_request:
+    branches:
+      - master
+    paths:
+      - 'app/build.gradle.kts'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -28,24 +37,53 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 5
+          fetch-depth: 0
+
+      - name: Check Version and Determine Build
+        id: check_version
+        run: |
+          git fetch --tags --force
+          VERSION=$(grep -E 'versionName\s*=' app/build.gradle.kts | head -n 1 | cut -d'"' -f2)
+          if [ -z "$VERSION" ]; then
+            echo "Error: Could not extract versionName from app/build.gradle.kts"
+            exit 1
+          fi
+          TAG="v$VERSION"
+          echo "version=$TAG" >> $GITHUB_OUTPUT
+          echo "raw_version=$VERSION" >> $GITHUB_OUTPUT
+
+          FORCE_BUILD="${{ github.event.inputs.force_build }}"
+          if [ "$FORCE_BUILD" = "true" ]; then
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "Force build is enabled. Proceeding with build for $TAG."
+          elif git rev-parse "$TAG" >/dev/null 2>&1; then
+            echo "should_build=false" >> $GITHUB_OUTPUT
+            echo "::notice::版本 $TAG 已经发布过 Release，跳过自动打包流程。"
+          else
+            echo "should_build=true" >> $GITHUB_OUTPUT
+            echo "检测到新版本 $TAG，开始执行云端自动打包！"
+          fi
 
       - name: Copy CI gradle.properties
+        if: steps.check_version.outputs.should_build == 'true'
         run: mkdir -p ~/.gradle ; cp .github/ci-gradle.properties ~/.gradle/gradle.properties
 
       - name: Set up JDK 21
+        if: steps.check_version.outputs.should_build == 'true'
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
           java-version: '21'
 
       - name: Setup Gradle
+        if: steps.check_version.outputs.should_build == 'true'
         uses: gradle/actions/setup-gradle@v4
         with:
           cache-encryption-key: ${{ secrets.GRADLE_ENCRYPTION_KEY }}
           build-scan-publish: false
 
       - name: Decrypt and Configure Keystore
+        if: steps.check_version.outputs.should_build == 'true'
         env:
           SIGNING_KEY: ${{ secrets.SIGNING_KEY }}
           KEY_STORE_PASSWORD: ${{ secrets.KEY_STORE_PASSWORD || '123456' }}
@@ -63,16 +101,19 @@ jobs:
             echo "Warning: SIGNING_KEY secret is empty. Skipping signing configuration."
           fi
 
-      - name: Build Release APK
+      - name: Build Release APKs (v7a & v8a)
+        if: steps.check_version.outputs.should_build == 'true'
         run: ./gradlew :app:assembleRelease -PminifyWithR8=false
 
       - name: Upload build outputs (APKs)
+        if: steps.check_version.outputs.should_build == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: APKs
+          name: APKs-${{ steps.check_version.outputs.version }}
           path: 'app/build/outputs/apk/release/*.apk'
 
       - name: Generate Git Changelog
+        if: steps.check_version.outputs.should_build == 'true'
         id: changelog
         run: |
           echo "git_changelog<<EOF" >> $GITHUB_OUTPUT
@@ -85,34 +126,20 @@ jobs:
           echo "" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Extract Version
-        id: extract_version
-        run: |
-          apk_file=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
-          if [ -n "$apk_file" ]; then
-            filename=$(basename "$apk_file")
-            if [[ "$filename" =~ BIKA_v?([0-9\.]+)\.apk ]]; then
-              version="v${BASH_REMATCH[1]}"
-              echo "Successfully extracted version: $version"
-            else
-              version="vunknown"
-              echo "Warning: Filename $filename does not match pattern."
-            fi
-          else
-            version="vunknown"
-            echo "Error: No APK file found."
-          fi
-          echo "version=$version" >> $GITHUB_OUTPUT
-
       - name: Create Release
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.extract_version.outputs.version != 'vunknown'
+        if: steps.check_version.outputs.should_build == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.extract_version.outputs.version }}
-          name: Release ${{ steps.extract_version.outputs.version }}
+          tag_name: ${{ steps.check_version.outputs.version }}
+          name: Release ${{ steps.check_version.outputs.version }}
           body: |
-            自动打包成功！这是最新发布的构建版本。
+            🎉 自动打包成功！这是最新发布的构建版本。
             
+            ### 📱 安装包架构说明 (APK Assets)
+            - 🚀 **`BIKA_${{ steps.check_version.outputs.version }}_arm64-v8a.apk`**：**v8a (64位) 架构**（强烈推荐，适用于几乎所有现代主流安卓手机，性能更强，内存利用更优）。
+            - 📱 **`BIKA_${{ steps.check_version.outputs.version }}_armeabi-v7a.apk`**：**v7a (32位) 架构**（适用于老旧安卓设备、低版本系统或兼容模式）。
+
+            ---
             ### 📝 最新更新内容 (Git Commit Info)
             ${{ steps.changelog.outputs.latest_commit }}
             
@@ -130,24 +157,29 @@ jobs:
             app/build/outputs/apk/release/*.apk
 
       - name: Delete Old Latest Release
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.extract_version.outputs.version != 'vunknown'
+        if: steps.check_version.outputs.should_build == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           gh release delete latest --yes --cleanup-tag || true
 
       - name: Create Latest Release
-        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && steps.extract_version.outputs.version != 'vunknown'
+        if: steps.check_version.outputs.should_build == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: latest
           name: BIKA Latest Release
           body: |
-            自动打包成功！这是最新发布的构建版本。
+            🎉 自动打包成功！这是最新发布的构建版本。
             
             ### 🏷️ 实际版本号
-            ${{ steps.extract_version.outputs.version }}
+            ${{ steps.check_version.outputs.version }}
+
+            ### 📱 安装包架构说明 (APK Assets)
+            - 🚀 **`BIKA_${{ steps.check_version.outputs.version }}_arm64-v8a.apk`**：**v8a (64位) 架构**（推荐绝大多数现代安卓手机）。
+            - 📱 **`BIKA_${{ steps.check_version.outputs.version }}_armeabi-v7a.apk`**：**v7a (32位) 架构**（老旧安卓设备或兼容模式）。
             
+            ---
             ### 📝 最新更新内容 (Git Commit Info)
             ${{ steps.changelog.outputs.latest_commit }}
             
