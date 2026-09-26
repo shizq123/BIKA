@@ -688,7 +688,7 @@ fun FavoriteTagsDrawer(
                     )
                 }
             } else {
-                androidx.compose.foundation.lazy.LazyColumn(
+                LazyColumn(
                     modifier = Modifier.weight(1f)
                 ) {
                     itemsIndexed(favoriteTags) { index, tag ->
