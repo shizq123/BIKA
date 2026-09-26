@@ -1,94 +1,135 @@
 package com.shizq.bika.core.ui
 
 import coil3.compose.AsyncImagePainter
+import coil3.network.HttpException
 import io.github.oshai.kotlinlogging.KotlinLogging
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import java.io.IOException
 
 private val logger = KotlinLogging.logger("ImageRetry")
 
-/**
- * 判断加载失败是否值得自动重试：
- * - HTTP 4xx（404 资源不存在/403 无权限等）是永久性失败，重试无意义，不自动重试；
- * - 其余（网络抖动、超时、DNS 失败、5xx 服务器错误）属于临时性失败，持续退避重试。
- */
-fun Throwable?.isRetryableError(): Boolean =
-    this !is coil3.network.HttpException || response.code >= 500
-
-/** 退避曲线的封顶间隔。 */
+private const val MaxAutoRetries = 4
+private const val MaxRetryDurationMillis = 30_000L
 private const val MaxBackoffMillis = 30_000L
-
-/** 达到 [MaxBackoffMillis] 所需的位移次数：2000 shl 4 = 32000 > 30000。 */
 private const val MaxBackoffShift = 4
 
-/**
- * 第 [attempt] 次重试前应等待的毫秒数：2s / 4s / 8s / 16s / 30s 封顶。
- *
- * 位移量必须先夹进 `0..MaxBackoffShift` 再移，不能移完再 `coerceAtMost`：
- * `shl` 的右操作数按 mod 32 取模，`attempt` 涨到 32 时 `2000L shl 32` 会绕回
- * 2000，退避曲线直接失效、退化成 2s 一次的无限轮询。负数同理（mod 后是大数）。
- *
- * 抽成纯函数是因为这条曲线原先在三处各写了一遍并且已经漂移：两处做了钳制、
- * `RetryableAsyncImage` 没做。
- */
-fun backoffDelayMillis(attempt: Int): Long =
-    (2000L shl attempt.coerceIn(0, MaxBackoffShift)).coerceAtMost(MaxBackoffMillis)
+/** 只允许明确判定为临时性故障的错误进入自动重试。 */
+enum class ImageRetryDecision {
+    Retry,
+    Stop,
+}
 
-/**
- * 图片加载失败后的退避重试循环。挂起直到被取消，因此调用方应放在
- * `LaunchedEffect(painter, retryNonce)` 里，靠取消/重启来管理生命周期。
- *
- * ## 为什么是一条长活协程，而不是「计数 + LaunchedEffect(计数)」
- *
- * 重试计数是**协程栈上的局部变量**。三处调用点原先都是「用 `remember` 存计数，
- * 再把计数当成 `LaunchedEffect` 的 key」，也就是 effect 自己写自己的 key：
- * 自增 → 重组 → 协程在 `delay` 上被取消 → `restart()` 永远走不到 → 新协程启动
- * 后立刻又自增。净效果是自动重试一次都不发生，外加一个无界重组循环
- * （只要屏上有一张图停在可重试错误态就持续烧 CPU 和电）。
- *
- * 计数活在栈上就不可能成为 key，「先自增还是先 delay」也不再是正确性问题。
- * 同一条协程贯穿整个错误态序列，计数也不会因为 state 短暂离开 Error
- * （重试后进入 Loading）而丢失，退避不会被拉回 2s。
- *
- * ## 为什么循环是自驱动的
- *
- * 每轮都用 `first { }` 主动去要一个错误态，而不是靠 [AsyncImagePainter.state]
- * 再发射一次新的 Error 来推进。它是 `StateFlow`，会按相等性去重——把「下一轮
- * 重试」挂在「两次失败发射的值不相等」这个假设上，一旦相等重试就永久停摆。
- * 当前值已经是 Error 时 `first { }` 立即返回，因此推进不依赖发射；而每轮必经
- * 一次 [delay]，因此也不会退化成忙循环。
- *
- * 计数只随本协程的生命周期重置（模型变化、节点重建、调用方递增 nonce），
- * 加载成功后不重置：长期存活的节点如果反复恢复又失败，说明它确实不稳定，
- * 沿用较长的间隔是想要的行为。
- *
- * @param describe 仅在需要写日志时求值，用于定位是哪张图（页码 / url / model）。
- */
-suspend fun AsyncImagePainter.autoRetryOnError(describe: () -> String) {
-    var attempt = 0
-    var logged = false
-    while (true) {
-        val error = state
-            .first { it is AsyncImagePainter.State.Error }
-            .let { (it as AsyncImagePainter.State.Error).result.throwable }
-
-        // 只记首次失败，避免按可见项数量 × 重试轮数刷屏。
-        if (!logged) {
-            logged = true
-            if (error.isRetryableError()) {
-                logger.error(error) { "图片加载失败: ${describe()}" }
-            } else {
-                logger.warn(error) { "图片永久不可用(不重试): ${describe()}" }
-            }
-        }
-        // 永久失败：结束协程。后续只可能由用户显式重试（调用方递增 nonce）重启。
-        if (!error.isRetryableError()) return
-
-        delay(backoffDelayMillis(attempt))
-        attempt++
-        // 等待期间可能已被手动重试救回来了，别再补一次多余的请求。
-        if (state.value is AsyncImagePainter.State.Error) {
-            restart()
+fun Throwable?.retryDecision(): ImageRetryDecision = when (this) {
+    is HttpException -> {
+        if (response.code in 400..499) {
+            ImageRetryDecision.Stop
+        } else {
+            ImageRetryDecision.Retry
         }
     }
+
+    null -> ImageRetryDecision.Stop
+    is IOException -> ImageRetryDecision.Retry
+    else -> ImageRetryDecision.Stop
 }
+
+fun backoffDelayMillis(attempt: Int): Long =
+    (2000L shl attempt.coerceIn(0, MaxBackoffShift))
+        .coerceAtMost(MaxBackoffMillis)
+
+sealed interface ImageLoadState {
+    data object Loading : ImageLoadState
+    data class Retrying(val attempt: Int) : ImageLoadState
+    data object Success : ImageLoadState
+    data class Failed(val decision: ImageRetryDecision) : ImageLoadState
+}
+
+/**
+ * 负责单个 Painter 的完整加载生命周期。
+ *
+ * Painter 只负责执行和绘制请求；重试上限、请求代数、错误分类和 UI 状态由此控制器管理。
+ * 调用方必须为每次 model 变化或手动重试重新调用 [run]，且不得直接调用 painter.restart()。
+ */
+class ImageRetryController(
+    private val painter: AsyncImagePainter,
+) {
+    private val _state = MutableStateFlow<ImageLoadState>(ImageLoadState.Loading)
+    val state: StateFlow<ImageLoadState> = _state.asStateFlow()
+
+    private var generation = 0L
+
+    suspend fun run(modelKey: String) {
+        val currentGeneration = ++generation
+        val startedAt = System.nanoTime()
+        var attempt = 0
+        var logged = false
+
+        _state.value = ImageLoadState.Loading
+        painter.restart()
+
+        try {
+            while (currentGeneration == generation) {
+                val terminalState = painter.state.first {
+                    it is AsyncImagePainter.State.Error ||
+                            it is AsyncImagePainter.State.Success
+                }
+
+                if (terminalState is AsyncImagePainter.State.Success) {
+                    _state.value = ImageLoadState.Success
+                    return
+                }
+
+                val error = (terminalState as AsyncImagePainter.State.Error)
+                    .result.throwable
+                val decision = error.retryDecision()
+
+                if (!logged) {
+                    logged = true
+                    val safeKey = safeImageKey(modelKey)
+                    if (decision == ImageRetryDecision.Retry) {
+                        logger.error(error) {
+                            "图片加载失败: key=$safeKey"
+                        }
+                    } else {
+                        logger.warn(error) {
+                            "图片不可重试: key=$safeKey"
+                        }
+                    }
+                }
+
+                val durationExceeded =
+                    (System.nanoTime() - startedAt) / 1_000_000L >= MaxRetryDurationMillis
+                if (decision == ImageRetryDecision.Stop ||
+                    attempt >= MaxAutoRetries ||
+                    durationExceeded
+                ) {
+                    _state.value = ImageLoadState.Failed(decision)
+                    return
+                }
+
+                val nextAttempt = attempt + 1
+                _state.value = ImageLoadState.Retrying(nextAttempt)
+                delay(backoffDelayMillis(attempt))
+
+                if (currentGeneration != generation) return
+                attempt = nextAttempt
+                painter.restart()
+            }
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        }
+    }
+
+    fun invalidate() {
+        generation++
+    }
+}
+
+/** 日志中只保留不可逆的短标识，不记录原始 URL、token 或请求对象。 */
+private fun safeImageKey(value: String): String =
+    value.hashCode().toUInt().toString(16)

@@ -55,9 +55,7 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.ui.CircularProgressIndicator
-import com.shizq.bika.core.ui.autoRetryOnError
 import com.shizq.bika.core.ui.backoffDelayMillis
-import com.shizq.bika.core.ui.isRetryableError
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
@@ -106,15 +104,15 @@ fun ChapterAppendRetryEffect(pageItems: LazyPagingItems<ChapterPage>) {
 
             if (!logged) {
                 logged = true
-                if (throwable.isRetryableError()) {
-                    pagingLogger.error(throwable) { "章节分页加载失败" }
-                } else {
-                    // 404 等永久失败：提示后不再自动重试
-                    pagingLogger.warn(throwable) { "章节分页永久不可用(不重试)" }
-                }
+//                if (throwable.isRetryableError()) {
+//                    pagingLogger.error(throwable) { "章节分页加载失败" }
+//                } else {
+//                    // 404 等永久失败：提示后不再自动重试
+//                    pagingLogger.warn(throwable) { "章节分页永久不可用(不重试)" }
+//                }
             }
             // 永久失败：结束协程。用户点击占位项仍可手动 retry()。
-            if (!throwable.isRetryableError()) return@LaunchedEffect
+//            if (!throwable.isRetryableError()) return@LaunchedEffect
 
             delay(backoffDelayMillis(attempt))
             attempt++
@@ -304,7 +302,7 @@ fun ComicPageItem(
     // key 用 imageRequest 而非 painter：painter 实例在 model 变化时会被复用，
     // 只按它做 key 会让复用到新页的节点继承上一页的退避计数与已记日志标记。
     LaunchedEffect(imageRequest, manualRetryNonce) {
-        painter.autoRetryOnError { "第 ${index + 1} 页 url=${page.url}" }
+//        painter.autoRetryOnError { "第 ${index + 1} 页 url=${page.url}" }
     }
 
     Box(
