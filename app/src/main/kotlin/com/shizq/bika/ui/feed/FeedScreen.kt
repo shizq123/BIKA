@@ -61,23 +61,21 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.font.FontWeight
-
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.result.ResultEffect
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.model.FavoriteTag
@@ -85,7 +83,10 @@ import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.ui.ComicCard
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
+import com.shizq.bika.navigation.AddFavoriteTagResult
 import com.shizq.bika.navigation.DiscoveryAction
+import com.shizq.bika.navigation.FeedPageJumpResult
+import com.shizq.bika.navigation.RenameFavoriteTagResult
 import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterState
 import com.shizq.bika.ui.tag.rememberFilterState
@@ -100,26 +101,21 @@ fun FeedScreen(
     onNavigateToFeed: (DiscoveryAction) -> Unit = {},
     onBlockedTagsClick: () -> Unit = {},
     onPageJumpRequest: (currentPage: Int, totalPages: Int) -> Unit,
-    pageJumpResults: kotlinx.coroutines.flow.Flow<Int>,
     onAddCustomFavoriteRequest: () -> Unit,
-    addCustomFavoriteResults: kotlinx.coroutines.flow.Flow<String>,
     onRenameFavoriteRequest: (FavoriteTag) -> Unit,
-    renameFavoriteResults: kotlinx.coroutines.flow.Flow<Pair<FavoriteTag, String>>,
     viewModel: FeedViewModel,
     title: String
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
-    var showDrawer by remember { mutableStateOf(false) }
+    ResultEffect<AddFavoriteTagResult> { result ->
+        viewModel.addCustomFavoriteTag(result.name)
+    }
+    ResultEffect<RenameFavoriteTagResult> { result ->
+        viewModel.updateFavoriteTagName(result.tag, result.name)
+    }
 
-    LaunchedEffect(addCustomFavoriteResults) {
-        addCustomFavoriteResults.collect(viewModel::addCustomFavoriteTag)
-    }
-    LaunchedEffect(renameFavoriteResults) {
-        renameFavoriteResults.collect { (tag, name) ->
-            viewModel.updateFavoriteTagName(tag, name)
-        }
-    }
+    var showDrawer by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         FeedContent(
@@ -129,7 +125,6 @@ fun FeedScreen(
             onComicClick = onComicClick,
             onIntent = viewModel::dispatch,
             onPageJumpRequest = onPageJumpRequest,
-            pageJumpResults = pageJumpResults,
             onBookmarkClick = { showDrawer = true }
         )
 
@@ -244,12 +239,16 @@ private fun FeedContent(
     onBackClick: () -> Unit,
     onIntent: (FeedIntent) -> Unit,
     onPageJumpRequest: (currentPage: Int, totalPages: Int) -> Unit,
-    pageJumpResults: kotlinx.coroutines.flow.Flow<Int>,
     onBookmarkClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 ) {
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    ResultEffect<FeedPageJumpResult> { result ->
+        onIntent(FeedIntent.ChangePage(result.page))
+        scope.launch { listState.scrollToItem(0) }
+    }
 
     val page = state.page
     val currentPage = state.query.page
@@ -258,13 +257,6 @@ private fun FeedContent(
     val comics = page?.items.orEmpty()
     val historyMap = remember(state.detailedHistories) {
         state.detailedHistories.associateBy { it.history.id }
-    }
-
-    LaunchedEffect(pageJumpResults) {
-        pageJumpResults.collect { targetPage ->
-            onIntent(FeedIntent.ChangePage(targetPage))
-            listState.scrollToItem(0)
-        }
     }
 
     Scaffold(

@@ -7,12 +7,13 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
+import androidx.navigation3.runtime.result.LocalResultEventBus
+import androidx.navigation3.runtime.result.ResultEffect
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.feature.comicdetail.impl.ComicDetailScreen
@@ -35,6 +36,7 @@ import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.dashboard.EditProfileDialog
 import com.shizq.bika.ui.download.DownloadListScreen
 import com.shizq.bika.ui.feed.FavoriteTagNameDialog
+import com.shizq.bika.ui.feed.FeedIntent
 import com.shizq.bika.ui.feed.FeedPageJumpDialog
 import com.shizq.bika.ui.feed.FeedScreen
 import com.shizq.bika.ui.feed.FeedViewModel
@@ -112,40 +114,27 @@ fun EntryProviderScope<NavKey>.featureSection(
     fun slideTransitionMetadata() = slideTransitionMetadata(useAnimation)
 
     entry<ConnectedRoute.DashboardRoute> {
-        val addFavoriteResults = remember {
-            navigator.textDialogResults(DASHBOARD_ADD_FAVORITE_REQUEST)
-        }
-        val renameFavoriteResults = remember {
-            navigator.renameFavoriteDialogResults(DASHBOARD_RENAME_FAVORITE_REQUEST)
-        }
         DashboardScreen(
             onNavigate = { navigator.navigate(it.toNavKey()) },
-            addFavoriteResults = addFavoriteResults,
-            renameFavoriteResults = renameFavoriteResults,
         )
     }
-
 
     entry<ConnectedRoute.FeedRoute>(
         metadata = slideTransitionMetadata()
     ) { key ->
-        val pageJumpRequestId = rememberSaveable { "feed-page-jump:${java.util.UUID.randomUUID()}" }
-        val addFavoriteRequestId =
-            rememberSaveable { "feed-add-favorite:${java.util.UUID.randomUUID()}" }
-        val renameFavoriteRequestId =
-            rememberSaveable { "feed-rename-favorite:${java.util.UUID.randomUUID()}" }
-        val pageJumpResults = remember(pageJumpRequestId) {
-            navigator.intDialogResults(pageJumpRequestId)
+        ResultEffect<FeedPageJumpResult> { result ->
+            viewModel.dispatch(FeedIntent.ChangePage(result.page))
         }
-        val addFavoriteResults = remember(addFavoriteRequestId) {
-            navigator.textDialogResults(addFavoriteRequestId)
+        ResultEffect<AddFavoriteTagResult> { result ->
+            viewModel.addCustomFavoriteTag(result.name)
         }
-        val renameFavoriteResults = remember(renameFavoriteRequestId) {
-            navigator.renameFavoriteDialogResults(renameFavoriteRequestId)
+        ResultEffect<RenameFavoriteTagResult> { result ->
+            viewModel.updateFavoriteTagName(result.tag, result.name)
         }
+
         FeedScreen(
             title = key.action.name,
-            onBackClick = { navigator.goBack() },
+            onBackClick = navigator::goBack,
             onComicClick = navigator::navigateToUnitedDetail,
             onNavigateToFeed = { action ->
                 navigator.navigate(ConnectedRoute.FeedRoute(action))
@@ -154,23 +143,17 @@ fun EntryProviderScope<NavKey>.featureSection(
             onPageJumpRequest = { currentPage, totalPages ->
                 navigator.navigate(
                     FeedPageJumpDialogNavKey(
-                        requestId = pageJumpRequestId,
                         currentPage = currentPage,
                         totalPages = totalPages,
                     )
                 )
             },
-            pageJumpResults = pageJumpResults,
             onAddCustomFavoriteRequest = {
-                navigator.navigate(AddFavoriteTagDialogNavKey(addFavoriteRequestId))
+                navigator.navigate(AddFavoriteTagDialogNavKey)
             },
-            addCustomFavoriteResults = addFavoriteResults,
             onRenameFavoriteRequest = { tag ->
-                navigator.navigate(
-                    RenameFavoriteTagDialogNavKey(renameFavoriteRequestId, tag)
-                )
+                navigator.navigate(RenameFavoriteTagDialogNavKey(tag))
             },
-            renameFavoriteResults = renameFavoriteResults,
             viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
                 key = key.toString(),
             ) { factory ->
@@ -363,13 +346,15 @@ fun EntryProviderScope<NavKey>.featureSection(
 
     entry<AddFavoriteTagDialogNavKey>(
         metadata = DialogSceneStrategy.dialog(),
-    ) { key ->
+    ) {
+        val resultBus = LocalResultEventBus.current
         FavoriteTagNameDialog(
             title = "新增自定义标签",
             label = "标签名称",
             confirmText = "添加",
             onConfirm = { name ->
-                navigator.finishDialogWithTextResult(key.requestId, name)
+                resultBus.sendResult(AddFavoriteTagResult(name))
+                navigator.goBack()
             },
             onDismiss = navigator::goBack,
         )
@@ -378,13 +363,15 @@ fun EntryProviderScope<NavKey>.featureSection(
     entry<RenameFavoriteTagDialogNavKey>(
         metadata = DialogSceneStrategy.dialog(),
     ) { key ->
+        val resultBus = LocalResultEventBus.current
         FavoriteTagNameDialog(
             title = "重命名标签",
             label = "新名称",
             confirmText = "保存",
             initialValue = key.tag.name,
             onConfirm = { name ->
-                navigator.finishRenameFavoriteDialog(key.requestId, key.tag, name)
+                resultBus.sendResult(RenameFavoriteTagResult(key.tag, name))
+                navigator.goBack()
             },
             onDismiss = navigator::goBack,
         )
@@ -393,11 +380,13 @@ fun EntryProviderScope<NavKey>.featureSection(
     entry<FeedPageJumpDialogNavKey>(
         metadata = DialogSceneStrategy.dialog(),
     ) { key ->
+        val resultBus = LocalResultEventBus.current
         FeedPageJumpDialog(
             currentPage = key.currentPage,
             totalPages = key.totalPages,
             onConfirm = { page ->
-                navigator.finishDialogWithIntResult(key.requestId, page)
+                resultBus.sendResult(FeedPageJumpResult(page))
+                navigator.goBack()
             },
             onDismiss = navigator::goBack,
         )
@@ -423,8 +412,6 @@ fun EntryProviderScope<NavKey>.featureSection(
 }
 
 
-private const val DASHBOARD_ADD_FAVORITE_REQUEST = "dashboard-add-favorite"
-private const val DASHBOARD_RENAME_FAVORITE_REQUEST = "dashboard-rename-favorite"
 
 fun Navigator.navigateToUnitedDetail(id: String) {
     navigate(ConnectedRoute.UnitedDetailRoute(id))
@@ -450,9 +437,8 @@ private fun DashboardDestination.toNavKey(): Connected = when (this) {
     DashboardDestination.Downloads -> ConnectedRoute.DownloadListRoute
     DashboardDestination.Notifications -> ConnectedRoute.NotificationsRoute
     DashboardDestination.BlockedTags -> ConnectedRoute.BlockedTagsRoute
-    DashboardDestination.AddFavoriteTag -> AddFavoriteTagDialogNavKey(DASHBOARD_ADD_FAVORITE_REQUEST)
-    is DashboardDestination.RenameFavoriteTag ->
-        RenameFavoriteTagDialogNavKey(DASHBOARD_RENAME_FAVORITE_REQUEST, tag)
+    DashboardDestination.AddFavoriteTag -> AddFavoriteTagDialogNavKey
+    is DashboardDestination.RenameFavoriteTag -> RenameFavoriteTagDialogNavKey(tag)
 
     is DashboardDestination.CheckInResult -> CheckInResultDialogNavKey(message)
 }

@@ -84,6 +84,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.navigation3.runtime.result.ResultEffect
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
@@ -91,7 +92,10 @@ import com.shizq.bika.R
 import com.shizq.bika.core.data.model.DetailedReadingHistory
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
+import com.shizq.bika.navigation.AddFavoriteTagResult
 import com.shizq.bika.navigation.DiscoveryAction
+import com.shizq.bika.navigation.RenameFavoriteTagResult
+
 import com.shizq.bika.ui.feed.FavoriteTagsDrawer
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -99,21 +103,15 @@ import kotlinx.coroutines.launch
 @Composable
 fun DashboardScreen(
     onNavigate: (DashboardDestination) -> Unit,
-    addFavoriteResults: kotlinx.coroutines.flow.Flow<String>,
-    renameFavoriteResults: kotlinx.coroutines.flow.Flow<Pair<FavoriteTag, String>>,
     viewModel: DashboardViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
 
-    LaunchedEffect(renameFavoriteResults) {
-        renameFavoriteResults.collect { (tag, name) ->
-            viewModel.dispatch(DashboardAction.UpdateFavoriteTagName(tag, name))
-        }
+    ResultEffect<AddFavoriteTagResult> { result ->
+        viewModel.dispatch(DashboardAction.AddCustomFavoriteTag(result.name))
     }
-    LaunchedEffect(addFavoriteResults) {
-        addFavoriteResults.collect { name ->
-            viewModel.dispatch(DashboardAction.AddCustomFavoriteTag(name))
-        }
+    ResultEffect<RenameFavoriteTagResult> { result ->
+        viewModel.dispatch(DashboardAction.UpdateFavoriteTagName(result.tag, result.name))
     }
 
     // 自动打卡：profile 加载成功后 dispatch 一次，实际检查逻辑在 StateMachine 内部完成。
