@@ -49,8 +49,10 @@ fun ComicCard(
     modifier: Modifier = Modifier,
     onItemClick: () -> Unit = {}
 ) {
+    // Keep the legacy overload: the content overload can crash in RectList during lazy premeasure.
+    @Suppress("DEPRECATION")
     ListItem(
-        content = {
+        headlineContent = {
             Column {
                 // 标题上方流式状态徽章墙（列表项内避免 FlowRow 的多轮测量，改用 Row）
                 Row(
