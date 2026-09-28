@@ -61,8 +61,10 @@ fun Preference(
     iconVector: ImageVector? = null,
     onClick: (() -> Unit)? = null
 ) {
+    // Avoid InteractiveListItemMeasurePolicy's RectList crash during lazy premeasure.
+    @Suppress("DEPRECATION")
     ListItem(
-        content = { Text(title) },
+        headlineContent = { Text(title) },
         supportingContent = if (summary != null) {
             { Text(summary) }
         } else null,
@@ -81,8 +83,10 @@ fun SwitchPreference(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit
 ) {
+    // Keep the legacy overload for the same lazy premeasure workaround as Preference.
+    @Suppress("DEPRECATION")
     ListItem(
-        content = { Text(title) },
+        headlineContent = { Text(title) },
         supportingContent = if (summary != null) {
             { Text(summary) }
         } else null,
@@ -122,8 +126,10 @@ fun <T> ListPreference(
 ) {
     var showDialog by remember { mutableStateOf(false) }
 
+    // Keep the legacy overload for the same lazy premeasure workaround as Preference.
+    @Suppress("DEPRECATION")
     ListItem(
-        content = { Text(title) },
+        headlineContent = { Text(title) },
         supportingContent = { Text(optionToText(selectedValue)) },
         leadingContent = if (iconVector != null) {
             { Icon(imageVector = iconVector, contentDescription = null) }
