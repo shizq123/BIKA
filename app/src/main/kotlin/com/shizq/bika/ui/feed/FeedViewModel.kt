@@ -21,7 +21,6 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.CancellationException
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -40,7 +39,6 @@ class FeedViewModel @AssistedInject constructor(
 ) : ViewModel() {
     private val query = MutableStateFlow(FeedQuery())
     private val reloadSignal = MutableStateFlow(0)
-    private var loadJob: Job? = null
 
     private val _uiState = MutableStateFlow(FeedUiState())
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
@@ -156,14 +154,21 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     private suspend fun load(request: FeedLoadRequest) {
-        val previousPage = _uiState.value.page
+        val previousContent = _uiState.value.content
         _uiState.update {
             it.copy(
                 query = request.query,
                 filterSelections = request.effectiveFilters,
-                page = previousPage,
-                isLoading = true,
-                error = null,
+                content = when (previousContent) {
+                    is FeedContentState.Success -> previousContent.copy(
+                        isRefreshing = true,
+                        refreshError = null,
+                    )
+
+                    FeedContentState.Initial,
+                    FeedContentState.Loading,
+                    is FeedContentState.Error -> FeedContentState.Loading
+                },
             )
         }
 
@@ -183,20 +188,28 @@ class FeedViewModel @AssistedInject constructor(
                 it.copy(
                     query = request.query,
                     filterSelections = request.effectiveFilters,
-                    page = rawPage.copy(items = visibleItems),
-                    isLoading = false,
-                    error = null,
+                    content = FeedContentState.Success(
+                        page = rawPage.copy(items = visibleItems),
+                    ),
                 )
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            _uiState.update {
-                it.copy(
+            _uiState.update { current ->
+                current.copy(
                     query = request.query,
                     filterSelections = request.effectiveFilters,
-                    isLoading = false,
-                    error = FeedError.LoadFailed,
+                    content = when (val content = current.content) {
+                        is FeedContentState.Success -> content.copy(
+                            isRefreshing = false,
+                            refreshError = FeedError.LoadFailed,
+                        )
+
+                        FeedContentState.Initial,
+                        FeedContentState.Loading,
+                        is FeedContentState.Error -> FeedContentState.Error(FeedError.LoadFailed)
+                    },
                 )
             }
         }
@@ -243,7 +256,7 @@ class FeedViewModel @AssistedInject constructor(
         }
     }
 
-    fun addFavoriteTag(tag: FavoriteTag) {
+    private fun addFavoriteTag(tag: FavoriteTag) {
         viewModelScope.launch {
             userPreferencesDataSource.updateFavoriteTags { tags ->
                 if (tags.any { it.isSameTag(tag) }) tags else tags + tag
@@ -259,7 +272,7 @@ class FeedViewModel @AssistedInject constructor(
         }
     }
 
-    fun updateFavoriteTagName(tag: FavoriteTag, newName: String) {
+    private fun updateFavoriteTagName(tag: FavoriteTag, newName: String) {
         if (newName.isBlank()) return
         viewModelScope.launch {
             userPreferencesDataSource.updateFavoriteTags { tags ->
@@ -268,7 +281,7 @@ class FeedViewModel @AssistedInject constructor(
         }
     }
 
-    fun moveFavoriteTag(fromIndex: Int, toIndex: Int) {
+    private fun moveFavoriteTag(fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {
             userPreferencesDataSource.updateFavoriteTags { tags ->
                 if (fromIndex in tags.indices && toIndex in tags.indices) {
@@ -280,7 +293,7 @@ class FeedViewModel @AssistedInject constructor(
         }
     }
 
-    fun addCustomFavoriteTag(name: String) {
+    private fun addCustomFavoriteTag(name: String) {
         if (name.isBlank()) return
         addFavoriteTag(
             FavoriteTag(
@@ -333,13 +346,25 @@ data class FeedPage(
 data class FeedUiState(
     val query: FeedQuery = FeedQuery(),
     val filterSelections: FilterSelections = emptyMap(),
-    val page: FeedPage? = null,
+    val content: FeedContentState = FeedContentState.Initial,
     val detailedHistories: List<DetailedHistory> = emptyList(),
     val favoriteTags: List<FavoriteTag> = emptyList(),
     val excludeTopicsGlobal: Boolean = false,
-    val isLoading: Boolean = true,
-    val error: FeedError? = null,
-)
+) {
+    val page: FeedPage?
+        get() = (content as? FeedContentState.Success)?.page
+}
+
+sealed interface FeedContentState {
+    data object Initial : FeedContentState
+    data object Loading : FeedContentState
+    data class Error(val reason: FeedError) : FeedContentState
+    data class Success(
+        val page: FeedPage,
+        val isRefreshing: Boolean = false,
+        val refreshError: FeedError? = null,
+    ) : FeedContentState
+}
 
 sealed interface FeedAction {
     data object Retry : FeedAction
@@ -367,3 +392,4 @@ private data class FeedLoadRequest(
     val effectiveFilters: FilterSelections,
     val blockedTags: Set<String>,
 )
+

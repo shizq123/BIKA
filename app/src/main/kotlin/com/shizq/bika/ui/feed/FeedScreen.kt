@@ -65,6 +65,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -76,6 +77,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.result.ResultEffect
+import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.model.FavoriteTag
@@ -88,10 +90,8 @@ import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.navigation.FeedPageJumpResult
 import com.shizq.bika.navigation.RenameFavoriteTagResult
 import com.shizq.bika.ui.tag.FilterChip
-import com.shizq.bika.ui.tag.FilterState
-import com.shizq.bika.ui.tag.rememberFilterState
+import com.shizq.bika.ui.tag.FilterChipState
 import com.shizq.bika.util.injectFromHistoryMap
-
 
 sealed interface FeedDestination {
     data object Back : FeedDestination
@@ -124,7 +124,7 @@ fun FeedRoute(
     FeedScreen(
         title = title,
         state = state,
-        currentAction = viewModel.currentAction,
+        currentTag = viewModel.currentAction.toFavoriteTag(),
         onAction = viewModel::dispatch,
         onNavigate = onNavigate,
     )
@@ -135,11 +135,11 @@ fun FeedRoute(
 fun FeedScreen(
     title: String,
     state: FeedUiState,
-    currentAction: DiscoveryAction,
+    currentTag: FavoriteTag?,
     onAction: (FeedAction) -> Unit,
     onNavigate: (FeedDestination) -> Unit,
 ) {
-    var drawerVisible by remember { mutableStateOf(false) }
+    var drawerVisible by rememberSaveable { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         FeedContent(
@@ -172,8 +172,8 @@ fun FeedScreen(
                 .align(Alignment.CenterEnd),
         ) {
             FavoriteTagsDrawer(
-                favoriteTags = state.favoriteTags,
-                currentAction = currentAction,
+                items = state.favoriteTags.map(FavoriteTag::toUiItem),
+                currentTag = currentTag,
                 onNavigateToFeed = { action ->
                     drawerVisible = false
                     onNavigate(FeedDestination.Feed(action))
@@ -261,12 +261,12 @@ private fun FeedContent(
 ) {
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val page = state.page
-    val currentPage = state.query.page
+    val page = (state.content as? FeedContentState.Success)?.page
+    val currentPage = page?.page ?: state.query.page
     val totalPages = page?.totalPages ?: 1
     val totalCount = page?.totalCount ?: page?.items?.size ?: 0
 
-    LaunchedEffect(currentPage) {
+    LaunchedEffect(state.query.page) {
         listState.scrollToItem(0)
     }
 
@@ -288,10 +288,19 @@ private fun FeedContent(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            val filterState = rememberFilterState(state.filterSelections)
+            val filterChips = remember(state.filterSelections) {
+                FilterGroup.all.map { group ->
+                    val selected = state.filterSelections[group].orEmpty()
+                    FilterChipState(
+                        group = group,
+                        options = group.options + selected.filterNot { it in group.options },
+                        selected = selected,
+                    )
+                }
+            }
 
             FilterRow(
-                filterState = filterState,
+                chips = filterChips,
                 onFilterChanged = { group, option ->
                     onAction(FeedAction.ToggleFilter(group, option))
                 },
@@ -311,7 +320,8 @@ private fun FeedContent(
             )
 
             FeedBody(
-                state = state,
+                content = state.content,
+                histories = state.detailedHistories,
                 listState = listState,
                 onRetry = { onAction(FeedAction.Retry) },
                 onComicClick = { onNavigate(FeedDestination.Comic(it)) },
@@ -337,51 +347,56 @@ private fun FeedContent(
 
 @Composable
 private fun FeedBody(
-    state: FeedUiState,
+    content: FeedContentState,
+    histories: List<DetailedHistory>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     onRetry: () -> Unit,
     onComicClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val page = state.page
+    when (content) {
+        FeedContentState.Initial,
+        FeedContentState.Loading -> LoadingState(modifier)
 
-    when {
-        page == null && state.isLoading -> LoadingState(modifier)
-        page == null && state.error != null -> ErrorState(onRetry = onRetry, modifier = modifier)
-        page == null -> ErrorState(onRetry = onRetry, modifier = modifier)
-        page.items.isEmpty() -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
-            Text(
-                text = "没有符合条件的内容",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+        is FeedContentState.Error -> ErrorState(onRetry = onRetry, modifier = modifier)
+        is FeedContentState.Success -> {
+            if (content.page.items.isEmpty()) {
+                Box(modifier = modifier, contentAlignment = Alignment.Center) {
+                    Text(
+                        text = "没有符合条件的内容",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                FeedList(
+                    content = content,
+                    histories = histories,
+                    listState = listState,
+                    onRetry = onRetry,
+                    onComicClick = onComicClick,
+                    modifier = modifier,
+                )
+            }
         }
-
-        else -> FeedList(
-            state = state,
-            listState = listState,
-            onRetry = onRetry,
-            onComicClick = onComicClick,
-            modifier = modifier,
-        )
     }
 }
 
 @Composable
 private fun FeedList(
-    state: FeedUiState,
+    content: FeedContentState.Success,
+    histories: List<DetailedHistory>,
     listState: androidx.compose.foundation.lazy.LazyListState,
     onRetry: () -> Unit,
     onComicClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val comics = state.page?.items.orEmpty()
-    val historyMap = remember(state.detailedHistories) {
-        state.detailedHistories.associateBy { it.history.id }
+    val historyMap = remember(histories) {
+        histories.associateBy { it.history.id }
     }
 
     Column(modifier = modifier) {
-        if (state.error != null) {
+        if (content.refreshError != null) {
             Surface(
                 color = MaterialTheme.colorScheme.errorContainer,
                 contentColor = MaterialTheme.colorScheme.onErrorContainer,
@@ -401,7 +416,7 @@ private fun FeedList(
 
         LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
             items(
-                items = comics,
+                items = content.page.items,
                 key = { comic -> comic.id },
                 contentType = { "comic" },
             ) { comic ->
@@ -411,7 +426,7 @@ private fun FeedList(
                 ComicCard(comic = enrichedComic) { onComicClick(comic.id) }
             }
 
-            if (state.isLoading) {
+            if (content.isRefreshing) {
                 item(key = "feed-loading", contentType = "loading") {
                     LoadingState(Modifier.wrapContentHeight())
                 }
@@ -422,7 +437,7 @@ private fun FeedList(
 
 @Composable
 private fun FilterRow(
-    filterState: FilterState,
+    chips: List<FilterChipState>,
     onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
     totalCount: Int,
     currentPage: Int,
@@ -437,7 +452,10 @@ private fun FilterRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        items(filterState.chips) { chipState ->
+        items(
+            items = chips,
+            key = { it.group.label },
+        ) { chipState ->
             FilterChip(
                 state = chipState,
                 onSelectionChanged = { option -> onFilterChanged(chipState.group, option) },
@@ -527,10 +545,22 @@ private fun PaginationBar(
     }
 }
 
+data class FavoriteTagUiItem(
+    val stableKey: String,
+    val tag: FavoriteTag,
+    val action: DiscoveryAction?,
+)
+
+fun FavoriteTag.toUiItem() = FavoriteTagUiItem(
+    stableKey = "$actionType:$actionId:$name",
+    tag = this,
+    action = toAction(),
+)
+
 @Composable
 fun FavoriteTagsDrawer(
-    favoriteTags: List<FavoriteTag>,
-    currentAction: DiscoveryAction? = null,
+    items: List<FavoriteTagUiItem>,
+    currentTag: FavoriteTag? = null,
     onNavigateToFeed: (DiscoveryAction) -> Unit,
     onAddFavorite: (FavoriteTag) -> Unit,
     onRemoveFavorite: (FavoriteTag) -> Unit,
@@ -541,12 +571,10 @@ fun FavoriteTagsDrawer(
     onClose: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    var isEditMode by remember { mutableStateOf(false) }
+    var isEditMode by rememberSaveable { mutableStateOf(false) }
 
-
-    val currentTag = remember(currentAction) { currentAction?.toFavoriteTag() }
-    val isCurrentFavorited = remember(favoriteTags, currentTag) {
-        currentTag != null && favoriteTags.any { it.isSameTag(currentTag) }
+    val isCurrentFavorited = remember(items, currentTag) {
+        currentTag != null && items.any { it.tag.isSameTag(currentTag) }
     }
 
     Surface(
@@ -645,7 +673,7 @@ fun FavoriteTagsDrawer(
             }
 
             // Tags List
-            if (favoriteTags.isEmpty()) {
+            if (items.isEmpty()) {
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -663,99 +691,115 @@ fun FavoriteTagsDrawer(
                     modifier = Modifier.weight(1f)
                 ) {
                     itemsIndexed(
-                        items = favoriteTags,
-                        key = { _, tag -> "${tag.actionType}:${tag.actionId}:${tag.name}" },
-                    ) { index, tag ->
-                        val action = remember(tag) { tag.toAction() }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable(enabled = !isEditMode && action != null) {
-                                    action?.let(onNavigateToFeed)
-                                }
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (isEditMode) {
-                                IconButton(
-                                    onClick = { onRemoveFavorite(tag) },
-                                    modifier = Modifier.size(36.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Delete,
-                                        contentDescription = "删除",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                                Spacer(Modifier.width(8.dp))
-                            } else {
-                                Icon(
-                                    imageVector = Icons.Rounded.Bookmarks,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                                Spacer(Modifier.width(12.dp))
-                            }
-
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = tag.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    color = if (action == null) {
-                                        MaterialTheme.colorScheme.onSurfaceVariant
-                                    } else {
-                                        MaterialTheme.colorScheme.onSurface
-                                    },
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                                if (action == null) {
-                                    Text(
-                                        text = "无法打开，建议删除",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            }
-
-                            if (isEditMode) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    IconButton(
-                                        onClick = { onRenameRequest(tag) },
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Edit,
-                                            contentDescription = "编辑名称",
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { onMove(index, index - 1) },
-                                        enabled = index > 0,
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.KeyboardArrowUp,
-                                            contentDescription = "上移"
-                                        )
-                                    }
-                                    IconButton(
-                                        onClick = { onMove(index, index + 1) },
-                                        enabled = index < favoriteTags.size - 1,
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.KeyboardArrowDown,
-                                            contentDescription = "下移"
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        items = items,
+                        key = { _, item -> item.stableKey },
+                    ) { index, item ->
+                        FavoriteTagRow(
+                            item = item,
+                            index = index,
+                            itemCount = items.size,
+                            isEditMode = isEditMode,
+                            onNavigateToFeed = onNavigateToFeed,
+                            onRemoveFavorite = onRemoveFavorite,
+                            onRenameRequest = onRenameRequest,
+                            onMove = onMove,
+                        )
                         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceVariant)
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun FavoriteTagRow(
+    item: FavoriteTagUiItem,
+    index: Int,
+    itemCount: Int,
+    isEditMode: Boolean,
+    onNavigateToFeed: (DiscoveryAction) -> Unit,
+    onRemoveFavorite: (FavoriteTag) -> Unit,
+    onRenameRequest: (FavoriteTag) -> Unit,
+    onMove: (fromIndex: Int, toIndex: Int) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = !isEditMode && item.action != null) {
+                item.action?.let(onNavigateToFeed)
+            }
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (isEditMode) {
+            IconButton(
+                onClick = { onRemoveFavorite(item.tag) },
+                modifier = Modifier.size(36.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Delete,
+                    contentDescription = "删除",
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+        } else {
+            Icon(
+                imageVector = Icons.Rounded.Bookmarks,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.secondary,
+                modifier = Modifier.size(20.dp),
+            )
+            Spacer(Modifier.width(12.dp))
+        }
+
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = item.tag.name,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (item.action == null) {
+                    MaterialTheme.colorScheme.onSurfaceVariant
+                } else {
+                    MaterialTheme.colorScheme.onSurface
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            if (item.action == null) {
+                Text(
+                    text = "无法打开，建议删除",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
+
+        if (isEditMode) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(
+                    onClick = { onRenameRequest(item.tag) },
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Edit,
+                        contentDescription = "编辑名称",
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                IconButton(
+                    onClick = { onMove(index, index - 1) },
+                    enabled = index > 0,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = "上移")
+                }
+                IconButton(
+                    onClick = { onMove(index, index + 1) },
+                    enabled = index < itemCount - 1,
+                    modifier = Modifier.size(36.dp),
+                ) {
+                    Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "下移")
                 }
             }
         }

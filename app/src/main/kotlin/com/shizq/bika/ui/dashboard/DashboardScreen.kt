@@ -97,6 +97,7 @@ import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.navigation.RenameFavoriteTagResult
 
 import com.shizq.bika.ui.feed.FavoriteTagsDrawer
+import com.shizq.bika.ui.feed.toUiItem
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -348,8 +349,8 @@ fun DashboardContent(
                 .align(Alignment.CenterEnd)
         ) {
             FavoriteTagsDrawer(
-                favoriteTags = favoriteTags,
-                currentAction = null,
+                items = favoriteTags.map(FavoriteTag::toUiItem),
+                currentTag = null,
                 onNavigateToFeed = { action ->
                     showBookmarkDrawer = false
                     onNavigate(DashboardDestination.Feed(action))
@@ -595,4 +596,7 @@ fun QuickResumeCard(
             )
         }
     }
+}   )
+}
+}
 }
