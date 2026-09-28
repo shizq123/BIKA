@@ -51,8 +51,10 @@ fun <T> SortableItem(
 ) {
     var showDialog by rememberSaveable { mutableStateOf(false) }
     val valuesState by remember(values) { derivedStateOf { values() } }
+    // Avoid InteractiveListItemMeasurePolicy's RectList crash during lazy premeasure.
+    @Suppress("DEPRECATION")
     ListItem(
-        content = { exposed(valuesState) },
+        headlineContent = { exposed(valuesState) },
         leadingContent = icon,
         modifier = modifier.clickable {
             showDialog = true
