@@ -61,10 +61,10 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -91,80 +91,100 @@ import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterState
 import com.shizq.bika.ui.tag.rememberFilterState
 import com.shizq.bika.util.injectFromHistoryMap
-import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+
+sealed interface FeedDestination {
+    data object Back : FeedDestination
+    data class Comic(val id: String) : FeedDestination
+    data class Feed(val action: DiscoveryAction) : FeedDestination
+    data object BlockedTags : FeedDestination
+    data class PageJump(val currentPage: Int, val totalPages: Int) : FeedDestination
+    data object AddFavorite : FeedDestination
+    data class RenameFavorite(val tag: FavoriteTag) : FeedDestination
+}
+
 @Composable
-fun FeedScreen(
-    onBackClick: () -> Unit,
-    onComicClick: (String) -> Unit,
-    onNavigateToFeed: (DiscoveryAction) -> Unit = {},
-    onBlockedTagsClick: () -> Unit = {},
-    onPageJumpRequest: (currentPage: Int, totalPages: Int) -> Unit,
-    onAddCustomFavoriteRequest: () -> Unit,
-    onRenameFavoriteRequest: (FavoriteTag) -> Unit,
+fun FeedRoute(
+    title: String,
     viewModel: FeedViewModel,
-    title: String
+    onNavigate: (FeedDestination) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
 
     ResultEffect<AddFavoriteTagResult> { result ->
-        viewModel.addCustomFavoriteTag(result.name)
+        viewModel.dispatch(FeedAction.AddCustomFavorite(result.name))
     }
     ResultEffect<RenameFavoriteTagResult> { result ->
-        viewModel.updateFavoriteTagName(result.tag, result.name)
+        viewModel.dispatch(FeedAction.RenameFavorite(result.tag, result.name))
+    }
+    ResultEffect<FeedPageJumpResult> { result ->
+        viewModel.dispatch(FeedAction.ChangePage(result.page))
     }
 
-    var showDrawer by remember { mutableStateOf(false) }
+    FeedScreen(
+        title = title,
+        state = state,
+        currentAction = viewModel.currentAction,
+        onAction = viewModel::dispatch,
+        onNavigate = onNavigate,
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FeedScreen(
+    title: String,
+    state: FeedUiState,
+    currentAction: DiscoveryAction,
+    onAction: (FeedAction) -> Unit,
+    onNavigate: (FeedDestination) -> Unit,
+) {
+    var drawerVisible by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         FeedContent(
             title = title,
             state = state,
-            onBackClick = onBackClick,
-            onComicClick = onComicClick,
-            onIntent = viewModel::dispatch,
-            onPageJumpRequest = onPageJumpRequest,
-            onBookmarkClick = { showDrawer = true }
+            onAction = onAction,
+            onNavigate = onNavigate,
+            onBookmarkClick = { drawerVisible = true },
         )
 
-        if (showDrawer) {
+        if (drawerVisible) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(Color.Black.copy(alpha = 0.5f))
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        showDrawer = false
-                    }
+                        indication = null,
+                    ) { drawerVisible = false },
             )
         }
 
         AnimatedVisibility(
-            visible = showDrawer,
+            visible = drawerVisible,
             enter = slideInHorizontally(initialOffsetX = { it }),
             exit = slideOutHorizontally(targetOffsetX = { it }),
             modifier = Modifier
                 .fillMaxHeight()
                 .width(300.dp)
-                .align(Alignment.CenterEnd)
+                .align(Alignment.CenterEnd),
         ) {
             FavoriteTagsDrawer(
                 favoriteTags = state.favoriteTags,
-                currentAction = viewModel.currentAction,
+                currentAction = currentAction,
                 onNavigateToFeed = { action ->
-                    showDrawer = false
-                    onNavigateToFeed(action)
+                    drawerVisible = false
+                    onNavigate(FeedDestination.Feed(action))
                 },
-                onAddFavorite = viewModel::addFavoriteTag,
-                onRemoveFavorite = viewModel::removeFavoriteTag,
-                onRenameRequest = onRenameFavoriteRequest,
-                onMove = viewModel::moveFavoriteTag,
-                onAddCustomRequest = onAddCustomFavoriteRequest,
-                onBlockedTagsClick = onBlockedTagsClick,
-                onClose = { showDrawer = false }
+                onAddFavorite = { onAction(FeedAction.AddFavorite(it)) },
+                onRemoveFavorite = { onAction(FeedAction.RemoveFavorite(it)) },
+                onRenameRequest = { onNavigate(FeedDestination.RenameFavorite(it)) },
+                onMove = { from, to -> onAction(FeedAction.MoveFavorite(from, to)) },
+                onAddCustomRequest = { onNavigate(FeedDestination.AddFavorite) },
+                onBlockedTagsClick = { onNavigate(FeedDestination.BlockedTags) },
+                onClose = { drawerVisible = false },
             )
         }
     }
@@ -178,7 +198,7 @@ private fun FeedAppBar(
     onSortOrderChanged: (SortOrder) -> Unit,
     onBackClick: () -> Unit,
     onBookmarkClick: () -> Unit,
-    scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    scrollBehavior: TopAppBarScrollBehavior,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     TopAppBar(
@@ -235,28 +255,19 @@ private fun FeedAppBar(
 private fun FeedContent(
     title: String,
     state: FeedUiState,
-    onComicClick: (comicId: String) -> Unit,
-    onBackClick: () -> Unit,
-    onIntent: (FeedIntent) -> Unit,
-    onPageJumpRequest: (currentPage: Int, totalPages: Int) -> Unit,
+    onAction: (FeedAction) -> Unit,
+    onNavigate: (FeedDestination) -> Unit,
     onBookmarkClick: () -> Unit,
-    scrollBehavior: TopAppBarScrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
 ) {
     val listState = rememberLazyListState()
-    val scope = rememberCoroutineScope()
-
-    ResultEffect<FeedPageJumpResult> { result ->
-        onIntent(FeedIntent.ChangePage(result.page))
-        scope.launch { listState.scrollToItem(0) }
-    }
-
+    val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val page = state.page
     val currentPage = state.query.page
     val totalPages = page?.totalPages ?: 1
     val totalCount = page?.totalCount ?: page?.items?.size ?: 0
-    val comics = page?.items.orEmpty()
-    val historyMap = remember(state.detailedHistories) {
-        state.detailedHistories.associateBy { it.history.id }
+
+    LaunchedEffect(currentPage) {
+        listState.scrollToItem(0)
     }
 
     Scaffold(
@@ -264,10 +275,10 @@ private fun FeedContent(
             FeedAppBar(
                 title = title,
                 scrollBehavior = scrollBehavior,
-                onBackClick = onBackClick,
+                onBackClick = { onNavigate(FeedDestination.Back) },
                 currentSortOrder = state.query.sort,
-                onSortOrderChanged = { onIntent(FeedIntent.ChangeSort(it)) },
-                onBookmarkClick = onBookmarkClick
+                onSortOrderChanged = { onAction(FeedAction.ChangeSort(it)) },
+                onBookmarkClick = onBookmarkClick,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -275,81 +286,135 @@ private fun FeedContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(innerPadding),
         ) {
             val filterState = rememberFilterState(state.filterSelections)
 
             FilterRow(
                 filterState = filterState,
                 onFilterChanged = { group, option ->
-                    onIntent(FeedIntent.ToggleFilter(group, option))
+                    onAction(FeedAction.ToggleFilter(group, option))
                 },
                 totalCount = totalCount,
                 currentPage = currentPage,
                 totalPages = totalPages,
-                onCountChipClick = { onPageJumpRequest(currentPage, totalPages) },
+                onCountChipClick = {
+                    onNavigate(FeedDestination.PageJump(currentPage, totalPages))
+                },
                 excludeTopicsGlobal = state.excludeTopicsGlobal,
                 onExcludeTopicsGlobalChanged = {
-                    onIntent(FeedIntent.SetGlobalTopicFilter(it))
+                    onAction(FeedAction.SetGlobalTopicFilter(it))
                 },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             )
 
-            when {
-                state.isLoading && page == null -> {
-                    LoadingState(Modifier.weight(1f))
-                }
+            FeedBody(
+                state = state,
+                listState = listState,
+                onRetry = { onAction(FeedAction.Retry) },
+                onComicClick = { onNavigate(FeedDestination.Comic(it)) },
+                modifier = Modifier.weight(1f),
+            )
 
-                state.error != null && page == null -> {
-                    ErrorState(
-                        onRetry = { onIntent(FeedIntent.Retry) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-
-                else -> {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        itemsIndexed(
-                            items = comics,
-                            key = { index, comic -> "${index}_${comic.id}" }
-                        ) { _, comic ->
-                            val enrichedComic = remember(comic, historyMap) {
-                                comic.injectFromHistoryMap(historyMap)
-                            }
-                            ComicCard(comic = enrichedComic) {
-                                onComicClick(comic.id)
-                            }
-                        }
-
-                        if (state.isLoading) {
-                            item {
-                                LoadingState(Modifier.wrapContentHeight())
-                            }
-                        }
-                    }
-                }
-            }
-
-            if (totalPages > 1 && page != null) {
+            if (page != null && totalPages > 1) {
                 PaginationBar(
                     currentPage = currentPage,
                     totalPages = totalPages,
-                    onPageChanged = { targetPage ->
-                        onIntent(FeedIntent.ChangePage(targetPage))
-                        scope.launch { listState.scrollToItem(0) }
-                    },
+                    onPageChanged = { onAction(FeedAction.ChangePage(it)) },
                     onPageIndicatorClick = {
-                        onPageJumpRequest(currentPage, totalPages)
+                        onNavigate(FeedDestination.PageJump(currentPage, totalPages))
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 16.dp, top = 8.dp, start = 16.dp, end = 16.dp)
+                        .padding(bottom = 16.dp, top = 8.dp, start = 16.dp, end = 16.dp),
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FeedBody(
+    state: FeedUiState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onRetry: () -> Unit,
+    onComicClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val page = state.page
+
+    when {
+        page == null && state.isLoading -> LoadingState(modifier)
+        page == null && state.error != null -> ErrorState(onRetry = onRetry, modifier = modifier)
+        page == null -> ErrorState(onRetry = onRetry, modifier = modifier)
+        page.items.isEmpty() -> Box(modifier = modifier, contentAlignment = Alignment.Center) {
+            Text(
+                text = "没有符合条件的内容",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+
+        else -> FeedList(
+            state = state,
+            listState = listState,
+            onRetry = onRetry,
+            onComicClick = onComicClick,
+            modifier = modifier,
+        )
+    }
+}
+
+@Composable
+private fun FeedList(
+    state: FeedUiState,
+    listState: androidx.compose.foundation.lazy.LazyListState,
+    onRetry: () -> Unit,
+    onComicClick: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val comics = state.page?.items.orEmpty()
+    val historyMap = remember(state.detailedHistories) {
+        state.detailedHistories.associateBy { it.history.id }
+    }
+
+    Column(modifier = modifier) {
+        if (state.error != null) {
+            Surface(
+                color = MaterialTheme.colorScheme.errorContainer,
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 4.dp),
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text("刷新失败，当前显示上次数据", modifier = Modifier.weight(1f))
+                    TextButton(onClick = onRetry) { Text("重试") }
+                }
+            }
+        }
+
+        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
+            items(
+                items = comics,
+                key = { comic -> comic.id },
+                contentType = { "comic" },
+            ) { comic ->
+                val enrichedComic = remember(comic, historyMap) {
+                    comic.injectFromHistoryMap(historyMap)
+                }
+                ComicCard(comic = enrichedComic) { onComicClick(comic.id) }
+            }
+
+            if (state.isLoading) {
+                item(key = "feed-loading", contentType = "loading") {
+                    LoadingState(Modifier.wrapContentHeight())
+                }
             }
         }
     }
@@ -597,10 +662,10 @@ fun FavoriteTagsDrawer(
                 LazyColumn(
                     modifier = Modifier.weight(1f)
                 ) {
-                    itemsIndexed(favoriteTags) { index, tag ->
-                        // action 为 null 说明这条收藏无法还原成入口（actionType 无法识别，
-                        // 或骑士标签缺 actionId）。此时禁用跳转但保留删除/改名，
-                        // 否则用户会得到一条既点不动又删不掉的僵尸数据。
+                    itemsIndexed(
+                        items = favoriteTags,
+                        key = { _, tag -> "${tag.actionType}:${tag.actionId}:${tag.name}" },
+                    ) { index, tag ->
                         val action = remember(tag) { tag.toAction() }
                         Row(
                             modifier = Modifier

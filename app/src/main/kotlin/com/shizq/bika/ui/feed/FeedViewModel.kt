@@ -84,16 +84,21 @@ class FeedViewModel @AssistedInject constructor(
         }
     }
 
-    fun dispatch(intent: FeedIntent) {
-        when (intent) {
-            FeedIntent.Retry -> reloadSignal.update { it + 1 }
-            is FeedIntent.ChangePage -> changePage(intent.page)
-            is FeedIntent.ChangeSort -> query.update {
-                it.copy(page = 1, sort = intent.sort)
+    fun dispatch(action: FeedAction) {
+        when (action) {
+            FeedAction.Retry -> reloadSignal.update { it + 1 }
+            is FeedAction.ChangePage -> changePage(action.page)
+            is FeedAction.ChangeSort -> query.update {
+                it.copy(page = 1, sort = action.sort)
             }
 
-            is FeedIntent.ToggleFilter -> toggleFilter(intent.group, intent.option)
-            is FeedIntent.SetGlobalTopicFilter -> setGlobalTopicFilter(intent.enabled)
+            is FeedAction.ToggleFilter -> toggleFilter(action.group, action.option)
+            is FeedAction.SetGlobalTopicFilter -> setGlobalTopicFilter(action.enabled)
+            is FeedAction.AddFavorite -> addFavoriteTag(action.tag)
+            is FeedAction.RemoveFavorite -> removeFavoriteTag(action.tag)
+            is FeedAction.RenameFavorite -> updateFavoriteTagName(action.tag, action.name)
+            is FeedAction.MoveFavorite -> moveFavoriteTag(action.fromIndex, action.toIndex)
+            is FeedAction.AddCustomFavorite -> addCustomFavoriteTag(action.name)
         }
     }
 
@@ -336,16 +341,21 @@ data class FeedUiState(
     val error: FeedError? = null,
 )
 
-sealed interface FeedIntent {
-    data object Retry : FeedIntent
-    data class ChangePage(val page: Int) : FeedIntent
-    data class ChangeSort(val sort: SortOrder) : FeedIntent
+sealed interface FeedAction {
+    data object Retry : FeedAction
+    data class ChangePage(val page: Int) : FeedAction
+    data class ChangeSort(val sort: SortOrder) : FeedAction
     data class ToggleFilter(
         val group: FilterGroup,
         val option: FilterOption,
-    ) : FeedIntent
+    ) : FeedAction
 
-    data class SetGlobalTopicFilter(val enabled: Boolean) : FeedIntent
+    data class SetGlobalTopicFilter(val enabled: Boolean) : FeedAction
+    data class AddFavorite(val tag: FavoriteTag) : FeedAction
+    data class RemoveFavorite(val tag: FavoriteTag) : FeedAction
+    data class RenameFavorite(val tag: FavoriteTag, val name: String) : FeedAction
+    data class MoveFavorite(val fromIndex: Int, val toIndex: Int) : FeedAction
+    data class AddCustomFavorite(val name: String) : FeedAction
 }
 
 sealed interface FeedError {
