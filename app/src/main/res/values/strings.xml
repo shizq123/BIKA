@@ -106,6 +106,14 @@
     <string name="feed_favorites_rename">编辑名称</string>
     <string name="feed_favorites_move_up">上移</string>
     <string name="feed_favorites_move_down">下移</string>
+    <string name="feed_page_jump_title">跳转到指定页码</string>
+    <string name="feed_page_jump_hint">当前共 %1$d 页，请输入页码（1 ~ %1$d）</string>
+    <string name="feed_page_jump_label">页码</string>
+    <string name="feed_page_jump_invalid_number">请输入有效数字</string>
+    <string name="feed_page_jump_below_min">页码不能小于 1</string>
+    <string name="feed_page_jump_above_max">页码不能超过 %1$d</string>
+    <string name="feed_page_jump_confirm">跳转</string>
+    <string name="feed_page_jump_cancel">取消</string>
     <string name="filter_select_title">选择%1$s</string>
     <string name="filter_global_enabled">全局生效</string>
     <string name="filter_min_pages">最少页数</string>

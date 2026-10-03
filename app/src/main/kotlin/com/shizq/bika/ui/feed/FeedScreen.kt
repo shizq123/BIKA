@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -162,7 +163,10 @@ private fun FeedAppBar(
     TopAppBar(
         title = { Text(title) },
         navigationIcon = {
-            IconButton(onClick = onBackClick) {
+            IconButton(
+                onClick = onBackClick,
+                modifier = Modifier.testTag(FeedTestTags.Back),
+            ) {
                 Icon(
                     Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = stringResource(R.string.feed_action_back),
@@ -275,7 +279,11 @@ private fun FeedContent(
                 ) {
                     Column {
                         if (isRefreshing) {
-                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag(FeedTestTags.RefreshProgress),
+                            )
                         }
                         FilterRow(
                             chips = filterState.chips,
@@ -294,39 +302,9 @@ private fun FeedContent(
                     }
                 }
             }
-
-            feedContentItems(
-                content = state.content,
-                historyMap = historyMap,
-                onRetry = { onAction(FeedAction.Retry) },
-                onComicClick = { onNavigate(FeedDestination.Comic(it)) },
-            )
-
-            if (page != null && page.totalPages > 1) {
-                item(key = "feed-pagination", contentType = "pagination") {
-                    PaginationBar(
-                        currentPage = page.page,
-                        totalPages = page.totalPages,
-                        enabled = !isRefreshing,
-                        onPageChanged = { onAction(FeedAction.ChangePage(it)) },
-                        onPageIndicatorClick = {
-                            onNavigate(
-                                FeedDestination.PageJump(
-                                    currentPage = page.page,
-                                    totalPages = page.totalPages,
-                                )
-                            )
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    )
-                }
-            }
         }
     }
 }
-
 private data class DisplayedContentKey(
     val page: Int,
     val sort: SortOrder,
@@ -346,6 +324,7 @@ private fun LazyListScope.feedContentItems(
                 Modifier
                     .fillMaxWidth()
                     .height(320.dp)
+                    .testTag(FeedTestTags.InitialLoading)
             )
         }
 
@@ -354,7 +333,8 @@ private fun LazyListScope.feedContentItems(
                 onRetry = onRetry,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(320.dp),
+                    .height(320.dp)
+                    .testTag(FeedTestTags.InitialError),
             )
         }
 
@@ -370,7 +350,8 @@ private fun LazyListScope.feedContentItems(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(320.dp),
+                            .height(320.dp)
+                            .testTag(FeedTestTags.Empty),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -410,7 +391,8 @@ private fun RefreshErrorBanner(onRetry: () -> Unit) {
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp),
+            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .testTag(FeedTestTags.RefreshError),
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
@@ -516,7 +498,7 @@ private fun PaginationBar(
     modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = modifier,
+        modifier = modifier.testTag(FeedTestTags.Pagination),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -555,4 +537,14 @@ private fun PaginationBar(
             )
         }
     }
+}
+
+internal object FeedTestTags {
+    const val Back = "feed-back"
+    const val InitialLoading = "feed-initial-loading"
+    const val InitialError = "feed-initial-error"
+    const val RefreshProgress = "feed-refresh-progress"
+    const val RefreshError = "feed-refresh-error"
+    const val Empty = "feed-empty"
+    const val Pagination = "feed-pagination"
 }
