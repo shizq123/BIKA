@@ -79,7 +79,9 @@ class FeedViewModel @AssistedInject constructor(
                     blockedTags = preferences.filter.blockedTags,
                     reloadVersion = reloadVersion,
                 )
-            }.distinctUntilChanged().collectLatest(::load)
+            }
+                .distinctUntilChanged()
+                .collectLatest(::load)
         }
     }
 
@@ -187,38 +189,46 @@ class FeedViewModel @AssistedInject constructor(
                             comic.tags.none { it in request.blockedTags }
                 }
 
-            _uiState.update {
-                it.copy(
-                    query = request.query,
-                    filterSelections = request.effectiveFilters,
-                    content = FeedContentState.Success(
-                        page = rawPage.copy(items = visibleItems),
-                        displayedQuery = request.query,
-                        isClientFiltered = request.effectiveFilters.hasAnySelection ||
-                                request.blockedTags.isNotEmpty(),
-                    ),
-                )
+            _uiState.update { current ->
+                if (current.query != request.query ||
+                    current.filterSelections != request.effectiveFilters
+                ) {
+                    current
+                } else {
+                    current.copy(
+                        content = FeedContentState.Success(
+                            page = rawPage.copy(items = visibleItems),
+                            displayedQuery = request.query,
+                            isClientFiltered = request.effectiveFilters.hasAnySelection ||
+                                    request.blockedTags.isNotEmpty(),
+                        ),
+                    )
+                }
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
             _uiState.update { current ->
-                current.copy(
-                    query = request.query,
-                    filterSelections = request.effectiveFilters,
-                    content = when (val content = current.content) {
-                        is FeedContentState.Success -> content.copy(
-                            refreshState = FeedRefreshState.Failed(
-                                targetQuery = request.query,
-                                error = FeedError.LoadFailed,
-                            ),
-                        )
+                if (current.query != request.query ||
+                    current.filterSelections != request.effectiveFilters
+                ) {
+                    current
+                } else {
+                    current.copy(
+                        content = when (val content = current.content) {
+                            is FeedContentState.Success -> content.copy(
+                                refreshState = FeedRefreshState.Failed(
+                                    targetQuery = request.query,
+                                    error = FeedError.LoadFailed,
+                                ),
+                            )
 
-                        FeedContentState.Initial,
-                        FeedContentState.Loading,
-                        is FeedContentState.Error -> FeedContentState.Error(FeedError.LoadFailed)
-                    },
-                )
+                            FeedContentState.Initial,
+                            FeedContentState.Loading,
+                            is FeedContentState.Error -> FeedContentState.Error(FeedError.LoadFailed)
+                        },
+                    )
+                }
             }
         }
     }

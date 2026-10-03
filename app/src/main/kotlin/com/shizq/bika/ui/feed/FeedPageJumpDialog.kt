@@ -31,11 +31,17 @@ fun FeedPageJumpDialog(
     onConfirm: (Int) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    var input by remember(currentPage) { mutableStateOf(currentPage.toString()) }
-    var validationError by remember { mutableStateOf<PageJumpValidationError?>(null) }
+    val effectiveTotalPages = totalPages.coerceAtLeast(1)
+    val effectiveCurrentPage = currentPage.coerceIn(1, effectiveTotalPages)
+    var input by remember(effectiveCurrentPage) {
+        mutableStateOf(effectiveCurrentPage.toString())
+    }
+    var validationError by remember(effectiveCurrentPage, effectiveTotalPages) {
+        mutableStateOf<PageJumpValidationError?>(null)
+    }
 
     fun submit() {
-        val result = validatePageJump(input, totalPages)
+        val result = validatePageJump(input, effectiveTotalPages)
         validationError = result.error
         result.page?.let(onConfirm)
     }
@@ -45,7 +51,7 @@ fun FeedPageJumpDialog(
         PageJumpValidationError.BelowMinimum -> stringResource(R.string.feed_page_jump_below_min)
         PageJumpValidationError.AboveMaximum -> stringResource(
             R.string.feed_page_jump_above_max,
-            totalPages,
+            effectiveTotalPages,
         )
 
         null -> null
@@ -57,7 +63,10 @@ fun FeedPageJumpDialog(
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    text = stringResource(R.string.feed_page_jump_hint, totalPages),
+                    text = stringResource(
+                        R.string.feed_page_jump_hint,
+                        effectiveTotalPages,
+                    ),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

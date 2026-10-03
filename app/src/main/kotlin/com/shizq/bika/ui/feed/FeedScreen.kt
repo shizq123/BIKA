@@ -233,6 +233,7 @@ private fun FeedContent(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val success = state.content as? FeedContentState.Success
     val page = success?.page
+    val pagination = state.content.toPaginationUiState()
     val displayedContentKey = success?.let {
         DisplayedContentKey(
             page = it.page.page,
@@ -270,7 +271,8 @@ private fun FeedContent(
             state = listState,
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
+                .padding(innerPadding)
+                .testTag(FeedTestTags.List),
         ) {
             stickyHeader(key = "feed-filter-header") {
                 Surface(
@@ -302,9 +304,37 @@ private fun FeedContent(
                     }
                 }
             }
+
+            feedContentItems(
+                content = state.content,
+                historyMap = historyMap,
+                onRetry = { onAction(FeedAction.Retry) },
+                onComicClick = { onNavigate(FeedDestination.Comic(it)) },
+            )
+
+            if (pagination != null) {
+                item(key = "feed-pagination", contentType = "pagination") {
+                    PaginationBar(
+                        state = pagination,
+                        onPageChanged = { onAction(FeedAction.ChangePage(it)) },
+                        onPageIndicatorClick = {
+                            onNavigate(
+                                FeedDestination.PageJump(
+                                    currentPage = pagination.currentPage,
+                                    totalPages = pagination.totalPages,
+                                )
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                    )
+                }
+            }
         }
     }
 }
+
 private data class DisplayedContentKey(
     val page: Int,
     val sort: SortOrder,
@@ -453,46 +483,38 @@ private fun FilterRow(
 }
 
 @Composable
-private fun feedSummary(content: FeedContentState): String {
-    val isClientFiltered = content is FeedContentState.Success && content.isClientFiltered
-    return when (content) {
-        FeedContentState.Initial,
-        FeedContentState.Loading -> stringResource(R.string.feed_loading)
+private fun feedSummary(content: FeedContentState): String =
+    when (val summary = content.toSummaryUiState()) {
+        FeedSummaryUiState.Loading -> stringResource(R.string.feed_loading)
+        FeedSummaryUiState.LoadFailed -> stringResource(R.string.feed_load_failed)
+        FeedSummaryUiState.Refreshing -> stringResource(R.string.feed_refreshing)
+        is FeedSummaryUiState.LoadingPage -> stringResource(
+            R.string.feed_loading_page,
+            summary.page,
+        )
 
-        is FeedContentState.Error -> stringResource(R.string.feed_load_failed)
-        is FeedContentState.Success -> {
-            val page = content.page
-            val loading = content.refreshState as? FeedRefreshState.Loading
-            when {
-                loading != null && loading.targetQuery.page != page.page -> stringResource(
-                    R.string.feed_loading_page,
-                    loading.targetQuery.page,
-                )
+        is FeedSummaryUiState.VisibleOnPage -> stringResource(
+            R.string.feed_page_visible_count,
+            summary.page,
+            summary.totalPages,
+            summary.visibleCount,
+        )
 
-                loading != null -> stringResource(R.string.feed_refreshing)
-                isClientFiltered -> stringResource(
-                    R.string.feed_page_visible_count,
-                    page.page,
-                    page.totalPages,
-                    page.items.size,
-                )
+        is FeedSummaryUiState.TotalCount -> stringResource(
+            R.string.feed_total_count,
+            summary.count,
+        )
 
-                page.totalCount != null -> stringResource(
-                    R.string.feed_total_count,
-                    page.totalCount
-                )
-
-                else -> stringResource(R.string.feed_page_indicator, page.page, page.totalPages)
-            }
-        }
-    }
+        is FeedSummaryUiState.PageIndicator -> stringResource(
+            R.string.feed_page_indicator,
+            summary.page,
+            summary.totalPages,
+        )
 }
 
 @Composable
 private fun PaginationBar(
-    currentPage: Int,
-    totalPages: Int,
-    enabled: Boolean,
+    state: FeedPaginationUiState,
     onPageChanged: (Int) -> Unit,
     onPageIndicatorClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -503,8 +525,8 @@ private fun PaginationBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         IconButton(
-            onClick = { onPageChanged(currentPage - 1) },
-            enabled = enabled && currentPage > 1,
+            onClick = { onPageChanged(state.currentPage - 1) },
+            enabled = state.previousEnabled,
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.NavigateBefore,
@@ -514,13 +536,17 @@ private fun PaginationBar(
 
         Surface(
             onClick = onPageIndicatorClick,
-            enabled = enabled,
+            enabled = state.indicatorEnabled,
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ) {
             Text(
-                text = stringResource(R.string.feed_page_indicator, currentPage, totalPages),
+                text = stringResource(
+                    R.string.feed_page_indicator,
+                    state.currentPage,
+                    state.totalPages,
+                ),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -528,8 +554,8 @@ private fun PaginationBar(
         }
 
         IconButton(
-            onClick = { onPageChanged(currentPage + 1) },
-            enabled = enabled && currentPage < totalPages,
+            onClick = { onPageChanged(state.currentPage + 1) },
+            enabled = state.nextEnabled,
         ) {
             Icon(
                 imageVector = Icons.AutoMirrored.Rounded.NavigateNext,
@@ -541,6 +567,7 @@ private fun PaginationBar(
 
 internal object FeedTestTags {
     const val Back = "feed-back"
+    const val List = "feed-list"
     const val InitialLoading = "feed-initial-loading"
     const val InitialError = "feed-initial-error"
     const val RefreshProgress = "feed-refresh-progress"
