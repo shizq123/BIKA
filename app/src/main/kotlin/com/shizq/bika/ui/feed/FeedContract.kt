@@ -29,6 +29,9 @@ data class FeedUiState(
     val detailedHistories: List<DetailedHistory> = emptyList(),
     val favoriteTags: List<FavoriteTag> = emptyList(),
     val excludeTopicsGlobal: Boolean = false,
+    val globalBlockedTopics: List<String> = emptyList(),
+    val blockedTags: Set<String> = emptySet(),
+    val preferencesReady: Boolean = false,
 )
 
 sealed interface FeedRefreshState {
