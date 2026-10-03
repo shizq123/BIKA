@@ -3,7 +3,6 @@ package com.shizq.bika.ui.feed
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
-import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
@@ -101,7 +100,10 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     private fun changePage(page: Int) {
-        val totalPages = _uiState.value.page?.totalPages ?: 1
+        val totalPages = (_uiState.value.content as? FeedContentState.Success)
+            ?.page
+            ?.totalPages
+            ?: 1
         query.update { it.copy(page = page.coerceIn(1, totalPages.coerceAtLeast(1))) }
     }
 
@@ -264,7 +266,7 @@ class FeedViewModel @AssistedInject constructor(
         }
     }
 
-    fun removeFavoriteTag(tag: FavoriteTag) {
+    private fun removeFavoriteTag(tag: FavoriteTag) {
         viewModelScope.launch {
             userPreferencesDataSource.updateFavoriteTags { tags ->
                 tags.filterNot { it.isSameTag(tag) }
@@ -330,66 +332,11 @@ private fun FilterSelections.withGlobalTopics(
     }
 }
 
-data class FeedQuery(
-    val page: Int = 1,
-    val sort: SortOrder = SortOrder.NEWEST,
-    val localFilters: FilterSelections = emptyMap(),
-)
-
-data class FeedPage(
-    val items: List<ComicSummary>,
-    val page: Int,
-    val totalPages: Int,
-    val totalCount: Int?,
-)
-
-data class FeedUiState(
-    val query: FeedQuery = FeedQuery(),
-    val filterSelections: FilterSelections = emptyMap(),
-    val content: FeedContentState = FeedContentState.Initial,
-    val detailedHistories: List<DetailedHistory> = emptyList(),
-    val favoriteTags: List<FavoriteTag> = emptyList(),
-    val excludeTopicsGlobal: Boolean = false,
-) {
-    val page: FeedPage?
-        get() = (content as? FeedContentState.Success)?.page
-}
-
-sealed interface FeedContentState {
-    data object Initial : FeedContentState
-    data object Loading : FeedContentState
-    data class Error(val reason: FeedError) : FeedContentState
-    data class Success(
-        val page: FeedPage,
-        val isRefreshing: Boolean = false,
-        val refreshError: FeedError? = null,
-    ) : FeedContentState
-}
-
-sealed interface FeedAction {
-    data object Retry : FeedAction
-    data class ChangePage(val page: Int) : FeedAction
-    data class ChangeSort(val sort: SortOrder) : FeedAction
-    data class ToggleFilter(
-        val group: FilterGroup,
-        val option: FilterOption,
-    ) : FeedAction
-
-    data class SetGlobalTopicFilter(val enabled: Boolean) : FeedAction
-    data class AddFavorite(val tag: FavoriteTag) : FeedAction
-    data class RemoveFavorite(val tag: FavoriteTag) : FeedAction
-    data class RenameFavorite(val tag: FavoriteTag, val name: String) : FeedAction
-    data class MoveFavorite(val fromIndex: Int, val toIndex: Int) : FeedAction
-    data class AddCustomFavorite(val name: String) : FeedAction
-}
-
-sealed interface FeedError {
-    data object LoadFailed : FeedError
-}
 
 private data class FeedLoadRequest(
     val query: FeedQuery,
     val effectiveFilters: FilterSelections,
     val blockedTags: Set<String>,
 )
+
 
