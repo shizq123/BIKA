@@ -39,6 +39,7 @@ class FeedViewModel @AssistedInject constructor(
 ) : ViewModel() {
     private val query = MutableStateFlow(FeedQuery())
     private val reloadSignal = MutableStateFlow(0)
+    private var latestLoadRequest: FeedLoadRequest? = null
 
     private val _uiState = MutableStateFlow(FeedUiState())
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
@@ -160,6 +161,7 @@ class FeedViewModel @AssistedInject constructor(
     }
 
     private suspend fun load(request: FeedLoadRequest) {
+        latestLoadRequest = request
         val previousContent = _uiState.value.content
         _uiState.update {
             it.copy(
@@ -190,9 +192,7 @@ class FeedViewModel @AssistedInject constructor(
                 }
 
             _uiState.update { current ->
-                if (current.query != request.query ||
-                    current.filterSelections != request.effectiveFilters
-                ) {
+                if (latestLoadRequest != request) {
                     current
                 } else {
                     current.copy(
@@ -209,9 +209,7 @@ class FeedViewModel @AssistedInject constructor(
             throw e
         } catch (e: Exception) {
             _uiState.update { current ->
-                if (current.query != request.query ||
-                    current.filterSelections != request.effectiveFilters
-                ) {
+                if (latestLoadRequest != request) {
                     current
                 } else {
                     current.copy(
@@ -277,7 +275,7 @@ class FeedViewModel @AssistedInject constructor(
     private fun addFavoriteTag(tag: FavoriteTag) {
         viewModelScope.launch {
             userPreferencesDataSource.updateFavoriteTags { tags ->
-                if (tags.any { it.isSameTag(tag) }) tags else tags + tag
+                addFavoriteTagToList(tags, tag)
             }
         }
     }
@@ -285,16 +283,16 @@ class FeedViewModel @AssistedInject constructor(
     private fun removeFavoriteTag(tag: FavoriteTag) {
         viewModelScope.launch {
             userPreferencesDataSource.updateFavoriteTags { tags ->
-                tags.filterNot { it.isSameTag(tag) }
+                removeFavoriteTagFromList(tags, tag)
             }
         }
     }
 
     private fun updateFavoriteTagName(tag: FavoriteTag, newName: String) {
-        if (newName.isBlank()) return
+        val normalizedName = normalizeFavoriteTagName(newName) ?: return
         viewModelScope.launch {
             userPreferencesDataSource.updateFavoriteTags { tags ->
-                tags.map { if (it.isSameTag(tag)) it.copy(name = newName) else it }
+                renameFavoriteTagInList(tags, tag, normalizedName)
             }
         }
     }
@@ -302,20 +300,16 @@ class FeedViewModel @AssistedInject constructor(
     private fun moveFavoriteTag(fromIndex: Int, toIndex: Int) {
         viewModelScope.launch {
             userPreferencesDataSource.updateFavoriteTags { tags ->
-                if (fromIndex in tags.indices && toIndex in tags.indices) {
-                    tags.toMutableList().apply { add(toIndex, removeAt(fromIndex)) }
-                } else {
-                    tags
-                }
+                moveFavoriteTagInList(tags, fromIndex, toIndex)
             }
         }
     }
 
     private fun addCustomFavoriteTag(name: String) {
-        if (name.isBlank()) return
+        val normalizedName = normalizeFavoriteTagName(name) ?: return
         addFavoriteTag(
             FavoriteTag(
-                name = name,
+                name = normalizedName,
                 actionType = FeedActionType.AdvancedSearch.storageValue,
             )
         )

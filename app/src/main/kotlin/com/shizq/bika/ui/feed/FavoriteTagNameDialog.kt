@@ -1,6 +1,8 @@
 package com.shizq.bika.ui.feed
 
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -11,6 +13,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
+import com.shizq.bika.R
 
 @Composable
 fun FavoriteTagNameDialog(
@@ -22,6 +28,11 @@ fun FavoriteTagNameDialog(
     onDismiss: () -> Unit,
 ) {
     var input by remember(initialValue) { mutableStateOf(initialValue) }
+    val normalizedInput = normalizeFavoriteTagName(input)
+
+    fun submit() {
+        normalizedInput?.let(onConfirm)
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -32,21 +43,32 @@ fun FavoriteTagNameDialog(
                 onValueChange = { input = it },
                 label = { Text(label) },
                 singleLine = true,
-                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { submit() }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .testTag(FavoriteTagNameTestTags.Input),
             )
         },
         confirmButton = {
             TextButton(
-                enabled = input.isNotBlank(),
-                onClick = { onConfirm(input.trim()) },
+                enabled = normalizedInput != null,
+                onClick = { submit() },
             ) {
                 Text(confirmText)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("取消")
+                Text(stringResource(R.string.feed_dialog_cancel))
             }
         },
     )
 }
+
+internal object FavoriteTagNameTestTags {
+    const val Input = "favorite-tag-name-input"
+}
+
+internal fun normalizeFavoriteTagName(input: String): String? =
+    input.trim().takeIf(String::isNotEmpty)

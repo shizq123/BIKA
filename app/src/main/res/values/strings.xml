@@ -114,6 +114,13 @@
     <string name="feed_page_jump_above_max">页码不能超过 %1$d</string>
     <string name="feed_page_jump_confirm">跳转</string>
     <string name="feed_page_jump_cancel">取消</string>
+    <string name="feed_dialog_cancel">取消</string>
+    <string name="feed_add_favorite_title">新增自定义标签</string>
+    <string name="feed_add_favorite_label">标签名称</string>
+    <string name="feed_add_favorite_confirm">添加</string>
+    <string name="feed_rename_favorite_title">重命名标签</string>
+    <string name="feed_rename_favorite_label">新名称</string>
+    <string name="feed_rename_favorite_confirm">保存</string>
     <string name="filter_select_title">选择%1$s</string>
     <string name="filter_global_enabled">全局生效</string>
     <string name="filter_min_pages">最少页数</string>

@@ -7,6 +7,7 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
@@ -14,6 +15,7 @@ import androidx.navigation3.runtime.metadata
 import androidx.navigation3.runtime.result.LocalResultEventBus
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
+import com.shizq.bika.R
 import com.shizq.bika.feature.comicdetail.impl.ComicDetailScreen
 import com.shizq.bika.feature.comicdetail.impl.ComicInfoViewModel
 import com.shizq.bika.feature.comicdetail.impl.download.EpisodeDownloadSheet
@@ -347,9 +349,9 @@ fun EntryProviderScope<NavKey>.featureSection(
     ) {
         val resultBus = LocalResultEventBus.current
         FavoriteTagNameDialog(
-            title = "新增自定义标签",
-            label = "标签名称",
-            confirmText = "添加",
+            title = stringResource(R.string.feed_add_favorite_title),
+            label = stringResource(R.string.feed_add_favorite_label),
+            confirmText = stringResource(R.string.feed_add_favorite_confirm),
             onConfirm = { name ->
                 resultBus.sendResult(AddFavoriteTagResult(name))
                 navigator.goBack()
@@ -363,9 +365,9 @@ fun EntryProviderScope<NavKey>.featureSection(
     ) { key ->
         val resultBus = LocalResultEventBus.current
         FavoriteTagNameDialog(
-            title = "重命名标签",
-            label = "新名称",
-            confirmText = "保存",
+            title = stringResource(R.string.feed_rename_favorite_title),
+            label = stringResource(R.string.feed_rename_favorite_label),
+            confirmText = stringResource(R.string.feed_rename_favorite_confirm),
             initialValue = key.tag.name,
             onConfirm = { name ->
                 resultBus.sendResult(RenameFavoriteTagResult(key.tag, name))
