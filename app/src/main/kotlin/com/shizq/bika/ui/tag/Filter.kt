@@ -37,27 +37,31 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.shizq.bika.R
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.domain.filter.FilterSelections
 import com.shizq.bika.core.domain.filter.customPagesRange
 
+fun FilterSelections.toFilterState(): FilterState = FilterState(
+    chips = FilterGroup.all.map { group ->
+        val selected = this[group].orEmpty()
+        FilterChipState(
+            group = group,
+            // 用户自定义区间不在 group.options 里，需并入以便渲染出可取消的选项
+            options = group.options + selected.filterNot { it in group.options },
+            selected = selected,
+        )
+    },
+)
+
 @Composable
 fun rememberFilterState(selections: FilterSelections): FilterState = remember(selections) {
-    FilterState(
-        chips = FilterGroup.all.map { group ->
-            val selected = selections[group].orEmpty()
-            FilterChipState(
-                group = group,
-                // 用户自定义区间不在 group.options 里，需并入以便渲染出可取消的选项
-                options = group.options + selected.filterNot { it in group.options },
-                selected = selected,
-            )
-        },
-    )
+    selections.toFilterState()
 }
 
 @Immutable
@@ -118,7 +122,7 @@ fun FilterChip(
                         .padding(bottom = 32.dp),
                 ) {
                     Text(
-                        text = "选择${state.label}",
+                        text = stringResource(R.string.filter_select_title, state.label),
                         style = MaterialTheme.typography.titleLarge,
                         modifier = Modifier.padding(16.dp),
                     )
@@ -157,7 +161,7 @@ private fun GlobalToggleRow(enabled: Boolean, onEnabledChange: (Boolean) -> Unit
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "全局生效",
+            text = stringResource(R.string.filter_global_enabled),
             style = MaterialTheme.typography.bodyLarge,
             modifier = Modifier.weight(1f),
         )
@@ -199,16 +203,19 @@ private fun CustomRangeInput(onAdd: (FilterOption) -> Unit) {
         DigitsField(
             value = minText,
             onValueChange = { minText = it },
-            label = "最少页数",
+            label = stringResource(R.string.filter_min_pages),
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(8.dp))
-        Text("至", style = MaterialTheme.typography.bodyMedium)
+        Text(
+            stringResource(R.string.filter_range_separator),
+            style = MaterialTheme.typography.bodyMedium
+        )
         Spacer(Modifier.width(8.dp))
         DigitsField(
             value = maxText,
             onValueChange = { maxText = it },
-            label = "最多页数",
+            label = stringResource(R.string.filter_max_pages),
             modifier = Modifier.weight(1f),
         )
         Spacer(Modifier.width(8.dp))
@@ -221,7 +228,7 @@ private fun CustomRangeInput(onAdd: (FilterOption) -> Unit) {
             enabled = minText.isNotEmpty() || maxText.isNotEmpty(),
             modifier = Modifier.padding(top = 4.dp),
         ) {
-            Text("添加")
+            Text(stringResource(R.string.filter_add))
         }
     }
 }
@@ -243,10 +250,13 @@ private fun DigitsField(
     )
 }
 
+@Composable
 private fun renderChipLabel(state: FilterChipState): String = when {
     !state.hasSelection -> state.label
-    state.group is FilterGroup.ExcludeTopic ->
-        "排除: " + state.selected.joinToString(",") { it.label }
+    state.group is FilterGroup.ExcludeTopic -> stringResource(
+        R.string.filter_exclude_prefix,
+        state.selected.joinToString(",") { it.label },
+    )
 
     else -> state.selected.joinToString(",") { it.label }
 }

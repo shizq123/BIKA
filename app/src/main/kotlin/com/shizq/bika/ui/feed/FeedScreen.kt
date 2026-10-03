@@ -119,7 +119,7 @@ fun FeedScreen(
         ModalBottomSheet(
             onDismissRequest = { favoriteSheetVisible = false },
         ) {
-            FavoriteTagsDrawer(
+            FavoriteTagsContent(
                 items = state.favoriteTags.map(FavoriteTag::toUiItem),
                 currentTag = currentTag,
                 onNavigateToFeed = { action ->
@@ -128,10 +128,19 @@ fun FeedScreen(
                 },
                 onAddFavorite = { onAction(FeedAction.AddFavorite(it)) },
                 onRemoveFavorite = { onAction(FeedAction.RemoveFavorite(it)) },
-                onRenameRequest = { onNavigate(FeedDestination.RenameFavorite(it)) },
+                onRenameRequest = {
+                    favoriteSheetVisible = false
+                    onNavigate(FeedDestination.RenameFavorite(it))
+                },
                 onMove = { from, to -> onAction(FeedAction.MoveFavorite(from, to)) },
-                onAddCustomRequest = { onNavigate(FeedDestination.AddFavorite) },
-                onBlockedTagsClick = { onNavigate(FeedDestination.BlockedTags) },
+                onAddCustomRequest = {
+                    favoriteSheetVisible = false
+                    onNavigate(FeedDestination.AddFavorite)
+                },
+                onBlockedTagsClick = {
+                    favoriteSheetVisible = false
+                    onNavigate(FeedDestination.BlockedTags)
+                },
                 onClose = { favoriteSheetVisible = false },
             )
         }
@@ -246,7 +255,7 @@ private fun FeedContent(
                 title = title,
                 scrollBehavior = scrollBehavior,
                 onBackClick = { onNavigate(FeedDestination.Back) },
-                currentSortOrder = success?.displayedQuery?.sort ?: state.query.sort,
+                currentSortOrder = state.query.sort,
                 onSortOrderChanged = { onAction(FeedAction.ChangeSort(it)) },
                 onBookmarkClick = onBookmarkClick,
             )
@@ -365,9 +374,16 @@ private fun LazyListScope.feedContentItems(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = stringResource(R.string.feed_empty_current_page),
+                            text = stringResource(
+                                if (content.isClientFiltered) {
+                                    R.string.feed_empty_current_page
+                                } else {
+                                    R.string.feed_empty
+                                }
+                            ),
                             style = MaterialTheme.typography.bodyLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 24.dp),
                         )
                     }
                 }
@@ -464,7 +480,14 @@ private fun feedSummary(content: FeedContentState): String {
         is FeedContentState.Error -> stringResource(R.string.feed_load_failed)
         is FeedContentState.Success -> {
             val page = content.page
+            val loading = content.refreshState as? FeedRefreshState.Loading
             when {
+                loading != null && loading.targetQuery.page != page.page -> stringResource(
+                    R.string.feed_loading_page,
+                    loading.targetQuery.page,
+                )
+
+                loading != null -> stringResource(R.string.feed_refreshing)
                 isClientFiltered -> stringResource(
                     R.string.feed_page_visible_count,
                     page.page,

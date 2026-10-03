@@ -6,11 +6,11 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -38,13 +38,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.shizq.bika.R
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.navigation.DiscoveryAction
 
@@ -61,7 +62,7 @@ fun FavoriteTag.toUiItem() = FavoriteTagUiItem(
 )
 
 @Composable
-fun FavoriteTagsDrawer(
+fun FavoriteTagsContent(
     items: List<FavoriteTagUiItem>,
     currentTag: FavoriteTag? = null,
     onNavigateToFeed: (DiscoveryAction) -> Unit,
@@ -74,21 +75,21 @@ fun FavoriteTagsDrawer(
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var isEditMode by rememberSaveable { mutableStateOf(false) }
+    var isEditMode by remember { mutableStateOf(false) }
     val isCurrentFavorited = remember(items, currentTag) {
         currentTag != null && items.any { it.tag.isSameTag(currentTag) }
     }
 
     Surface(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 360.dp, max = 720.dp),
         color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 8.dp,
     ) {
         Column(
             modifier = Modifier
-                .fillMaxSize()
-                .statusBarsPadding()
-                .padding(vertical = 16.dp),
+                .fillMaxHeight()
+                .padding(vertical = 8.dp),
         ) {
             FavoriteTagsHeader(
                 onBlockedTagsClick = onBlockedTagsClick,
@@ -117,7 +118,7 @@ fun FavoriteTagsDrawer(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(
-                    text = "我的收藏",
+                    text = stringResource(R.string.feed_favorites_my),
                     style = MaterialTheme.typography.titleSmall,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.SemiBold,
@@ -127,7 +128,12 @@ fun FavoriteTagsDrawer(
                     onClick = { isEditMode = !isEditMode },
                     contentPadding = PaddingValues(horizontal = 8.dp),
                 ) {
-                    Text(if (isEditMode) "完成" else "编辑")
+                    Text(
+                        stringResource(
+                            if (isEditMode) R.string.feed_favorites_done
+                            else R.string.feed_favorites_edit
+                        )
+                    )
                 }
             }
 
@@ -139,7 +145,7 @@ fun FavoriteTagsDrawer(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "暂无收藏，点击上方按钮收藏",
+                        text = stringResource(R.string.feed_favorites_empty),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
@@ -181,19 +187,28 @@ private fun FavoriteTagsHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = "标签收藏夹",
+            text = stringResource(R.string.feed_favorites_title),
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.weight(1f),
         )
         IconButton(onClick = onBlockedTagsClick) {
-            Icon(Icons.Rounded.Block, contentDescription = "标签屏蔽管理")
+            Icon(
+                Icons.Rounded.Block,
+                contentDescription = stringResource(R.string.feed_favorites_manage_blocked),
+            )
         }
         IconButton(onClick = onAddCustomRequest) {
-            Icon(Icons.Rounded.Add, contentDescription = "新增标签")
+            Icon(
+                Icons.Rounded.Add,
+                contentDescription = stringResource(R.string.feed_favorites_add_tag),
+            )
         }
         IconButton(onClick = onClose) {
-            Icon(Icons.Rounded.Close, contentDescription = "关闭")
+            Icon(
+                Icons.Rounded.Close,
+                contentDescription = stringResource(R.string.feed_favorites_close),
+            )
         }
     }
 }
@@ -221,7 +236,7 @@ private fun CurrentFavoriteAction(
             ) {
                 Icon(Icons.Rounded.Star, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("已收藏当前标签 (点击取消)")
+                Text(stringResource(R.string.feed_favorites_remove_current))
             }
         } else {
             OutlinedButton(
@@ -230,7 +245,7 @@ private fun CurrentFavoriteAction(
             ) {
                 Icon(Icons.Rounded.StarBorder, contentDescription = null)
                 Spacer(Modifier.width(8.dp))
-                Text("收藏当前标签")
+                Text(stringResource(R.string.feed_favorites_add_current))
             }
         }
     }
@@ -263,7 +278,7 @@ private fun FavoriteTagRow(
             ) {
                 Icon(
                     imageVector = Icons.Rounded.Delete,
-                    contentDescription = "删除",
+                    contentDescription = stringResource(R.string.feed_favorites_delete),
                     tint = MaterialTheme.colorScheme.error,
                 )
             }
@@ -292,7 +307,7 @@ private fun FavoriteTagRow(
             )
             if (item.action == null) {
                 Text(
-                    text = "无法打开，建议删除",
+                    text = stringResource(R.string.feed_favorites_unavailable),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error,
                 )
@@ -307,7 +322,7 @@ private fun FavoriteTagRow(
                 ) {
                     Icon(
                         imageVector = Icons.Rounded.Edit,
-                        contentDescription = "编辑名称",
+                        contentDescription = stringResource(R.string.feed_favorites_rename),
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -316,14 +331,20 @@ private fun FavoriteTagRow(
                     enabled = index > 0,
                     modifier = Modifier.size(36.dp),
                 ) {
-                    Icon(Icons.Rounded.KeyboardArrowUp, contentDescription = "上移")
+                    Icon(
+                        Icons.Rounded.KeyboardArrowUp,
+                        contentDescription = stringResource(R.string.feed_favorites_move_up),
+                    )
                 }
                 IconButton(
                     onClick = { onMove(index, index + 1) },
                     enabled = index < itemCount - 1,
                     modifier = Modifier.size(36.dp),
                 ) {
-                    Icon(Icons.Rounded.KeyboardArrowDown, contentDescription = "下移")
+                    Icon(
+                        Icons.Rounded.KeyboardArrowDown,
+                        contentDescription = stringResource(R.string.feed_favorites_move_down),
+                    )
                 }
             }
         }

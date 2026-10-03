@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -67,7 +68,7 @@ class FeedViewModel @AssistedInject constructor(
                 query,
                 userPreferencesDataSource.userData,
                 reloadSignal,
-            ) { currentQuery, preferences, _ ->
+            ) { currentQuery, preferences, reloadVersion ->
                 val effectiveFilters = currentQuery.localFilters.withGlobalTopics(
                     enabled = preferences.filter.globalTopicBlockEnabled,
                     topics = preferences.filter.globalBlockedTopics,
@@ -76,8 +77,9 @@ class FeedViewModel @AssistedInject constructor(
                     query = currentQuery,
                     effectiveFilters = effectiveFilters,
                     blockedTags = preferences.filter.blockedTags,
+                    reloadVersion = reloadVersion,
                 )
-            }.collectLatest(::load)
+            }.distinctUntilChanged().collectLatest(::load)
         }
     }
 
@@ -341,6 +343,7 @@ private data class FeedLoadRequest(
     val query: FeedQuery,
     val effectiveFilters: FilterSelections,
     val blockedTags: Set<String>,
+    val reloadVersion: Int,
 )
 
 
