@@ -2,17 +2,11 @@ package com.shizq.bika.ui.dashboard
 
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -38,12 +32,10 @@ import androidx.compose.material.icons.filled.FilterList
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DrawerState
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ElevatedCard
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -61,14 +53,10 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
@@ -90,15 +78,10 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.R
 import com.shizq.bika.core.data.model.DetailedReadingHistory
-import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
 import com.shizq.bika.navigation.AddFavoriteTagResult
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.navigation.RenameFavoriteTagResult
-
-import com.shizq.bika.ui.feed.FavoriteTagsDrawer
-import com.shizq.bika.ui.feed.toUiItem
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 @Composable
@@ -156,37 +139,15 @@ fun DashboardContent(
     val userProfileUiState = state.userProfile
     val lastReadHistory = state.lastReadHistory
     val activeChannels = state.activeChannels
-    val favoriteTags = state.favoriteTags
 
-    // sloganResult / passwordResult / isSubmitting 不再从这里取：改签名和改密码
-    // 的提交状态归各自对话框的 ViewModel，作用域是对话框那个 entry。
     val onCheckInClick = { onAction(DashboardAction.CheckIn) }
-    val onAddFavorite = { tag: FavoriteTag -> onAction(DashboardAction.AddFavoriteTag(tag)) }
-    val onRemoveFavorite = { tag: FavoriteTag -> onAction(DashboardAction.RemoveFavoriteTag(tag)) }
 
-    val onMoveFavorite = { from: Int, to: Int ->
-        onAction(DashboardAction.MoveFavoriteTag(from, to))
-    }
-
-
-    // 修改资料 / 修改密码不在这里：它们是 EditProfileNavKey / ChangePasswordNavKey
-    // 两个独立 entry，由导航返回栈托管，因此配置变更和进程死亡都不会丢。
-    // 见 DialogNavKey 与 EditProfileViewModel 的注释。
-
-    // 抽屉里的每个入口都要「先等关门动画走完，再导航」，否则新页面进场时抽屉还挂在上面。
-    // 原先这个 launch/close/navigate 三连在 9 处逐字重复。
     val navigateFromDrawer = { destination: DashboardDestination ->
         scope.launch {
             drawerState.close()
             onNavigate(destination)
         }
         Unit
-    }
-
-    var showBookmarkDrawer by remember { mutableStateOf(false) }
-
-    BackHandler(enabled = showBookmarkDrawer) {
-        showBookmarkDrawer = false
     }
 
     BackHandler(enabled = drawerState.isOpen) {
@@ -197,7 +158,6 @@ fun DashboardContent(
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         scope.launch {
             if (drawerState.isOpen) {
-                delay(500)
                 drawerState.close()
             }
         }
@@ -264,7 +224,6 @@ fun DashboardContent(
                         onChannelPreferenceClicked = {
                             onNavigate(DashboardDestination.ChannelPreference)
                         },
-                        onBookmarkClicked = { showBookmarkDrawer = true },
                     )
                 },
                 modifier = Modifier
@@ -324,61 +283,14 @@ fun DashboardContent(
                 }
             }
         }
-
-        if (showBookmarkDrawer) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        showBookmarkDrawer = false
-                    }
-            )
-        }
-
-        AnimatedVisibility(
-            visible = showBookmarkDrawer,
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it }),
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(300.dp)
-                .align(Alignment.CenterEnd)
-        ) {
-            FavoriteTagsDrawer(
-                items = favoriteTags.map(FavoriteTag::toUiItem),
-                currentTag = null,
-                onNavigateToFeed = { action ->
-                    showBookmarkDrawer = false
-                    onNavigate(DashboardDestination.Feed(action))
-                },
-                onAddFavorite = onAddFavorite,
-                onRemoveFavorite = onRemoveFavorite,
-                onRenameRequest = { tag ->
-                    onNavigate(DashboardDestination.RenameFavoriteTag(tag))
-                },
-                onMove = onMoveFavorite,
-                onAddCustomRequest = {
-                    onNavigate(DashboardDestination.AddFavoriteTag)
-                },
-                onBlockedTagsClick = { onNavigate(DashboardDestination.BlockedTags) },
-                onClose = { showBookmarkDrawer = false }
-            )
-        }
     }
 }
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DashboardAppBar(
     scrollBehavior: TopAppBarScrollBehavior,
     onDrawerOpen: () -> Unit,
     onSearchClicked: () -> Unit,
     onChannelPreferenceClicked: () -> Unit,
-    onBookmarkClicked: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     TopAppBar(
@@ -390,16 +302,6 @@ private fun DashboardAppBar(
             }
         },
         actions = {
-            IconButton(
-                onClick = onBookmarkClicked,
-                modifier = Modifier.testTag("dashboard:bookmark")
-            ) {
-                Icon(
-                    imageVector = Icons.Rounded.Bookmarks,
-                    contentDescription = "标签收藏夹"
-                )
-            }
-
             IconButton(
                 onClick = onChannelPreferenceClicked,
                 modifier = Modifier.testTag("dashboard:filter")
@@ -596,7 +498,4 @@ fun QuickResumeCard(
             )
         }
     }
-}   )
-}
-}
 }
