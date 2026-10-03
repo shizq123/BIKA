@@ -52,7 +52,7 @@ class FeedStateMachine internal constructor(
 
             inState<FeedUiState.Error> {
                 on<FeedAction.Retry> {
-                    override { FeedUiState.Initial(data = snapshot.data) }
+                    override { FeedUiState.Initial(data = data) }
                 }
             }
 
