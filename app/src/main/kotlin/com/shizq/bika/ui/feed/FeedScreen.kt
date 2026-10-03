@@ -403,6 +403,8 @@ private fun FeedList(
                 }
             }
 
+        }
+    }
 }
 
 @Composable
