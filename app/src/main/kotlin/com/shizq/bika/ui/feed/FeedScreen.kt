@@ -54,7 +54,6 @@ import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.result.ResultEffect
 import com.shizq.bika.R
-import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.model.FavoriteTag
@@ -68,7 +67,6 @@ import com.shizq.bika.navigation.RenameFavoriteTagResult
 import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterChipState
 import com.shizq.bika.ui.tag.rememberFilterState
-import com.shizq.bika.util.injectFromHistoryMap
 
 @Composable
 fun FeedRoute(
@@ -231,22 +229,18 @@ private fun FeedContent(
 ) {
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val success = state.content as? FeedContentState.Success
-    val page = success?.page
-    val pagination = state.content.toPaginationUiState()
-    val displayedContentKey = success?.let {
+    val content = state as? FeedUiState.Content
+    val pagination = state.toPaginationUiState()
+    val displayedContentKey = content?.let {
         DisplayedContentKey(
             page = it.page.page,
             sort = it.displayedQuery.sort,
             itemIds = it.page.items.map { comic -> comic.id },
         )
     }
-    val refreshState = success?.refreshState ?: FeedRefreshState.Idle
+    val refreshState = content?.refreshState ?: FeedRefreshState.Idle
     val isRefreshing = refreshState is FeedRefreshState.Loading
     val filterState = rememberFilterState(state.filterSelections)
-    val historyMap = remember(state.detailedHistories) {
-        state.detailedHistories.associateBy { it.history.id }
-    }
 
     // Only a successfully displayed page changes the list position. A failed request keeps
     // both the old content and the user's reading position.
@@ -292,7 +286,7 @@ private fun FeedContent(
                             onFilterChanged = { group, option ->
                                 onAction(FeedAction.ToggleFilter(group, option))
                             },
-                            summary = feedSummary(state.content),
+                            summary = feedSummary(state),
                             excludeTopicsGlobal = state.excludeTopicsGlobal,
                             onExcludeTopicsGlobalChanged = {
                                 onAction(FeedAction.SetGlobalTopicFilter(it))
@@ -306,8 +300,7 @@ private fun FeedContent(
             }
 
             feedContentItems(
-                content = state.content,
-                historyMap = historyMap,
+                state = state,
                 onRetry = { onAction(FeedAction.Retry) },
                 onComicClick = { onNavigate(FeedDestination.Comic(it)) },
             )
@@ -342,14 +335,12 @@ private data class DisplayedContentKey(
 )
 
 private fun LazyListScope.feedContentItems(
-    content: FeedContentState,
-    historyMap: Map<String, DetailedHistory>,
+    state: FeedUiState,
     onRetry: () -> Unit,
     onComicClick: (String) -> Unit,
 ) {
-    when (content) {
-        FeedContentState.Initial,
-        FeedContentState.Loading -> item(key = "feed-initial-loading", contentType = "loading") {
+    when (state) {
+        is FeedUiState.Initial -> item(key = "feed-initial-loading", contentType = "loading") {
             LoadingState(
                 Modifier
                     .fillMaxWidth()
@@ -358,7 +349,7 @@ private fun LazyListScope.feedContentItems(
             )
         }
 
-        is FeedContentState.Error -> item(key = "feed-initial-error", contentType = "error") {
+        is FeedUiState.Error -> item(key = "feed-initial-error", contentType = "error") {
             ErrorState(
                 onRetry = onRetry,
                 modifier = Modifier
@@ -368,14 +359,14 @@ private fun LazyListScope.feedContentItems(
             )
         }
 
-        is FeedContentState.Success -> {
-            if (content.refreshState is FeedRefreshState.Failed) {
+        is FeedUiState.Content -> {
+            if (state.refreshState is FeedRefreshState.Failed) {
                 item(key = "feed-refresh-error", contentType = "error-banner") {
                     RefreshErrorBanner(onRetry = onRetry)
                 }
             }
 
-            if (content.page.items.isEmpty()) {
+            if (state.page.items.isEmpty()) {
                 item(key = "feed-empty", contentType = "empty") {
                     Box(
                         modifier = Modifier
@@ -386,7 +377,7 @@ private fun LazyListScope.feedContentItems(
                     ) {
                         Text(
                             text = stringResource(
-                                if (content.isClientFiltered) {
+                                if (state.isClientFiltered) {
                                     R.string.feed_empty_current_page
                                 } else {
                                     R.string.feed_empty
@@ -400,14 +391,11 @@ private fun LazyListScope.feedContentItems(
                 }
             } else {
                 items(
-                    items = content.page.items,
+                    items = state.page.items,
                     key = { comic -> comic.id },
                     contentType = { "comic" },
                 ) { comic ->
-                    val enrichedComic = remember(comic, historyMap) {
-                        comic.injectFromHistoryMap(historyMap)
-                    }
-                    ComicCard(comic = enrichedComic) { onComicClick(comic.id) }
+                    ComicCard(comic = comic) { onComicClick(comic.id) }
                 }
             }
         }
@@ -483,8 +471,8 @@ private fun FilterRow(
 }
 
 @Composable
-private fun feedSummary(content: FeedContentState): String =
-    when (val summary = content.toSummaryUiState()) {
+private fun feedSummary(state: FeedUiState): String =
+    when (val summary = state.toSummaryUiState()) {
         FeedSummaryUiState.Loading -> stringResource(R.string.feed_loading)
         FeedSummaryUiState.LoadFailed -> stringResource(R.string.feed_load_failed)
         FeedSummaryUiState.Refreshing -> stringResource(R.string.feed_refreshing)

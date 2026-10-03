@@ -64,6 +64,7 @@ fun FavoriteTag.toUiItem() = FavoriteTagUiItem(
 @Composable
 fun FavoriteTagsContent(
     items: List<FavoriteTagUiItem>,
+    modifier: Modifier = Modifier,
     currentTag: FavoriteTag? = null,
     onNavigateToFeed: (DiscoveryAction) -> Unit,
     onAddFavorite: (FavoriteTag) -> Unit,
@@ -73,7 +74,6 @@ fun FavoriteTagsContent(
     onAddCustomRequest: () -> Unit,
     onBlockedTagsClick: () -> Unit = {},
     onClose: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     var isEditMode by remember { mutableStateOf(false) }
     val isCurrentFavorited = remember(items, currentTag) {

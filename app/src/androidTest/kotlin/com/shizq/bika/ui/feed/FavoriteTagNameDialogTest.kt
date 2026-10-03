@@ -29,7 +29,7 @@ class FavoriteTagNameDialogTest {
         val confirmed = mutableListOf<String>()
         setDialog(onConfirm = confirmed::add)
 
-        composeRule.onNodeWithTag(FavoriteTagNameTestTags.Input)
+        composeRule.onNodeWithTag(FavoriteTagNameTestTags.INPUT)
             .performTextReplacement("  我的标签  ")
         composeRule.onNodeWithText("保存").assertIsEnabled().performClick()
 

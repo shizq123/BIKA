@@ -23,7 +23,7 @@ class FeedScreenTest {
     @Test
     fun initialState_showsLoading_andBackNavigates() {
         val destinations = mutableListOf<FeedDestination>()
-        setFeed(state = FeedUiState(), onNavigate = destinations::add)
+        setFeed(state = FeedUiState.Initial(), onNavigate = destinations::add)
 
         composeRule.onNodeWithTag(FeedTestTags.InitialLoading).assertIsDisplayed()
         composeRule.onNodeWithTag(FeedTestTags.Back).performClick()
@@ -93,17 +93,15 @@ class FeedScreenTest {
 
     private fun stateWithSuccess(
         refreshState: FeedRefreshState = FeedRefreshState.Idle,
-    ): FeedUiState = FeedUiState(
-        query = FeedQuery(page = 1),
-        content = FeedContentState.Success(
-            page = FeedPage(
-                items = emptyList(),
-                page = 1,
-                totalPages = 3,
-                totalCount = 0,
-            ),
-            displayedQuery = FeedQuery(page = 1),
-            refreshState = refreshState,
+    ): FeedUiState = FeedUiState.Content(
+        data = FeedData(query = FeedQuery(page = 1)),
+        page = FeedPage(
+            items = emptyList(),
+            page = 1,
+            totalPages = 3,
+            totalCount = 0,
         ),
+        displayedQuery = FeedQuery(page = 1),
+        refreshState = refreshState,
     )
 }

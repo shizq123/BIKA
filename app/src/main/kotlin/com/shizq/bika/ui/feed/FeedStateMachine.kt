@@ -6,7 +6,6 @@ import com.freeletics.flowredux2.ChangeableState
 import com.freeletics.flowredux2.ChangedState
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
-import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
@@ -17,80 +16,68 @@ import com.shizq.bika.core.domain.filter.toggle
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
-import com.shizq.bika.core.model.preferences.UserPreferences
+import com.shizq.bika.core.model.preferences.ContentFilterPreferences
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
 import jakarta.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.atomic.AtomicLong
 
 /**
- * Feed 的单一状态所有者。
- *
- * 查询、外部偏好投射、网络加载和收藏副作用都在这里处理；Android ViewModel 只负责
- * 把状态机绑定到 viewModelScope。每次加载使用递增代际，防止不响应取消的旧请求回写。
+ * Feed 的状态机。页面生命周期直接由 Initial / Content / Error 表达，不再嵌套第二层内容状态。
  */
 class FeedStateMachine internal constructor(
     private val api: BikaDataSource,
-    private val historyDao: ReadingHistoryDao,
     private val userPreferencesDataSource: UserPreferencesDataSource,
     private val discoveryAction: DiscoveryAction,
 ) : FlowReduxStateMachineFactory<FeedUiState, FeedAction>() {
 
     private val loadGeneration = AtomicLong(0)
-    private val requestLock = Any()
-
     @Volatile
     private var activeRequest: ActiveFeedRequest? = null
 
-    @Volatile
-    private var latestPreferences: UserPreferences? = null
-
     init {
-        initializeWith { FeedUiState() }
+        initializeWith { FeedUiState.Initial() }
 
         spec {
-            inState<FeedUiState> {
-                collectWhileInState(historyDao.getDetailedHistories()) { histories ->
-                    mutate { copy(detailedHistories = histories) }
+            inState<FeedUiState.Initial> {
+                onEnter {
+                    val filter = userPreferencesDataSource.userData.first().filter
+                    val data = snapshot.data.withPreferences(filter)
+                    initialLoad(data)
                 }
+            }
 
+            inState<FeedUiState.Error> {
+                on<FeedAction.Retry> {
+                    override { FeedUiState.Initial(data = snapshot.data) }
+                }
+            }
+
+            inState<FeedUiState.Content> {
                 collectWhileInState(userPreferencesDataSource.userData) { preferences ->
-                    latestPreferences = preferences
-                    applyPreferences(preferences)
+                    applyPreferences(preferences.filter)
                 }
 
                 on<FeedAction.Retry> {
-                    val filter = latestPreferences?.filter
-                    val effectiveFilters = snapshot.query.localFilters.withGlobalTopics(
-                        enabled = filter?.globalTopicBlockEnabled ?: snapshot.excludeTopicsGlobal,
-                        topics = filter?.globalBlockedTopics ?: snapshot.globalBlockedTopics,
-                    )
-                    load(
-                        targetQuery = snapshot.query,
-                        effectiveFilters = effectiveFilters,
-                        blockedTags = filter?.blockedTags ?: snapshot.blockedTags,
-                        force = true,
-                    )
+                    refresh(snapshot.data.query, force = true)
                 }
 
                 on<FeedAction.ChangePage> { action ->
-                    val totalPages = (snapshot.content as? FeedContentState.Success)
-                        ?.page
-                        ?.totalPages
-                        ?.coerceAtLeast(1)
-                        ?: 1
-                    val targetQuery = snapshot.query.copy(
-                        page = action.page.coerceIn(1, totalPages),
+                    refresh(
+                        snapshot.data.query.copy(
+                            page = action.page.coerceIn(
+                                1,
+                                snapshot.page.totalPages.coerceAtLeast(1)
+                            ),
+                        ),
                     )
-                    loadForCurrentPreferences(targetQuery)
                 }
 
                 on<FeedAction.ChangeSort> { action ->
-                    loadForCurrentPreferences(
-                        snapshot.query.copy(page = 1, sort = action.sort),
-                    )
+                    refresh(snapshot.data.query.copy(page = 1, sort = action.sort))
                 }
 
                 on<FeedAction.ToggleFilter> { action ->
@@ -106,281 +93,230 @@ class FeedStateMachine internal constructor(
                         addFavoriteTagToList(tags, action.tag)
                     }
                 }
-
                 onActionEffect<FeedAction.RemoveFavorite> { action ->
                     userPreferencesDataSource.updateFavoriteTags { tags ->
                         removeFavoriteTagFromList(tags, action.tag)
                     }
                 }
-
                 onActionEffect<FeedAction.RenameFavorite> { action ->
-                    val normalizedName = normalizeFavoriteTagName(action.name)
-                        ?: return@onActionEffect
+                    val name = normalizeFavoriteTagName(action.name) ?: return@onActionEffect
                     userPreferencesDataSource.updateFavoriteTags { tags ->
-                        renameFavoriteTagInList(tags, action.tag, normalizedName)
+                        renameFavoriteTagInList(tags, action.tag, name)
                     }
                 }
-
                 onActionEffect<FeedAction.MoveFavorite> { action ->
                     userPreferencesDataSource.updateFavoriteTags { tags ->
                         moveFavoriteTagInList(tags, action.fromIndex, action.toIndex)
                     }
                 }
-
                 onActionEffect<FeedAction.AddCustomFavorite> { action ->
-                    val normalizedName = normalizeFavoriteTagName(action.name)
-                        ?: return@onActionEffect
-                    val tag = FavoriteTag(
-                        name = normalizedName,
-                        actionType = FeedActionType.AdvancedSearch.storageValue,
-                    )
+                    val name = normalizeFavoriteTagName(action.name) ?: return@onActionEffect
                     userPreferencesDataSource.updateFavoriteTags { tags ->
-                        addFavoriteTagToList(tags, tag)
+                        addFavoriteTagToList(
+                            tags,
+                            FavoriteTag(
+                                name = name,
+                                actionType = FeedActionType.AdvancedSearch.storageValue,
+                            ),
+                        )
                     }
                 }
             }
         }
     }
 
-    private suspend fun ChangeableState<FeedUiState>.applyPreferences(
-        preferences: UserPreferences,
-    ): ChangedState<FeedUiState> {
-        val filter = preferences.filter
-        val targetQuery = snapshot.query
-        val effectiveFilters = targetQuery.localFilters.withGlobalTopics(
-            enabled = filter.globalTopicBlockEnabled,
-            topics = filter.globalBlockedTopics,
-        )
-        val displayedQuery = (snapshot.content as? FeedContentState.Success)?.displayedQuery
-        val targetAlreadyLoading = activeRequest == ActiveFeedRequest(
-            query = targetQuery,
-            effectiveFilters = effectiveFilters,
-            blockedTags = filter.blockedTags,
-        )
-        val shouldReload = !snapshot.preferencesReady ||
-                (targetQuery != displayedQuery && !targetAlreadyLoading) ||
-                effectiveFilters != snapshot.filterSelections ||
-                filter.blockedTags != snapshot.blockedTags
-
-        val preferencesChange = mutate {
-            copy(
-                query = targetQuery,
-                favoriteTags = filter.favoriteTags,
-                excludeTopicsGlobal = filter.globalTopicBlockEnabled,
-                globalBlockedTopics = filter.globalBlockedTopics,
-                blockedTags = filter.blockedTags,
-                preferencesReady = true,
+    private suspend fun ChangeableState<FeedUiState.Initial>.initialLoad(
+        data: FeedData,
+    ): ChangedState<FeedUiState> = try {
+        val page = loadAndFilter(data.query, data.filterSelections, data.blockedTags)
+        override {
+            FeedUiState.Content(
+                data = data,
+                page = page,
+                displayedQuery = data.query,
+                isClientFiltered = data.isClientFiltered,
             )
         }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        override { FeedUiState.Error(data = data, reason = FeedError.LoadFailed) }
+    }
 
-        return if (shouldReload) {
-            load(
-                targetQuery = targetQuery,
-                effectiveFilters = effectiveFilters,
-                blockedTags = filter.blockedTags,
+    private suspend fun ChangeableState<FeedUiState.Content>.applyPreferences(
+        filter: ContentFilterPreferences,
+    ): ChangedState<FeedUiState> {
+        val query = snapshot.data.query
+        val newData = snapshot.data.copy(query = query).withPreferences(filter)
+        val affectsContent = newData.filterSelections != snapshot.data.filterSelections ||
+                newData.blockedTags != snapshot.data.blockedTags
+
+        return if (affectsContent) {
+            val targetData = newData.copy(query = newData.query.copy(page = 1))
+            val request = ActiveFeedRequest(
+                query = targetData.query,
+                filters = targetData.filterSelections,
+                blockedTags = targetData.blockedTags,
             )
+            if (activeRequest == request) {
+                mutate { copy(data = targetData) }
+            } else {
+                refresh(
+                    targetQuery = targetData.query,
+                    baseData = targetData,
+                )
+            }
         } else {
-            preferencesChange
+            mutate { copy(data = newData) }
         }
     }
 
-    private suspend fun ChangeableState<FeedUiState>.toggleFilter(
+    private suspend fun ChangeableState<FeedUiState.Content>.toggleFilter(
         group: FilterGroup,
         option: FilterOption,
     ): ChangedState<FeedUiState> {
-        if (group is FilterGroup.ExcludeTopic && snapshot.excludeTopicsGlobal) {
+        if (group is FilterGroup.ExcludeTopic && snapshot.data.excludeTopicsGlobal) {
             val topic = (option as? FilterOption.Topic)?.name ?: return noChange()
-            userPreferencesDataSource.toggleGlobalExcludedTopic(topic)
-            val topics = if (topic in snapshot.globalBlockedTopics) {
-                snapshot.globalBlockedTopics - topic
+            val topics = if (topic in snapshot.data.globalBlockedTopics) {
+                snapshot.data.globalBlockedTopics - topic
             } else {
-                snapshot.globalBlockedTopics + topic
+                snapshot.data.globalBlockedTopics + topic
             }
-            mutate {
-                copy(
-                    query = query.copy(page = 1),
-                    globalBlockedTopics = topics,
-                    preferencesReady = true,
-                )
-            }
-            // userData 的新快照会统一计算 effectiveFilters 并触发加载。
-            return noChange()
+            userPreferencesDataSource.toggleGlobalExcludedTopic(topic)
+            val nextData = snapshot.data.copy(
+                query = snapshot.data.query.copy(page = 1),
+                globalBlockedTopics = topics,
+            )
+            return refresh(
+                targetQuery = nextData.query,
+                baseData = nextData,
+            )
         }
 
-        val targetQuery = snapshot.query.copy(
+        val query = snapshot.data.query.copy(
             page = 1,
-            localFilters = snapshot.query.localFilters.toggle(group, option),
+            localFilters = snapshot.data.query.localFilters.toggle(group, option),
         )
-        return loadForCurrentPreferences(targetQuery)
+        return refresh(query)
     }
 
-    private suspend fun ChangeableState<FeedUiState>.setGlobalTopicFilter(
+    private suspend fun ChangeableState<FeedUiState.Content>.setGlobalTopicFilter(
         enabled: Boolean,
     ): ChangedState<FeedUiState> {
-        val persistedEnabled = latestPreferences?.filter?.globalTopicBlockEnabled
-            ?: snapshot.excludeTopicsGlobal
-        if (enabled == persistedEnabled) return noChange()
+        if (enabled == snapshot.data.excludeTopicsGlobal) return noChange()
 
         if (enabled) {
-            val localExcluded = snapshot.query.localFilters[FilterGroup.ExcludeTopic]
+            val topics = snapshot.data.query.localFilters[FilterGroup.ExcludeTopic]
                 .orEmpty()
                 .filterIsInstance<FilterOption.Topic>()
-                .map { it.name }
-            userPreferencesDataSource.enableGlobalTopicBlock(localExcluded)
-            mutate {
-                copy(
-                    query = query.copy(page = 1),
+                .map(FilterOption.Topic::name)
+            val query = snapshot.data.query.copy(
+                localFilters = snapshot.data.query.localFilters - FilterGroup.ExcludeTopic,
+            )
+            userPreferencesDataSource.enableGlobalTopicBlock(topics)
+            return refresh(
+                targetQuery = query,
+                baseData = snapshot.data.copy(
+                    query = query,
                     excludeTopicsGlobal = true,
-                    globalBlockedTopics = localExcluded,
-                    preferencesReady = true,
-                )
-            }
+                    globalBlockedTopics = topics,
+                ),
+            )
         } else {
-            val globalExcluded = latestPreferences?.filter?.globalBlockedTopics
-                ?: snapshot.globalBlockedTopics
+            val topics = snapshot.data.globalBlockedTopics
+            val query = snapshot.data.query.copy(
+                localFilters = if (topics.isEmpty()) {
+                    snapshot.data.query.localFilters - FilterGroup.ExcludeTopic
+                } else {
+                    snapshot.data.query.localFilters + (
+                            FilterGroup.ExcludeTopic to topics.map(FilterOption::Topic)
+                            )
+                },
+            )
             userPreferencesDataSource.setExcludeTopicsGlobal(false)
-            mutate {
-                copy(
-                    query = query.copy(
-                        page = 1,
-                        localFilters = if (globalExcluded.isEmpty()) {
-                            query.localFilters - FilterGroup.ExcludeTopic
-                        } else {
-                            query.localFilters + (
-                                    FilterGroup.ExcludeTopic to
-                                            globalExcluded.map(FilterOption::Topic)
-                                    )
-                        },
-                    ),
+            return refresh(
+                targetQuery = query,
+                baseData = snapshot.data.copy(
+                    query = query,
                     excludeTopicsGlobal = false,
-                    preferencesReady = true,
-                )
-            }
+                ),
+            )
+        }
+    }
+
+    private suspend fun ChangeableState<FeedUiState.Content>.refresh(
+        targetQuery: FeedQuery,
+        force: Boolean = false,
+        baseData: FeedData = snapshot.data,
+    ): ChangedState<FeedUiState> {
+        val targetData = baseData.copy(
+            query = targetQuery,
+            filterSelections = targetQuery.localFilters.withGlobalTopics(
+                enabled = baseData.excludeTopicsGlobal,
+                topics = baseData.globalBlockedTopics,
+            ),
+        )
+        val requestChangesContent = targetQuery != snapshot.displayedQuery ||
+                targetData.filterSelections != snapshot.data.filterSelections ||
+                targetData.blockedTags != snapshot.data.blockedTags
+        if (!force && !requestChangesContent) {
+            return mutate { copy(data = targetData) }
         }
 
-        // DataStore 发出的新偏好快照负责启动且只启动一次加载。
-        return noChange()
-    }
-
-    private suspend fun ChangeableState<FeedUiState>.loadForCurrentPreferences(
-        targetQuery: FeedQuery,
-    ): ChangedState<FeedUiState> {
-        val filter = latestPreferences?.filter
-        return load(
-            targetQuery = targetQuery,
-            effectiveFilters = targetQuery.localFilters.withGlobalTopics(
-                enabled = filter?.globalTopicBlockEnabled ?: snapshot.excludeTopicsGlobal,
-                topics = filter?.globalBlockedTopics ?: snapshot.globalBlockedTopics,
-            ),
-            blockedTags = filter?.blockedTags ?: snapshot.blockedTags,
+        val generation = loadGeneration.incrementAndGet()
+        activeRequest = ActiveFeedRequest(
+            query = targetQuery,
+            filters = targetData.filterSelections,
+            blockedTags = targetData.blockedTags,
         )
-    }
-
-    private suspend fun ChangeableState<FeedUiState>.load(
-        targetQuery: FeedQuery,
-        effectiveFilters: FilterSelections,
-        blockedTags: Set<String>,
-        force: Boolean = false,
-    ): ChangedState<FeedUiState> {
-        val previousContent = snapshot.content
-        val request = ActiveFeedRequest(targetQuery, effectiveFilters, blockedTags)
-        val generation = synchronized(requestLock) {
-            if (!force && activeRequest == request) {
-                null
-            } else {
-                activeRequest = request
-                loadGeneration.incrementAndGet()
-            }
-        } ?: return noChange()
         mutate {
             copy(
-                query = targetQuery,
-                filterSelections = effectiveFilters,
-                content = when (previousContent) {
-                    is FeedContentState.Success -> previousContent.copy(
-                        refreshState = FeedRefreshState.Loading(targetQuery),
-                    )
-
-                    FeedContentState.Initial,
-                    FeedContentState.Loading,
-                    is FeedContentState.Error -> FeedContentState.Loading
-                },
+                data = targetData,
+                refreshState = FeedRefreshState.Loading(targetQuery),
             )
         }
 
         return try {
-            val rawPage = loadPage(targetQuery)
-            val visibleItems = rawPage.items
-                .filter { comic ->
-                    !effectiveFilters.hasAnySelection || matchesFilters(comic, effectiveFilters)
-                }
-                .filter { comic ->
-                    blockedTags.isEmpty() || comic.tags.none { it in blockedTags }
-                }
-
+            val page = loadAndFilter(
+                query = targetQuery,
+                filters = targetData.filterSelections,
+                blockedTags = targetData.blockedTags,
+            )
             mutate {
-                if (loadGeneration.get() != generation) {
-                    this
-                } else {
-                    val filter = latestPreferences?.filter
-                    copy(
-                        favoriteTags = filter?.favoriteTags ?: favoriteTags,
-                        excludeTopicsGlobal = filter?.globalTopicBlockEnabled
-                            ?: excludeTopicsGlobal,
-                        globalBlockedTopics = filter?.globalBlockedTopics
-                            ?: globalBlockedTopics,
-                        blockedTags = filter?.blockedTags ?: blockedTags,
-                        preferencesReady = preferencesReady || filter != null,
-                        content = FeedContentState.Success(
-                            page = rawPage.copy(items = visibleItems),
-                            displayedQuery = targetQuery,
-                            isClientFiltered = effectiveFilters.hasAnySelection ||
-                                    blockedTags.isNotEmpty(),
-                        ),
-                    )
-                }
+                if (loadGeneration.get() != generation) this else copy(
+                    data = targetData,
+                    page = page,
+                    displayedQuery = targetQuery,
+                    isClientFiltered = targetData.isClientFiltered,
+                    refreshState = FeedRefreshState.Idle,
+                )
             }
         } catch (e: CancellationException) {
-            clearActiveRequest(generation)
             throw e
         } catch (_: Exception) {
-            clearActiveRequest(generation)
             mutate {
-                if (loadGeneration.get() != generation) {
-                    this
-                } else {
-                    val filter = latestPreferences?.filter
-                    copy(
-                        favoriteTags = filter?.favoriteTags ?: favoriteTags,
-                        excludeTopicsGlobal = filter?.globalTopicBlockEnabled
-                            ?: excludeTopicsGlobal,
-                        globalBlockedTopics = filter?.globalBlockedTopics
-                            ?: globalBlockedTopics,
-                        blockedTags = filter?.blockedTags ?: blockedTags,
-                        preferencesReady = preferencesReady || filter != null,
-                        content = when (val current = content) {
-                            is FeedContentState.Success -> current.copy(
-                                refreshState = FeedRefreshState.Failed(
-                                    targetQuery = targetQuery,
-                                    error = FeedError.LoadFailed,
-                                ),
-                            )
-
-                            FeedContentState.Initial,
-                            FeedContentState.Loading,
-                            is FeedContentState.Error ->
-                                FeedContentState.Error(FeedError.LoadFailed)
-                        },
-                    )
-                }
+                if (loadGeneration.get() != generation) this else copy(
+                    data = targetData,
+                    refreshState = FeedRefreshState.Failed(
+                        targetQuery = targetQuery,
+                        error = FeedError.LoadFailed,
+                    ),
+                )
             }
         }
     }
 
-    private fun clearActiveRequest(generation: Long) {
-        synchronized(requestLock) {
-            if (loadGeneration.get() == generation) activeRequest = null
-        }
+    private suspend fun loadAndFilter(
+        query: FeedQuery,
+        filters: FilterSelections,
+        blockedTags: Set<String>,
+    ): FeedPage {
+        val page = loadPage(query)
+        return page.copy(
+            items = page.items
+                .filter { !filters.hasAnySelection || matchesFilters(it, filters) }
+                .filter { comic -> blockedTags.isEmpty() || comic.tags.none(blockedTags::contains) },
+        )
     }
 
     private suspend fun loadPage(query: FeedQuery): FeedPage = when (val target = discoveryAction) {
@@ -415,24 +351,22 @@ class FeedStateMachine internal constructor(
 
         DiscoveryAction.ToCollections -> {
             val items = api.getCollections().collections.firstOrNull()?.comics.orEmpty()
-            FeedPage(items = items, page = 1, totalPages = 1, totalCount = items.size)
+            FeedPage(items, page = 1, totalPages = 1, totalCount = items.size)
         }
 
         DiscoveryAction.ToRandom -> {
             val items = api.getRandomComics().comics
-            FeedPage(items = items, page = 1, totalPages = 1, totalCount = items.size)
+            FeedPage(items, page = 1, totalPages = 1, totalCount = items.size)
         }
     }
 }
 
 class FeedStateMachineFactory @Inject constructor(
     private val api: BikaDataSource,
-    private val historyDao: ReadingHistoryDao,
     private val userPreferencesDataSource: UserPreferencesDataSource,
 ) {
     fun create(action: DiscoveryAction): FeedStateMachine = FeedStateMachine(
         api = api,
-        historyDao = historyDao,
         userPreferencesDataSource = userPreferencesDataSource,
         discoveryAction = action,
     )
@@ -440,8 +374,22 @@ class FeedStateMachineFactory @Inject constructor(
 
 private data class ActiveFeedRequest(
     val query: FeedQuery,
-    val effectiveFilters: FilterSelections,
+    val filters: FilterSelections,
     val blockedTags: Set<String>,
+)
+
+private val FeedData.isClientFiltered: Boolean
+    get() = filterSelections.hasAnySelection || blockedTags.isNotEmpty()
+
+private fun FeedData.withPreferences(filter: ContentFilterPreferences): FeedData = copy(
+    filterSelections = query.localFilters.withGlobalTopics(
+        enabled = filter.globalTopicBlockEnabled,
+        topics = filter.globalBlockedTopics,
+    ),
+    favoriteTags = filter.favoriteTags,
+    excludeTopicsGlobal = filter.globalTopicBlockEnabled,
+    globalBlockedTopics = filter.globalBlockedTopics,
+    blockedTags = filter.blockedTags,
 )
 
 private fun com.shizq.bika.core.network.model.PageData<ComicSummary>.toFeedPage(
@@ -456,11 +404,10 @@ private fun com.shizq.bika.core.network.model.PageData<ComicSummary>.toFeedPage(
 private fun FilterSelections.withGlobalTopics(
     enabled: Boolean,
     topics: List<String>,
-): FilterSelections {
-    if (!enabled) return this
-    return if (topics.isEmpty()) {
-        this - FilterGroup.ExcludeTopic
-    } else {
-        this + (FilterGroup.ExcludeTopic to topics.map(FilterOption::Topic))
-    }
+): FilterSelections = if (!enabled) {
+    this
+} else if (topics.isEmpty()) {
+    this - FilterGroup.ExcludeTopic
+} else {
+    this + (FilterGroup.ExcludeTopic to topics.map(FilterOption::Topic))
 }

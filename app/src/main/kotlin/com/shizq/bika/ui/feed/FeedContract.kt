@@ -1,6 +1,5 @@
 package com.shizq.bika.ui.feed
 
-import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.domain.filter.FilterSelections
@@ -22,17 +21,48 @@ data class FeedPage(
     val totalCount: Int?,
 )
 
-data class FeedUiState(
+/** 跨页面阶段保留的 Feed 数据。 */
+data class FeedData(
     val query: FeedQuery = FeedQuery(),
     val filterSelections: FilterSelections = emptyMap(),
-    val content: FeedContentState = FeedContentState.Initial,
-    val detailedHistories: List<DetailedHistory> = emptyList(),
     val favoriteTags: List<FavoriteTag> = emptyList(),
     val excludeTopicsGlobal: Boolean = false,
     val globalBlockedTopics: List<String> = emptyList(),
     val blockedTags: Set<String> = emptySet(),
-    val preferencesReady: Boolean = false,
 )
+
+/**
+ * Feed 的互斥页面状态。
+ *
+ * [Initial] 不只是占位符：进入它会读取首次请求所需的偏好并加载页面。
+ * 已经拥有可展示内容后，后续请求不会退回 Initial，而由 [Content.refreshState] 表示。
+ */
+sealed interface FeedUiState {
+    val data: FeedData
+
+    data class Initial(
+        override val data: FeedData = FeedData(),
+    ) : FeedUiState
+
+    data class Content(
+        override val data: FeedData,
+        val page: FeedPage,
+        val displayedQuery: FeedQuery,
+        val isClientFiltered: Boolean = false,
+        val refreshState: FeedRefreshState = FeedRefreshState.Idle,
+    ) : FeedUiState
+
+    data class Error(
+        override val data: FeedData,
+        val reason: FeedError,
+    ) : FeedUiState
+}
+
+// 页面只读投影，避免 UI 为公共数据关心具体状态分支。
+val FeedUiState.query: FeedQuery get() = data.query
+val FeedUiState.filterSelections: FilterSelections get() = data.filterSelections
+val FeedUiState.favoriteTags: List<FavoriteTag> get() = data.favoriteTags
+val FeedUiState.excludeTopicsGlobal: Boolean get() = data.excludeTopicsGlobal
 
 sealed interface FeedRefreshState {
     data object Idle : FeedRefreshState
@@ -41,18 +71,6 @@ sealed interface FeedRefreshState {
         val targetQuery: FeedQuery,
         val error: FeedError,
     ) : FeedRefreshState
-}
-
-sealed interface FeedContentState {
-    data object Initial : FeedContentState
-    data object Loading : FeedContentState
-    data class Error(val reason: FeedError) : FeedContentState
-    data class Success(
-        val page: FeedPage,
-        val displayedQuery: FeedQuery = FeedQuery(page = page.page),
-        val isClientFiltered: Boolean = false,
-        val refreshState: FeedRefreshState = FeedRefreshState.Idle,
-    ) : FeedContentState
 }
 
 sealed interface FeedAction {

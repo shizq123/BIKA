@@ -47,7 +47,7 @@ fun FavoriteTagNameDialog(
                 keyboardActions = KeyboardActions(onDone = { submit() }),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .testTag(FavoriteTagNameTestTags.Input),
+                    .testTag(FavoriteTagNameTestTags.INPUT),
             )
         },
         confirmButton = {
@@ -67,7 +67,7 @@ fun FavoriteTagNameDialog(
 }
 
 internal object FavoriteTagNameTestTags {
-    const val Input = "favorite-tag-name-input"
+    const val INPUT = "favorite-tag-name-input"
 }
 
 internal fun normalizeFavoriteTagName(input: String): String? =
