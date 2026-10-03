@@ -163,8 +163,7 @@ class FeedViewModel @AssistedInject constructor(
                 filterSelections = request.effectiveFilters,
                 content = when (previousContent) {
                     is FeedContentState.Success -> previousContent.copy(
-                        isRefreshing = true,
-                        refreshError = null,
+                        refreshState = FeedRefreshState.Loading(request.query),
                     )
 
                     FeedContentState.Initial,
@@ -192,6 +191,9 @@ class FeedViewModel @AssistedInject constructor(
                     filterSelections = request.effectiveFilters,
                     content = FeedContentState.Success(
                         page = rawPage.copy(items = visibleItems),
+                        displayedQuery = request.query,
+                        isClientFiltered = request.effectiveFilters.hasAnySelection ||
+                                request.blockedTags.isNotEmpty(),
                     ),
                 )
             }
@@ -204,8 +206,10 @@ class FeedViewModel @AssistedInject constructor(
                     filterSelections = request.effectiveFilters,
                     content = when (val content = current.content) {
                         is FeedContentState.Success -> content.copy(
-                            isRefreshing = false,
-                            refreshError = FeedError.LoadFailed,
+                            refreshState = FeedRefreshState.Failed(
+                                targetQuery = request.query,
+                                error = FeedError.LoadFailed,
+                            ),
                         )
 
                         FeedContentState.Initial,

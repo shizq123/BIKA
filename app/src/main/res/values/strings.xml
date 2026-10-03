@@ -74,6 +74,21 @@
     <string name="footer_more">点击加载更多</string>
     <string name="footer_end">已经到底了</string>
 
+    <!-- Feed -->
+    <string name="feed_action_back">返回</string>
+    <string name="feed_action_favorite_tags">标签收藏夹</string>
+    <string name="feed_action_sort">排序</string>
+    <string name="feed_loading">加载中…</string>
+    <string name="feed_load_failed">加载失败</string>
+    <string name="feed_empty_current_page">当前页没有可显示的内容，请尝试下一页或调整筛选条件</string>
+    <string name="feed_refresh_failed">刷新失败，当前显示上次数据</string>
+    <string name="feed_retry">重试</string>
+    <string name="feed_previous_page">上一页</string>
+    <string name="feed_next_page">下一页</string>
+    <string name="feed_page_indicator">第 %1$d / %2$d 页</string>
+    <string name="feed_total_count">共 %1$d 本</string>
+    <string name="feed_page_visible_count">第 %1$d / %2$d 页 · 本页 %3$d 本</string>
+
     <string name="chat_min_level">等级限制：</string>
     <string name="chat_min_register_days">注册天数限制：</string>
     <string name="comic_creator_avatar">头像</string>

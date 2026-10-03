@@ -1,23 +1,16 @@
 package com.shizq.bika.ui.feed
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -25,17 +18,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.NavigateBefore
+import androidx.compose.material.icons.automirrored.rounded.NavigateNext
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SuggestionChip
-import androidx.compose.material3.SuggestionChipDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,17 +41,18 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.result.ResultEffect
+import com.shizq.bika.R
 import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
@@ -71,8 +66,8 @@ import com.shizq.bika.navigation.FeedPageJumpResult
 import com.shizq.bika.navigation.RenameFavoriteTagResult
 import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterChipState
+import com.shizq.bika.ui.tag.rememberFilterState
 import com.shizq.bika.util.injectFromHistoryMap
-
 
 @Composable
 fun FeedRoute(
@@ -110,43 +105,25 @@ fun FeedScreen(
     onAction: (FeedAction) -> Unit,
     onNavigate: (FeedDestination) -> Unit,
 ) {
-    var drawerVisible by rememberSaveable { mutableStateOf(false) }
+    var favoriteSheetVisible by remember { mutableStateOf(false) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        FeedContent(
-            title = title,
-            state = state,
-            onAction = onAction,
-            onNavigate = onNavigate,
-            onBookmarkClick = { drawerVisible = true },
-        )
+    FeedContent(
+        title = title,
+        state = state,
+        onAction = onAction,
+        onNavigate = onNavigate,
+        onBookmarkClick = { favoriteSheetVisible = true },
+    )
 
-        if (drawerVisible) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.5f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) { drawerVisible = false },
-            )
-        }
-
-        AnimatedVisibility(
-            visible = drawerVisible,
-            enter = slideInHorizontally(initialOffsetX = { it }),
-            exit = slideOutHorizontally(targetOffsetX = { it }),
-            modifier = Modifier
-                .fillMaxHeight()
-                .width(300.dp)
-                .align(Alignment.CenterEnd),
+    if (favoriteSheetVisible) {
+        ModalBottomSheet(
+            onDismissRequest = { favoriteSheetVisible = false },
         ) {
             FavoriteTagsDrawer(
                 items = state.favoriteTags.map(FavoriteTag::toUiItem),
                 currentTag = currentTag,
                 onNavigateToFeed = { action ->
-                    drawerVisible = false
+                    favoriteSheetVisible = false
                     onNavigate(FeedDestination.Feed(action))
                 },
                 onAddFavorite = { onAction(FeedAction.AddFavorite(it)) },
@@ -155,7 +132,7 @@ fun FeedScreen(
                 onMove = { from, to -> onAction(FeedAction.MoveFavorite(from, to)) },
                 onAddCustomRequest = { onNavigate(FeedDestination.AddFavorite) },
                 onBlockedTagsClick = { onNavigate(FeedDestination.BlockedTags) },
-                onClose = { drawerVisible = false },
+                onClose = { favoriteSheetVisible = false },
             )
         }
     }
@@ -172,13 +149,14 @@ private fun FeedAppBar(
     scrollBehavior: TopAppBarScrollBehavior,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
+
     TopAppBar(
         title = { Text(title) },
         navigationIcon = {
             IconButton(onClick = onBackClick) {
                 Icon(
                     Icons.AutoMirrored.Rounded.ArrowBack,
-                    contentDescription = "返回"
+                    contentDescription = stringResource(R.string.feed_action_back),
                 )
             }
         },
@@ -186,33 +164,41 @@ private fun FeedAppBar(
             IconButton(onClick = onBookmarkClick) {
                 Icon(
                     imageVector = Icons.Rounded.Bookmarks,
-                    contentDescription = "标签收藏夹"
+                    contentDescription = stringResource(R.string.feed_action_favorite_tags),
                 )
             }
             IconButton(onClick = { menuExpanded = true }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.Sort,
-                    contentDescription = "排序"
+                    contentDescription = stringResource(R.string.feed_action_sort),
                 )
             }
 
             DropdownMenu(
                 expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false }
+                onDismissRequest = { menuExpanded = false },
             ) {
                 SortOrder.entries.fastForEach { sort ->
                     DropdownMenuItem(
                         text = {
                             Text(
                                 text = sort.label,
-                                fontWeight = if (sort == currentSortOrder) FontWeight.Bold else FontWeight.Normal,
-                                color = if (sort == currentSortOrder) MaterialTheme.colorScheme.primary else Color.Unspecified
+                                fontWeight = if (sort == currentSortOrder) {
+                                    FontWeight.Bold
+                                } else {
+                                    FontWeight.Normal
+                                },
+                                color = if (sort == currentSortOrder) {
+                                    MaterialTheme.colorScheme.primary
+                                } else {
+                                    Color.Unspecified
+                                },
                             )
                         },
                         onClick = {
                             menuExpanded = false
                             onSortOrderChanged(sort)
-                        }
+                        },
                     )
                 }
             }
@@ -221,8 +207,8 @@ private fun FeedAppBar(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
 private fun FeedContent(
     title: String,
     state: FeedUiState,
@@ -232,13 +218,26 @@ private fun FeedContent(
 ) {
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val page = (state.content as? FeedContentState.Success)?.page
-    val currentPage = page?.page ?: state.query.page
-    val totalPages = page?.totalPages ?: 1
-    val totalCount = page?.totalCount ?: page?.items?.size ?: 0
+    val success = state.content as? FeedContentState.Success
+    val page = success?.page
+    val displayedContentKey = success?.let {
+        DisplayedContentKey(
+            page = it.page.page,
+            sort = it.displayedQuery.sort,
+            itemIds = it.page.items.map { comic -> comic.id },
+        )
+    }
+    val refreshState = success?.refreshState ?: FeedRefreshState.Idle
+    val isRefreshing = refreshState is FeedRefreshState.Loading
+    val filterState = rememberFilterState(state.filterSelections)
+    val historyMap = remember(state.detailedHistories) {
+        state.detailedHistories.associateBy { it.history.id }
+    }
 
-    LaunchedEffect(state.query.page) {
-        listState.scrollToItem(0)
+    // Only a successfully displayed page changes the list position. A failed request keeps
+    // both the old content and the user's reading position.
+    LaunchedEffect(displayedContentKey) {
+        if (displayedContentKey != null) listState.scrollToItem(0)
     }
 
     Scaffold(
@@ -247,162 +246,167 @@ private fun FeedContent(
                 title = title,
                 scrollBehavior = scrollBehavior,
                 onBackClick = { onNavigate(FeedDestination.Back) },
-                currentSortOrder = state.query.sort,
+                currentSortOrder = success?.displayedQuery?.sort ?: state.query.sort,
                 onSortOrderChanged = { onAction(FeedAction.ChangeSort(it)) },
                 onBookmarkClick = onBookmarkClick,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
-        Column(
+        LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            val filterChips = remember(state.filterSelections) {
-                FilterGroup.all.map { group ->
-                    val selected = state.filterSelections[group].orEmpty()
-                    FilterChipState(
-                        group = group,
-                        options = group.options + selected.filterNot { it in group.options },
-                        selected = selected,
-                    )
+            stickyHeader(key = "feed-filter-header") {
+                Surface(
+                    color = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 1.dp,
+                ) {
+                    Column {
+                        if (isRefreshing) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        FilterRow(
+                            chips = filterState.chips,
+                            onFilterChanged = { group, option ->
+                                onAction(FeedAction.ToggleFilter(group, option))
+                            },
+                            summary = feedSummary(state.content),
+                            excludeTopicsGlobal = state.excludeTopicsGlobal,
+                            onExcludeTopicsGlobalChanged = {
+                                onAction(FeedAction.SetGlobalTopicFilter(it))
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
                 }
             }
 
-            FilterRow(
-                chips = filterChips,
-                onFilterChanged = { group, option ->
-                    onAction(FeedAction.ToggleFilter(group, option))
-                },
-                totalCount = totalCount,
-                currentPage = currentPage,
-                totalPages = totalPages,
-                onCountChipClick = {
-                    onNavigate(FeedDestination.PageJump(currentPage, totalPages))
-                },
-                excludeTopicsGlobal = state.excludeTopicsGlobal,
-                onExcludeTopicsGlobalChanged = {
-                    onAction(FeedAction.SetGlobalTopicFilter(it))
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-
-            FeedBody(
+            feedContentItems(
                 content = state.content,
-                histories = state.detailedHistories,
-                listState = listState,
+                historyMap = historyMap,
                 onRetry = { onAction(FeedAction.Retry) },
                 onComicClick = { onNavigate(FeedDestination.Comic(it)) },
-                modifier = Modifier.weight(1f),
             )
 
-            if (page != null && totalPages > 1) {
-                PaginationBar(
-                    currentPage = currentPage,
-                    totalPages = totalPages,
-                    onPageChanged = { onAction(FeedAction.ChangePage(it)) },
-                    onPageIndicatorClick = {
-                        onNavigate(FeedDestination.PageJump(currentPage, totalPages))
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp, top = 8.dp, start = 16.dp, end = 16.dp),
-                )
+            if (page != null && page.totalPages > 1) {
+                item(key = "feed-pagination", contentType = "pagination") {
+                    PaginationBar(
+                        currentPage = page.page,
+                        totalPages = page.totalPages,
+                        enabled = !isRefreshing,
+                        onPageChanged = { onAction(FeedAction.ChangePage(it)) },
+                        onPageIndicatorClick = {
+                            onNavigate(
+                                FeedDestination.PageJump(
+                                    currentPage = page.page,
+                                    totalPages = page.totalPages,
+                                )
+                            )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                    )
+                }
             }
         }
     }
 }
 
-@Composable
-private fun FeedBody(
+private data class DisplayedContentKey(
+    val page: Int,
+    val sort: SortOrder,
+    val itemIds: List<String>,
+)
+
+private fun LazyListScope.feedContentItems(
     content: FeedContentState,
-    histories: List<DetailedHistory>,
-    listState: androidx.compose.foundation.lazy.LazyListState,
+    historyMap: Map<String, DetailedHistory>,
     onRetry: () -> Unit,
     onComicClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     when (content) {
         FeedContentState.Initial,
-        FeedContentState.Loading -> LoadingState(modifier)
+        FeedContentState.Loading -> item(key = "feed-initial-loading", contentType = "loading") {
+            LoadingState(
+                Modifier
+                    .fillMaxWidth()
+                    .height(320.dp)
+            )
+        }
 
-        is FeedContentState.Error -> ErrorState(onRetry = onRetry, modifier = modifier)
+        is FeedContentState.Error -> item(key = "feed-initial-error", contentType = "error") {
+            ErrorState(
+                onRetry = onRetry,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(320.dp),
+            )
+        }
+
         is FeedContentState.Success -> {
+            if (content.refreshState is FeedRefreshState.Failed) {
+                item(key = "feed-refresh-error", contentType = "error-banner") {
+                    RefreshErrorBanner(onRetry = onRetry)
+                }
+            }
+
             if (content.page.items.isEmpty()) {
-                Box(modifier = modifier, contentAlignment = Alignment.Center) {
-                    Text(
-                        text = "没有符合条件的内容",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                item(key = "feed-empty", contentType = "empty") {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(320.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(
+                            text = stringResource(R.string.feed_empty_current_page),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                 }
             } else {
-                FeedList(
-                    content = content,
-                    histories = histories,
-                    listState = listState,
-                    onRetry = onRetry,
-                    onComicClick = onComicClick,
-                    modifier = modifier,
-                )
+                items(
+                    items = content.page.items,
+                    key = { comic -> comic.id },
+                    contentType = { "comic" },
+                ) { comic ->
+                    val enrichedComic = remember(comic, historyMap) {
+                        comic.injectFromHistoryMap(historyMap)
+                    }
+                    ComicCard(comic = enrichedComic) { onComicClick(comic.id) }
+                }
             }
         }
     }
 }
 
 @Composable
-private fun FeedList(
-    content: FeedContentState.Success,
-    histories: List<DetailedHistory>,
-    listState: androidx.compose.foundation.lazy.LazyListState,
-    onRetry: () -> Unit,
-    onComicClick: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val historyMap = remember(histories) {
-        histories.associateBy { it.history.id }
-    }
-
-    Column(modifier = modifier) {
-        if (content.refreshError != null) {
-            Surface(
-                color = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.onErrorContainer,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 4.dp),
-            ) {
-                Row(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text("刷新失败，当前显示上次数据", modifier = Modifier.weight(1f))
-                    TextButton(onClick = onRetry) { Text("重试") }
-                }
+private fun RefreshErrorBanner(onRetry: () -> Unit) {
+    Surface(
+        color = MaterialTheme.colorScheme.errorContainer,
+        contentColor = MaterialTheme.colorScheme.onErrorContainer,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = stringResource(R.string.feed_refresh_failed),
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = onRetry) {
+                Text(stringResource(R.string.feed_retry))
             }
-        }
-
-        LazyColumn(state = listState, modifier = Modifier.weight(1f)) {
-            items(
-                items = content.page.items,
-                key = { comic -> comic.id },
-                contentType = { "comic" },
-            ) { comic ->
-                val enrichedComic = remember(comic, historyMap) {
-                    comic.injectFromHistoryMap(historyMap)
-                }
-                ComicCard(comic = enrichedComic) { onComicClick(comic.id) }
-            }
-
-            if (content.isRefreshing) {
-                item(key = "feed-loading", contentType = "loading") {
-                    LoadingState(Modifier.wrapContentHeight())
-                }
-            }
-
         }
     }
 }
@@ -411,13 +415,10 @@ private fun FeedList(
 private fun FilterRow(
     chips: List<FilterChipState>,
     onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
-    totalCount: Int,
-    currentPage: Int,
-    totalPages: Int,
-    onCountChipClick: () -> Unit,
+    summary: String,
     excludeTopicsGlobal: Boolean,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     LazyRow(
         modifier = modifier,
@@ -432,42 +433,52 @@ private fun FilterRow(
                 state = chipState,
                 onSelectionChanged = { option -> onFilterChanged(chipState.group, option) },
                 excludeTopicsGlobal = excludeTopicsGlobal,
-                onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged
+                onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
             )
         }
 
-        item {
-            SuggestionChip(
-                onClick = onCountChipClick,
-                enabled = totalCount > 0,
-                label = {
-                    Text(
-                        text = if (totalCount > 0) {
-                            if (totalPages > 1) "第 $currentPage / $totalPages 页" else "$totalCount 本"
-                        } else {
-                            "加载中…"
-                        },
-                        style = MaterialTheme.typography.labelMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (totalCount > 0)
-                            MaterialTheme.colorScheme.onSecondaryContainer
-                        else
-                            MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                },
-                colors = SuggestionChipDefaults.suggestionChipColors(
-                    containerColor = if (totalCount > 0)
-                        MaterialTheme.colorScheme.secondaryContainer
-                    else
-                        MaterialTheme.colorScheme.surfaceVariant,
-                    disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                border = SuggestionChipDefaults.suggestionChipBorder(
-                    enabled = totalCount > 0,
-                    borderWidth = 0.dp,
-                    borderColor = Color.Transparent
+        item(key = "feed-summary") {
+            Surface(
+                shape = RoundedCornerShape(16.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer,
+                contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            ) {
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 )
-            )
+            }
+        }
+    }
+}
+
+@Composable
+private fun feedSummary(content: FeedContentState): String {
+    val isClientFiltered = content is FeedContentState.Success && content.isClientFiltered
+    return when (content) {
+        FeedContentState.Initial,
+        FeedContentState.Loading -> stringResource(R.string.feed_loading)
+
+        is FeedContentState.Error -> stringResource(R.string.feed_load_failed)
+        is FeedContentState.Success -> {
+            val page = content.page
+            when {
+                isClientFiltered -> stringResource(
+                    R.string.feed_page_visible_count,
+                    page.page,
+                    page.totalPages,
+                    page.items.size,
+                )
+
+                page.totalCount != null -> stringResource(
+                    R.string.feed_total_count,
+                    page.totalCount
+                )
+
+                else -> stringResource(R.string.feed_page_indicator, page.page, page.totalPages)
+            }
         }
     }
 }
@@ -476,43 +487,49 @@ private fun FilterRow(
 private fun PaginationBar(
     currentPage: Int,
     totalPages: Int,
+    enabled: Boolean,
     onPageChanged: (Int) -> Unit,
     onPageIndicatorClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier,
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        FilledTonalButton(
+        IconButton(
             onClick = { onPageChanged(currentPage - 1) },
-            enabled = currentPage > 1,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            enabled = enabled && currentPage > 1,
         ) {
-            Text("上一页", style = MaterialTheme.typography.labelLarge)
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.NavigateBefore,
+                contentDescription = stringResource(R.string.feed_previous_page),
+            )
         }
 
         Surface(
             onClick = onPageIndicatorClick,
+            enabled = enabled,
             shape = RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.secondaryContainer,
             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
         ) {
             Text(
-                text = "$currentPage / $totalPages 页",
+                text = stringResource(R.string.feed_page_indicator, currentPage, totalPages),
                 style = MaterialTheme.typography.labelLarge,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
 
-        FilledTonalButton(
+        IconButton(
             onClick = { onPageChanged(currentPage + 1) },
-            enabled = currentPage < totalPages,
-            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+            enabled = enabled && currentPage < totalPages,
         ) {
-            Text("下一页", style = MaterialTheme.typography.labelLarge)
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.NavigateNext,
+                contentDescription = stringResource(R.string.feed_next_page),
+            )
         }
     }
 }

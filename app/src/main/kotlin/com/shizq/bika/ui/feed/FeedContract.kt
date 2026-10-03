@@ -31,14 +31,24 @@ data class FeedUiState(
     val excludeTopicsGlobal: Boolean = false,
 )
 
+sealed interface FeedRefreshState {
+    data object Idle : FeedRefreshState
+    data class Loading(val targetQuery: FeedQuery) : FeedRefreshState
+    data class Failed(
+        val targetQuery: FeedQuery,
+        val error: FeedError,
+    ) : FeedRefreshState
+}
+
 sealed interface FeedContentState {
     data object Initial : FeedContentState
     data object Loading : FeedContentState
     data class Error(val reason: FeedError) : FeedContentState
     data class Success(
         val page: FeedPage,
-        val isRefreshing: Boolean = false,
-        val refreshError: FeedError? = null,
+        val displayedQuery: FeedQuery = FeedQuery(page = page.page),
+        val isClientFiltered: Boolean = false,
+        val refreshState: FeedRefreshState = FeedRefreshState.Idle,
     ) : FeedContentState
 }
 
