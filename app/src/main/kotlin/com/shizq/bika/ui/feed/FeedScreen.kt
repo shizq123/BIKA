@@ -678,6 +678,3 @@ internal object FeedTestTags {
     const val AppendLoading = "feed-append-loading"
     const val AppendError = "feed-append-error"
 }
-st
-val AppendError = "feed-append-error"
-}

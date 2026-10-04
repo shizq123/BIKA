@@ -1,6 +1,5 @@
 package com.shizq.bika.ui
 
-import androidx.activity.ComponentActivity
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Column
@@ -22,7 +21,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -83,13 +81,7 @@ fun BikaApp(
     }
 
     CompositionLocalProvider(LocalUseBackAnimation provides usePredictiveBack) {
-        val activity = LocalContext.current as? ComponentActivity
-        val updateViewModel: UpdateViewModel = if (activity != null) {
-            hiltViewModel(activity)
-        } else {
-            hiltViewModel()
-        }
-
+        val updateViewModel: UpdateViewModel = hiltViewModel()
         UpdateHost(
             autoCheckOnLaunch = true,
             viewModel = updateViewModel,
@@ -152,7 +144,7 @@ fun BikaApp(
                         backStack = navigator.authenticationBackStack,
                         entryDecorators = listOf(
                             rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator()
+                            rememberViewModelStoreNavEntryDecorator(),
                         ),
                         entryProvider = entryProvider {
                             authenticationSection(
@@ -169,6 +161,4 @@ fun BikaApp(
         }
     }
 }
-}
-}
-}
+
