@@ -14,4 +14,5 @@ dependencies {
 
     implementation(libs.coil.compose)
     implementation(libs.flowredux)
+    testImplementation(libs.kotlinx.coroutines.test)
 }

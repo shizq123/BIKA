@@ -12,6 +12,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 120
 
     steps:
@@ -24,6 +26,16 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Determine Tag Name
+        id: tag_info
+        run: |
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            echo "tag=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          else
+            VERSION=$(grep -E 'versionName\s*=' app/build.gradle.kts | head -n 1 | cut -d'"' -f2)
+            echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          fi
 
       - name: Copy CI gradle.properties
         run: mkdir -p ~/.gradle ; cp .github/ci-gradle.properties ~/.gradle/gradle.properties
@@ -85,9 +97,9 @@ jobs:
       - name: Create GitHub Release and upload APK
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ github.ref_name }}
-          name: ${{ github.ref_name }}
+          tag_name: ${{ steps.tag_info.outputs.tag }}
+          name: Release ${{ steps.tag_info.outputs.tag }}
           draft: true
           prerelease: false
           files: |
-            app/build/outputs/apk/release/BIKA_${{ github.ref_name }}.apk
+            app/build/outputs/apk/release/*.apk

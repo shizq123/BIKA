@@ -14,7 +14,6 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class UpdateViewModel @Inject constructor(
     updateStateMachine: UpdateStateMachine,
-    effectEmitter: UpdateEffectEmitter,
     private val messageReporter: MessageReporter,
 ) : ViewModel() {
 
@@ -22,7 +21,7 @@ class UpdateViewModel @Inject constructor(
 
     val state = stateMachine.state
 
-    val effects = effectEmitter.effects
+    val effects = updateStateMachine.effects
 
     init {
         // 手动检查（用户主动点击"检查更新"）时，NoUpdate 需要明确反馈；

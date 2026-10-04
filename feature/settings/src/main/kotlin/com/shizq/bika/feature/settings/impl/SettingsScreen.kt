@@ -58,13 +58,13 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.core.net.toUri
+import androidx.activity.ComponentActivity
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.common.BikaLog
 import com.shizq.bika.core.model.theme.DarkThemeConfig
 import com.shizq.bika.feature.settings.impl.update.ui.UpdateAction
 import com.shizq.bika.feature.settings.impl.update.ui.UpdateCheckSource
-import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
 import com.shizq.bika.feature.settings.impl.update.ui.UpdateViewModel
 import kotlinx.coroutines.launch
 
@@ -80,7 +80,7 @@ fun SettingsScreen(
     navigationToDnsSettings: () -> Unit,
     navigationToBlockedTags: () -> Unit,
     viewModel: SettingsViewModel = hiltViewModel(),
-    updateViewModel: UpdateViewModel = hiltViewModel(),
+    updateViewModel: UpdateViewModel? = null,
     onBackClick: () -> Unit,
 ) {
     val settingsUiState by viewModel.settingsUiState.collectAsStateWithLifecycle()
@@ -89,9 +89,12 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
 
-    // 设置页不自动检查更新（自动检查已在 Dashboard 通过 UpdateHost 完成），
-    // 复用同一套 MVI 更新逻辑，仅由用户点击"检查更新"手动触发
-    UpdateHost(autoCheckOnLaunch = false, viewModel = updateViewModel)
+    val activity = context as? ComponentActivity
+    val effectiveUpdateViewModel: UpdateViewModel = updateViewModel ?: if (activity != null) {
+        hiltViewModel(activity)
+    } else {
+        hiltViewModel()
+    }
 
     var showLogsDialog by remember { mutableStateOf(false) }
     var logsContent by remember { mutableStateOf("") }
@@ -166,7 +169,7 @@ fun SettingsScreen(
         onBlockedTagsClick = navigationToBlockedTags,
         onBackClick = onBackClick,
         onCheckForUpdates = {
-            updateViewModel.dispatch(
+            effectiveUpdateViewModel.dispatch(
                 UpdateAction.CheckUpdate(source = UpdateCheckSource.Manual),
             )
         },

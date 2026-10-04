@@ -78,7 +78,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.shizq.bika.R
 import com.shizq.bika.core.data.model.DetailedReadingHistory
-import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
 import com.shizq.bika.navigation.AddFavoriteTagResult
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.navigation.RenameFavoriteTagResult
@@ -116,8 +115,6 @@ fun DashboardScreen(
             viewModel.dispatch(DashboardAction.DismissCheckInResult)
         }
     }
-
-    UpdateHost()
 
     DashboardContent(
         state = state,
