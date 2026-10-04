@@ -19,8 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.NavigateBefore
-import androidx.compose.material.icons.automirrored.rounded.NavigateNext
 import androidx.compose.material.icons.rounded.Bookmarks
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.DropdownMenu
@@ -55,16 +53,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.result.ResultEffect
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.R
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
+import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.ui.ComicCard
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.AddFavoriteTagResult
-import com.shizq.bika.navigation.FeedPageJumpResult
 import com.shizq.bika.navigation.RenameFavoriteTagResult
 import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterChipState
@@ -77,6 +78,7 @@ fun FeedRoute(
     onNavigate: (FeedDestination) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val comics = viewModel.comics.collectAsLazyPagingItems()
 
     ResultEffect<AddFavoriteTagResult> { result ->
         viewModel.dispatch(FeedAction.AddCustomFavorite(result.name))
@@ -84,13 +86,11 @@ fun FeedRoute(
     ResultEffect<RenameFavoriteTagResult> { result ->
         viewModel.dispatch(FeedAction.RenameFavorite(result.tag, result.name))
     }
-    ResultEffect<FeedPageJumpResult> { result ->
-        viewModel.dispatch(FeedAction.ChangePage(result.page))
-    }
 
     FeedScreen(
         title = title,
         state = state,
+        comics = comics,
         currentTag = viewModel.currentAction.toFavoriteTag(),
         onAction = viewModel::dispatch,
         onNavigate = onNavigate,
@@ -102,6 +102,7 @@ fun FeedRoute(
 fun FeedScreen(
     title: String,
     state: FeedUiState,
+    comics: LazyPagingItems<ComicSummary>,
     currentTag: FavoriteTag?,
     onAction: (FeedAction) -> Unit,
     onNavigate: (FeedDestination) -> Unit,
@@ -111,6 +112,7 @@ fun FeedScreen(
     FeedContent(
         title = title,
         state = state,
+        comics = comics,
         onAction = onAction,
         onNavigate = onNavigate,
         onBookmarkClick = { favoriteSheetVisible = true },
@@ -237,29 +239,23 @@ private fun FeedAppBar(
 private fun FeedContent(
     title: String,
     state: FeedUiState,
+    comics: LazyPagingItems<ComicSummary>,
     onAction: (FeedAction) -> Unit,
     onNavigate: (FeedDestination) -> Unit,
     onBookmarkClick: () -> Unit,
 ) {
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val content = state as? FeedUiState.Content
-    val pagination = state.toPaginationUiState()
-    val displayedContentKey = content?.let {
-        DisplayedContentKey(
-            page = it.page.page,
-            sort = it.displayedQuery.sort,
-            itemIds = it.page.items.map { comic -> comic.id },
-        )
-    }
-    val refreshState = content?.refreshState ?: FeedRefreshState.Idle
-    val isRefreshing = refreshState is FeedRefreshState.Loading
+    val refreshLoadState = comics.loadState.refresh
+    val isRefreshing = refreshLoadState is LoadState.Loading && comics.itemCount > 0
     val filterState = rememberFilterState(state.filterSelections)
+    val displayedContentKey = DisplayedContentKey(
+        sort = state.query.sort,
+        localFilters = state.query.localFilters,
+    )
 
-    // Only a successfully displayed page changes the list position. A failed request keeps
-    // both the old content and the user's reading position.
     LaunchedEffect(displayedContentKey) {
-        if (displayedContentKey != null) listState.scrollToItem(0)
+        listState.scrollToItem(0)
     }
 
     Scaffold(
@@ -271,8 +267,9 @@ private fun FeedContent(
                 currentSortOrder = state.query.sort,
                 onSortOrderChanged = { onAction(FeedAction.ChangeSort(it)) },
                 onBookmarkClick = onBookmarkClick,
-                onRefreshClick = { onAction(FeedAction.Refresh) },
-                refreshEnabled = content != null && !isRefreshing,
+                onRefreshClick = comics::refresh,
+                refreshEnabled = state is FeedUiState.Content &&
+                        refreshLoadState !is LoadState.Loading,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -302,7 +299,11 @@ private fun FeedContent(
                             onFilterChanged = { group, option ->
                                 onAction(FeedAction.ToggleFilter(group, option))
                             },
-                            summary = feedSummary(state),
+                            summary = feedSummary(
+                                state = state,
+                                itemCount = comics.itemCount,
+                                refreshLoadState = refreshLoadState,
+                            ),
                             currentSortOrder = state.query.sort,
                             excludeTopicsGlobal = state.excludeTopicsGlobal,
                             onExcludeTopicsGlobalChanged = {
@@ -316,78 +317,67 @@ private fun FeedContent(
             }
 
             feedContentItems(
-                state = state,
-                onRetry = { onAction(FeedAction.Retry) },
+                comics = comics,
+                metadataLoading = state is FeedUiState.Initial,
+                isClientFiltered = state.filterSelections.isNotEmpty() ||
+                        (state.data.blockedTags.isNotEmpty()),
+                onRetry = comics::retry,
                 canClearFilters = filterState.chips.any { it.hasSelection } ||
                         state.excludeTopicsGlobal,
                 onClearFilters = { onAction(FeedAction.ClearFilters) },
                 onComicClick = { onNavigate(FeedDestination.Comic(it)) },
             )
-
-            if (pagination != null) {
-                item(key = "feed-pagination", contentType = "pagination") {
-                    PaginationBar(
-                        state = pagination,
-                        onPageChanged = { onAction(FeedAction.ChangePage(it)) },
-                        onPageIndicatorClick = {
-                            onNavigate(
-                                FeedDestination.PageJump(
-                                    currentPage = pagination.currentPage,
-                                    totalPages = pagination.totalPages,
-                                )
-                            )
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    )
-                }
-            }
         }
     }
 }
 
 private data class DisplayedContentKey(
-    val page: Int,
     val sort: SortOrder,
-    val itemIds: List<String>,
+    val localFilters: Map<FilterGroup, List<FilterOption>>,
 )
 
 private fun LazyListScope.feedContentItems(
-    state: FeedUiState,
+    comics: LazyPagingItems<ComicSummary>,
+    metadataLoading: Boolean,
+    isClientFiltered: Boolean,
     onRetry: () -> Unit,
     canClearFilters: Boolean,
     onClearFilters: () -> Unit,
     onComicClick: (String) -> Unit,
 ) {
-    when (state) {
-        is FeedUiState.Initial -> item(key = "feed-initial-loading", contentType = "loading") {
-            LoadingState(
-                Modifier
-                    .fillMaxWidth()
-                    .height(320.dp)
-                    .testTag(FeedTestTags.InitialLoading)
-            )
+    val refresh = comics.loadState.refresh
+    when {
+        metadataLoading || (refresh is LoadState.Loading && comics.itemCount == 0) -> {
+            item(key = "feed-initial-loading", contentType = "loading") {
+                LoadingState(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(320.dp)
+                        .testTag(FeedTestTags.InitialLoading)
+                )
+            }
         }
 
-        is FeedUiState.Error -> item(key = "feed-initial-error", contentType = "error") {
-            ErrorState(
-                onRetry = onRetry,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(320.dp)
-                    .testTag(FeedTestTags.InitialError),
-            )
+        refresh is LoadState.Error && comics.itemCount == 0 -> {
+            item(key = "feed-initial-error", contentType = "error") {
+                ErrorState(
+                    onRetry = onRetry,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(320.dp)
+                        .testTag(FeedTestTags.InitialError),
+                )
+            }
         }
 
-        is FeedUiState.Content -> {
-            if (state.refreshState is FeedRefreshState.Failed) {
+        else -> {
+            if (refresh is LoadState.Error) {
                 item(key = "feed-refresh-error", contentType = "error-banner") {
                     RefreshErrorBanner(onRetry = onRetry)
                 }
             }
 
-            if (state.page.items.isEmpty()) {
+            if (comics.itemCount == 0) {
                 item(key = "feed-empty", contentType = "empty") {
                     Box(
                         modifier = Modifier
@@ -402,7 +392,7 @@ private fun LazyListScope.feedContentItems(
                         ) {
                             Text(
                                 text = stringResource(
-                                    if (state.isClientFiltered) {
+                                    if (isClientFiltered) {
                                         R.string.feed_empty_current_page
                                     } else {
                                         R.string.feed_empty
@@ -422,11 +412,61 @@ private fun LazyListScope.feedContentItems(
                 }
             } else {
                 items(
-                    items = state.page.items,
-                    key = { comic -> comic.id },
+                    count = comics.itemCount,
+                    // Some endpoints can return duplicate ids across pages; include the index.
+                    key = { index -> "${index}_${comics.peek(index)?.id ?: "placeholder"}" },
                     contentType = { "comic" },
-                ) { comic ->
-                    ComicCard(comic = comic) { onComicClick(comic.id) }
+                ) { index ->
+                    comics[index]?.let { comic ->
+                        ComicCard(comic = comic) { onComicClick(comic.id) }
+                    }
+                }
+
+                when (comics.loadState.append) {
+                    is LoadState.Loading -> item(
+                        key = "feed-append-loading",
+                        contentType = "append-state",
+                    ) {
+                        Text(
+                            text = stringResource(R.string.feed_loading_more),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                                .testTag(FeedTestTags.AppendLoading),
+                        )
+                    }
+
+                    is LoadState.Error -> item(
+                        key = "feed-append-error",
+                        contentType = "append-state",
+                    ) {
+                        TextButton(
+                            onClick = onRetry,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                                .testTag(FeedTestTags.AppendError),
+                        ) {
+                            Text(stringResource(R.string.footer_error))
+                        }
+                    }
+
+                    is LoadState.NotLoading -> {
+                        if (comics.loadState.append.endOfPaginationReached) {
+                            item(key = "feed-end", contentType = "append-state") {
+                                Text(
+                                    text = stringResource(R.string.feed_no_more),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -541,86 +581,17 @@ private fun FilterHeader(
 }
 
 @Composable
-private fun feedSummary(state: FeedUiState): String =
-    when (val summary = state.toSummaryUiState()) {
-        FeedSummaryUiState.Loading -> stringResource(R.string.feed_loading)
-        FeedSummaryUiState.LoadFailed -> stringResource(R.string.feed_load_failed)
-        FeedSummaryUiState.Refreshing -> stringResource(R.string.feed_refreshing)
-        is FeedSummaryUiState.LoadingPage -> stringResource(
-            R.string.feed_loading_page,
-            summary.page,
-        )
+private fun feedSummary(
+    state: FeedUiState,
+    itemCount: Int,
+    refreshLoadState: LoadState,
+): String = when {
+    refreshLoadState is LoadState.Loading -> stringResource(R.string.feed_refreshing)
+    refreshLoadState is LoadState.Error && itemCount == 0 -> stringResource(R.string.feed_load_failed)
+    state.filterSelections.isNotEmpty() || state.data.blockedTags.isNotEmpty() ->
+        stringResource(R.string.feed_filtered_count, itemCount)
 
-        is FeedSummaryUiState.VisibleOnPage -> stringResource(
-            R.string.feed_page_visible_count,
-            summary.page,
-            summary.totalPages,
-            summary.visibleCount,
-        )
-
-        is FeedSummaryUiState.TotalCount -> stringResource(
-            R.string.feed_total_count,
-            summary.count,
-        )
-
-        is FeedSummaryUiState.PageIndicator -> stringResource(
-            R.string.feed_page_indicator,
-            summary.page,
-            summary.totalPages,
-        )
-}
-
-@Composable
-private fun PaginationBar(
-    state: FeedPaginationUiState,
-    onPageChanged: (Int) -> Unit,
-    onPageIndicatorClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.testTag(FeedTestTags.Pagination),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(
-            onClick = { onPageChanged(state.currentPage - 1) },
-            enabled = state.previousEnabled,
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.NavigateBefore,
-                contentDescription = stringResource(R.string.feed_previous_page),
-            )
-        }
-
-        Surface(
-            onClick = onPageIndicatorClick,
-            enabled = state.indicatorEnabled,
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ) {
-            Text(
-                text = stringResource(
-                    R.string.feed_page_indicator,
-                    state.currentPage,
-                    state.totalPages,
-                ),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-            )
-        }
-
-        IconButton(
-            onClick = { onPageChanged(state.currentPage + 1) },
-            enabled = state.nextEnabled,
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.NavigateNext,
-                contentDescription = stringResource(R.string.feed_next_page),
-            )
-        }
-    }
+    else -> stringResource(R.string.feed_total_count, itemCount)
 }
 
 internal object FeedTestTags {
@@ -632,5 +603,6 @@ internal object FeedTestTags {
     const val RefreshProgress = "feed-refresh-progress"
     const val RefreshError = "feed-refresh-error"
     const val Empty = "feed-empty"
-    const val Pagination = "feed-pagination"
+    const val AppendLoading = "feed-append-loading"
+    const val AppendError = "feed-append-error"
 }

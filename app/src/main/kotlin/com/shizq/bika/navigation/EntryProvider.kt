@@ -37,7 +37,6 @@ import com.shizq.bika.ui.dashboard.EditProfileDialog
 import com.shizq.bika.ui.download.DownloadListScreen
 import com.shizq.bika.ui.feed.FavoriteTagNameDialog
 import com.shizq.bika.ui.feed.FeedDestination
-import com.shizq.bika.ui.feed.FeedPageJumpDialog
 import com.shizq.bika.ui.feed.FeedRoute
 import com.shizq.bika.ui.feed.FeedViewModel
 import com.shizq.bika.ui.history.HistoryScreen
@@ -139,15 +138,6 @@ fun EntryProviderScope<NavKey>.featureSection(
 
                     FeedDestination.BlockedTags -> {
                         navigator.navigate(ConnectedRoute.BlockedTagsRoute)
-                    }
-
-                    is FeedDestination.PageJump -> {
-                        navigator.navigate(
-                            FeedPageJumpDialogNavKey(
-                                currentPage = destination.currentPage,
-                                totalPages = destination.totalPages,
-                            )
-                        )
                     }
 
                     FeedDestination.AddFavorite -> {
@@ -377,20 +367,6 @@ fun EntryProviderScope<NavKey>.featureSection(
         )
     }
 
-    entry<FeedPageJumpDialogNavKey>(
-        metadata = DialogSceneStrategy.dialog(),
-    ) { key ->
-        val resultBus = LocalResultEventBus.current
-        FeedPageJumpDialog(
-            currentPage = key.currentPage,
-            totalPages = key.totalPages,
-            onConfirm = { page ->
-                resultBus.sendResult(FeedPageJumpResult(page))
-                navigator.goBack()
-            },
-            onDismiss = navigator::goBack,
-        )
-    }
 
     entry<CheckInResultDialogNavKey>(
         metadata = DialogSceneStrategy.dialog(),
