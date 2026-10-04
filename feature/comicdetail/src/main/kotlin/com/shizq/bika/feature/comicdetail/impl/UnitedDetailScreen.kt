@@ -3,6 +3,7 @@ package com.shizq.bika.feature.comicdetail.impl
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -164,6 +165,8 @@ fun ComicDetailContent(
             title = previewTitle,
             coverModifier = sharedCoverModifier,
             titleModifier = sharedTitleModifier,
+            onBackClick = onBackClick,
+            modifier = modifier,
         )
 
         is UnitedDetailsUiState.Error -> ErrorState {
@@ -277,36 +280,101 @@ private fun ComicDetailTransitionPlaceholder(
     title: String?,
     coverModifier: Modifier,
     titleModifier: Modifier,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     if (coverUrl == null || title == null) {
-        LoadingState()
+        LoadingState(modifier)
         return
     }
 
-    Row(
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null)
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+            )
+        },
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+        ) {
+            // 与真实详情内容保持相同的 Tab 行高度和 Hero 布局坐标，避免数据加载完成后
+            // 共享元素先落到页面左上角，再跳到 HeroHeader 的最终位置。
+            PrimaryTabRow(selectedTabIndex = 0) {
+                PageTab.entries.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = index == 0,
+                        onClick = {},
+                        text = { Text(text = tab.title) },
+                    )
+                }
+            }
+
+            ComicDetailHeroPlaceholder(
+                coverUrl = coverUrl,
+                title = title,
+                coverModifier = coverModifier,
+                titleModifier = titleModifier,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ComicDetailHeroPlaceholder(
+    coverUrl: String,
+    title: String,
+    coverModifier: Modifier,
+    titleModifier: Modifier,
+) {
+    Box(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(20.dp),
-        verticalAlignment = Alignment.Bottom,
+            .height(318.dp),
     ) {
         RetryableAsyncImage(
             model = coverUrl,
-            contentDescription = title,
+            contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = coverModifier
-                .width(122.dp)
-                .height(166.dp)
-                .clip(RoundedCornerShape(14.dp)),
+            modifier = Modifier.fillMaxSize(),
         )
-        Text(
-            text = title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
-            modifier = titleModifier
-                .weight(1f)
-                .padding(start = 18.dp),
-        )
+
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+            verticalAlignment = Alignment.Bottom,
+        ) {
+            RetryableAsyncImage(
+                model = coverUrl,
+                contentDescription = title,
+                contentScale = ContentScale.Crop,
+                modifier = coverModifier
+                    .width(122.dp)
+                    .height(166.dp)
+                    .clip(RoundedCornerShape(14.dp)),
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.ExtraBold,
+                maxLines = 3,
+                overflow = TextOverflow.Ellipsis,
+                modifier = titleModifier
+                    .weight(1f)
+                    .padding(start = 18.dp),
+            )
+        }
     }
 }
