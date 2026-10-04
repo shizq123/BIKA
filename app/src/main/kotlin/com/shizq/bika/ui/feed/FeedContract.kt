@@ -57,7 +57,12 @@ sealed interface FeedAction {
 
 sealed interface FeedDestination {
     data object Back : FeedDestination
-    data class Comic(val id: String) : FeedDestination
+    data class Comic(
+        val id: String,
+        val coverUrl: String,
+        val title: String,
+        val transitionId: String,
+    ) : FeedDestination
     data class Feed(val action: DiscoveryAction) : FeedDestination
     data object BlockedTags : FeedDestination
     data object AddFavorite : FeedDestination

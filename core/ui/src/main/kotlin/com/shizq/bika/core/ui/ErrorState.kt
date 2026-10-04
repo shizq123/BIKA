@@ -22,9 +22,9 @@ import com.shizq.bika.core.designsystem.theme.BikaTheme
 
 @Composable
 fun ErrorState(
-    onRetry: () -> Unit,
     modifier: Modifier = Modifier,
-    focusRequester: FocusRequester = remember { FocusRequester() }
+    focusRequester: FocusRequester = remember { FocusRequester() },
+    onRetry: () -> Unit
 ) {
     LaunchedEffect(Unit) {
         focusRequester.requestFocus()

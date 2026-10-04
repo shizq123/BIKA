@@ -43,10 +43,23 @@ import coil3.request.placeholder
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.RemoteImage
 
+data class ComicSharedElementKey(
+    val transitionId: String,
+    val element: ComicSharedElement,
+)
+
+enum class ComicSharedElement {
+    Cover,
+    Title,
+}
+
+
 @Composable
 fun ComicCard(
     comic: ComicSummary,
     modifier: Modifier = Modifier,
+    coverModifier: Modifier = Modifier,
+    titleModifier: Modifier = Modifier,
     onItemClick: () -> Unit = {},
 ) {
     ElevatedCard(
@@ -70,6 +83,7 @@ fun ComicCard(
             ComicCover(
                 comic = comic,
                 placeholderColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                modifier = coverModifier,
             )
 
             Spacer(Modifier.width(14.dp))
@@ -83,6 +97,7 @@ fun ComicCard(
 
                 Text(
                     text = comic.title,
+                    modifier = titleModifier,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     maxLines = 2,
@@ -117,6 +132,7 @@ fun ComicCard(
 private fun ComicCover(
     comic: ComicSummary,
     placeholderColor: Color,
+    modifier: Modifier = Modifier,
 ) {
     Box(contentAlignment = Alignment.TopStart) {
         AsyncImage(
@@ -127,7 +143,7 @@ private fun ComicCover(
                 .build(),
             contentDescription = comic.title,
             contentScale = ContentScale.Crop,
-            modifier = Modifier
+            modifier = modifier
                 .width(96.dp)
                 .aspectRatio(3f / 4f)
                 .clip(RoundedCornerShape(10.dp)),

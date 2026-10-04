@@ -89,6 +89,8 @@ fun DetailTab(
     onDownloadWholeComic: () -> Unit,
     navigationToTagBlock: (String) -> Unit,
     modifier: Modifier = Modifier,
+    coverModifier: Modifier = Modifier,
+    titleModifier: Modifier = Modifier,
 ) {
     val isDownloaded = remember(downloadTasks, detail.epsCount) {
         isComicFullyDownloaded(downloadTasks, detail.epsCount)
@@ -111,6 +113,8 @@ fun DetailTab(
         isLiked = isLiked,
         isDownloaded = isDownloaded,
         modifier = modifier,
+        coverModifier = coverModifier,
+        titleModifier = titleModifier,
         onRead = { navigationToReader(readOrder) },
         onToggleFavourite = {
             isFavourited = !isFavourited
@@ -147,6 +151,8 @@ private fun ComicDetailBody(
     onTagLongClick: (String) -> Unit,
     onDownloadWholeComic: () -> Unit,
     modifier: Modifier = Modifier,
+    coverModifier: Modifier = Modifier,
+    titleModifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
@@ -160,6 +166,8 @@ private fun ComicDetailBody(
             onAuthorClick = onAuthorClick,
             onTeamClick = onTeamClick,
             onTagClick = onTagClick,
+            coverModifier = coverModifier,
+            titleModifier = titleModifier,
         )
 
         Column(
@@ -212,6 +220,8 @@ private fun HeroHeader(
     onAuthorClick: () -> Unit,
     onTeamClick: () -> Unit,
     onTagClick: (String) -> Unit,
+    coverModifier: Modifier = Modifier,
+    titleModifier: Modifier = Modifier,
 ) {
     Box(
         modifier = Modifier
@@ -252,7 +262,7 @@ private fun HeroHeader(
                 model = detail.cover,
                 contentDescription = detail.title,
                 contentScale = ContentScale.Crop,
-                modifier = Modifier
+                modifier = coverModifier
                     .width(122.dp)
                     .height(166.dp)
                     .clip(RoundedCornerShape(14.dp)),
@@ -268,6 +278,7 @@ private fun HeroHeader(
                 )
                 Text(
                     text = detail.title,
+                    modifier = titleModifier,
                     style = MaterialTheme.typography.headlineSmall,
                     fontWeight = FontWeight.ExtraBold,
                     maxLines = 3,
@@ -591,7 +602,7 @@ private fun DetailCard(title: String, content: @Composable ColumnScope.() -> Uni
                 Text(
                     title,
                     style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    fontWeight = FontWeight.Bold,
                 )
                 content()
             },

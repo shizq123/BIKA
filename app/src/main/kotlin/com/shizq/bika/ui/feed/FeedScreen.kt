@@ -1,5 +1,8 @@
 package com.shizq.bika.ui.feed
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -41,6 +44,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,6 +67,8 @@ import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.ui.ComicCard
+import com.shizq.bika.core.ui.ComicSharedElement
+import com.shizq.bika.core.ui.ComicSharedElementKey
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.AddFavoriteTagResult
@@ -70,11 +76,15 @@ import com.shizq.bika.navigation.RenameFavoriteTagResult
 import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterChipState
 import com.shizq.bika.ui.tag.rememberFilterState
+import java.util.UUID
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedRoute(
     title: String,
     viewModel: FeedViewModel,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onNavigate: (FeedDestination) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -93,11 +103,13 @@ fun FeedRoute(
         comics = comics,
         currentTag = viewModel.currentAction.toFavoriteTag(),
         onAction = viewModel::dispatch,
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
         onNavigate = onNavigate,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedScreen(
     title: String,
@@ -105,6 +117,8 @@ fun FeedScreen(
     comics: LazyPagingItems<ComicSummary>,
     currentTag: FavoriteTag?,
     onAction: (FeedAction) -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onNavigate: (FeedDestination) -> Unit,
 ) {
     var favoriteSheetVisible by remember { mutableStateOf(false) }
@@ -114,6 +128,8 @@ fun FeedScreen(
         state = state,
         comics = comics,
         onAction = onAction,
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
         onNavigate = onNavigate,
         onBookmarkClick = { favoriteSheetVisible = true },
     )
@@ -234,13 +250,19 @@ private fun FeedAppBar(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalFoundationApi::class,
+    ExperimentalSharedTransitionApi::class,
+)
 @Composable
 private fun FeedContent(
     title: String,
     state: FeedUiState,
     comics: LazyPagingItems<ComicSummary>,
     onAction: (FeedAction) -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
     onNavigate: (FeedDestination) -> Unit,
     onBookmarkClick: () -> Unit,
 ) {
@@ -328,7 +350,18 @@ private fun FeedContent(
                 canClearFilters = filterState.chips.any { it.hasSelection } ||
                         state.excludeTopicsGlobal,
                 onClearFilters = { onAction(FeedAction.ClearFilters) },
-                onComicClick = { onNavigate(FeedDestination.Comic(it)) },
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
+                onComicClick = { comic, transitionId ->
+                    onNavigate(
+                        FeedDestination.Comic(
+                            id = comic.id,
+                            coverUrl = comic.image.originalImageUrl,
+                            title = comic.title,
+                            transitionId = transitionId,
+                        )
+                    )
+                },
             )
         }
     }
@@ -339,6 +372,7 @@ private data class DisplayedContentKey(
     val localFilters: Map<FilterGroup, List<FilterOption>>,
 )
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 private fun LazyListScope.feedContentItems(
     comics: LazyPagingItems<ComicSummary>,
     metadataLoading: Boolean,
@@ -346,7 +380,9 @@ private fun LazyListScope.feedContentItems(
     onRetry: () -> Unit,
     canClearFilters: Boolean,
     onClearFilters: () -> Unit,
-    onComicClick: (String) -> Unit,
+    sharedTransitionScope: SharedTransitionScope? = null,
+    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    onComicClick: (ComicSummary, String) -> Unit,
 ) {
     val refresh = comics.loadState.refresh
     when {
@@ -421,7 +457,40 @@ private fun LazyListScope.feedContentItems(
                     contentType = { "comic" },
                 ) { index ->
                     comics[index]?.let { comic ->
-                        ComicCard(comic = comic) { onComicClick(comic.id) }
+                        val transitionId = rememberSaveable(comic.id, index) {
+                            UUID.randomUUID().toString()
+                        }
+                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
+                            with(sharedTransitionScope) {
+                                ComicCard(
+                                    comic = comic,
+                                    coverModifier = Modifier.sharedElement(
+                                        sharedContentState = rememberSharedContentState(
+                                            ComicSharedElementKey(
+                                                transitionId = transitionId,
+                                                element = ComicSharedElement.Cover,
+                                            )
+                                        ),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                    ),
+                                    titleModifier = Modifier.sharedBounds(
+                                        sharedContentState = rememberSharedContentState(
+                                            ComicSharedElementKey(
+                                                transitionId = transitionId,
+                                                element = ComicSharedElement.Title,
+                                            )
+                                        ),
+                                        animatedVisibilityScope = animatedVisibilityScope,
+                                    ),
+                                    onItemClick = { onComicClick(comic, transitionId) },
+                                )
+                            }
+                        } else {
+                            ComicCard(
+                                comic = comic,
+                                onItemClick = { onComicClick(comic, transitionId) },
+                            )
+                        }
                     }
                 }
 
@@ -608,4 +677,7 @@ internal object FeedTestTags {
     const val Empty = "feed-empty"
     const val AppendLoading = "feed-append-loading"
     const val AppendError = "feed-append-error"
+}
+st
+val AppendError = "feed-append-error"
 }
