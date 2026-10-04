@@ -79,12 +79,12 @@ fun ComicDetailScreen(
     onUploaderClick: (String, String) -> Unit,
     navigationToEpisodeDownload: (String, String, String) -> Unit,
     onBackClick: () -> Unit,
-    previewCoverUrl: String? = null,
-    previewTitle: String? = null,
-    coverSharedElementKey: ComicSharedElementKey? = null,
-    titleSharedElementKey: ComicSharedElementKey? = null,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    previewCoverUrl: String,
+    previewTitle: String,
+    coverSharedElementKey: ComicSharedElementKey,
+    titleSharedElementKey: ComicSharedElementKey,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     viewModel: ComicInfoViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -136,41 +136,25 @@ fun ComicDetailContent(
     onTagClick: (String) -> Unit,
     navigationToEpisodeDownload: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
-    previewCoverUrl: String? = null,
-    previewTitle: String? = null,
-    coverSharedElementKey: ComicSharedElementKey? = null,
-    titleSharedElementKey: ComicSharedElementKey? = null,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    previewCoverUrl: String,
+    previewTitle: String,
+    coverSharedElementKey: ComicSharedElementKey,
+    titleSharedElementKey: ComicSharedElementKey,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
-    val sharedCoverModifier = if (
-        sharedTransitionScope != null &&
-        animatedVisibilityScope != null &&
-        coverSharedElementKey != null
-    ) {
-        with(sharedTransitionScope) {
-            Modifier.sharedElement(
-                sharedContentState = rememberSharedContentState(coverSharedElementKey),
-                animatedVisibilityScope = animatedVisibilityScope,
-            )
-        }
-    } else {
-        Modifier
+    val sharedCoverModifier = with(sharedTransitionScope) {
+        Modifier.sharedElement(
+            sharedContentState = rememberSharedContentState(coverSharedElementKey),
+            animatedVisibilityScope = animatedVisibilityScope,
+        )
     }
 
-    val sharedTitleModifier = if (
-        sharedTransitionScope != null &&
-        animatedVisibilityScope != null &&
-        titleSharedElementKey != null
-    ) {
-        with(sharedTransitionScope) {
-            Modifier.sharedBounds(
-                sharedContentState = rememberSharedContentState(titleSharedElementKey),
-                animatedVisibilityScope = animatedVisibilityScope,
-            )
-        }
-    } else {
-        Modifier
+    val sharedTitleModifier = with(sharedTransitionScope) {
+        Modifier.sharedBounds(
+            sharedContentState = rememberSharedContentState(titleSharedElementKey),
+            animatedVisibilityScope = animatedVisibilityScope,
+        )
     }
 
     when (unitedState) {
@@ -290,8 +274,8 @@ fun ComicDetailContent(
 
 @Composable
 private fun ComicDetailTransitionPlaceholder(
-    coverUrl: String?,
-    title: String?,
+    coverUrl: String,
+    title: String,
     coverModifier: Modifier,
     titleModifier: Modifier,
     onBackClick: () -> Unit,
@@ -360,8 +344,8 @@ private fun ComicDetailTransitionPlaceholder(
 
 @Composable
 private fun ComicDetailHeroSkeleton(
-    coverUrl: String?,
-    title: String?,
+    coverUrl: String,
+    title: String,
     coverModifier: Modifier,
     titleModifier: Modifier,
     skeletonAlpha: Float,
@@ -371,7 +355,7 @@ private fun ComicDetailHeroSkeleton(
             .fillMaxWidth()
             .height(318.dp),
     ) {
-        if (coverUrl != null) {
+        if (coverUrl.isNotBlank()) {
             RetryableAsyncImage(
                 model = coverUrl,
                 contentDescription = null,
@@ -408,7 +392,7 @@ private fun ComicDetailHeroSkeleton(
             horizontalArrangement = Arrangement.spacedBy(18.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
-            if (coverUrl != null) {
+            if (coverUrl.isNotBlank()) {
                 RetryableAsyncImage(
                     model = coverUrl,
                     contentDescription = title,
@@ -439,7 +423,7 @@ private fun ComicDetailHeroSkeleton(
                         .height(26.dp),
                     shape = RoundedCornerShape(50),
                 )
-                if (title != null) {
+                if (title.isNotBlank()) {
                     Text(
                         text = title,
                         style = MaterialTheme.typography.headlineSmall,

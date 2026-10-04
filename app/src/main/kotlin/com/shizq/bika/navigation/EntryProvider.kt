@@ -280,12 +280,14 @@ fun EntryProviderScope<NavKey>.featureSection(
             },
             previewCoverUrl = key.previewCoverUrl,
             previewTitle = key.previewTitle,
-            coverSharedElementKey = key.transitionId?.let {
-                ComicSharedElementKey(it, ComicSharedElement.Cover)
-            },
-            titleSharedElementKey = key.transitionId?.let {
-                ComicSharedElementKey(it, ComicSharedElement.Title)
-            },
+            coverSharedElementKey = ComicSharedElementKey(
+                key.transitionId,
+                ComicSharedElement.Cover,
+            ),
+            titleSharedElementKey = ComicSharedElementKey(
+                key.transitionId,
+                ComicSharedElement.Title,
+            ),
             sharedTransitionScope = sharedTransitionScope,
             animatedVisibilityScope = LocalNavAnimatedContentScope.current,
             onBackClick = { navigator.goBack() },

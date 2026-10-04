@@ -62,9 +62,9 @@ data object ConnectedRoute {
     @Serializable
     data class UnitedDetailRoute(
         val id: String,
-        val transitionId: String? = null,
-        val previewCoverUrl: String? = null,
-        val previewTitle: String? = null,
+        val transitionId: String = id,
+        val previewCoverUrl: String = "",
+        val previewTitle: String = "",
     ) : Connected
 
     @Serializable
