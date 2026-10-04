@@ -78,12 +78,17 @@
     <string name="feed_action_back">返回</string>
     <string name="feed_action_favorite_tags">标签收藏夹</string>
     <string name="feed_action_sort">排序</string>
+    <string name="feed_action_refresh">刷新</string>
+    <string name="feed_current_sort">当前排序：%1$s</string>
+    <string name="feed_clear_filters">清除筛选</string>
+    <string name="feed_active_filters">已选 %1$d 项</string>
     <string name="feed_loading">加载中…</string>
     <string name="feed_refreshing">正在刷新…</string>
     <string name="feed_loading_page">正在加载第 %1$d 页…</string>
     <string name="feed_load_failed">加载失败</string>
     <string name="feed_empty">暂无内容</string>
     <string name="feed_empty_current_page">当前页没有可显示的内容，请尝试下一页或调整筛选条件</string>
+    <string name="feed_empty_clear_filters">清除筛选并重新加载</string>
     <string name="feed_refresh_failed">刷新失败，当前显示上次数据</string>
     <string name="feed_retry">重试</string>
     <string name="feed_previous_page">上一页</string>

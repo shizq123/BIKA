@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.NavigateBefore
 import androidx.compose.material.icons.automirrored.rounded.NavigateNext
 import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -154,6 +156,8 @@ private fun FeedAppBar(
     onSortOrderChanged: (SortOrder) -> Unit,
     onBackClick: () -> Unit,
     onBookmarkClick: () -> Unit,
+    onRefreshClick: () -> Unit,
+    refreshEnabled: Boolean,
     scrollBehavior: TopAppBarScrollBehavior,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
@@ -172,6 +176,16 @@ private fun FeedAppBar(
             }
         },
         actions = {
+            IconButton(
+                onClick = onRefreshClick,
+                enabled = refreshEnabled,
+                modifier = Modifier.testTag(FeedTestTags.Refresh),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Refresh,
+                    contentDescription = stringResource(R.string.feed_action_refresh),
+                )
+            }
             IconButton(onClick = onBookmarkClick) {
                 Icon(
                     imageVector = Icons.Rounded.Bookmarks,
@@ -257,6 +271,8 @@ private fun FeedContent(
                 currentSortOrder = state.query.sort,
                 onSortOrderChanged = { onAction(FeedAction.ChangeSort(it)) },
                 onBookmarkClick = onBookmarkClick,
+                onRefreshClick = { onAction(FeedAction.Refresh) },
+                refreshEnabled = content != null && !isRefreshing,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -281,19 +297,19 @@ private fun FeedContent(
                                     .testTag(FeedTestTags.RefreshProgress),
                             )
                         }
-                        FilterRow(
+                        FilterHeader(
                             chips = filterState.chips,
                             onFilterChanged = { group, option ->
                                 onAction(FeedAction.ToggleFilter(group, option))
                             },
                             summary = feedSummary(state),
+                            currentSortOrder = state.query.sort,
                             excludeTopicsGlobal = state.excludeTopicsGlobal,
                             onExcludeTopicsGlobalChanged = {
                                 onAction(FeedAction.SetGlobalTopicFilter(it))
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            onClearFilters = { onAction(FeedAction.ClearFilters) },
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }
@@ -302,6 +318,9 @@ private fun FeedContent(
             feedContentItems(
                 state = state,
                 onRetry = { onAction(FeedAction.Retry) },
+                canClearFilters = filterState.chips.any { it.hasSelection } ||
+                        state.excludeTopicsGlobal,
+                onClearFilters = { onAction(FeedAction.ClearFilters) },
                 onComicClick = { onNavigate(FeedDestination.Comic(it)) },
             )
 
@@ -337,6 +356,8 @@ private data class DisplayedContentKey(
 private fun LazyListScope.feedContentItems(
     state: FeedUiState,
     onRetry: () -> Unit,
+    canClearFilters: Boolean,
+    onClearFilters: () -> Unit,
     onComicClick: (String) -> Unit,
 ) {
     when (state) {
@@ -375,18 +396,28 @@ private fun LazyListScope.feedContentItems(
                             .testTag(FeedTestTags.Empty),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = stringResource(
-                                if (state.isClientFiltered) {
-                                    R.string.feed_empty_current_page
-                                } else {
-                                    R.string.feed_empty
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    if (state.isClientFiltered) {
+                                        R.string.feed_empty_current_page
+                                    } else {
+                                        R.string.feed_empty
+                                    }
+                                ),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 24.dp),
+                            )
+                            if (canClearFilters) {
+                                TextButton(onClick = onClearFilters) {
+                                    Text(stringResource(R.string.feed_empty_clear_filters))
                                 }
-                            ),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                        )
+                            }
+                        }
                     }
                 }
             } else {
@@ -428,32 +459,26 @@ private fun RefreshErrorBanner(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun FilterRow(
+private fun FilterHeader(
     chips: List<FilterChipState>,
     onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
     summary: String,
+    currentSortOrder: SortOrder,
     excludeTopicsGlobal: Boolean,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
+    onClearFilters: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items(
-            items = chips,
-            key = { it.group.label },
-        ) { chipState ->
-            FilterChip(
-                state = chipState,
-                onSelectionChanged = { option -> onFilterChanged(chipState.group, option) },
-                excludeTopicsGlobal = excludeTopicsGlobal,
-                onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
-            )
-        }
+    val selectedCount = chips.sumOf { it.selected.size }
 
-        item(key = "feed-summary") {
+    Column(modifier = modifier.padding(vertical = 8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.secondaryContainer,
@@ -465,6 +490,51 @@ private fun FilterRow(
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 )
+            }
+
+            Text(
+                text = stringResource(R.string.feed_current_sort, currentSortOrder.label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
+            )
+
+            if (selectedCount > 0 || excludeTopicsGlobal) {
+                TextButton(onClick = onClearFilters) {
+                    Text(stringResource(R.string.feed_clear_filters))
+                }
+            }
+        }
+
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            items(
+                items = chips,
+                key = { it.group.label },
+            ) { chipState ->
+                FilterChip(
+                    state = chipState,
+                    onSelectionChanged = { option -> onFilterChanged(chipState.group, option) },
+                    excludeTopicsGlobal = excludeTopicsGlobal,
+                    onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
+                )
+            }
+
+            if (selectedCount > 0) {
+                item(key = "feed-active-filter-count") {
+                    Text(
+                        text = stringResource(R.string.feed_active_filters, selectedCount),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
             }
         }
     }
@@ -555,6 +625,7 @@ private fun PaginationBar(
 
 internal object FeedTestTags {
     const val Back = "feed-back"
+    const val Refresh = "feed-refresh"
     const val List = "feed-list"
     const val InitialLoading = "feed-initial-loading"
     const val InitialError = "feed-initial-error"

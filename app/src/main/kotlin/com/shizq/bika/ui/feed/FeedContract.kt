@@ -75,6 +75,8 @@ sealed interface FeedRefreshState {
 
 sealed interface FeedAction {
     data object Retry : FeedAction
+    data object Refresh : FeedAction
+    data object ClearFilters : FeedAction
     data class ChangePage(val page: Int) : FeedAction
     data class ChangeSort(val sort: SortOrder) : FeedAction
     data class ToggleFilter(

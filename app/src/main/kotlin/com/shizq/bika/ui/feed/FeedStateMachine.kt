@@ -65,6 +65,14 @@ class FeedStateMachine internal constructor(
                     refresh(snapshot.data.query, force = true)
                 }
 
+                on<FeedAction.Refresh> {
+                    refresh(snapshot.displayedQuery, force = true)
+                }
+
+                on<FeedAction.ClearFilters> {
+                    clearFilters()
+                }
+
                 on<FeedAction.ChangePage> { action ->
                     refresh(
                         snapshot.data.query.copy(
@@ -169,6 +177,19 @@ class FeedStateMachine internal constructor(
         } else {
             mutate { copy(data = newData) }
         }
+    }
+
+    private suspend fun ChangeableState<FeedUiState.Content>.clearFilters(): ChangedState<FeedUiState> {
+        val query = snapshot.data.query.copy(page = 1, localFilters = emptyMap())
+        val baseData = snapshot.data.copy(
+            query = query,
+            excludeTopicsGlobal = false,
+            globalBlockedTopics = emptyList(),
+        )
+        if (snapshot.data.excludeTopicsGlobal) {
+            userPreferencesDataSource.setExcludeTopicsGlobal(false)
+        }
+        return refresh(targetQuery = query, baseData = baseData)
     }
 
     private suspend fun ChangeableState<FeedUiState.Content>.toggleFilter(

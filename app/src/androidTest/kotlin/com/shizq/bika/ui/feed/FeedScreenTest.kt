@@ -48,10 +48,24 @@ class FeedScreenTest {
         )
 
         composeRule.onNodeWithTag(FeedTestTags.RefreshProgress).assertIsDisplayed()
+        composeRule.onNodeWithTag(FeedTestTags.Refresh).assertIsNotEnabled()
         composeRule.onNodeWithTag(FeedTestTags.List)
             .performScrollToNode(hasTestTag(FeedTestTags.Pagination))
         composeRule.onNodeWithTag(FeedTestTags.Pagination).assertExists()
         composeRule.onNodeWithContentDescription("下一页").assertIsNotEnabled()
+    }
+
+    @Test
+    fun refreshButton_dispatchesRefresh() {
+        val actions = mutableListOf<FeedAction>()
+        setFeed(
+            state = stateWithSuccess(),
+            onAction = actions::add,
+        )
+
+        composeRule.onNodeWithContentDescription("刷新").performClick()
+
+        assertEquals(listOf(FeedAction.Refresh), actions)
     }
 
     @Test
