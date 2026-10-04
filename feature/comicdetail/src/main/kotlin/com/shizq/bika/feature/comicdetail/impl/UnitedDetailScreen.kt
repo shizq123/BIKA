@@ -3,17 +3,30 @@ package com.shizq.bika.feature.comicdetail.impl
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -31,7 +44,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -46,7 +61,6 @@ import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.ui.ComicSharedElementKey
 import com.shizq.bika.core.ui.ErrorState
-import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.feature.comicdetail.impl.comments.CommentsTab
 import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
@@ -283,12 +297,17 @@ private fun ComicDetailTransitionPlaceholder(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    if (coverUrl == null || title == null) {
-        LoadingState(modifier)
-        return
-    }
-
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val transition = rememberInfiniteTransition(label = "comic_detail_skeleton")
+    val skeletonAlpha by transition.animateFloat(
+        initialValue = 0.45f,
+        targetValue = 0.72f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 850),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "comic_detail_skeleton_alpha",
+    )
 
     Scaffold(
         topBar = {
@@ -309,8 +328,7 @@ private fun ComicDetailTransitionPlaceholder(
                 .padding(innerPadding)
                 .fillMaxSize(),
         ) {
-            // 与真实详情内容保持相同的 Tab 行高度和 Hero 布局坐标，避免数据加载完成后
-            // 共享元素先落到页面左上角，再跳到 HeroHeader 的最终位置。
+            // 与真实页面保持相同的 Tab 行和内容层级，避免数据返回后整体跳动。
             PrimaryTabRow(selectedTabIndex = 0) {
                 PageTab.entries.forEachIndexed { index, tab ->
                     Tab(
@@ -321,60 +339,278 @@ private fun ComicDetailTransitionPlaceholder(
                 }
             }
 
-            ComicDetailHeroPlaceholder(
-                coverUrl = coverUrl,
-                title = title,
-                coverModifier = coverModifier,
-                titleModifier = titleModifier,
-            )
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .background(MaterialTheme.colorScheme.surface),
+            ) {
+                ComicDetailHeroSkeleton(
+                    coverUrl = coverUrl,
+                    title = title,
+                    coverModifier = coverModifier,
+                    titleModifier = titleModifier,
+                    skeletonAlpha = skeletonAlpha,
+                )
+                ComicDetailBodySkeleton(skeletonAlpha = skeletonAlpha)
+            }
         }
     }
 }
 
 @Composable
-private fun ComicDetailHeroPlaceholder(
-    coverUrl: String,
-    title: String,
+private fun ComicDetailHeroSkeleton(
+    coverUrl: String?,
+    title: String?,
     coverModifier: Modifier,
     titleModifier: Modifier,
+    skeletonAlpha: Float,
 ) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(318.dp),
     ) {
-        RetryableAsyncImage(
-            model = coverUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier.fillMaxSize(),
+        if (coverUrl != null) {
+            RetryableAsyncImage(
+                model = coverUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .alpha(0.42f),
+            )
+        } else {
+            SkeletonBlock(
+                alpha = skeletonAlpha,
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(0.dp),
+            )
+        }
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.12f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+                            MaterialTheme.colorScheme.surface,
+                        ),
+                    ),
+                ),
         )
 
         Row(
             modifier = Modifier
                 .align(Alignment.BottomStart)
                 .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
             verticalAlignment = Alignment.Bottom,
         ) {
-            RetryableAsyncImage(
-                model = coverUrl,
-                contentDescription = title,
-                contentScale = ContentScale.Crop,
-                modifier = coverModifier
-                    .width(122.dp)
-                    .height(166.dp)
-                    .clip(RoundedCornerShape(14.dp)),
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.ExtraBold,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-                modifier = titleModifier
-                    .weight(1f)
-                    .padding(start = 18.dp),
-            )
+            if (coverUrl != null) {
+                RetryableAsyncImage(
+                    model = coverUrl,
+                    contentDescription = title,
+                    contentScale = ContentScale.Crop,
+                    modifier = coverModifier
+                        .width(122.dp)
+                        .height(166.dp)
+                        .clip(RoundedCornerShape(14.dp)),
+                )
+            } else {
+                SkeletonBlock(
+                    alpha = skeletonAlpha,
+                    modifier = coverModifier
+                        .width(122.dp)
+                        .height(166.dp),
+                    shape = RoundedCornerShape(14.dp),
+                )
+            }
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SkeletonBlock(
+                    alpha = skeletonAlpha,
+                    modifier = Modifier
+                        .width(58.dp)
+                        .height(26.dp),
+                    shape = RoundedCornerShape(50),
+                )
+                if (title != null) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = titleModifier,
+                    )
+                } else {
+                    SkeletonBlock(
+                        alpha = skeletonAlpha,
+                        modifier = titleModifier
+                            .fillMaxWidth()
+                            .height(28.dp),
+                    )
+                    SkeletonBlock(
+                        alpha = skeletonAlpha,
+                        modifier = Modifier
+                            .fillMaxWidth(0.68f)
+                            .height(28.dp),
+                    )
+                }
+                SkeletonBlock(
+                    alpha = skeletonAlpha,
+                    modifier = Modifier
+                        .fillMaxWidth(0.76f)
+                        .height(14.dp),
+                )
+                SkeletonBlock(
+                    alpha = skeletonAlpha,
+                    modifier = Modifier
+                        .fillMaxWidth(0.52f)
+                        .height(14.dp),
+                )
+            }
         }
     }
+}
+
+@Composable
+private fun ComicDetailBodySkeleton(skeletonAlpha: Float) {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SkeletonBlock(
+                alpha = skeletonAlpha,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+                shape = RoundedCornerShape(14.dp),
+            )
+            repeat(3) {
+                SkeletonBlock(
+                    alpha = skeletonAlpha,
+                    modifier = Modifier.size(52.dp),
+                    shape = CircleShape,
+                )
+            }
+        }
+
+        SkeletonCard(alpha = skeletonAlpha, height = 76.dp) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                repeat(3) {
+                    SkeletonBlock(
+                        alpha = skeletonAlpha,
+                        modifier = Modifier
+                            .width(72.dp)
+                            .height(34.dp),
+                    )
+                }
+            }
+        }
+
+        SkeletonCard(alpha = skeletonAlpha, height = 132.dp) {
+            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
+                .width(54.dp)
+                .height(20.dp))
+            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
+                .fillMaxWidth()
+                .height(14.dp))
+            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
+                .fillMaxWidth()
+                .height(14.dp))
+            SkeletonBlock(
+                alpha = skeletonAlpha,
+                modifier = Modifier
+                    .fillMaxWidth(0.72f)
+                    .height(14.dp)
+            )
+        }
+
+        SkeletonCard(alpha = skeletonAlpha, height = 112.dp) {
+            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
+                .width(54.dp)
+                .height(20.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(64.dp, 82.dp, 58.dp).forEach { width ->
+                    SkeletonBlock(
+                        alpha = skeletonAlpha,
+                        modifier = Modifier
+                            .width(width)
+                            .height(30.dp),
+                        shape = RoundedCornerShape(50),
+                    )
+                }
+            }
+        }
+
+        SkeletonCard(alpha = skeletonAlpha, height = 142.dp) {
+            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
+                .width(72.dp)
+                .height(20.dp))
+            repeat(2) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    SkeletonBlock(
+                        alpha = skeletonAlpha,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(34.dp)
+                    )
+                    SkeletonBlock(
+                        alpha = skeletonAlpha,
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(34.dp)
+                    )
+                }
+            }
+        }
+        Spacer(Modifier.height(44.dp))
+    }
+}
+
+@Composable
+private fun SkeletonCard(
+    alpha: Float,
+    height: androidx.compose.ui.unit.Dp,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(height)
+            .clip(RoundedCornerShape(20.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerLow)
+            .padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
+}
+
+@Composable
+private fun SkeletonBlock(
+    alpha: Float,
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(7.dp),
+) {
+    Box(
+        modifier = modifier
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = alpha)),
+    )
 }
