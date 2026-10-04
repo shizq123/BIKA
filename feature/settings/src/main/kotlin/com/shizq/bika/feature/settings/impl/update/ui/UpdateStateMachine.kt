@@ -26,6 +26,9 @@ class UpdateStateMachine @Inject constructor(
     private val logger = KotlinLogging.logger { }
     private val downloadProgress = MutableStateFlow(0f)
 
+    // UI 必须订阅当前状态机的发送器，不能另行注入一个未限定作用域的实例。
+    val effects = effectEmitter.effects
+
     init {
         initializeWith { UpdateUiState.Idle }
 
@@ -162,8 +165,7 @@ class UpdateStateMachine @Inject constructor(
             if (!shouldShow) {
                 return UpdateUiState.Ignored
             }
-
-            markUpdatePromptedUseCase()
+
 
             UpdateUiState.HasUpdate(release = release)
         } catch (e: CancellationException) {

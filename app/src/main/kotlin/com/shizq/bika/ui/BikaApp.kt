@@ -21,6 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.activity.ComponentActivity
+import androidx.compose.ui.platform.LocalContext
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
@@ -28,6 +31,8 @@ import androidx.navigation3.runtime.result.rememberResultEventBusNavEntryDecorat
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.core.ui.message.UserMessageSnackbarHost
+import com.shizq.bika.feature.settings.impl.update.ui.UpdateHost
+import com.shizq.bika.feature.settings.impl.update.ui.UpdateViewModel
 import com.shizq.bika.navigation.AuthenticationRoute
 import com.shizq.bika.navigation.BottomSheetSceneStrategy
 import com.shizq.bika.navigation.authenticationSection
@@ -75,6 +80,18 @@ fun BikaApp(
     }
 
     CompositionLocalProvider(LocalUseBackAnimation provides usePredictiveBack) {
+        val activity = LocalContext.current as? ComponentActivity
+        val updateViewModel: UpdateViewModel = if (activity != null) {
+            hiltViewModel(activity)
+        } else {
+            hiltViewModel()
+        }
+
+        UpdateHost(
+            autoCheckOnLaunch = true,
+            viewModel = updateViewModel,
+        )
+
         Scaffold(
             modifier = modifier.semantics {
                 testTagsAsResourceId = true
