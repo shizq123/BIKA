@@ -7,12 +7,15 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation3.runtime.EntryProviderScope
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
+import androidx.navigation3.runtime.result.LocalResultEventBus
 import androidx.navigation3.scene.DialogSceneStrategy
 import androidx.navigation3.ui.NavDisplay
+import com.shizq.bika.R
 import com.shizq.bika.feature.comicdetail.impl.ComicDetailScreen
 import com.shizq.bika.feature.comicdetail.impl.ComicInfoViewModel
 import com.shizq.bika.feature.comicdetail.impl.download.EpisodeDownloadSheet
@@ -27,11 +30,15 @@ import com.shizq.bika.feature.settings.impl.StorageManagerScreen
 import com.shizq.bika.ui.comment.mine.MineCommentScreen
 import com.shizq.bika.ui.dashboard.ChangePasswordDialog
 import com.shizq.bika.ui.dashboard.ChannelSettingsDialog
+import com.shizq.bika.ui.dashboard.CheckInResultDialog
 import com.shizq.bika.ui.dashboard.DashboardDestination
 import com.shizq.bika.ui.dashboard.DashboardScreen
 import com.shizq.bika.ui.dashboard.EditProfileDialog
 import com.shizq.bika.ui.download.DownloadListScreen
-import com.shizq.bika.ui.feed.FeedScreen
+import com.shizq.bika.ui.feed.FavoriteTagNameDialog
+import com.shizq.bika.ui.feed.FeedDestination
+import com.shizq.bika.ui.feed.FeedPageJumpDialog
+import com.shizq.bika.ui.feed.FeedRoute
 import com.shizq.bika.ui.feed.FeedViewModel
 import com.shizq.bika.ui.history.HistoryScreen
 import com.shizq.bika.ui.leaderboard.LeaderboardScreen
@@ -107,25 +114,50 @@ fun EntryProviderScope<NavKey>.featureSection(
     fun slideTransitionMetadata() = slideTransitionMetadata(useAnimation)
 
     entry<ConnectedRoute.DashboardRoute> {
-        DashboardScreen(onNavigate = { navigator.navigate(it.toNavKey()) })
+        DashboardScreen(
+            onNavigate = { navigator.navigate(it.toNavKey()) },
+        )
     }
-
 
     entry<ConnectedRoute.FeedRoute>(
         metadata = slideTransitionMetadata()
     ) { key ->
-        FeedScreen(
+        FeedRoute(
             title = key.action.name,
-            onBackClick = { navigator.goBack() },
-            onComicClick = navigator::navigateToUnitedDetail,
-            onNavigateToFeed = { action ->
-                navigator.navigate(ConnectedRoute.FeedRoute(action))
-            },
-            onBlockedTagsClick = { navigator.navigate(ConnectedRoute.BlockedTagsRoute) },
             viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
                 key = key.toString(),
             ) { factory ->
                 factory.create(key.action)
+            },
+            onNavigate = { destination ->
+                when (destination) {
+                    FeedDestination.Back -> navigator.goBack()
+                    is FeedDestination.Comic -> navigator.navigateToUnitedDetail(destination.id)
+                    is FeedDestination.Feed -> {
+                        navigator.navigate(ConnectedRoute.FeedRoute(destination.action))
+                    }
+
+                    FeedDestination.BlockedTags -> {
+                        navigator.navigate(ConnectedRoute.BlockedTagsRoute)
+                    }
+
+                    is FeedDestination.PageJump -> {
+                        navigator.navigate(
+                            FeedPageJumpDialogNavKey(
+                                currentPage = destination.currentPage,
+                                totalPages = destination.totalPages,
+                            )
+                        )
+                    }
+
+                    FeedDestination.AddFavorite -> {
+                        navigator.navigate(AddFavoriteTagDialogNavKey)
+                    }
+
+                    is FeedDestination.RenameFavorite -> {
+                        navigator.navigate(RenameFavoriteTagDialogNavKey(destination.tag))
+                    }
+                }
             },
         )
     }
@@ -312,6 +344,63 @@ fun EntryProviderScope<NavKey>.featureSection(
         )
     }
 
+    entry<AddFavoriteTagDialogNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) {
+        val resultBus = LocalResultEventBus.current
+        FavoriteTagNameDialog(
+            title = stringResource(R.string.feed_add_favorite_title),
+            label = stringResource(R.string.feed_add_favorite_label),
+            confirmText = stringResource(R.string.feed_add_favorite_confirm),
+            onConfirm = { name ->
+                resultBus.sendResult(AddFavoriteTagResult(name))
+                navigator.goBack()
+            },
+            onDismiss = navigator::goBack,
+        )
+    }
+
+    entry<RenameFavoriteTagDialogNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) { key ->
+        val resultBus = LocalResultEventBus.current
+        FavoriteTagNameDialog(
+            title = stringResource(R.string.feed_rename_favorite_title),
+            label = stringResource(R.string.feed_rename_favorite_label),
+            confirmText = stringResource(R.string.feed_rename_favorite_confirm),
+            initialValue = key.tag.name,
+            onConfirm = { name ->
+                resultBus.sendResult(RenameFavoriteTagResult(key.tag, name))
+                navigator.goBack()
+            },
+            onDismiss = navigator::goBack,
+        )
+    }
+
+    entry<FeedPageJumpDialogNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) { key ->
+        val resultBus = LocalResultEventBus.current
+        FeedPageJumpDialog(
+            currentPage = key.currentPage,
+            totalPages = key.totalPages,
+            onConfirm = { page ->
+                resultBus.sendResult(FeedPageJumpResult(page))
+                navigator.goBack()
+            },
+            onDismiss = navigator::goBack,
+        )
+    }
+
+    entry<CheckInResultDialogNavKey>(
+        metadata = DialogSceneStrategy.dialog(),
+    ) { key ->
+        CheckInResultDialog(
+            message = key.message,
+            onDismiss = navigator::goBack,
+        )
+    }
+
     entry<TagBlockDialogNavKey>(
         metadata = DialogSceneStrategy.dialog(),
     ) { key ->
@@ -321,6 +410,7 @@ fun EntryProviderScope<NavKey>.featureSection(
         )
     }
 }
+
 
 
 fun Navigator.navigateToUnitedDetail(id: String) {
@@ -347,4 +437,8 @@ private fun DashboardDestination.toNavKey(): Connected = when (this) {
     DashboardDestination.Downloads -> ConnectedRoute.DownloadListRoute
     DashboardDestination.Notifications -> ConnectedRoute.NotificationsRoute
     DashboardDestination.BlockedTags -> ConnectedRoute.BlockedTagsRoute
+    DashboardDestination.AddFavoriteTag -> AddFavoriteTagDialogNavKey
+    is DashboardDestination.RenameFavoriteTag -> RenameFavoriteTagDialogNavKey(tag)
+
+    is DashboardDestination.CheckInResult -> CheckInResultDialogNavKey(message)
 }

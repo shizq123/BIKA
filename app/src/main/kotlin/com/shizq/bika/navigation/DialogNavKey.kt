@@ -1,5 +1,6 @@
 package com.shizq.bika.navigation
 
+import com.shizq.bika.core.model.FavoriteTag
 import kotlinx.serialization.Serializable
 
 /**
@@ -25,6 +26,23 @@ data class EditProfileNavKey(val initialSlogan: String) : DialogNavKey
 
 @Serializable
 data object ChangePasswordNavKey : DialogNavKey
+
+@Serializable
+data class CheckInResultDialogNavKey(val message: String) : DialogNavKey
+
+@Serializable
+data class FeedPageJumpDialogNavKey(
+    val currentPage: Int,
+    val totalPages: Int,
+) : DialogNavKey
+
+@Serializable
+data object AddFavoriteTagDialogNavKey : DialogNavKey
+
+@Serializable
+data class RenameFavoriteTagDialogNavKey(
+    val tag: FavoriteTag,
+) : DialogNavKey
 
 @Serializable
 data class TagBlockDialogNavKey(val tag: String) : DialogNavKey
