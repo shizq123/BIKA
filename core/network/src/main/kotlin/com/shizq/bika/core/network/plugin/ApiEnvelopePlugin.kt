@@ -10,8 +10,13 @@ import io.ktor.http.isSuccess
 import io.ktor.util.AttributeKey
 import io.ktor.utils.io.KtorDsl
 import io.ktor.utils.io.jvm.javaio.toInputStream
+import io.ktor.utils.io.readRemaining
+import kotlinx.io.readString
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.decodeFromStream
 import kotlinx.serialization.serializer
 
@@ -49,7 +54,22 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
                 return@transformResponseBody null
             }
             if (!response.status.isSuccess()) {
-                return@transformResponseBody content
+                // 错误响应不包含目标业务类型，不能把 channel 当作转换结果返回。
+                // 只展示服务端 message；网关 HTML、空响应或损坏 JSON 使用状态码兜底。
+                val body = content.readRemaining().readString()
+                val message = try {
+                    val error = json.parseToJsonElement(body) as? JsonObject
+                    (error?.get("message") as? JsonPrimitive)
+                        ?.takeIf { it.isString }
+                        ?.content
+                        ?.takeIf { it.isNotBlank() }
+                } catch (_: SerializationException) {
+                    null
+                }
+                throw ApiException(
+                    response.status.value,
+                    message ?: "请求失败（HTTP ${response.status.value}）",
+                )
             }
 
             // 登录接口等匿名/表单类请求的 401 是"密码错了"而非"会话过期"：
@@ -74,7 +94,8 @@ val ApiEnvelopePlugin: ClientPlugin<ApiEnvelopeConfig> =
                 return@transformResponseBody Unit
             }
 
-            val targetKotlinType = requestedType.kotlinType ?: return@transformResponseBody content
+            // null 表示交给后续转换器处理，原始 channel 仍保留在响应管线中。
+            val targetKotlinType = requestedType.kotlinType ?: return@transformResponseBody null
 
             val decodedContent = json.decodeFromStream(
                 ApiEnvelope.serializer(serializer(targetKotlinType)),
