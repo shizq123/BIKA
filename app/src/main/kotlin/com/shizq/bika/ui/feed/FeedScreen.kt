@@ -249,10 +249,13 @@ private fun FeedContent(
     val refreshLoadState = comics.loadState.refresh
     val isRefreshing = refreshLoadState is LoadState.Loading && comics.itemCount > 0
     val filterState = rememberFilterState(state.filterSelections)
-    val displayedContentKey = DisplayedContentKey(
-        sort = state.query.sort,
-        localFilters = state.query.localFilters,
-    )
+    // TODO: 可以考虑移除？ 
+    val displayedContentKey = remember(state) {
+        DisplayedContentKey(
+            sort = state.query.sort,
+            localFilters = state.query.localFilters,
+        )
+    }
 
     LaunchedEffect(displayedContentKey) {
         listState.scrollToItem(0)
