@@ -28,25 +28,42 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.outlined.BookmarkBorder
+import androidx.compose.material.icons.outlined.ThumbUp
+import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Tab
 import androidx.compose.material3.Text
+import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -174,13 +191,20 @@ fun ComicDetailContent(
         is UnitedDetailsUiState.Content -> {
             val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
             val detail = unitedState.detail
+            val isDownloaded = remember(downloadTasks, detail.epsCount) {
+                isComicFullyDownloaded(downloadTasks, detail.epsCount)
+            }
+            val lastReadChapter = remember(chapterProgress) {
+                chapterProgress.maxByOrNull { it.lastReadAt }
+            }
+            val readOrder = lastReadChapter?.chapterId ?: 1
 
             Scaffold(
                 topBar = {
                     TopAppBar(
                         title = {
                             Text(
-                                text = detail.title,
+                                text = previewTitle,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
@@ -191,6 +215,28 @@ fun ComicDetailContent(
                             }
                         },
                         scrollBehavior = scrollBehavior,
+                    )
+                },
+                bottomBar = {
+                    ComicDetailBottomAppBar(
+                        isFavourited = detail.isFavourited,
+                        isLiked = detail.isLiked,
+                        isDownloaded = isDownloaded,
+                        hasReadProgress = lastReadChapter != null,
+                        onRead = { navigationToReader(detail.id, readOrder) },
+                        onToggleFavourite = {
+                            dispatch(UnitedDetailsAction.ToggleFavorite)
+                        },
+                        onToggleLike = {
+                            dispatch(UnitedDetailsAction.ToggleLike)
+                        },
+                        onDownloadWholeComic = {
+                            onDownloadWholeComic(
+                                detail.title,
+                                detail.cover,
+                                detail.epsCount,
+                            )
+                        },
                     )
                 },
                 modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -225,24 +271,10 @@ fun ComicDetailContent(
                             PageTab.DETAIL -> DetailTab(
                                 detail = detail,
                                 recommendations = unitedState.recommendations,
-                                downloadTasks = downloadTasks,
-                                chapterProgress = chapterProgress,
                                 coverModifier = sharedCoverModifier,
                                 titleModifier = sharedTitleModifier,
-                                onFavoriteClick = {
-                                    dispatch(UnitedDetailsAction.ToggleFavorite)
-                                },
-                                onLikedClick = { dispatch(UnitedDetailsAction.ToggleLike) },
-                                navigationToReader = { navigationToReader(detail.id, it) },
                                 onRecommendedComicClick = onRecommendedComicClick,
                                 onTranslateClick = onTranslateClick,
-                                onDownloadWholeComic = {
-                                    onDownloadWholeComic(
-                                        detail.title,
-                                        detail.cover,
-                                        detail.epsCount,
-                                    )
-                                },
                                 navigationToTagBlock = onTagClick,
                                 onAuthorClick = onAuthorClick,
                                 onUploaderClick = onUploaderClick,
@@ -269,6 +301,114 @@ fun ComicDetailContent(
                 }
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ComicDetailBottomAppBar(
+    isFavourited: Boolean,
+    isLiked: Boolean,
+    isDownloaded: Boolean,
+    hasReadProgress: Boolean,
+    onRead: () -> Unit,
+    onToggleFavourite: () -> Unit,
+    onToggleLike: () -> Unit,
+    onDownloadWholeComic: () -> Unit,
+) {
+    BottomAppBar(
+        actions = {
+            TooltipIconButton(
+                tooltipText = if (isFavourited) "取消收藏" else "收藏漫画",
+                icon = if (isFavourited) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+                contentDescription = if (isFavourited) "取消收藏" else "收藏漫画",
+                tint = if (isFavourited) MaterialTheme.colorScheme.primary
+                else LocalContentColor.current,
+                onClick = onToggleFavourite,
+            )
+            TooltipIconButton(
+                tooltipText = if (isLiked) "取消点赞" else "点赞",
+                icon = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+                contentDescription = if (isLiked) "取消点赞" else "点赞",
+                tint = if (isLiked) MaterialTheme.colorScheme.tertiary
+                else LocalContentColor.current,
+                onClick = onToggleLike,
+            )
+            TooltipIconButton(
+                tooltipText = if (isDownloaded) "漫画已下载，点击重新下载" else "下载整本漫画",
+                icon = Icons.Filled.Download,
+                contentDescription = if (isDownloaded) "重新下载" else "下载整本漫画",
+                tint = if (isDownloaded) MaterialTheme.colorScheme.secondary
+                else LocalContentColor.current,
+                onClick = onDownloadWholeComic,
+            )
+        },
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                onClick = onRead,
+                icon = {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.MenuBook,
+                        contentDescription = null,
+                    )
+                },
+                text = {
+                    Text(if (hasReadProgress) "继续阅读" else "开始阅读")
+                },
+            )
+        },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TooltipIconButton(
+    tooltipText: String,
+    icon: ImageVector,
+    contentDescription: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+            TooltipAnchorPosition.Above,
+        ),
+        tooltip = {
+            PlainTooltip {
+                Text(tooltipText)
+            }
+        },
+        state = rememberTooltipState(),
+    ) {
+        IconButton(onClick = onClick) {
+            Icon(
+                imageVector = icon,
+                contentDescription = contentDescription,
+                tint = tint,
+            )
+        }
+    }
+}
+
+@Composable
+private fun ComicDetailBottomAppBarSkeleton(skeletonAlpha: Float) {
+    BottomAppBar {
+        repeat(3) {
+            SkeletonBlock(
+                alpha = skeletonAlpha,
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+            )
+            Spacer(Modifier.width(4.dp))
+        }
+        Spacer(Modifier.weight(1f))
+        SkeletonBlock(
+            alpha = skeletonAlpha,
+            modifier = Modifier
+                .width(132.dp)
+                .height(56.dp),
+            shape = RoundedCornerShape(16.dp),
+        )
     }
 }
 
@@ -304,6 +444,9 @@ private fun ComicDetailTransitionPlaceholder(
                 },
                 scrollBehavior = scrollBehavior,
             )
+        },
+        bottomBar = {
+            ComicDetailBottomAppBarSkeleton(skeletonAlpha = skeletonAlpha)
         },
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
@@ -469,26 +612,6 @@ private fun ComicDetailBodySkeleton(skeletonAlpha: Float) {
         modifier = Modifier.padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            SkeletonBlock(
-                alpha = skeletonAlpha,
-                modifier = Modifier
-                    .weight(1f)
-                    .height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-            )
-            repeat(3) {
-                SkeletonBlock(
-                    alpha = skeletonAlpha,
-                    modifier = Modifier.size(52.dp),
-                    shape = CircleShape,
-                )
-            }
-        }
-
         SkeletonCard(alpha = skeletonAlpha, height = 76.dp) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -564,7 +687,6 @@ private fun ComicDetailBodySkeleton(skeletonAlpha: Float) {
                 }
             }
         }
-        Spacer(Modifier.height(44.dp))
     }
 }
 

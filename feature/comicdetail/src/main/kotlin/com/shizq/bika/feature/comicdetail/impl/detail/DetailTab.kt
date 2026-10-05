@@ -1,7 +1,6 @@
 package com.shizq.bika.feature.comicdetail.impl.detail
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -22,20 +21,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Bookmark
-import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Favorite
-import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.outlined.BookmarkBorder
-import androidx.compose.material.icons.outlined.ThumbUp
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -54,18 +45,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.shizq.bika.core.database.model.ChapterProgressEntity
-import com.shizq.bika.core.download.model.DownloadTask
 import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.feature.comicdetail.impl.ComicDetail
 import com.shizq.bika.feature.comicdetail.impl.ComicSummary
-import com.shizq.bika.feature.comicdetail.impl.isComicFullyDownloaded
 
 /**
  * 漫画详情页的详情分页。
@@ -77,79 +64,38 @@ import com.shizq.bika.feature.comicdetail.impl.isComicFullyDownloaded
 fun DetailTab(
     detail: ComicDetail,
     recommendations: List<ComicSummary>,
-    downloadTasks: List<DownloadTask>,
-    chapterProgress: List<ChapterProgressEntity>,
-    onFavoriteClick: () -> Unit,
-    onLikedClick: () -> Unit,
-    navigationToReader: (order: Int) -> Unit,
     onRecommendedComicClick: (String) -> Unit,
     onTranslateClick: (String) -> Unit,
     onAuthorClick: (String) -> Unit,
     onUploaderClick: (String, String) -> Unit,
-    onDownloadWholeComic: () -> Unit,
     navigationToTagBlock: (String) -> Unit,
     modifier: Modifier = Modifier,
     coverModifier: Modifier = Modifier,
     titleModifier: Modifier = Modifier,
 ) {
-    val isDownloaded = remember(downloadTasks, detail.epsCount) {
-        isComicFullyDownloaded(downloadTasks, detail.epsCount)
-    }
-    val lastReadChapter = remember(chapterProgress) {
-        chapterProgress.maxByOrNull { it.lastReadAt }
-    }
-    val readOrder = lastReadChapter?.chapterId ?: 1
-
-    var isFavourited by remember(detail.id, detail.isFavourited) {
-        mutableStateOf(detail.isFavourited)
-    }
-    var isLiked by remember(detail.id, detail.isLiked) {
-        mutableStateOf(detail.isLiked)
-    }
-
     ComicDetailBody(
         detail = detail,
-        isFavourited = isFavourited,
-        isLiked = isLiked,
-        isDownloaded = isDownloaded,
         modifier = modifier,
         coverModifier = coverModifier,
         titleModifier = titleModifier,
-        onRead = { navigationToReader(readOrder) },
-        onToggleFavourite = {
-            isFavourited = !isFavourited
-            onFavoriteClick()
-        },
-        onToggleLike = {
-            isLiked = !isLiked
-            onLikedClick()
-        },
         onAuthorClick = { onAuthorClick(detail.author) },
         onTeamClick = { onUploaderClick(detail.chineseTeam, detail.creator.id) },
         onTagClick = onTranslateClick,
         recommendations = recommendations,
         onRecommendedComicClick = onRecommendedComicClick,
         onTagLongClick = navigationToTagBlock,
-        onDownloadWholeComic = onDownloadWholeComic,
     )
 }
 
 @Composable
 private fun ComicDetailBody(
     detail: ComicDetail,
-    isFavourited: Boolean,
-    isLiked: Boolean,
-    isDownloaded: Boolean,
-    onRead: () -> Unit,
-    onToggleFavourite: () -> Unit,
-    onToggleLike: () -> Unit,
     onAuthorClick: () -> Unit,
     onTeamClick: () -> Unit,
     onTagClick: (String) -> Unit,
     recommendations: List<ComicSummary>,
     onRecommendedComicClick: (String) -> Unit,
     onTagLongClick: (String) -> Unit,
-    onDownloadWholeComic: () -> Unit,
     modifier: Modifier = Modifier,
     coverModifier: Modifier = Modifier,
     titleModifier: Modifier = Modifier,
@@ -162,7 +108,6 @@ private fun ComicDetailBody(
     ) {
         HeroHeader(
             detail = detail,
-            isFavourited = isFavourited,
             onAuthorClick = onAuthorClick,
             onTeamClick = onTeamClick,
             onTagClick = onTagClick,
@@ -174,21 +119,9 @@ private fun ComicDetailBody(
             modifier = Modifier.padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ActionBar(
-                isFavourited = isFavourited,
-                isLiked = isLiked,
-                isDownloaded = isDownloaded,
-                onRead = onRead,
-                onToggleFavourite = onToggleFavourite,
-                onToggleLike = onToggleLike,
-                onDownloadWholeComic = onDownloadWholeComic,
-            )
-
             StatsCard(
                 totalViews = detail.totalViews,
-                totalLikes = detail.totalLikes + if (isLiked != detail.isLiked) {
-                    if (isLiked) 1 else -1
-                } else 0,
+                totalLikes = detail.totalLikes,
                 commentsCount = detail.commentsCount,
             )
 
@@ -208,7 +141,6 @@ private fun ComicDetailBody(
             }
 
             MetadataCard(detail = detail)
-            Spacer(Modifier.height(44.dp))
         }
     }
 }
@@ -216,7 +148,6 @@ private fun ComicDetailBody(
 @Composable
 private fun HeroHeader(
     detail: ComicDetail,
-    isFavourited: Boolean,
     onAuthorClick: () -> Unit,
     onTeamClick: () -> Unit,
     onTagClick: (String) -> Unit,
@@ -300,128 +231,6 @@ private fun HeroHeader(
                     StatusPill(text = category, onClick = { onTagClick(category) })
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun ActionBar(
-    isFavourited: Boolean,
-    isLiked: Boolean,
-    isDownloaded: Boolean,
-    onRead: () -> Unit,
-    onToggleFavourite: () -> Unit,
-    onToggleLike: () -> Unit,
-    onDownloadWholeComic: () -> Unit,
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Button(
-            onClick = onRead,
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(14.dp),
-            contentPadding = PaddingValues(vertical = 14.dp),
-            elevation = ButtonDefaults.buttonElevation(defaultElevation = 3.dp),
-        ) {
-            Icon(Icons.Filled.MenuBook, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text(if (isDownloaded) "继续阅读" else "开始阅读", fontWeight = FontWeight.Bold)
-        }
-
-        RoundAction(
-            selected = isFavourited,
-            selectedIcon = Icons.Filled.Bookmark,
-            unselectedIcon = Icons.Outlined.BookmarkBorder,
-            selectedTint = MaterialTheme.colorScheme.primary,
-            onClick = onToggleFavourite,
-        )
-        RoundAction(
-            selected = isLiked,
-            selectedIcon = Icons.Filled.ThumbUp,
-            unselectedIcon = Icons.Outlined.ThumbUp,
-            selectedTint = MaterialTheme.colorScheme.tertiary,
-            onClick = onToggleLike,
-        )
-        DownloadAction(
-            isDownloaded = isDownloaded,
-            onClick = onDownloadWholeComic,
-        )
-    }
-}
-
-@Composable
-private fun DownloadAction(
-    isDownloaded: Boolean,
-    onClick: () -> Unit,
-) {
-    Surface(
-        modifier = Modifier
-            .size(52.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
-        shape = CircleShape,
-        color = if (isDownloaded) {
-            MaterialTheme.colorScheme.secondaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainerHighest
-        },
-        border = BorderStroke(
-            1.dp,
-            if (isDownloaded) {
-                MaterialTheme.colorScheme.secondary.copy(alpha = 0.4f)
-            } else {
-                MaterialTheme.colorScheme.outlineVariant
-            },
-        ),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = Icons.Filled.Download,
-                contentDescription = if (isDownloaded) "重新下载" else "下载整本",
-                tint = if (isDownloaded) {
-                    MaterialTheme.colorScheme.secondary
-                } else {
-                    MaterialTheme.colorScheme.onSurfaceVariant
-                },
-                modifier = Modifier.size(22.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun RoundAction(
-    selected: Boolean,
-    selectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    unselectedIcon: androidx.compose.ui.graphics.vector.ImageVector,
-    selectedTint: Color,
-    onClick: () -> Unit,
-) {
-    val scale by animateFloatAsState(if (selected) 1.08f else 1f, label = "action_scale")
-    Surface(
-        modifier = Modifier
-            .size(52.dp)
-            .clip(CircleShape)
-            .clickable(onClick = onClick),
-        shape = CircleShape,
-        color = if (selected) selectedTint.copy(alpha = 0.14f)
-        else MaterialTheme.colorScheme.surfaceContainerHighest,
-        border = BorderStroke(
-            1.dp,
-            if (selected) selectedTint.copy(alpha = 0.35f)
-            else MaterialTheme.colorScheme.outlineVariant,
-        ),
-    ) {
-        Box(contentAlignment = Alignment.Center) {
-            Icon(
-                imageVector = if (selected) selectedIcon else unselectedIcon,
-                contentDescription = null,
-                tint = if (selected) selectedTint else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size((22 * scale).dp),
-            )
         }
     }
 }
@@ -710,19 +519,12 @@ private fun ComicDetailSuccessPreview() {
                 updatedAt = "2026-09-20",
                 createdAt = "2024-03-15",
             ),
-            isFavourited = true,
-            isLiked = false,
-            isDownloaded = false,
-            onRead = {},
-            onToggleFavourite = {},
-            onToggleLike = {},
             onAuthorClick = {},
             onTeamClick = {},
             onTagClick = {},
             recommendations = emptyList(),
             onRecommendedComicClick = {},
             onTagLongClick = {},
-            onDownloadWholeComic = {},
         )
     }
 }
