@@ -1,8 +1,7 @@
-package com.shizq.bika.ui.comicinfo.comments
+package com.shizq.bika.feature.comicdetail.impl.comments
 
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
-import com.shizq.bika.feature.comicdetail.impl.comments.CommentsState
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
