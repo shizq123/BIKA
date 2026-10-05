@@ -1,28 +1,21 @@
 package com.shizq.bika.feature.comicdetail.impl.detail
 
 import androidx.compose.animation.animateContentSize
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentHeight
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.selection.SelectionContainer
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.outlined.ThumbUp
@@ -34,10 +27,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ShapeDefaults
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.carousel.HorizontalMultiBrowseCarousel
-import androidx.compose.material3.carousel.rememberCarouselState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -57,139 +47,11 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.util.fastForEach
 import com.shizq.bika.core.ui.RetryableAsyncImage
-import com.shizq.bika.feature.comicdetail.impl.ComicDetail
-import com.shizq.bika.feature.comicdetail.impl.ComicSummary
 import com.shizq.bika.feature.comicdetail.impl.R
 import java.text.DecimalFormat
 import java.text.DecimalFormatSymbols
 import java.util.Locale
-
-@Composable
-fun ComicDetailPage(
-    detail: ComicDetail,
-    modifier: Modifier = Modifier,
-    recommendations: List<ComicSummary>,
-    isDownloaded: Boolean = false,
-    isContinue: Boolean = false,
-    onFavoriteClick: () -> Unit = {},
-    onLikedClick: () -> Unit = {},
-    navigationToReader: () -> Unit = {},
-    navigationToComicInfo: (String) -> Unit = {},
-    onTranslateClick: (String) -> Unit,
-    onAuthorClick: (String) -> Unit,
-    onUploaderClick: (String, String) -> Unit,
-    onDownloadClick: () -> Unit = {},
-    onTagLongClick: (String) -> Unit = {},
-) {
-    Box(
-        modifier = modifier
-            .padding(16.dp)
-            .fillMaxSize()
-    ) {
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            MediaSummary(
-                coverUrl = detail.cover,
-                title = detail.title,
-                isFinished = detail.finished,
-                view = detail.totalViews,
-                chineseTeam = detail.chineseTeam,
-                onTranslateClick = { onTranslateClick(it) }
-            )
-
-            ContentSummary(
-                avatarUrl = detail.creator.avatar.originalImageUrl,
-                creator = detail.creator.name,
-                author = detail.author,
-                description = detail.description,
-                isLiked = detail.isLiked,
-                likeCount = detail.totalLikes,
-                onLikedClick = onLikedClick,
-                onUploaderClick = {
-                    onUploaderClick(detail.creator.name, detail.creator.id)
-                },
-                onAuthorClick = { onAuthorClick(detail.author) }
-            )
-            val all = detail.tags + detail.categories
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                all.fastForEach { tag ->
-                    Surface(
-                        shape = MaterialTheme.shapes.small,
-                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-                        modifier = Modifier
-                            .combinedClickable(
-                                onClick = { onTranslateClick(tag) },
-                                onLongClick = { onTagLongClick(tag) }
-                            )
-                    ) {
-                        Text(
-                            tag,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
-                        )
-                    }
-                }
-            }
-
-            HorizontalMultiBrowseCarousel(
-                state = rememberCarouselState { recommendations.count() },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .wrapContentHeight()
-                    .padding(top = 16.dp, bottom = 16.dp),
-                preferredItemWidth = 186.dp,
-                itemSpacing = 8.dp,
-                contentPadding = PaddingValues(horizontal = 16.dp)
-            ) { i ->
-                val item = recommendations[i]
-                Column(
-                    // 整卡可点（封面 + 名称），默认水波反馈提示可交互
-                    modifier = Modifier.clickable {
-                        navigationToComicInfo(item.id)
-                    }
-                ) {
-                    RetryableAsyncImage(
-                        item.coverUrl,
-                        modifier = Modifier
-                            .height(205.dp)
-                            .maskClip(MaterialTheme.shapes.extraLarge),
-                        contentDescription = item.title,
-                        contentScale = ContentScale.Crop
-                    )
-                    Text(
-                        text = item.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-        MangaBottomBar(
-            isFavorited = detail.isFavourited,
-            showDownload = true,
-            isDownloaded = isDownloaded,
-            isContinue = isContinue,
-            modifier = Modifier.align(Alignment.BottomCenter),
-            onFavoriteClick = onFavoriteClick,
-            onReadClick = navigationToReader,
-            onDownloadClick = onDownloadClick
-        )
-    }
-}
 
 @Composable
 fun MediaSummary(

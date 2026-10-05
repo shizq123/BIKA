@@ -3,11 +3,6 @@ package com.shizq.bika.feature.comicdetail.impl
 import androidx.compose.animation.AnimatedVisibilityScope
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -83,6 +78,9 @@ import com.shizq.bika.feature.comicdetail.impl.comments.CommentsTab
 import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
 import com.shizq.bika.feature.comicdetail.impl.detail.PageTab
 import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesPage
+import com.valentinilk.shimmer.Shimmer
+import com.valentinilk.shimmer.rememberShimmer
+import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -304,6 +302,7 @@ fun ComicDetailContent(
     }
 }
 
+// TODO: 这部分空间要均分，出了开始阅读 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ComicDetailBottomAppBar(
@@ -391,11 +390,11 @@ private fun TooltipIconButton(
 }
 
 @Composable
-private fun ComicDetailBottomAppBarSkeleton(skeletonAlpha: Float) {
+private fun ComicDetailBottomAppBarSkeleton(shimmer: Shimmer) {
     BottomAppBar {
         repeat(3) {
             SkeletonBlock(
-                alpha = skeletonAlpha,
+                shimmer = shimmer,
                 modifier = Modifier.size(48.dp),
                 shape = CircleShape,
             )
@@ -403,7 +402,7 @@ private fun ComicDetailBottomAppBarSkeleton(skeletonAlpha: Float) {
         }
         Spacer(Modifier.weight(1f))
         SkeletonBlock(
-            alpha = skeletonAlpha,
+            shimmer = shimmer,
             modifier = Modifier
                 .width(132.dp)
                 .height(56.dp),
@@ -422,16 +421,8 @@ private fun ComicDetailTransitionPlaceholder(
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val transition = rememberInfiniteTransition(label = "comic_detail_skeleton")
-    val skeletonAlpha by transition.animateFloat(
-        initialValue = 0.45f,
-        targetValue = 0.72f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 850),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "comic_detail_skeleton_alpha",
-    )
+    // 同一个 Shimmer 实例覆盖整个占位页，所有骨架高光保持同相位连续移动。
+    val shimmer = rememberShimmer()
 
     Scaffold(
         topBar = {
@@ -446,7 +437,7 @@ private fun ComicDetailTransitionPlaceholder(
             )
         },
         bottomBar = {
-            ComicDetailBottomAppBarSkeleton(skeletonAlpha = skeletonAlpha)
+            ComicDetailBottomAppBarSkeleton(shimmer = shimmer)
         },
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
@@ -477,9 +468,9 @@ private fun ComicDetailTransitionPlaceholder(
                     title = title,
                     coverModifier = coverModifier,
                     titleModifier = titleModifier,
-                    skeletonAlpha = skeletonAlpha,
+                    shimmer = shimmer,
                 )
-                ComicDetailBodySkeleton(skeletonAlpha = skeletonAlpha)
+                ComicDetailBodySkeleton(shimmer = shimmer)
             }
         }
     }
@@ -491,7 +482,7 @@ private fun ComicDetailHeroSkeleton(
     title: String,
     coverModifier: Modifier,
     titleModifier: Modifier,
-    skeletonAlpha: Float,
+    shimmer: Shimmer,
 ) {
     Box(
         modifier = Modifier
@@ -509,7 +500,7 @@ private fun ComicDetailHeroSkeleton(
             )
         } else {
             SkeletonBlock(
-                alpha = skeletonAlpha,
+                shimmer = shimmer,
                 modifier = Modifier.fillMaxSize(),
                 shape = RoundedCornerShape(0.dp),
             )
@@ -547,7 +538,7 @@ private fun ComicDetailHeroSkeleton(
                 )
             } else {
                 SkeletonBlock(
-                    alpha = skeletonAlpha,
+                    shimmer = shimmer,
                     modifier = coverModifier
                         .width(122.dp)
                         .height(166.dp),
@@ -560,7 +551,7 @@ private fun ComicDetailHeroSkeleton(
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 SkeletonBlock(
-                    alpha = skeletonAlpha,
+                    shimmer = shimmer,
                     modifier = Modifier
                         .width(58.dp)
                         .height(26.dp),
@@ -577,26 +568,26 @@ private fun ComicDetailHeroSkeleton(
                     )
                 } else {
                     SkeletonBlock(
-                        alpha = skeletonAlpha,
+                        shimmer = shimmer,
                         modifier = titleModifier
                             .fillMaxWidth()
                             .height(28.dp),
                     )
                     SkeletonBlock(
-                        alpha = skeletonAlpha,
+                        shimmer = shimmer,
                         modifier = Modifier
                             .fillMaxWidth(0.68f)
                             .height(28.dp),
                     )
                 }
                 SkeletonBlock(
-                    alpha = skeletonAlpha,
+                    shimmer = shimmer,
                     modifier = Modifier
                         .fillMaxWidth(0.76f)
                         .height(14.dp),
                 )
                 SkeletonBlock(
-                    alpha = skeletonAlpha,
+                    shimmer = shimmer,
                     modifier = Modifier
                         .fillMaxWidth(0.52f)
                         .height(14.dp),
@@ -607,19 +598,19 @@ private fun ComicDetailHeroSkeleton(
 }
 
 @Composable
-private fun ComicDetailBodySkeleton(skeletonAlpha: Float) {
+private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        SkeletonCard(alpha = skeletonAlpha, height = 76.dp) {
+        SkeletonCard(height = 76.dp) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 repeat(3) {
                     SkeletonBlock(
-                        alpha = skeletonAlpha,
+                        shimmer = shimmer,
                         modifier = Modifier
                             .width(72.dp)
                             .height(34.dp),
@@ -628,32 +619,36 @@ private fun ComicDetailBodySkeleton(skeletonAlpha: Float) {
             }
         }
 
-        SkeletonCard(alpha = skeletonAlpha, height = 132.dp) {
-            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
-                .width(54.dp)
-                .height(20.dp))
-            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
-                .fillMaxWidth()
-                .height(14.dp))
-            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
-                .fillMaxWidth()
-                .height(14.dp))
+        SkeletonCard(height = 132.dp) {
             SkeletonBlock(
-                alpha = skeletonAlpha,
+                shimmer = shimmer, modifier = Modifier
+                    .width(54.dp)
+                    .height(20.dp))
+            SkeletonBlock(
+                shimmer = shimmer, modifier = Modifier
+                    .fillMaxWidth()
+                    .height(14.dp))
+            SkeletonBlock(
+                shimmer = shimmer, modifier = Modifier
+                    .fillMaxWidth()
+                    .height(14.dp))
+            SkeletonBlock(
+                shimmer = shimmer,
                 modifier = Modifier
                     .fillMaxWidth(0.72f)
                     .height(14.dp)
             )
         }
 
-        SkeletonCard(alpha = skeletonAlpha, height = 112.dp) {
-            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
-                .width(54.dp)
-                .height(20.dp))
+        SkeletonCard(height = 112.dp) {
+            SkeletonBlock(
+                shimmer = shimmer, modifier = Modifier
+                    .width(54.dp)
+                    .height(20.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(64.dp, 82.dp, 58.dp).forEach { width ->
                     SkeletonBlock(
-                        alpha = skeletonAlpha,
+                        shimmer = shimmer,
                         modifier = Modifier
                             .width(width)
                             .height(30.dp),
@@ -663,23 +658,24 @@ private fun ComicDetailBodySkeleton(skeletonAlpha: Float) {
             }
         }
 
-        SkeletonCard(alpha = skeletonAlpha, height = 142.dp) {
-            SkeletonBlock(alpha = skeletonAlpha, modifier = Modifier
-                .width(72.dp)
-                .height(20.dp))
+        SkeletonCard(height = 142.dp) {
+            SkeletonBlock(
+                shimmer = shimmer, modifier = Modifier
+                    .width(72.dp)
+                    .height(20.dp))
             repeat(2) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SkeletonBlock(
-                        alpha = skeletonAlpha,
+                        shimmer = shimmer,
                         modifier = Modifier
                             .weight(1f)
                             .height(34.dp)
                     )
                     SkeletonBlock(
-                        alpha = skeletonAlpha,
+                        shimmer = shimmer,
                         modifier = Modifier
                             .weight(1f)
                             .height(34.dp)
@@ -692,7 +688,6 @@ private fun ComicDetailBodySkeleton(skeletonAlpha: Float) {
 
 @Composable
 private fun SkeletonCard(
-    alpha: Float,
     height: androidx.compose.ui.unit.Dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -710,13 +705,15 @@ private fun SkeletonCard(
 
 @Composable
 private fun SkeletonBlock(
-    alpha: Float,
+    shimmer: Shimmer,
     modifier: Modifier = Modifier,
     shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(7.dp),
 ) {
     Box(
         modifier = modifier
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest.copy(alpha = alpha)),
+            // shimmer 必须位于 background 之前，才能作用于随后绘制的占位色。
+            .shimmer(shimmer)
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
     )
 }

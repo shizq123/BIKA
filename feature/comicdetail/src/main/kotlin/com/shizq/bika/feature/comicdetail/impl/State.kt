@@ -5,6 +5,8 @@ import com.shizq.bika.core.network.model.ComicData
 import com.shizq.bika.core.network.model.ComicData.Comic.Creator
 import com.shizq.bika.core.network.model.RecommendComicDto
 import com.shizq.bika.core.network.model.RecommendationData
+import kotlin.time.Clock
+import kotlin.time.Instant
 
 sealed interface UnitedDetailsUiState {
     data object Initialize : UnitedDetailsUiState
@@ -25,7 +27,7 @@ fun ComicData.toComicDetail(): ComicDetail {
         categories = comic.categories,
         chineseTeam = comic.chineseTeam,
         commentsCount = comic.commentsCount,
-        createdAt = comic.createdAt,
+        createdAt = comic.createdAt.toInstantOrEpoch(),
         creator = comic.creator,
         description = comic.description,
         epsCount = comic.epsCount,
@@ -39,7 +41,7 @@ fun ComicData.toComicDetail(): ComicDetail {
         title = comic.title,
         totalLikes = comic.totalLikes,
         totalViews = comic.totalViews,
-        updatedAt = comic.updatedAt
+        updatedAt = comic.updatedAt.toInstantOrEpoch()
     )
 }
 
@@ -48,7 +50,6 @@ data class ComicDetail(
     val categories: List<String> = listOf(),
     val chineseTeam: String = "",
     val commentsCount: Int = 0,
-    val createdAt: String = "",
     val creator: Creator = Creator(),
     val description: String = "",
     val epsCount: Int = 0,
@@ -62,7 +63,8 @@ data class ComicDetail(
     val title: String = "",
     val totalLikes: Int = 0,
     val totalViews: Int = 0,
-    val updatedAt: String = "",
+    val createdAt: Instant = Clock.System.now(),
+    val updatedAt: Instant = Clock.System.now(),
 )
 
 data class ComicSummary(
@@ -84,3 +86,6 @@ fun RecommendComicDto.toComicSummary(): ComicSummary {
 fun RecommendationData.toComicSummaryList(): List<ComicSummary> {
     return this.comics.map { it.toComicSummary() }
 }
+
+private fun String.toInstantOrEpoch(): Instant =
+    Instant.parseOrNull(this) ?: Instant.DISTANT_PAST
