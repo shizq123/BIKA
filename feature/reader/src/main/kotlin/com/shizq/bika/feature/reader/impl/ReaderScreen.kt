@@ -69,7 +69,13 @@ import com.shizq.bika.feature.reader.impl.state.ReaderAction.ToggleBarsVisibilit
 import com.shizq.bika.feature.reader.impl.state.ReaderSheet
 import com.shizq.bika.feature.reader.impl.state.ReaderUiState
 import com.shizq.bika.feature.reader.impl.system.ReaderSystemEffects
-import com.shizq.bika.feature.reader.impl.util.ChapterAdvancePolicy
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
+import com.shizq.bika.feature.reader.impl.util.DoublePullAdvanceTracker
+import com.shizq.bika.feature.reader.impl.util.DoublePullResult
+import com.shizq.bika.feature.reader.impl.util.rememberPullToAdvanceNestedScrollConnection
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.shizq.bika.feature.reader.impl.util.ScrubState
 import com.shizq.bika.feature.reader.impl.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
@@ -195,19 +201,49 @@ private fun ReaderReadyContent(
     // TODO: 暂时移除
 //            BackHandler(onBack = onBackClick)
 
-    ChapterAutoAdvanceEffect(
-        chapterOrder = chapterState.order,
-        totalPages = chapterState.totalPages,
-        controller = controller,
-        navigation = navigation,
-        onAdvance = { nextChapter, page ->
-            dispatch(JumpToChapter(nextChapter, startFromBeginning = true, currentPage = page))
-        },
-        // todo 替换成 MessageReporter
-        onNoMoreContent = {
-            Toast.makeText(context, ReaderScreenMessages.NoMoreContent, Toast.LENGTH_SHORT).show()
-        },
-    )
+    val tracker = remember(chapterState.order) { DoublePullAdvanceTracker() }
+    val isAtLastPage = chapterState.totalPages > 0 && position.forEndOfChapter >= chapterState.totalPages - 1
+
+    // 读者离开末页时重置拉动跟踪器状态
+    LaunchedEffect(isAtLastPage) {
+        if (!isAtLastPage) {
+            tracker.reset()
+        }
+    }
+
+    // Toast 助手：即时替换旧提示，无排队延迟
+    val showReaderToast: (String) -> Unit = remember(context) {
+        var activeToast: Toast? = null
+        { message ->
+            activeToast?.cancel()
+            activeToast = Toast.makeText(context, message, Toast.LENGTH_SHORT).apply { show() }
+        }
+    }
+
+    val nextChapter = navigation.next
+    val onDoublePullTriggered: () -> Unit = remember(nextChapter, isAtLastPage, scope) {
+        {
+            if (isAtLastPage) {
+                when (tracker.onPull()) {
+                    DoublePullResult.PromptLastPage -> {
+                        showReaderToast("这个是最后一页了")
+                    }
+                    DoublePullResult.TriggerAdvance -> {
+                        if (nextChapter != null) {
+                            val chapterName = nextChapter.title.ifBlank { "第${nextChapter.order}话" }
+                            showReaderToast("自动跳转下一章 ($chapterName)")
+                            scope.launch {
+                                delay(300)
+                                dispatch(JumpToChapter(nextChapter, startFromBeginning = true, currentPage = 0))
+                            }
+                        } else {
+                            showReaderToast(ReaderScreenMessages.NoMoreContent)
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     val preloadCount = rememberAdaptivePreloadCount(
         currentPage = currentPage,
@@ -286,17 +322,32 @@ private fun ReaderReadyContent(
                     layout = config.tapZoneLayout,
                     isRtl = config.readingMode.isRtl,
                 )
-                ReaderLayoutHost(
-                    readerContext = readerContext,
-                    gestureState = gestureState,
-                    pageItems = pageItems,
-                    toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
-                    onHideMenu = {
-                        if (overlayState.showSystemBars) {
-                            dispatch(ToggleBarsVisibility)
-                        }
-                    }
+                val density = LocalDensity.current
+                val pullThresholdPx = remember(density) { with(density) { 40.dp.toPx() } }
+                val pullConnection = rememberPullToAdvanceNestedScrollConnection(
+                    enabled = true,
+                    readingMode = config.readingMode,
+                    isAtLastPage = isAtLastPage,
+                    thresholdPx = pullThresholdPx,
+                    onPullTriggered = onDoublePullTriggered,
                 )
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .nestedScroll(pullConnection)
+                ) {
+                    ReaderLayoutHost(
+                        readerContext = readerContext,
+                        gestureState = gestureState,
+                        pageItems = pageItems,
+                        toggleMenuVisibility = { dispatch(ToggleBarsVisibility) },
+                        onHideMenu = {
+                            if (overlayState.showSystemBars) {
+                                dispatch(ToggleBarsVisibility)
+                            }
+                        }
+                    )
+                }
             }
         )
 
@@ -352,48 +403,6 @@ private object ReaderScreenMessages {
     const val NoMoreContent = "后面没有内容了"
 }
 
-/**
- * 章节自动衔接：到达当前章节最后一页时自动跳转到下一章；已是最后一章则回调 [onNoMoreContent]。
- *
- * 用 totalPages 作为 key 而非 snapshotFlow { totalPages }：totalPages 不是 Compose State，
- * snapshotFlow 无依赖可订阅，初始为 0 时 first() 会永久挂起。改为 key 后，totalPages 从 0
- * 变为非零值会触发 recomposition 重启这个 effect，天然实现“等待章节加载完成后再监听”。
- */
-@Composable
-private fun ChapterAutoAdvanceEffect(
-    chapterOrder: Int,
-    totalPages: Int,
-    controller: ReaderController,
-    navigation: ChapterNavigation,
-    onAdvance: (nextChapter: Chapter, page: Int) -> Unit,
-    onNoMoreContent: () -> Unit,
-    policy: ChapterAdvancePolicy = remember { ChapterAdvancePolicy() },
-) {
-    val nextChapter = navigation.next
-    LaunchedEffect(chapterOrder, totalPages, nextChapter, controller) {
-        if (totalPages <= 0) return@LaunchedEffect
-        // 末页判定必须用 forEndOfChapter（当前屏的**最后**一页）。
-        //
-        // 用起始页会让跨页模式永远读不完一章：10 页分成 D(0,1)…D(8,9)，末屏的
-        // 起始页恒为 8，isAtLastPage(8, 10) 判 8 >= 9 为假 —— 自动衔接不触发、
-        // 「已读完」标记拿不到、页码徽章停在 9/10。
-        controller.positionFlow()
-            .map { it.forEndOfChapter }
-            .distinctUntilChanged()
-            .debounce(policy.endOfChapterDebounce)
-            .collect { page ->
-                if (policy.isAtLastPage(page, totalPages)) {
-                    delay(policy.advanceDelay)
-                    if (nextChapter != null) {
-                        // 自动跳转下一章，从头开始阅读，不恢复该章历史进度
-                        onAdvance(nextChapter, page)
-                    } else {
-                        onNoMoreContent()
-                    }
-                }
-            }
-    }
-}
 
 @Composable
 private fun ReaderBottomBarSection(

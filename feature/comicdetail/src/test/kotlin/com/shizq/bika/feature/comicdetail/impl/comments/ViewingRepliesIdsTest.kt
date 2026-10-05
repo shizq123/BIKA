@@ -1,11 +1,10 @@
-package com.shizq.bika.ui.comicinfo.comments
+package com.shizq.bika.feature.comicdetail.impl.comments
 
 import com.shizq.bika.core.data.model.Comment
 import com.shizq.bika.core.data.model.User
-import com.shizq.bika.feature.comicdetail.impl.comments.CommentsState
-import com.shizq.bika.feature.comicdetail.impl.comments.ReplyTarget
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.toList
+import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
 

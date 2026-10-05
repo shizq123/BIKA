@@ -14,7 +14,9 @@ import com.shizq.bika.core.model.ComicSummary
  * 这样 DB 任何变化都会自动触发 UI 更新，实现真正的实时感知。
  */
 fun List<ComicSummary>.injectLocalStatusFrom(histories: List<DetailedHistory>): List<ComicSummary> {
-    if (histories.isEmpty()) return this
+    if (histories.isEmpty()) {
+        return this.map { if (it.lastReadChapterProgress != null) it.copy(lastReadChapterProgress = null) else it }
+    }
     // 建立 id -> DetailedHistory 的映射，避免对每个 comic 都线性扫描
     val historyMap = histories.associateBy { it.history.id }
     return this.map { comic -> comic.injectFromHistoryMap(historyMap) }
@@ -29,7 +31,10 @@ fun List<ComicSummary>.injectLocalStatusFrom(histories: List<DetailedHistory>): 
 fun ComicSummary.injectFromHistoryMap(
     historyMap: Map<String, DetailedHistory>
 ): ComicSummary {
-    val detailed = historyMap[id] ?: return this
+    val detailed = historyMap[id]
+    if (detailed == null) {
+        return if (lastReadChapterProgress != null) copy(lastReadChapterProgress = null) else this
+    }
     val lastProgress = detailed.progressList.maxByOrNull { it.lastReadAt }
     val progressText = computeProgressText(lastProgress, detailed.history.epsCount)
     return copy(

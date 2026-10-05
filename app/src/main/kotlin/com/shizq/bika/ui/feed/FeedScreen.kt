@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -21,6 +22,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.automirrored.rounded.NavigateBefore
 import androidx.compose.material.icons.automirrored.rounded.NavigateNext
 import androidx.compose.material.icons.rounded.Bookmarks
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -42,6 +44,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -53,6 +56,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.result.ResultEffect
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.shizq.bika.R
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
@@ -242,10 +246,49 @@ private fun FeedContent(
     val isRefreshing = refreshState is FeedRefreshState.Loading
     val filterState = rememberFilterState(state.filterSelections)
 
-    // Only a successfully displayed page changes the list position. A failed request keeps
-    // both the old content and the user's reading position.
+    var lastPage by remember { mutableStateOf<Int?>(null) }
+    var lastSort by remember { mutableStateOf<SortOrder?>(null) }
+    var lastFirstItemId by remember { mutableStateOf<String?>(null) }
+
+    // 只有非追加的成功页面加载（如切换页码、切换排序或筛选导致首项变动）才重置列表位置到顶部。
     LaunchedEffect(displayedContentKey) {
-        if (displayedContentKey != null) listState.scrollToItem(0)
+        if (displayedContentKey != null) {
+            val currentFirstItemId = content.page.items.firstOrNull()?.id
+            val isContinuous = state.continuousScrollEnabled
+            val isAppending = isContinuous &&
+                    lastPage != null &&
+                    displayedContentKey.page > lastPage!! &&
+                    displayedContentKey.sort == lastSort &&
+                    currentFirstItemId == lastFirstItemId
+
+            if (!isAppending) {
+                listState.scrollToItem(0)
+            }
+            lastPage = displayedContentKey.page
+            lastSort = displayedContentKey.sort
+            lastFirstItemId = currentFirstItemId
+        }
+    }
+
+    if (state.continuousScrollEnabled && content != null) {
+        val totalPages = content.page.totalPages
+        val currentPage = content.page.page
+        val isAppendingOrLoading = content.refreshState is FeedRefreshState.Loading ||
+                content.refreshState is FeedRefreshState.Appending
+
+        LaunchedEffect(listState, currentPage, totalPages, isAppendingOrLoading) {
+            snapshotFlow {
+                val layoutInfo = listState.layoutInfo
+                val totalItems = layoutInfo.totalItemsCount
+                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+                totalItems > 0 && lastVisibleIndex >= totalItems - 3
+            }.distinctUntilChanged()
+            .collect { shouldAppend ->
+                if (shouldAppend && currentPage < totalPages && !isAppendingOrLoading) {
+                    onAction(FeedAction.AppendNextPage)
+                }
+            }
+        }
     }
 
     Scaffold(
@@ -305,23 +348,102 @@ private fun FeedContent(
                 onComicClick = { onNavigate(FeedDestination.Comic(it)) },
             )
 
-            if (pagination != null) {
-                item(key = "feed-pagination", contentType = "pagination") {
-                    PaginationBar(
-                        state = pagination,
-                        onPageChanged = { onAction(FeedAction.ChangePage(it)) },
-                        onPageIndicatorClick = {
-                            onNavigate(
-                                FeedDestination.PageJump(
-                                    currentPage = pagination.currentPage,
-                                    totalPages = pagination.totalPages,
+            if (state.continuousScrollEnabled) {
+                if (content != null && content.page.items.isNotEmpty()) {
+                    when (content.refreshState) {
+                        is FeedRefreshState.Appending -> {
+                            item(key = "feed-append-loading", contentType = "append-status") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                        .testTag(FeedTestTags.AppendLoading),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp,
+                                        )
+                                        Text(
+                                            text = stringResource(R.string.feed_append_loading),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
+                        is FeedRefreshState.Failed -> {
+                            item(key = "feed-append-failed", contentType = "append-status") {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                        .testTag(FeedTestTags.AppendFailed),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.feed_append_failed),
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = MaterialTheme.colorScheme.error,
+                                        )
+                                        TextButton(onClick = { onAction(FeedAction.AppendNextPage) }) {
+                                            Text(stringResource(R.string.feed_retry))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        else -> {
+                            if (content.page.page >= content.page.totalPages) {
+                                item(key = "feed-append-end", contentType = "append-status") {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(24.dp)
+                                            .testTag(FeedTestTags.AppendEnd),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.feed_append_no_more),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.outline,
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                if (pagination != null) {
+                    item(key = "feed-pagination", contentType = "pagination") {
+                        PaginationBar(
+                            state = pagination,
+                            onPageChanged = { onAction(FeedAction.ChangePage(it)) },
+                            onPageIndicatorClick = {
+                                onNavigate(
+                                    FeedDestination.PageJump(
+                                        currentPage = pagination.currentPage,
+                                        totalPages = pagination.totalPages,
+                                    )
                                 )
-                            )
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                    )
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                        )
+                    }
                 }
             }
         }
@@ -360,7 +482,9 @@ private fun LazyListScope.feedContentItems(
         }
 
         is FeedUiState.Content -> {
-            if (state.refreshState is FeedRefreshState.Failed) {
+            if (state.refreshState is FeedRefreshState.Failed &&
+                (!state.continuousScrollEnabled || state.refreshState.targetQuery.page <= 1)
+            ) {
                 item(key = "feed-refresh-error", contentType = "error-banner") {
                     RefreshErrorBanner(onRetry = onRetry)
                 }
@@ -562,4 +686,7 @@ internal object FeedTestTags {
     const val RefreshError = "feed-refresh-error"
     const val Empty = "feed-empty"
     const val Pagination = "feed-pagination"
+    const val AppendLoading = "feed-append-loading"
+    const val AppendFailed = "feed-append-failed"
+    const val AppendEnd = "feed-append-end"
 }

@@ -201,4 +201,8 @@ class UserPreferencesDataSource @Inject constructor(
     suspend fun removeBlockedTag(tag: String) = edit {
         it.copy(filter = it.filter.copy(blockedTags = it.filter.blockedTags - tag))
     }
+
+    suspend fun setContinuousScrollEnabled(enabled: Boolean) = edit {
+        it.copy(app = it.app.copy(continuousScrollEnabled = enabled))
+    }
 }
