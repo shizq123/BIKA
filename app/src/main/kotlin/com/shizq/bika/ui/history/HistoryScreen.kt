@@ -1,5 +1,6 @@
 package com.shizq.bika.ui.history
 
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -79,10 +80,15 @@ private fun HistoryContent(
         LazyColumn(
             modifier = Modifier.padding(innerPadding),
         ) {
-            items(histories) { item ->
+            items(
+                items = histories,
+                key = { it.history.id }
+            ) { item ->
                 ComicCard(
-                    item, modifier = Modifier
-                        .padding(8.dp),
+                    detailedReadingHistory = item,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 6.dp),
                     onClick = {
                         onComicClick(item.history.id)
                     },

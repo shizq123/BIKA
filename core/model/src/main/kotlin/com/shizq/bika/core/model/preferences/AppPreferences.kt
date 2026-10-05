@@ -10,4 +10,5 @@ data class AppPreferences(
     @SerialName("usePredictiveBack")
     val predictiveBackEnabled: Boolean = false,
     val fontScale: Float = 1.0f,
+    val continuousScrollEnabled: Boolean = true,
 )

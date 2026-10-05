@@ -1,4 +1,4 @@
-package com.shizq.bika.ui.comicinfo
+package com.shizq.bika.feature.comicdetail.impl
 
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.download.model.DownloadTask

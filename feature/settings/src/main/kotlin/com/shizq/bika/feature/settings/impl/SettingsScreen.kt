@@ -130,6 +130,7 @@ fun SettingsScreen(
         onUpdateMaxConcurrentDownloads = viewModel::updateMaxConcurrentDownloads,
         onToggleSecureScreenEnabled = viewModel::updateSecureScreenEnabled,
         onToggleUsePredictiveBack = viewModel::updateUsePredictiveBack,
+        onToggleContinuousScrollEnabled = viewModel::updateContinuousScrollEnabled,
         onViewLogs = {
             scope.launch {
                 logsContent = viewModel.getLogsContent()
@@ -193,6 +194,7 @@ fun SettingsContent(
     onUpdateMaxConcurrentDownloads: (count: Int) -> Unit = {},
     onToggleSecureScreenEnabled: (enabled: Boolean) -> Unit = {},
     onToggleUsePredictiveBack: (enabled: Boolean) -> Unit = {},
+    onToggleContinuousScrollEnabled: (enabled: Boolean) -> Unit = {},
     onViewLogs: () -> Unit = {},
     onExportLogs: () -> Unit = {},
     onLogoutClicked: () -> Unit = {},
@@ -308,6 +310,13 @@ fun SettingsContent(
                                 iconVector = Icons.Default.Refresh,
                                 checked = settingsUiState.usePredictiveBack,
                                 onCheckedChange = onToggleUsePredictiveBack
+                            )
+                            SwitchPreference(
+                                title = "连续下拉自动追加",
+                                summary = if (settingsUiState.continuousScrollEnabled) "已开启（浏览漫画列表滑到底部时自动加载下一页）" else "已关闭（采用底部上一页/下一页分页栏翻页）",
+                                iconVector = Icons.AutoMirrored.Filled.List,
+                                checked = settingsUiState.continuousScrollEnabled,
+                                onCheckedChange = onToggleContinuousScrollEnabled
                             )
                         }
                     }

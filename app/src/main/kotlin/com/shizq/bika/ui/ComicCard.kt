@@ -108,21 +108,19 @@ fun ComicCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .padding(end = 16.dp),
-                verticalArrangement = Arrangement.Center
+                    .padding(top = 10.dp, bottom = 10.dp, end = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                // 标题和作者
-                Column(modifier = Modifier.weight(1f)) {
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    // 状态徽章墙 (标题上方)：列表项内用 Row 避免 FlowRow 的多轮测量
+                // 状态徽章墙 (标题上方)：列表项内用 Row 避免 FlowRow 的多轮测量
+                val lastProgress = detailedReadingHistory.lastReadChapterProgress
+                val epsCount = detailedReadingHistory.history.epsCount
+                val hasProgressBadge = lastProgress != null
+                val hasFinishedBadge = detailedReadingHistory.history.finished
+                if (hasProgressBadge || hasFinishedBadge) {
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(bottom = 6.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        val lastProgress = detailedReadingHistory.lastReadChapterProgress
                         if (lastProgress != null) {
-                            val epsCount = detailedReadingHistory.history.epsCount
                             if (epsCount > lastProgress.chapterNumber) {
                                 Badge(
                                     text = "有更新",
@@ -141,77 +139,72 @@ fun ComicCard(
                             }
                         }
 
-                        if (detailedReadingHistory.history.finished) {
+                        if (hasFinishedBadge) {
                             Badge(
                                 text = "已完结",
                                 containerColor = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
+                }
 
-                    Text(
-                        text = buildString {
-                            if (detailedReadingHistory.history.pagesCount > 0) {
-                                append("[${detailedReadingHistory.history.pagesCount}P] ")
-                            }
-                            append(detailedReadingHistory.history.title)
-                        },
-                        style = MaterialTheme.typography.titleMedium,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                        color = if (detailedReadingHistory.history.finished) {
-                            MaterialTheme.colorScheme.primary
-                        } else {
-                            MaterialTheme.colorScheme.onSurface
+                Text(
+                    text = buildString {
+                        if (detailedReadingHistory.history.pagesCount > 0) {
+                            append("[${detailedReadingHistory.history.pagesCount}P] ")
                         }
-                    )
+                        append(detailedReadingHistory.history.title)
+                    },
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    color = if (detailedReadingHistory.history.finished) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurface
+                    }
+                )
 
-                    Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = detailedReadingHistory.history.author,
+                    style = MaterialTheme.typography.bodyMedium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
 
-                    Text(
-                        text = detailedReadingHistory.history.author,
-                        style = MaterialTheme.typography.bodyMedium,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    // 药丸式分类 Tag 标签（最多 3 个 + 溢出计数，Row 布局保持轻量）
-                    val categories = detailedReadingHistory.history.categories
-                    if (categories.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            categories.take(3).forEach { category ->
-                                Text(
-                                    text = category,
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.secondary,
-                                    modifier = Modifier
-                                        .clip(CircleShape)
-                                        .background(
-                                            MaterialTheme.colorScheme.secondaryContainer.copy(
-                                                alpha = 0.5f
-                                            )
+                // 药丸式分类 Tag 标签（最多 3 个 + 溢出计数，Row 布局保持轻量）
+                val categories = detailedReadingHistory.history.categories
+                if (categories.isNotEmpty()) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        categories.take(3).forEach { category ->
+                            Text(
+                                text = category,
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.secondary,
+                                modifier = Modifier
+                                    .clip(CircleShape)
+                                    .background(
+                                        MaterialTheme.colorScheme.secondaryContainer.copy(
+                                            alpha = 0.5f
                                         )
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                            if (categories.size > 3) {
-                                Text(
-                                    text = "+${categories.size - 3}",
-                                    fontSize = 10.sp,
-                                    color = MaterialTheme.colorScheme.outline,
-                                    modifier = Modifier.padding(start = 2.dp)
-                                )
-                            }
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                        if (categories.size > 3) {
+                            Text(
+                                text = "+${categories.size - 3}",
+                                fontSize = 10.sp,
+                                color = MaterialTheme.colorScheme.outline,
+                                modifier = Modifier.padding(start = 2.dp)
+                            )
                         }
                     }
                 }
-
-                val lastProgress = detailedReadingHistory.lastReadChapterProgress
 
                 // 只有在有阅读进度时才显示进度部分
                 if (lastProgress != null) {
@@ -224,7 +217,7 @@ fun ComicCard(
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
 
-                        Spacer(modifier = Modifier.height(6.dp))
+                        Spacer(modifier = Modifier.height(4.dp))
 
                         // 直接使用模型中计算好的百分比
                         val progress = detailedReadingHistory.lastReadChapterProgressPercentage
@@ -238,8 +231,6 @@ fun ComicCard(
                             strokeCap = StrokeCap.Round,
                             trackColor = MaterialTheme.colorScheme.surfaceVariant
                         )
-
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
                 } else {
                     // 如果没有进度，可以显示“未开始”或留白
@@ -248,14 +239,11 @@ fun ComicCard(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.outline
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
                 }
 
                 // 底部：相对时间与数据指标并列
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 12.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

@@ -45,7 +45,8 @@ class SettingsViewModel @Inject constructor(
             downloadOverWifiOnly = it.download.overWifiOnly,
             maxConcurrentDownloads = it.download.maxConcurrentDownloads,
             secureScreenEnabled = it.app.secureScreenEnabled,
-            usePredictiveBack = it.app.predictiveBackEnabled
+            usePredictiveBack = it.app.predictiveBackEnabled,
+            continuousScrollEnabled = it.app.continuousScrollEnabled,
         )
     }.stateIn(
         viewModelScope,
@@ -117,6 +118,12 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun updateContinuousScrollEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            userPreferencesDataSource.setContinuousScrollEnabled(enabled)
+        }
+    }
+
     fun updateMaxConcurrentDownloads(count: Int) {
         viewModelScope.launch {
             userPreferencesDataSource.setMaxConcurrentDownloads(count)
@@ -184,7 +191,8 @@ sealed interface SettingsUiState {
         val downloadOverWifiOnly: Boolean,
         val maxConcurrentDownloads: Int,
         val secureScreenEnabled: Boolean,
-        val usePredictiveBack: Boolean
+        val usePredictiveBack: Boolean,
+        val continuousScrollEnabled: Boolean,
     ) : SettingsUiState
 }
 
