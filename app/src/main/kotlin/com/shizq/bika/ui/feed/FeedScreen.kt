@@ -83,8 +83,8 @@ import java.util.UUID
 fun FeedRoute(
     title: String,
     viewModel: FeedViewModel,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onNavigate: (FeedDestination) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
@@ -117,8 +117,8 @@ fun FeedScreen(
     comics: LazyPagingItems<ComicSummary>,
     currentTag: FavoriteTag?,
     onAction: (FeedAction) -> Unit,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onNavigate: (FeedDestination) -> Unit,
 ) {
     var favoriteSheetVisible by remember { mutableStateOf(false) }
@@ -261,8 +261,8 @@ private fun FeedContent(
     state: FeedUiState,
     comics: LazyPagingItems<ComicSummary>,
     onAction: (FeedAction) -> Unit,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onNavigate: (FeedDestination) -> Unit,
     onBookmarkClick: () -> Unit,
 ) {
@@ -380,8 +380,8 @@ private fun LazyListScope.feedContentItems(
     onRetry: () -> Unit,
     canClearFilters: Boolean,
     onClearFilters: () -> Unit,
-    sharedTransitionScope: SharedTransitionScope? = null,
-    animatedVisibilityScope: AnimatedVisibilityScope? = null,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onComicClick: (ComicSummary, String) -> Unit,
 ) {
     val refresh = comics.loadState.refresh
@@ -460,34 +460,27 @@ private fun LazyListScope.feedContentItems(
                         val transitionId = rememberSaveable(comic.id, index) {
                             UUID.randomUUID().toString()
                         }
-                        if (sharedTransitionScope != null && animatedVisibilityScope != null) {
-                            with(sharedTransitionScope) {
-                                ComicCard(
-                                    comic = comic,
-                                    coverModifier = Modifier.sharedElement(
-                                        sharedContentState = rememberSharedContentState(
-                                            ComicSharedElementKey(
-                                                transitionId = transitionId,
-                                                element = ComicSharedElement.Cover,
-                                            )
-                                        ),
-                                        animatedVisibilityScope = animatedVisibilityScope,
-                                    ),
-                                    titleModifier = Modifier.sharedBounds(
-                                        sharedContentState = rememberSharedContentState(
-                                            ComicSharedElementKey(
-                                                transitionId = transitionId,
-                                                element = ComicSharedElement.Title,
-                                            )
-                                        ),
-                                        animatedVisibilityScope = animatedVisibilityScope,
-                                    ),
-                                    onItemClick = { onComicClick(comic, transitionId) },
-                                )
-                            }
-                        } else {
+                        with(sharedTransitionScope) {
                             ComicCard(
                                 comic = comic,
+                                coverModifier = Modifier.sharedElement(
+                                    sharedContentState = rememberSharedContentState(
+                                        ComicSharedElementKey(
+                                            transitionId = transitionId,
+                                            element = ComicSharedElement.Cover,
+                                        )
+                                    ),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                ),
+                                titleModifier = Modifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(
+                                        ComicSharedElementKey(
+                                            transitionId = transitionId,
+                                            element = ComicSharedElement.Title,
+                                        )
+                                    ),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                ),
                                 onItemClick = { onComicClick(comic, transitionId) },
                             )
                         }
