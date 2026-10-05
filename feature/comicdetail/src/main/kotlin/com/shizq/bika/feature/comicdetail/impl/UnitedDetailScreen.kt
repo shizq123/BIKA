@@ -79,6 +79,7 @@ import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
 import com.shizq.bika.feature.comicdetail.impl.detail.PageTab
 import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesPage
 import com.valentinilk.shimmer.Shimmer
+import com.valentinilk.shimmer.ShimmerBounds
 import com.valentinilk.shimmer.rememberShimmer
 import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.launch
@@ -421,8 +422,7 @@ private fun ComicDetailTransitionPlaceholder(
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    // 同一个 Shimmer 实例覆盖整个占位页，所有骨架高光保持同相位连续移动。
-    val shimmer = rememberShimmer()
+    val shimmer = rememberShimmer(ShimmerBounds.View)
 
     Scaffold(
         topBar = {

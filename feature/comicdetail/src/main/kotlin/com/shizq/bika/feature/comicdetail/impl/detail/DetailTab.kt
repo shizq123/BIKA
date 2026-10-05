@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.dp
 import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.feature.comicdetail.impl.ComicDetail
 import com.shizq.bika.feature.comicdetail.impl.ComicSummary
+import kotlin.time.Instant
 
 /**
  * 漫画详情页的详情分页。
@@ -390,8 +391,8 @@ private fun MetadataCard(detail: ComicDetail) {
         InfoGrid(
             "章节数" to detail.epsCount.toString(),
             "页数" to detail.pagesCount.toString(),
-            "更新时间" to detail.updatedAt.ifBlank { "未知" },
-            "创建时间" to detail.createdAt.ifBlank { "未知" },
+            "更新时间" to detail.updatedAt.toString(),
+            "创建时间" to detail.createdAt.toString(),
         )
     }
 }
@@ -516,8 +517,8 @@ private fun ComicDetailSuccessPreview() {
                 totalViews = 1_286_420,
                 totalLikes = 32_680,
                 commentsCount = 1_204,
-                updatedAt = "2026-09-20",
-                createdAt = "2024-03-15",
+                updatedAt = Instant.parse("2026-09-20"),
+                createdAt = Instant.parse("2024-03-15"),
             ),
             onAuthorClick = {},
             onTeamClick = {},
