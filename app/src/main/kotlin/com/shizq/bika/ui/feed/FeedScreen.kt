@@ -76,7 +76,7 @@ import com.shizq.bika.navigation.RenameFavoriteTagResult
 import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterChipState
 import com.shizq.bika.ui.tag.rememberFilterState
-import java.util.UUID
+import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
@@ -458,7 +458,7 @@ private fun LazyListScope.feedContentItems(
                 ) { index ->
                     comics[index]?.let { comic ->
                         val transitionId = rememberSaveable(comic.id, index) {
-                            UUID.randomUUID().toString()
+                            Uuid.random().toString()
                         }
                         with(sharedTransitionScope) {
                             ComicCard(
