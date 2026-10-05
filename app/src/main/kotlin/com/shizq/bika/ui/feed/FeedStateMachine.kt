@@ -6,6 +6,8 @@ import com.freeletics.flowredux2.ChangeableState
 import com.freeletics.flowredux2.ChangedState
 import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.freeletics.flowredux2.initializeWith
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
@@ -17,8 +19,10 @@ import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.model.preferences.ContentFilterPreferences
+import com.shizq.bika.core.model.preferences.UserPreferences
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
+import com.shizq.bika.util.injectLocalStatusFrom
 import jakarta.inject.Inject
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -31,6 +35,7 @@ import java.util.concurrent.atomic.AtomicLong
 class FeedStateMachine internal constructor(
     private val api: BikaDataSource,
     private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val historyDao: ReadingHistoryDao,
     private val discoveryAction: DiscoveryAction,
 ) : FlowReduxStateMachineFactory<FeedUiState, FeedAction>() {
 
@@ -44,8 +49,8 @@ class FeedStateMachine internal constructor(
         spec {
             inState<FeedUiState.Initial> {
                 onEnter {
-                    val filter = userPreferencesDataSource.userData.first().filter
-                    val data = snapshot.data.withPreferences(filter)
+                    val preferences = userPreferencesDataSource.userData.first()
+                    val data = snapshot.data.withPreferences(preferences)
                     initialLoad(data)
                 }
             }
@@ -58,7 +63,11 @@ class FeedStateMachine internal constructor(
 
             inState<FeedUiState.Content> {
                 collectWhileInState(userPreferencesDataSource.userData) { preferences ->
-                    applyPreferences(preferences.filter)
+                    applyPreferences(preferences)
+                }
+
+                collectWhileInState(historyDao.getDetailedHistories()) { histories ->
+                    applyReadingHistories(histories)
                 }
 
                 on<FeedAction.Retry> {
@@ -74,6 +83,10 @@ class FeedStateMachine internal constructor(
                             ),
                         ),
                     )
+                }
+
+                on<FeedAction.AppendNextPage> {
+                    appendNextPage()
                 }
 
                 on<FeedAction.ChangeSort> { action ->
@@ -144,10 +157,10 @@ class FeedStateMachine internal constructor(
     }
 
     private suspend fun ChangeableState<FeedUiState.Content>.applyPreferences(
-        filter: ContentFilterPreferences,
+        preferences: UserPreferences,
     ): ChangedState<FeedUiState> {
         val query = snapshot.data.query
-        val newData = snapshot.data.copy(query = query).withPreferences(filter)
+        val newData = snapshot.data.copy(query = query).withPreferences(preferences)
         val affectsContent = newData.filterSelections != snapshot.data.filterSelections ||
                 newData.blockedTags != snapshot.data.blockedTags
 
@@ -168,6 +181,55 @@ class FeedStateMachine internal constructor(
             }
         } else {
             mutate { copy(data = newData) }
+        }
+    }
+
+    private suspend fun ChangeableState<FeedUiState.Content>.appendNextPage(): ChangedState<FeedUiState> {
+        if (snapshot.refreshState is FeedRefreshState.Loading || snapshot.refreshState is FeedRefreshState.Appending) {
+            return noChange()
+        }
+        if (snapshot.page.page >= snapshot.page.totalPages) {
+            return noChange()
+        }
+
+        val nextPage = snapshot.page.page + 1
+        val targetQuery = snapshot.data.query.copy(page = nextPage)
+        val generation = loadGeneration.incrementAndGet()
+
+        mutate {
+            copy(refreshState = FeedRefreshState.Appending)
+        }
+
+        return try {
+            val newPage = loadAndFilter(
+                query = targetQuery,
+                filters = snapshot.data.filterSelections,
+                blockedTags = snapshot.data.blockedTags,
+            )
+            mutate {
+                if (loadGeneration.get() != generation) this else {
+                    copy(
+                        page = page.copy(
+                            items = page.items + newPage.items,
+                            page = nextPage,
+                            totalPages = newPage.totalPages,
+                            totalCount = newPage.totalCount,
+                        ),
+                        refreshState = FeedRefreshState.Idle,
+                    )
+                }
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            mutate {
+                if (loadGeneration.get() != generation) this else copy(
+                    refreshState = FeedRefreshState.Failed(
+                        targetQuery = targetQuery,
+                        error = FeedError.LoadFailed,
+                    ),
+                )
+            }
         }
     }
 
@@ -306,16 +368,29 @@ class FeedStateMachine internal constructor(
         }
     }
 
+    private suspend fun ChangeableState<FeedUiState.Content>.applyReadingHistories(
+        histories: List<DetailedHistory>,
+    ): ChangedState<FeedUiState> {
+        val currentItems = snapshot.page.items
+        val injectedItems = currentItems.injectLocalStatusFrom(histories)
+        if (injectedItems == currentItems) return noChange()
+        return mutate {
+            copy(page = page.copy(items = injectedItems))
+        }
+    }
+
     private suspend fun loadAndFilter(
         query: FeedQuery,
         filters: FilterSelections,
         blockedTags: Set<String>,
     ): FeedPage {
         val page = loadPage(query)
+        val filteredItems = page.items
+            .filter { !filters.hasAnySelection || matchesFilters(it, filters) }
+            .filter { comic -> blockedTags.isEmpty() || comic.tags.none(blockedTags::contains) }
+        val histories = historyDao.getDetailedHistories().first()
         return page.copy(
-            items = page.items
-                .filter { !filters.hasAnySelection || matchesFilters(it, filters) }
-                .filter { comic -> blockedTags.isEmpty() || comic.tags.none(blockedTags::contains) },
+            items = filteredItems.injectLocalStatusFrom(histories),
         )
     }
 
@@ -364,10 +439,12 @@ class FeedStateMachine internal constructor(
 class FeedStateMachineFactory @Inject constructor(
     private val api: BikaDataSource,
     private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val historyDao: ReadingHistoryDao,
 ) {
     fun create(action: DiscoveryAction): FeedStateMachine = FeedStateMachine(
         api = api,
         userPreferencesDataSource = userPreferencesDataSource,
+        historyDao = historyDao,
         discoveryAction = action,
     )
 }
@@ -381,15 +458,16 @@ private data class ActiveFeedRequest(
 private val FeedData.isClientFiltered: Boolean
     get() = filterSelections.hasAnySelection || blockedTags.isNotEmpty()
 
-private fun FeedData.withPreferences(filter: ContentFilterPreferences): FeedData = copy(
+private fun FeedData.withPreferences(preferences: UserPreferences): FeedData = copy(
+    continuousScrollEnabled = preferences.app.continuousScrollEnabled,
     filterSelections = query.localFilters.withGlobalTopics(
-        enabled = filter.globalTopicBlockEnabled,
-        topics = filter.globalBlockedTopics,
+        enabled = preferences.filter.globalTopicBlockEnabled,
+        topics = preferences.filter.globalBlockedTopics,
     ),
-    favoriteTags = filter.favoriteTags,
-    excludeTopicsGlobal = filter.globalTopicBlockEnabled,
-    globalBlockedTopics = filter.globalBlockedTopics,
-    blockedTags = filter.blockedTags,
+    favoriteTags = preferences.filter.favoriteTags,
+    excludeTopicsGlobal = preferences.filter.globalTopicBlockEnabled,
+    globalBlockedTopics = preferences.filter.globalBlockedTopics,
+    blockedTags = preferences.filter.blockedTags,
 )
 
 private fun com.shizq.bika.core.network.model.PageData<ComicSummary>.toFeedPage(

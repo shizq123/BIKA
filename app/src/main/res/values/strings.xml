@@ -132,4 +132,7 @@
     <string name="chat_min_level">等级限制：</string>
     <string name="chat_min_register_days">注册天数限制：</string>
     <string name="comic_creator_avatar">头像</string>
+    <string name="feed_append_loading">正在加载下一页…</string>
+    <string name="feed_append_failed">加载下一页失败，点击重试</string>
+    <string name="feed_append_no_more">已加载全部</string>
 </resources>

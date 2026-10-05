@@ -39,4 +39,22 @@ class FeedStateTest {
         assertEquals(targetQuery, failed.targetQuery)
         assertEquals(FeedError.LoadFailed, failed.error)
     }
+
+    @Test
+    fun `追加状态正确表达且可感知连续滚动开关配置`() {
+        val state = FeedUiState.Content(
+            data = FeedData(continuousScrollEnabled = true),
+            page = FeedPage(
+                items = emptyList(),
+                page = 1,
+                totalPages = 5,
+                totalCount = 50,
+            ),
+            displayedQuery = FeedQuery(page = 1),
+            refreshState = FeedRefreshState.Appending,
+        )
+
+        assertEquals(true, state.continuousScrollEnabled)
+        assertEquals(FeedRefreshState.Appending, state.refreshState)
+    }
 }

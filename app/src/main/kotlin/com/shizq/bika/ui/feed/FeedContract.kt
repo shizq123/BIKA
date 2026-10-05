@@ -29,6 +29,7 @@ data class FeedData(
     val excludeTopicsGlobal: Boolean = false,
     val globalBlockedTopics: List<String> = emptyList(),
     val blockedTags: Set<String> = emptySet(),
+    val continuousScrollEnabled: Boolean = true,
 )
 
 /**
@@ -63,10 +64,12 @@ val FeedUiState.query: FeedQuery get() = data.query
 val FeedUiState.filterSelections: FilterSelections get() = data.filterSelections
 val FeedUiState.favoriteTags: List<FavoriteTag> get() = data.favoriteTags
 val FeedUiState.excludeTopicsGlobal: Boolean get() = data.excludeTopicsGlobal
+val FeedUiState.continuousScrollEnabled: Boolean get() = data.continuousScrollEnabled
 
 sealed interface FeedRefreshState {
     data object Idle : FeedRefreshState
     data class Loading(val targetQuery: FeedQuery) : FeedRefreshState
+    data object Appending : FeedRefreshState
     data class Failed(
         val targetQuery: FeedQuery,
         val error: FeedError,
@@ -76,6 +79,7 @@ sealed interface FeedRefreshState {
 sealed interface FeedAction {
     data object Retry : FeedAction
     data class ChangePage(val page: Int) : FeedAction
+    data object AppendNextPage : FeedAction
     data class ChangeSort(val sort: SortOrder) : FeedAction
     data class ToggleFilter(
         val group: FilterGroup,
