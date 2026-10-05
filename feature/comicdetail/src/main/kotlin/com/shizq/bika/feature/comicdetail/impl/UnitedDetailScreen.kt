@@ -174,7 +174,7 @@ fun ComicDetailContent(
     }
 
     when (unitedState) {
-        is UnitedDetailsUiState.Initialize -> ComicDetailTransitionPlaceholder(
+        UnitedDetailsUiState.Initialize -> ComicDetailInitializeContent(
             coverUrl = previewCoverUrl,
             title = previewTitle,
             coverModifier = sharedCoverModifier,
@@ -187,116 +187,158 @@ fun ComicDetailContent(
             dispatch(UnitedDetailsAction.Retry)
         }
 
-        is UnitedDetailsUiState.Content -> {
-            val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-            val detail = unitedState.detail
-            val isDownloaded = remember(downloadTasks, detail.epsCount) {
-                isComicFullyDownloaded(downloadTasks, detail.epsCount)
-            }
-            val lastReadChapter = remember(chapterProgress) {
-                chapterProgress.maxByOrNull { it.lastReadAt }
-            }
-            val readOrder = lastReadChapter?.chapterId ?: 1
+        is UnitedDetailsUiState.Content -> ComicDetailLoadedContent(
+            state = unitedState,
+            episodes = episodes,
+            downloadTasks = downloadTasks,
+            chapterProgress = chapterProgress,
+            previewTitle = previewTitle,
+            coverModifier = sharedCoverModifier,
+            titleModifier = sharedTitleModifier,
+            onBackClick = onBackClick,
+            navigationToReader = navigationToReader,
+            onRecommendedComicClick = onRecommendedComicClick,
+            dispatch = dispatch,
+            onTranslateClick = onTranslateClick,
+            onAuthorClick = onAuthorClick,
+            onUploaderClick = onUploaderClick,
+            onDownloadWholeComic = onDownloadWholeComic,
+            onTagClick = onTagClick,
+            navigationToEpisodeDownload = navigationToEpisodeDownload,
+            modifier = modifier,
+        )
+    }
+}
 
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(
-                                text = previewTitle,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        },
-                        navigationIcon = {
-                            IconButton(onClick = onBackClick) {
-                                Icon(Icons.AutoMirrored.Rounded.ArrowBack, null)
-                            }
-                        },
-                        scrollBehavior = scrollBehavior,
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ComicDetailLoadedContent(
+    state: UnitedDetailsUiState.Content,
+    episodes: LazyPagingItems<Chapter>,
+    downloadTasks: List<DownloadTask>,
+    chapterProgress: List<ChapterProgressEntity>,
+    previewTitle: String,
+    coverModifier: Modifier,
+    titleModifier: Modifier,
+    onBackClick: () -> Unit,
+    navigationToReader: (id: String, index: Int) -> Unit,
+    onRecommendedComicClick: (String) -> Unit,
+    dispatch: (UnitedDetailsAction) -> Unit,
+    onTranslateClick: (String) -> Unit,
+    onAuthorClick: (String) -> Unit,
+    onUploaderClick: (String, String) -> Unit,
+    onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
+    onTagClick: (String) -> Unit,
+    navigationToEpisodeDownload: (String, String, String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+    val detail = state.detail
+    val isDownloaded = remember(downloadTasks, detail.epsCount) {
+        isComicFullyDownloaded(downloadTasks, detail.epsCount)
+    }
+    val lastReadChapter = remember(chapterProgress) {
+        chapterProgress.maxByOrNull { it.lastReadAt }
+    }
+    val readOrder = lastReadChapter?.chapterId ?: 1
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = previewTitle,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 },
-                bottomBar = {
-                    ComicDetailBottomAppBar(
-                        isFavourited = detail.isFavourited,
-                        isLiked = detail.isLiked,
-                        isDownloaded = isDownloaded,
-                        hasReadProgress = lastReadChapter != null,
-                        onRead = { navigationToReader(detail.id, readOrder) },
-                        onToggleFavourite = {
-                            dispatch(UnitedDetailsAction.ToggleFavorite)
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null)
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+            )
+        },
+        bottomBar = {
+            ComicDetailBottomAppBar(
+                isFavourited = detail.isFavourited,
+                isLiked = detail.isLiked,
+                isDownloaded = isDownloaded,
+                hasReadProgress = lastReadChapter != null,
+                onRead = { navigationToReader(detail.id, readOrder) },
+                onToggleFavourite = {
+                    dispatch(UnitedDetailsAction.ToggleFavorite)
+                },
+                onToggleLike = {
+                    dispatch(UnitedDetailsAction.ToggleLike)
+                },
+                onDownloadWholeComic = {
+                    onDownloadWholeComic(
+                        detail.title,
+                        detail.cover,
+                        detail.epsCount,
+                    )
+                },
+            )
+        },
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize(),
+        ) {
+            val pagerState = rememberPagerState { PageTab.entries.size }
+            val scope = rememberCoroutineScope()
+
+            PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
+                PageTab.entries.forEachIndexed { index, tab ->
+                    Tab(
+                        selected = index == pagerState.currentPage,
+                        onClick = {
+                            scope.launch { pagerState.animateScrollToPage(index) }
                         },
-                        onToggleLike = {
-                            dispatch(UnitedDetailsAction.ToggleLike)
+                        text = { Text(text = tab.title) },
+                    )
+                }
+            }
+
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f),
+                verticalAlignment = Alignment.Top,
+                key = { it },
+            ) { page ->
+                when (PageTab.entries[page]) {
+                    PageTab.DETAIL -> DetailTab(
+                        detail = detail,
+                        recommendations = state.recommendations,
+                        coverModifier = coverModifier,
+                        titleModifier = titleModifier,
+                        onRecommendedComicClick = onRecommendedComicClick,
+                        onTranslateClick = onTranslateClick,
+                        navigationToTagBlock = onTagClick,
+                        onAuthorClick = onAuthorClick,
+                        onUploaderClick = onUploaderClick,
+                    )
+
+                    PageTab.EPISODES -> EpisodesPage(
+                        episodes = episodes,
+                        chapterProgress = chapterProgress,
+                        navigateToReader = {
+                            navigationToReader(detail.id, it)
                         },
-                        onDownloadWholeComic = {
-                            onDownloadWholeComic(
+                        onDownloadSelectionClick = {
+                            navigationToEpisodeDownload(
+                                detail.id,
                                 detail.title,
                                 detail.cover,
-                                detail.epsCount,
                             )
                         },
                     )
-                },
-                modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-            ) { innerPadding ->
-                Column(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize(),
-                ) {
-                    val pagerState = rememberPagerState { PageTab.entries.size }
-                    val scope = rememberCoroutineScope()
 
-                    PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
-                        PageTab.entries.forEachIndexed { index, tab ->
-                            Tab(
-                                selected = index == pagerState.currentPage,
-                                onClick = {
-                                    scope.launch { pagerState.animateScrollToPage(index) }
-                                },
-                                text = { Text(text = tab.title) },
-                            )
-                        }
-                    }
-
-                    HorizontalPager(
-                        state = pagerState,
-                        modifier = Modifier.weight(1f),
-                        verticalAlignment = Alignment.Top,
-                        key = { it },
-                    ) { page ->
-                        when (PageTab.entries[page]) {
-                            PageTab.DETAIL -> DetailTab(
-                                detail = detail,
-                                recommendations = unitedState.recommendations,
-                                coverModifier = sharedCoverModifier,
-                                titleModifier = sharedTitleModifier,
-                                onRecommendedComicClick = onRecommendedComicClick,
-                                onTranslateClick = onTranslateClick,
-                                navigationToTagBlock = onTagClick,
-                                onAuthorClick = onAuthorClick,
-                                onUploaderClick = onUploaderClick,
-                            )
-
-                            PageTab.EPISODES -> EpisodesPage(
-                                episodes = episodes,
-                                chapterProgress = chapterProgress,
-                                navigateToReader = {
-                                    navigationToReader(detail.id, it)
-                                },
-                                onDownloadSelectionClick = {
-                                    navigationToEpisodeDownload(
-                                        detail.id,
-                                        detail.title,
-                                        detail.cover,
-                                    )
-                                },
-                            )
-
-                            PageTab.COMMENT -> CommentsTab(comicId = detail.id)
-                        }
-                    }
+                    PageTab.COMMENT -> CommentsTab(comicId = detail.id)
                 }
             }
         }
@@ -413,7 +455,7 @@ private fun ComicDetailBottomAppBarSkeleton(shimmer: Shimmer) {
 }
 
 @Composable
-private fun ComicDetailTransitionPlaceholder(
+private fun ComicDetailInitializeContent(
     coverUrl: String,
     title: String,
     coverModifier: Modifier,
@@ -422,7 +464,9 @@ private fun ComicDetailTransitionPlaceholder(
     modifier: Modifier = Modifier,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
-    val shimmer = rememberShimmer(ShimmerBounds.View)
+    val shimmer = rememberShimmer(
+        shimmerBounds = ShimmerBounds.View,
+    )
 
     Scaffold(
         topBar = {
