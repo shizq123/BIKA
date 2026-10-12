@@ -2,8 +2,6 @@ package com.shizq.bika.ui.tag
 
 import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
-import com.shizq.bika.core.domain.filter.FilterGroup
-import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.domain.filter.IntRangeSpec
 import kotlin.test.Test
 import kotlin.test.assertEquals
