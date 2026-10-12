@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,11 +59,13 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -212,6 +215,73 @@ fun ComicDetailContent(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun ComicDetailScaffold(
+    onBackClick: () -> Unit,
+    topBarTitle: @Composable () -> Unit = {},
+    bottomBar: @Composable () -> Unit = {},
+    modifier: Modifier = Modifier,
+    content: @Composable (PaddingValues) -> Unit,
+) {
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = topBarTitle,
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null)
+                    }
+                },
+                scrollBehavior = scrollBehavior,
+            )
+        },
+        bottomBar = bottomBar,
+        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        content = content,
+    )
+}
+
+@Composable
+private fun ComicDetailTabRow(
+    selectedTabIndex: Int,
+    enabled: Boolean = true,
+    onTabClick: (Int) -> Unit = {},
+) {
+    PrimaryTabRow(selectedTabIndex = selectedTabIndex) {
+        PageTab.entries.forEachIndexed { index, tab ->
+            Tab(
+                selected = index == selectedTabIndex,
+                enabled = enabled,
+                onClick = { onTabClick(index) },
+                text = { Text(text = tab.title) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun ComicDetailBodyLayout(
+    innerPadding: PaddingValues,
+    tabRow: @Composable () -> Unit,
+    body: @Composable () -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .padding(innerPadding)
+            .fillMaxSize(),
+    ) {
+        tabRow()
+        Box(
+            modifier = Modifier.weight(1f),
+        ) {
+            body()
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun ComicDetailLoadedContent(
     state: UnitedDetailsUiState.Content,
     episodes: LazyPagingItems<Chapter>,
@@ -232,7 +302,6 @@ private fun ComicDetailLoadedContent(
     navigationToEpisodeDownload: (String, String, String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val detail = state.detail
     val isDownloaded = remember(downloadTasks, detail.epsCount) {
         isComicFullyDownloaded(downloadTasks, detail.epsCount)
@@ -241,23 +310,16 @@ private fun ComicDetailLoadedContent(
         chapterProgress.maxByOrNull { it.lastReadAt }
     }
     val readOrder = lastReadChapter?.chapterId ?: 1
+    val pagerState = rememberPagerState { PageTab.entries.size }
+    val scope = rememberCoroutineScope()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = previewTitle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null)
-                    }
-                },
-                scrollBehavior = scrollBehavior,
+    ComicDetailScaffold(
+        onBackClick = onBackClick,
+        topBarTitle = {
+            Text(
+                text = previewTitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
         },
         bottomBar = {
@@ -267,81 +329,59 @@ private fun ComicDetailLoadedContent(
                 isDownloaded = isDownloaded,
                 hasReadProgress = lastReadChapter != null,
                 onRead = { navigationToReader(detail.id, readOrder) },
-                onToggleFavourite = {
-                    dispatch(UnitedDetailsAction.ToggleFavorite)
-                },
-                onToggleLike = {
-                    dispatch(UnitedDetailsAction.ToggleLike)
-                },
+                onToggleFavourite = { dispatch(UnitedDetailsAction.ToggleFavorite) },
+                onToggleLike = { dispatch(UnitedDetailsAction.ToggleLike) },
                 onDownloadWholeComic = {
-                    onDownloadWholeComic(
-                        detail.title,
-                        detail.cover,
-                        detail.epsCount,
-                    )
+                    onDownloadWholeComic(detail.title, detail.cover, detail.epsCount)
                 },
             )
         },
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier,
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
-        ) {
-            val pagerState = rememberPagerState { PageTab.entries.size }
-            val scope = rememberCoroutineScope()
+        ComicDetailBodyLayout(
+            innerPadding = innerPadding,
+            tabRow = {
+                ComicDetailTabRow(
+                    selectedTabIndex = pagerState.currentPage,
+                    onTabClick = { index ->
+                        scope.launch { pagerState.animateScrollToPage(index) }
+                    },
+                )
+            },
+            body = {
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalAlignment = Alignment.Top,
+                    key = { it },
+                ) { page ->
+                    when (PageTab.entries[page]) {
+                        PageTab.DETAIL -> DetailTab(
+                            detail = detail,
+                            recommendations = state.recommendations,
+                            coverModifier = coverModifier,
+                            titleModifier = titleModifier,
+                            onRecommendedComicClick = onRecommendedComicClick,
+                            onTranslateClick = onTranslateClick,
+                            navigationToTagBlock = onTagClick,
+                            onAuthorClick = onAuthorClick,
+                            onUploaderClick = onUploaderClick,
+                        )
 
-            PrimaryTabRow(selectedTabIndex = pagerState.currentPage) {
-                PageTab.entries.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = index == pagerState.currentPage,
-                        onClick = {
-                            scope.launch { pagerState.animateScrollToPage(index) }
-                        },
-                        text = { Text(text = tab.title) },
-                    )
+                        PageTab.EPISODES -> EpisodesPage(
+                            episodes = episodes,
+                            chapterProgress = chapterProgress,
+                            navigateToReader = { navigationToReader(detail.id, it) },
+                            onDownloadSelectionClick = {
+                                navigationToEpisodeDownload(detail.id, detail.title, detail.cover)
+                            },
+                        )
+
+                        PageTab.COMMENT -> CommentsTab(comicId = detail.id)
+                    }
                 }
-            }
-
-            HorizontalPager(
-                state = pagerState,
-                modifier = Modifier.weight(1f),
-                verticalAlignment = Alignment.Top,
-                key = { it },
-            ) { page ->
-                when (PageTab.entries[page]) {
-                    PageTab.DETAIL -> DetailTab(
-                        detail = detail,
-                        recommendations = state.recommendations,
-                        coverModifier = coverModifier,
-                        titleModifier = titleModifier,
-                        onRecommendedComicClick = onRecommendedComicClick,
-                        onTranslateClick = onTranslateClick,
-                        navigationToTagBlock = onTagClick,
-                        onAuthorClick = onAuthorClick,
-                        onUploaderClick = onUploaderClick,
-                    )
-
-                    PageTab.EPISODES -> EpisodesPage(
-                        episodes = episodes,
-                        chapterProgress = chapterProgress,
-                        navigateToReader = {
-                            navigationToReader(detail.id, it)
-                        },
-                        onDownloadSelectionClick = {
-                            navigationToEpisodeDownload(
-                                detail.id,
-                                detail.title,
-                                detail.cover,
-                            )
-                        },
-                    )
-
-                    PageTab.COMMENT -> CommentsTab(comicId = detail.id)
-                }
-            }
-        }
+            },
+        )
     }
 }
 
@@ -463,60 +503,43 @@ private fun ComicDetailInitializeContent(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
     val shimmer = rememberShimmer(
         shimmerBounds = ShimmerBounds.View,
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {},
-                navigationIcon = {
-                    IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null)
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-            )
-        },
+    ComicDetailScaffold(
+        onBackClick = onBackClick,
         bottomBar = {
             ComicDetailBottomAppBarSkeleton(shimmer = shimmer)
         },
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+        modifier = modifier,
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .padding(innerPadding)
-                .fillMaxSize(),
-        ) {
-            // 与真实页面保持相同的 Tab 行和内容层级，避免数据返回后整体跳动。
-            PrimaryTabRow(selectedTabIndex = 0) {
-                PageTab.entries.forEachIndexed { index, tab ->
-                    Tab(
-                        selected = index == 0,
-                        onClick = {},
-                        text = { Text(text = tab.title) },
-                    )
-                }
-            }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .verticalScroll(rememberScrollState())
-                    .background(MaterialTheme.colorScheme.surface),
-            ) {
-                ComicDetailHeroSkeleton(
-                    coverUrl = coverUrl,
-                    title = title,
-                    coverModifier = coverModifier,
-                    titleModifier = titleModifier,
-                    shimmer = shimmer,
+        ComicDetailBodyLayout(
+            innerPadding = innerPadding,
+            tabRow = {
+                ComicDetailTabRow(
+                    selectedTabIndex = 0,
+                    enabled = false,
                 )
-                ComicDetailBodySkeleton(shimmer = shimmer)
-            }
-        }
+            },
+            body = {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .verticalScroll(rememberScrollState())
+                        .background(MaterialTheme.colorScheme.surface),
+                ) {
+                    ComicDetailHeroSkeleton(
+                        coverUrl = coverUrl,
+                        title = title,
+                        coverModifier = coverModifier,
+                        titleModifier = titleModifier,
+                        shimmer = shimmer,
+                    )
+                    ComicDetailBodySkeleton(shimmer = shimmer)
+                }
+            },
+        )
     }
 }
 
@@ -732,7 +755,7 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
 
 @Composable
 private fun SkeletonCard(
-    height: androidx.compose.ui.unit.Dp,
+    height: Dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
@@ -751,7 +774,7 @@ private fun SkeletonCard(
 private fun SkeletonBlock(
     shimmer: Shimmer,
     modifier: Modifier = Modifier,
-    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(7.dp),
+    shape: Shape = RoundedCornerShape(7.dp),
 ) {
     Box(
         modifier = modifier
