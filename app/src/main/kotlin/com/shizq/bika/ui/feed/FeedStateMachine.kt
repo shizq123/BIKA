@@ -9,7 +9,7 @@ import com.freeletics.flowredux2.initializeWith
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
-import com.shizq.bika.core.domain.filter.FilterSelections
+
 import com.shizq.bika.core.domain.filter.toggle
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.preferences.ContentFilterPreferences
@@ -51,16 +51,9 @@ class FeedStateMachine internal constructor(
                 }
 
                 on<FeedAction.ClearFilters> {
-                    if (snapshot.data.excludeTopicsGlobal) {
-                        userPreferencesDataSource.setExcludeTopicsGlobal(false)
-                    }
+                    // 只清空当前页面筛选，不修改全局偏好。
                     mutateData {
-                        copy(
-                            query = query.copy(localFilters = emptyMap()),
-                            filterSelections = emptyMap(),
-                            excludeTopicsGlobal = false,
-                            globalBlockedTopics = emptyList(),
-                        )
+                        copy(query = query.copy(localFilters = emptyMap()))
                     }
                 }
 
@@ -120,26 +113,13 @@ class FeedStateMachine internal constructor(
         if (group is FilterGroup.ExcludeTopic && snapshot.data.excludeTopicsGlobal) {
             val topic = (option as? FilterOption.Topic)?.name ?: return noChange()
             userPreferencesDataSource.toggleGlobalExcludedTopic(topic)
-            val topics = if (topic in snapshot.data.globalBlockedTopics) {
-                snapshot.data.globalBlockedTopics - topic
-            } else {
-                snapshot.data.globalBlockedTopics + topic
-            }
-            return mutateData {
-                copy(
-                    globalBlockedTopics = topics,
-                    filterSelections = query.localFilters.withGlobalTopics(true, topics),
-                )
-            }
+            return noChange()
         }
 
         return mutateData {
-            val localFilters = query.localFilters.toggle(group, option)
             copy(
-                query = query.copy(localFilters = localFilters),
-                filterSelections = localFilters.withGlobalTopics(
-                    enabled = excludeTopicsGlobal,
-                    topics = globalBlockedTopics,
+                query = query.copy(
+                    localFilters = query.localFilters.toggle(group, option),
                 ),
             )
         }
@@ -150,38 +130,16 @@ class FeedStateMachine internal constructor(
     ): ChangedState<FeedUiState> {
         if (enabled == snapshot.data.excludeTopicsGlobal) return noChange()
 
-        return if (enabled) {
-            val topics = snapshot.data.query.localFilters[FilterGroup.ExcludeTopic]
-                .orEmpty()
-                .filterIsInstance<FilterOption.Topic>()
-                .map(FilterOption.Topic::name)
-            userPreferencesDataSource.enableGlobalTopicBlock(topics)
-            mutateData {
-                val localFilters = query.localFilters - FilterGroup.ExcludeTopic
-                copy(
-                    query = query.copy(localFilters = localFilters),
-                    filterSelections = localFilters.withGlobalTopics(true, topics),
-                    excludeTopicsGlobal = true,
-                    globalBlockedTopics = topics,
-                )
-            }
+        if (enabled) {
+            // 全局开关只改变全局策略，不把当前页面主题升级为全局主题。
+            userPreferencesDataSource.setExcludeTopicsGlobal(true)
         } else {
-            val topics = snapshot.data.globalBlockedTopics
             userPreferencesDataSource.setExcludeTopicsGlobal(false)
-            mutateData {
-                val localFilters = if (topics.isEmpty()) {
-                    query.localFilters - FilterGroup.ExcludeTopic
-                } else {
-                    query.localFilters + (FilterGroup.ExcludeTopic to topics.map(FilterOption::Topic))
-                }
-                copy(
-                    query = query.copy(localFilters = localFilters),
-                    filterSelections = localFilters,
-                    excludeTopicsGlobal = false,
-                )
-            }
         }
+
+        return noChange()
     }
+
 
     private fun ChangeableState<FeedUiState.Content>.mutateData(
         transform: FeedData.() -> FeedData,
@@ -202,23 +160,9 @@ class FeedStateMachineFactory @Inject constructor(
 }
 
 private fun FeedData.withPreferences(filter: ContentFilterPreferences): FeedData = copy(
-    filterSelections = query.localFilters.withGlobalTopics(
-        enabled = filter.globalTopicBlockEnabled,
-        topics = filter.globalBlockedTopics,
-    ),
     favoriteTags = filter.favoriteTags,
     excludeTopicsGlobal = filter.globalTopicBlockEnabled,
-    globalBlockedTopics = filter.globalBlockedTopics,
+    globalBlockedTopics = filter.globalBlockedTopics.toSet(),
     blockedTags = filter.blockedTags,
 )
 
-private fun FilterSelections.withGlobalTopics(
-    enabled: Boolean,
-    topics: List<String>,
-): FilterSelections = if (!enabled) {
-    this
-} else if (topics.isEmpty()) {
-    this - FilterGroup.ExcludeTopic
-} else {
-    this + (FilterGroup.ExcludeTopic to topics.map(FilterOption::Topic))
-}

@@ -13,7 +13,6 @@ import com.shizq.bika.core.domain.filter.FilterSelections
 import com.shizq.bika.core.domain.filter.hasAnySelection
 import com.shizq.bika.core.domain.filter.matchesFilters
 import com.shizq.bika.core.model.ComicSummary
-import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.paging.AdvancedSearchPagingSource
@@ -27,6 +26,7 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
@@ -52,11 +52,14 @@ class FeedViewModel @AssistedInject constructor(
 
     val uiState = stateMachine.state
 
-    val comics: Flow<PagingData<ComicSummary>> = uiState
+    /**
+     * 只有排序变化才重建远程 Pager；本地过滤只重新包装当前已加载的 PagingData。
+     */
+    private val remotePages: Flow<PagingData<ComicSummary>> = uiState
         .filterIsInstance<FeedUiState.Content>()
-        .map { it.data.toPagingRequest() }
+        .map { it.data.query.sort }
         .distinctUntilChanged()
-        .flatMapLatest { request ->
+        .flatMapLatest { sort ->
             Pager(
                 config = PagingConfig(
                     pageSize = PAGE_SIZE,
@@ -68,21 +71,21 @@ class FeedViewModel @AssistedInject constructor(
                     when (val action = currentAction) {
                         is DiscoveryAction.Channel -> channelPagingSourceFactory.create(
                             channel = action.name,
-                            sort = request.sort,
+                            sort = sort,
                         )
 
                         is DiscoveryAction.Knight -> knightPagingSourceFactory.create(
                             knightId = action.id,
-                            sort = request.sort,
+                            sort = sort,
                         )
 
                         is DiscoveryAction.AdvancedSearch -> advancedSearchPagingSourceFactory.create(
                             query = action.name,
-                            sort = request.sort,
+                            sort = sort,
                         )
 
                         DiscoveryAction.ToFavourite ->
-                            favouriteComicsPagingSourceFactory.create(request.sort)
+                            favouriteComicsPagingSourceFactory.create(sort)
 
                         DiscoveryAction.ToRecent -> recentUpdatesPagingSourceProvider.get()
 
@@ -95,15 +98,30 @@ class FeedViewModel @AssistedInject constructor(
                         }
                     }
                 },
-            ).flow.map { pagingData ->
-                pagingData.filter { comic ->
-                    (!request.filters.hasAnySelection || matchesFilters(comic, request.filters)) &&
-                            (request.blockedTags.isEmpty() ||
-                                    comic.tags.none(request.blockedTags::contains))
-                }
-            }
+            ).flow
         }
         .cachedIn(viewModelScope)
+
+    private val filterRequest: Flow<FeedFilterRequest> = uiState
+        .filterIsInstance<FeedUiState.Content>()
+        .map { data ->
+            FeedFilterRequest(
+                filters = data.data.filterSelections,
+                blockedTags = data.data.blockedTags,
+            )
+        }
+        .distinctUntilChanged()
+
+    val comics: Flow<PagingData<ComicSummary>> = combine(
+        remotePages,
+        filterRequest,
+    ) { pagingData, request ->
+        pagingData.filter { comic ->
+            (!request.filters.hasAnySelection || matchesFilters(comic, request.filters)) &&
+                    (request.blockedTags.isEmpty() ||
+                            comic.tags.none(request.blockedTags::contains))
+        }
+    }
 
     fun dispatch(action: FeedAction) {
         viewModelScope.launch {
@@ -121,14 +139,7 @@ class FeedViewModel @AssistedInject constructor(
     }
 }
 
-private data class FeedPagingRequest(
-    val sort: SortOrder,
+private data class FeedFilterRequest(
     val filters: FilterSelections,
     val blockedTags: Set<String>,
-)
-
-private fun FeedData.toPagingRequest() = FeedPagingRequest(
-    sort = query.sort,
-    filters = filterSelections,
-    blockedTags = blockedTags,
 )
