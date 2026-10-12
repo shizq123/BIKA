@@ -1,6 +1,6 @@
 package com.shizq.bika.ui.feed
 
-import com.shizq.bika.core.domain.filter.FilterGroup
+import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.domain.filter.FilterSelections
 import com.shizq.bika.core.model.FavoriteTag
@@ -9,15 +9,10 @@ import com.shizq.bika.navigation.DiscoveryAction
 
 data class FeedQuery(
     val sort: SortOrder = SortOrder.NEWEST,
-    /** 仅保存当前页面的选择；全局屏蔽主题不再搬运到这里。 */
-    val localFilters: FilterSelections = emptyMap(),
+    val criteria: FeedCriteria = FeedCriteria(),
 )
 
-/**
- * Feed 页面会话状态。
- *
- * filterSelections 不再作为字段保存，它是 localFilters 与全局策略的派生结果。
- */
+/** Feed 页面只保存源状态，最终过滤策略在 ViewModel 边界编译。 */
 data class FeedData(
     val query: FeedQuery = FeedQuery(),
     val favoriteTags: List<FavoriteTag> = emptyList(),
@@ -25,41 +20,29 @@ data class FeedData(
     val globalBlockedTopics: Set<String> = emptySet(),
     val blockedTags: Set<String> = emptySet(),
 ) {
+    /** 旧 FilterChip 的 UI 投影；只展示本页筛选，全局规则由独立开关表达。 */
     val filterSelections: FilterSelections
-        get() = query.localFilters.withGlobalTopics(
-            enabled = excludeTopicsGlobal,
-            topics = globalBlockedTopics,
-        )
-
-    val hasActiveFilters: Boolean
-        get() = filterSelections.values.any { it.isNotEmpty() } || blockedTags.isNotEmpty()
+        get() = query.criteria.toSelections()
 }
 
-sealed interface FeedUiState {
-    val data: FeedData
-
-    data class Initial(
-        override val data: FeedData = FeedData(),
-    ) : FeedUiState
-
-    data class Content(
-        override val data: FeedData,
-    ) : FeedUiState
+data class FeedUiState(
+    val data: FeedData = FeedData(),
+    val preferencesReady: Boolean = false,
+) {
+    val query: FeedQuery get() = data.query
+    val filterSelections: FilterSelections get() = data.filterSelections
+    val favoriteTags: List<FavoriteTag> get() = data.favoriteTags
+    val excludeTopicsGlobal: Boolean get() = data.excludeTopicsGlobal
 }
-
-val FeedUiState.query: FeedQuery get() = data.query
-val FeedUiState.filterSelections: FilterSelections get() = data.filterSelections
-val FeedUiState.favoriteTags: List<FavoriteTag> get() = data.favoriteTags
-val FeedUiState.excludeTopicsGlobal: Boolean get() = data.excludeTopicsGlobal
 
 sealed interface FeedAction {
-    /** 只清空当前页面的筛选，不关闭全局屏蔽策略。 */
     data object ClearFilters : FeedAction
     data class ChangeSort(val sort: SortOrder) : FeedAction
-    data class ToggleFilter(
-        val group: FilterGroup,
-        val option: FilterOption,
-    ) : FeedAction
+    data class ToggleIncludedTopic(val topic: String) : FeedAction
+    data class ToggleExcludedTopic(val topic: String) : FeedAction
+    data class ToggleFinishedState(val finished: Boolean) : FeedAction
+    data class ToggleEpisodeRange(val range: FilterOption.CountRange) : FeedAction
+    data class TogglePageRange(val range: FilterOption.CountRange) : FeedAction
 
     data class SetGlobalTopicFilter(val enabled: Boolean) : FeedAction
     data class AddFavorite(val tag: FavoriteTag) : FeedAction
@@ -83,21 +66,4 @@ sealed interface FeedDestination {
     data class RenameFavorite(val tag: FavoriteTag) : FeedDestination
 }
 
-private fun FilterSelections.withGlobalTopics(
-    enabled: Boolean,
-    topics: Set<String>,
-): FilterSelections {
-    if (!enabled || topics.isEmpty()) return this
-
-    val localTopics = this[FilterGroup.ExcludeTopic]
-        .orEmpty()
-        .filterIsInstance<FilterOption.Topic>()
-        .map(FilterOption.Topic::name)
-        .toSet()
-
-    return this + (
-            FilterGroup.ExcludeTopic to
-                    (localTopics + topics).map(FilterOption::Topic)
-            )
-}
 

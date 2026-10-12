@@ -61,9 +61,11 @@ import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.R
+import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.model.ComicSummary
+
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.ui.ComicCard
@@ -275,7 +277,7 @@ private fun FeedContent(
     val displayedContentKey = remember(state) {
         DisplayedContentKey(
             sort = state.query.sort,
-            localFilters = state.query.localFilters,
+            criteria = state.query.criteria,
         )
     }
 
@@ -293,8 +295,9 @@ private fun FeedContent(
                 onSortOrderChanged = { onAction(FeedAction.ChangeSort(it)) },
                 onBookmarkClick = onBookmarkClick,
                 onRefreshClick = comics::refresh,
-                refreshEnabled = state is FeedUiState.Content &&
+                refreshEnabled = state.preferencesReady &&
                         refreshLoadState !is LoadState.Loading,
+
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -322,7 +325,7 @@ private fun FeedContent(
                         FilterHeader(
                             chips = filterState.chips,
                             onFilterChanged = { group, option ->
-                                onAction(FeedAction.ToggleFilter(group, option))
+                                onAction(option.toFeedAction(group))
                             },
                             summary = feedSummary(
                                 state = state,
@@ -343,12 +346,14 @@ private fun FeedContent(
 
             feedContentItems(
                 comics = comics,
-                metadataLoading = state is FeedUiState.Initial,
-                isClientFiltered = state.filterSelections.isNotEmpty() ||
-                        (state.data.blockedTags.isNotEmpty()),
+                metadataLoading = !state.preferencesReady,
+
+                isClientFiltered = state.query.criteria.hasAnySelection ||
+                        state.excludeTopicsGlobal || state.data.blockedTags.isNotEmpty(),
+
                 onRetry = comics::retry,
-                canClearFilters = filterState.chips.any { it.hasSelection } ||
-                        state.excludeTopicsGlobal,
+                canClearFilters = state.query.criteria.hasAnySelection,
+
                 onClearFilters = { onAction(FeedAction.ClearFilters) },
                 sharedTransitionScope = sharedTransitionScope,
                 animatedVisibilityScope = animatedVisibilityScope,
@@ -369,8 +374,27 @@ private fun FeedContent(
 
 private data class DisplayedContentKey(
     val sort: SortOrder,
-    val localFilters: Map<FilterGroup, List<FilterOption>>,
+    val criteria: FeedCriteria,
 )
+
+private fun FilterOption.toFeedAction(group: FilterGroup): FeedAction = when {
+    group is FilterGroup.Topic && this is FilterOption.Topic ->
+        FeedAction.ToggleIncludedTopic(name)
+
+    group is FilterGroup.ExcludeTopic && this is FilterOption.Topic ->
+        FeedAction.ToggleExcludedTopic(name)
+
+    group is FilterGroup.Status && this is FilterOption.Status ->
+        FeedAction.ToggleFinishedState(finished)
+
+    group is FilterGroup.EpsRange && this is FilterOption.CountRange ->
+        FeedAction.ToggleEpisodeRange(this)
+
+    group is FilterGroup.PagesRange && this is FilterOption.CountRange ->
+        FeedAction.TogglePageRange(this)
+
+    else -> error("Filter option $this does not belong to group $group")
+}
 
 @OptIn(ExperimentalSharedTransitionApi::class)
 private fun LazyListScope.feedContentItems(

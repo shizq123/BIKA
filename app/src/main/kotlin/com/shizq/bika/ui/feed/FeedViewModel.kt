@@ -9,10 +9,11 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import androidx.paging.filter
-import com.shizq.bika.core.domain.filter.FilterSelections
-import com.shizq.bika.core.domain.filter.hasAnySelection
-import com.shizq.bika.core.domain.filter.matchesFilters
+import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.domain.filter.ComicFilterPolicy
+import com.shizq.bika.core.domain.filter.compileFilterPolicy
 import com.shizq.bika.core.model.ComicSummary
+import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.network.BikaDataSource
 import com.shizq.bika.navigation.DiscoveryAction
 import com.shizq.bika.paging.AdvancedSearchPagingSource
@@ -26,17 +27,20 @@ import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterIsInstance
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /** Feed 生命周期适配层；Paging 3 是列表数据与加载状态的唯一数据源。 */
 @HiltViewModel(assistedFactory = FeedViewModel.Factory::class)
 class FeedViewModel @AssistedInject constructor(
-    stateMachineFactory: FeedStateMachineFactory,
+    private val userPreferencesDataSource: UserPreferencesDataSource,
     private val api: BikaDataSource,
     private val channelPagingSourceFactory: ChannelPagingSource.Factory,
     private val knightPagingSourceFactory: KnightPagingSource.Factory,
@@ -46,17 +50,33 @@ class FeedViewModel @AssistedInject constructor(
     @Assisted val currentAction: DiscoveryAction,
 ) : ViewModel() {
 
-    private val stateMachine = stateMachineFactory
-        .create()
-        .launchIn(viewModelScope)
+    private val query = MutableStateFlow(FeedQuery())
 
-    val uiState = stateMachine.state
+    val uiState = combine(
+        query,
+        userPreferencesDataSource.userData,
+    ) { query, preferences ->
+        val filter = preferences.filter
+        FeedUiState(
+            data = FeedData(
+                query = query,
+                favoriteTags = filter.favoriteTags,
+                excludeTopicsGlobal = filter.globalTopicBlockEnabled,
+                globalBlockedTopics = filter.globalBlockedTopics.toSet(),
+                blockedTags = filter.blockedTags,
+            ),
+            preferencesReady = true,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = FeedUiState(),
+    )
 
     /**
      * 只有排序变化才重建远程 Pager；本地过滤只重新包装当前已加载的 PagingData。
      */
     private val remotePages: Flow<PagingData<ComicSummary>> = uiState
-        .filterIsInstance<FeedUiState.Content>()
         .map { it.data.query.sort }
         .distinctUntilChanged()
         .flatMapLatest { sort ->
@@ -102,31 +122,102 @@ class FeedViewModel @AssistedInject constructor(
         }
         .cachedIn(viewModelScope)
 
-    private val filterRequest: Flow<FeedFilterRequest> = uiState
-        .filterIsInstance<FeedUiState.Content>()
-        .map { data ->
-            FeedFilterRequest(
-                filters = data.data.filterSelections,
-                blockedTags = data.data.blockedTags,
+    private val filterPolicy: Flow<ComicFilterPolicy> = uiState
+        .map { state ->
+            compileFilterPolicy(
+                local = state.data.query.criteria,
+                globalTopicBlockEnabled = state.data.excludeTopicsGlobal,
+                globalBlockedTopics = state.data.globalBlockedTopics,
+                blockedTags = state.data.blockedTags,
             )
         }
         .distinctUntilChanged()
 
     val comics: Flow<PagingData<ComicSummary>> = combine(
         remotePages,
-        filterRequest,
-    ) { pagingData, request ->
-        pagingData.filter { comic ->
-            (!request.filters.hasAnySelection || matchesFilters(comic, request.filters)) &&
-                    (request.blockedTags.isEmpty() ||
-                            comic.tags.none(request.blockedTags::contains))
-        }
+        filterPolicy,
+    ) { pagingData, policy ->
+        if (policy.isEmpty) pagingData else pagingData.filter(policy::matches)
     }
 
     fun dispatch(action: FeedAction) {
-        viewModelScope.launch {
-            stateMachine.dispatch(action)
+        when (action) {
+            FeedAction.ClearFilters -> query.update {
+                it.copy(criteria = it.criteria.clear())
+            }
+
+            is FeedAction.ChangeSort -> query.update { it.copy(sort = action.sort) }
+
+            is FeedAction.ToggleIncludedTopic -> query.update {
+                it.copy(criteria = it.criteria.toggleIncludedTopic(action.topic))
+            }
+
+            is FeedAction.ToggleExcludedTopic -> query.update {
+                it.copy(criteria = it.criteria.toggleExcludedTopic(action.topic))
+            }
+
+            is FeedAction.ToggleFinishedState -> query.update {
+                it.copy(criteria = it.criteria.toggleFinishedState(action.finished))
+            }
+
+            is FeedAction.ToggleEpisodeRange -> query.update {
+                it.copy(criteria = it.criteria.toggleEpisodeRange(action.range))
+            }
+
+            is FeedAction.TogglePageRange -> query.update {
+                it.copy(criteria = it.criteria.togglePageRange(action.range))
+            }
+
+            is FeedAction.SetGlobalTopicFilter -> persist {
+                userPreferencesDataSource.setExcludeTopicsGlobal(action.enabled)
+            }
+
+            is FeedAction.AddFavorite -> persist {
+                userPreferencesDataSource.updateFavoriteTags { tags ->
+                    addFavoriteTagToList(tags, action.tag)
+                }
+            }
+
+            is FeedAction.RemoveFavorite -> persist {
+                userPreferencesDataSource.updateFavoriteTags { tags ->
+                    removeFavoriteTagFromList(tags, action.tag)
+                }
+            }
+
+            is FeedAction.RenameFavorite -> {
+                val name = normalizeFavoriteTagName(action.name) ?: return
+                persist {
+                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                        renameFavoriteTagInList(tags, action.tag, name)
+                    }
+                }
+            }
+
+            is FeedAction.MoveFavorite -> persist {
+                userPreferencesDataSource.updateFavoriteTags { tags ->
+                    moveFavoriteTagInList(tags, action.fromIndex, action.toIndex)
+                }
+            }
+
+            is FeedAction.AddCustomFavorite -> {
+                val name = normalizeFavoriteTagName(action.name) ?: return
+                persist {
+                    userPreferencesDataSource.updateFavoriteTags { tags ->
+                        addFavoriteTagToList(
+                            tags,
+                            FavoriteTag(
+                                name = name,
+                                actionType = FeedActionType.AdvancedSearch.storageValue,
+                            ),
+                        )
+                    }
+                }
+            }
         }
+    }
+
+    private fun persist(block: suspend () -> Unit) {
+        viewModelScope.launch { block() }
     }
 
     @AssistedFactory
@@ -138,8 +229,3 @@ class FeedViewModel @AssistedInject constructor(
         const val PAGE_SIZE = 20
     }
 }
-
-private data class FeedFilterRequest(
-    val filters: FilterSelections,
-    val blockedTags: Set<String>,
-)

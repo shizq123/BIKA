@@ -1,8 +1,10 @@
 package com.shizq.bika.domain.filter
 
+import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.domain.filter.FilterSelections
+import com.shizq.bika.core.domain.filter.compileFilterPolicy
 import com.shizq.bika.core.domain.filter.customPagesRange
 import com.shizq.bika.core.domain.filter.hasAnySelection
 import com.shizq.bika.core.domain.filter.matchesFilters
@@ -246,11 +248,62 @@ class FeedFilterMatchingTest {
 
     // endregion
 
+    @Test
+    fun `强类型策略合并本地与已启用的全局排除主题`() {
+        val policy = compileFilterPolicy(
+            local = FeedCriteria(excludedTopics = setOf("NTR")),
+            globalTopicBlockEnabled = true,
+            globalBlockedTopics = setOf("重口地帶"),
+            blockedTags = emptySet(),
+        )
+
+        assertTrue(policy.matches(comic(categories = listOf("純愛"))))
+        assertFalse(policy.matches(comic(categories = listOf("NTR"))))
+        assertFalse(policy.matches(comic(categories = listOf("重口地帶"))))
+    }
+
+    @Test
+    fun `全局开关关闭后全局主题不参与策略`() {
+        val policy = compileFilterPolicy(
+            local = FeedCriteria(),
+            globalTopicBlockEnabled = false,
+            globalBlockedTopics = setOf("NTR"),
+            blockedTags = emptySet(),
+        )
+
+        assertTrue(policy.matches(comic(categories = listOf("NTR"))))
+    }
+
+    @Test
+    fun `强类型 toggle 拒绝分组与选项不匹配`() {
+        val original = FeedCriteria()
+        val result = original.toggle(
+            group = FilterGroup.Status,
+            option = FilterOption.Topic("NTR"),
+        )
+
+        assertEquals(original, result)
+    }
+
+    @Test
+    fun `过滤策略统一应用 blockedTags`() {
+        val policy = compileFilterPolicy(
+            local = FeedCriteria(),
+            globalTopicBlockEnabled = false,
+            globalBlockedTopics = emptySet(),
+            blockedTags = setOf("屏蔽标签"),
+        )
+
+        assertFalse(policy.matches(comic(tags = listOf("屏蔽标签"))))
+        assertTrue(policy.matches(comic(tags = listOf("其他标签"))))
+    }
+
     private fun comic(
         categories: List<String> = emptyList(),
         finished: Boolean = false,
         epsCount: Int = 1,
         pagesCount: Int = 0,
+        tags: List<String> = emptyList(),
     ) = ComicSummary(
         id = "test-id",
         title = "测试漫画",
@@ -260,5 +313,6 @@ class FeedFilterMatchingTest {
         finished = finished,
         epsCount = epsCount,
         pagesCount = pagesCount,
+        tags = tags,
     )
 }

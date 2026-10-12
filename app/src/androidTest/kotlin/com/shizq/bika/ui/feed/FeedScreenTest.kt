@@ -55,7 +55,8 @@ class FeedScreenTest {
         }
     }
 
-    private fun stateWithContent(): FeedUiState = FeedUiState.Content(
+    private fun stateWithContent(): FeedUiState = FeedUiState(
         data = FeedData(),
+        preferencesReady = true,
     )
 }
