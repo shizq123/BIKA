@@ -13,6 +13,8 @@ data class IntRangeSpec(
 ) {
     init {
         require(min != null || max != null) { "IntRangeSpec 至少需要一侧边界" }
+        require(min == null || min >= 0) { "区间下界不能为负数" }
+        require(max == null || max >= 0) { "区间上界不能为负数" }
         require(min == null || max == null || min <= max) { "区间下界不能大于上界" }
     }
 

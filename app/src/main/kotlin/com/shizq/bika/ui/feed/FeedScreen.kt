@@ -641,9 +641,8 @@ private fun FilterHeader(
             ) { chipState ->
                 FilterChip(
                     state = chipState,
-                    onSelectionChanged = { option ->
-                        onFilterChanged(chipState.changeFor(option))
-                    },
+                    onSelectionChanged = onFilterChanged,
+
 
                     excludeTopicsGlobal = excludeTopicsGlobal,
                     onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,

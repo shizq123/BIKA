@@ -226,7 +226,7 @@ data class FilterChipState(
 @Composable
 fun FilterChip(
     state: FilterChipState,
-    onSelectionChanged: (FilterOption) -> Unit,
+    onSelectionChanged: (FeedFilterChange) -> Unit,
     excludeTopicsGlobal: Boolean = false,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -283,7 +283,7 @@ fun FilterChip(
                         OptionRow(
                             label = option.label,
                             checked = option in state.selected,
-                            onClick = { onSelectionChanged(option) },
+                            onClick = { onSelectionChanged(state.changeFor(option)) },
                         )
                     }
 
@@ -333,9 +333,9 @@ private fun OptionRow(label: String, checked: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** 自定义页数区间输入。label 由 domain 层的 customPagesRange 生成，此处不拼接文案。 */
+/** 自定义页数区间输入；区间校验在 UI 边界完成，领域层仍保持最终约束。 */
 @Composable
-private fun CustomRangeInput(onAdd: (FilterOption) -> Unit) {
+private fun CustomRangeInput(onAdd: (FeedFilterChange) -> Unit) {
     var minText by remember { mutableStateOf("") }
     var maxText by remember { mutableStateOf("") }
 
@@ -366,7 +366,17 @@ private fun CustomRangeInput(onAdd: (FilterOption) -> Unit) {
         Spacer(Modifier.width(8.dp))
         Button(
             onClick = {
-                customPagesRange(minText.toIntOrNull(), maxText.toIntOrNull())?.let(onAdd)
+                customPagesRange(minText.toIntOrNull(), maxText.toIntOrNull())
+                    ?.let { range ->
+                        onAdd(
+                            FeedFilterChange.PageRange(
+                                IntRangeSpec(
+                                    range.min,
+                                    range.max
+                                )
+                            )
+                        )
+                    }
                 minText = ""
                 maxText = ""
             },
