@@ -1,8 +1,9 @@
 package com.shizq.bika.ui.feed
 
+import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
-import com.shizq.bika.core.domain.filter.FilterOption
-import com.shizq.bika.core.domain.filter.FilterSelections
+import com.shizq.bika.core.domain.filter.GlobalContentPolicy
+import com.shizq.bika.core.domain.filter.IntRangeSpec
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.navigation.DiscoveryAction
@@ -16,23 +17,16 @@ data class FeedQuery(
 data class FeedData(
     val query: FeedQuery = FeedQuery(),
     val favoriteTags: List<FavoriteTag> = emptyList(),
-    val excludeTopicsGlobal: Boolean = false,
-    val globalBlockedTopics: Set<String> = emptySet(),
-    val blockedTags: Set<String> = emptySet(),
-) {
-    /** 旧 FilterChip 的 UI 投影；只展示本页筛选，全局规则由独立开关表达。 */
-    val filterSelections: FilterSelections
-        get() = query.criteria.toSelections()
-}
+    val globalPolicy: GlobalContentPolicy = GlobalContentPolicy(),
+)
 
 data class FeedUiState(
     val data: FeedData = FeedData(),
     val preferencesReady: Boolean = false,
 ) {
     val query: FeedQuery get() = data.query
-    val filterSelections: FilterSelections get() = data.filterSelections
     val favoriteTags: List<FavoriteTag> get() = data.favoriteTags
-    val excludeTopicsGlobal: Boolean get() = data.excludeTopicsGlobal
+    val excludeTopicsGlobal: Boolean get() = data.globalPolicy.blockedTopicsEnabled
 }
 
 sealed interface FeedAction {
@@ -40,9 +34,9 @@ sealed interface FeedAction {
     data class ChangeSort(val sort: SortOrder) : FeedAction
     data class ToggleIncludedTopic(val topic: String) : FeedAction
     data class ToggleExcludedTopic(val topic: String) : FeedAction
-    data class ToggleFinishedState(val finished: Boolean) : FeedAction
-    data class ToggleEpisodeRange(val range: FilterOption.CountRange) : FeedAction
-    data class TogglePageRange(val range: FilterOption.CountRange) : FeedAction
+    data class ToggleStatus(val status: ComicStatus) : FeedAction
+    data class ToggleEpisodeRange(val range: IntRangeSpec) : FeedAction
+    data class TogglePageRange(val range: IntRangeSpec) : FeedAction
 
     data class SetGlobalTopicFilter(val enabled: Boolean) : FeedAction
     data class AddFavorite(val tag: FavoriteTag) : FeedAction

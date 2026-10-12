@@ -2,21 +2,35 @@ package com.shizq.bika.core.domain.filter
 
 import com.shizq.bika.core.model.ComicSummary
 
-/**
- * Feed 的强类型筛选条件。领域状态不再以异构 Map 作为事实来源。
- * [FilterSelections] 仅保留为旧 UI 的适配模型。
- */
+enum class ComicStatus(val finished: Boolean) {
+    Ongoing(false),
+    Finished(true),
+}
+
+data class IntRangeSpec(
+    val min: Int? = null,
+    val max: Int? = null,
+) {
+    init {
+        require(min != null || max != null) { "IntRangeSpec 至少需要一侧边界" }
+    }
+
+    operator fun contains(value: Int): Boolean =
+        (min == null || value >= min) && (max == null || value <= max)
+}
+
+/** Feed 的强类型筛选条件；不依赖 FilterGroup/FilterOption 等 UI 模型。 */
 data class FeedCriteria(
     val includedTopics: Set<String> = emptySet(),
     val excludedTopics: Set<String> = emptySet(),
-    val finishedStates: Set<Boolean> = emptySet(),
-    val episodeRanges: Set<FilterOption.CountRange> = emptySet(),
-    val pageRanges: Set<FilterOption.CountRange> = emptySet(),
+    val statuses: Set<ComicStatus> = emptySet(),
+    val episodeRanges: Set<IntRangeSpec> = emptySet(),
+    val pageRanges: Set<IntRangeSpec> = emptySet(),
 ) {
     val hasAnySelection: Boolean
         get() = includedTopics.isNotEmpty() ||
                 excludedTopics.isNotEmpty() ||
-                finishedStates.isNotEmpty() ||
+                statuses.isNotEmpty() ||
                 episodeRanges.isNotEmpty() ||
                 pageRanges.isNotEmpty()
 
@@ -28,63 +42,35 @@ data class FeedCriteria(
     fun toggleExcludedTopic(topic: String): FeedCriteria =
         copy(excludedTopics = excludedTopics.toggle(topic))
 
-    fun toggleFinishedState(finished: Boolean): FeedCriteria =
-        copy(finishedStates = finishedStates.toggle(finished))
+    fun toggleStatus(status: ComicStatus): FeedCriteria =
+        copy(statuses = statuses.toggle(status))
 
-    fun toggleEpisodeRange(range: FilterOption.CountRange): FeedCriteria =
+    fun toggleEpisodeRange(range: IntRangeSpec): FeedCriteria =
         copy(episodeRanges = episodeRanges.toggle(range))
 
-    fun togglePageRange(range: FilterOption.CountRange): FeedCriteria =
+    fun togglePageRange(range: IntRangeSpec): FeedCriteria =
         copy(pageRanges = pageRanges.toggle(range))
-
-    /** 旧 UI 兼容入口；新调用方应使用上面的强类型方法。 */
-    fun toggle(group: FilterGroup, option: FilterOption): FeedCriteria = when {
-        group is FilterGroup.Topic && option is FilterOption.Topic ->
-            toggleIncludedTopic(option.name)
-
-        group is FilterGroup.ExcludeTopic && option is FilterOption.Topic ->
-            toggleExcludedTopic(option.name)
-
-        group is FilterGroup.Status && option is FilterOption.Status ->
-            toggleFinishedState(option.finished)
-
-        group is FilterGroup.EpsRange && option is FilterOption.CountRange ->
-            toggleEpisodeRange(option)
-
-        group is FilterGroup.PagesRange && option is FilterOption.CountRange ->
-            togglePageRange(option)
-
-        else -> this
-    }
-
-    /** 旧通用 FilterChip 的只读 UI 投影。 */
-    fun toSelections(): FilterSelections = buildMap {
-        putIfNotEmpty(FilterGroup.Topic, includedTopics.map(FilterOption::Topic))
-        putIfNotEmpty(FilterGroup.ExcludeTopic, excludedTopics.map(FilterOption::Topic))
-        putIfNotEmpty(
-            FilterGroup.Status,
-            FilterGroup.Status.options
-                .filterIsInstance<FilterOption.Status>()
-                .filter { it.finished in finishedStates },
-        )
-        putIfNotEmpty(FilterGroup.EpsRange, episodeRanges.toList())
-        putIfNotEmpty(FilterGroup.PagesRange, pageRanges.toList())
-    }
 }
+
+data class GlobalContentPolicy(
+    val blockedTopicsEnabled: Boolean = false,
+    val blockedTopics: Set<String> = emptySet(),
+    val blockedTags: Set<String> = emptySet(),
+)
 
 /** DataStore 全局规则与页面条件编译后的不可变过滤策略。 */
 data class ComicFilterPolicy(
     val includedTopics: Set<String> = emptySet(),
     val excludedTopics: Set<String> = emptySet(),
-    val finishedStates: Set<Boolean> = emptySet(),
-    val episodeRanges: Set<FilterOption.CountRange> = emptySet(),
-    val pageRanges: Set<FilterOption.CountRange> = emptySet(),
+    val statuses: Set<ComicStatus> = emptySet(),
+    val episodeRanges: Set<IntRangeSpec> = emptySet(),
+    val pageRanges: Set<IntRangeSpec> = emptySet(),
     val blockedTags: Set<String> = emptySet(),
 ) {
     val isEmpty: Boolean
         get() = includedTopics.isEmpty() &&
                 excludedTopics.isEmpty() &&
-                finishedStates.isEmpty() &&
+                statuses.isEmpty() &&
                 episodeRanges.isEmpty() &&
                 pageRanges.isEmpty() &&
                 blockedTags.isEmpty()
@@ -96,7 +82,7 @@ data class ComicFilterPolicy(
         if (excludedTopics.isNotEmpty() && comic.categories.any(excludedTopics::contains)) {
             return false
         }
-        if (finishedStates.isNotEmpty() && comic.finished !in finishedStates) {
+        if (statuses.isNotEmpty() && statuses.none { it.finished == comic.finished }) {
             return false
         }
         if (episodeRanges.isNotEmpty() && episodeRanges.none { comic.epsCount in it }) {
@@ -117,28 +103,33 @@ data class ComicFilterPolicy(
 
 fun compileFilterPolicy(
     local: FeedCriteria,
-    globalTopicBlockEnabled: Boolean,
-    globalBlockedTopics: Set<String>,
-    blockedTags: Set<String>,
+    global: GlobalContentPolicy,
 ): ComicFilterPolicy = ComicFilterPolicy(
     includedTopics = local.includedTopics,
     excludedTopics = local.excludedTopics +
-            if (globalTopicBlockEnabled) globalBlockedTopics else emptySet(),
-    finishedStates = local.finishedStates,
+            if (global.blockedTopicsEnabled) global.blockedTopics else emptySet(),
+    statuses = local.statuses,
     episodeRanges = local.episodeRanges,
     pageRanges = local.pageRanges,
-    blockedTags = blockedTags,
+    blockedTags = global.blockedTags,
+)
+
+fun compileFilterPolicy(
+    local: FeedCriteria,
+    globalTopicBlockEnabled: Boolean,
+    globalBlockedTopics: Set<String>,
+    blockedTags: Set<String>,
+): ComicFilterPolicy = compileFilterPolicy(
+    local = local,
+    global = GlobalContentPolicy(
+        blockedTopicsEnabled = globalTopicBlockEnabled,
+        blockedTopics = globalBlockedTopics,
+        blockedTags = blockedTags,
+    ),
 )
 
 private fun <T> Set<T>.toggle(value: T): Set<T> =
     if (value in this) this - value else this + value
-
-private fun MutableMap<FilterGroup, List<FilterOption>>.putIfNotEmpty(
-    group: FilterGroup,
-    options: List<FilterOption>,
-) {
-    if (options.isNotEmpty()) put(group, options)
-}
 
 /** 用户已选中的筛选项。仅作为旧 UI 适配模型。 */
 typealias FilterSelections = Map<FilterGroup, List<FilterOption>>

@@ -1,9 +1,11 @@
 package com.shizq.bika.domain.filter
 
+import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.domain.filter.FilterSelections
+import com.shizq.bika.core.domain.filter.IntRangeSpec
 import com.shizq.bika.core.domain.filter.compileFilterPolicy
 import com.shizq.bika.core.domain.filter.customPagesRange
 import com.shizq.bika.core.domain.filter.hasAnySelection
@@ -275,14 +277,20 @@ class FeedFilterMatchingTest {
     }
 
     @Test
-    fun `强类型 toggle 拒绝分组与选项不匹配`() {
-        val original = FeedCriteria()
-        val result = original.toggle(
-            group = FilterGroup.Status,
-            option = FilterOption.Topic("NTR"),
+    fun `强类型条件支持状态与区间`() {
+        val policy = compileFilterPolicy(
+            local = FeedCriteria(
+                statuses = setOf(ComicStatus.Finished),
+                episodeRanges = setOf(IntRangeSpec(2, 5)),
+            ),
+            globalTopicBlockEnabled = false,
+            globalBlockedTopics = emptySet(),
+            blockedTags = emptySet(),
         )
 
-        assertEquals(original, result)
+        assertTrue(policy.matches(comic(finished = true, epsCount = 2)))
+        assertFalse(policy.matches(comic(finished = false, epsCount = 2)))
+        assertFalse(policy.matches(comic(finished = true, epsCount = 6)))
     }
 
     @Test

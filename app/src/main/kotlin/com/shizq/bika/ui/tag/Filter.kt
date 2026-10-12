@@ -42,30 +42,67 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shizq.bika.R
+import com.shizq.bika.core.domain.filter.ComicStatus
+import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.FilterGroup
 import com.shizq.bika.core.domain.filter.FilterOption
-import com.shizq.bika.core.domain.filter.FilterSelections
+import com.shizq.bika.core.domain.filter.IntRangeSpec
 import com.shizq.bika.core.domain.filter.customPagesRange
 
-fun FilterSelections.toFilterState(): FilterState = FilterState(
+fun FeedCriteria.toFilterState(): FilterState = FilterState(
     chips = FilterGroup.all.map { group ->
-        val selected = this[group].orEmpty()
+        val selected = selectedOptions(group)
         FilterChipState(
             group = group,
-            // 用户自定义区间不在 group.options 里，需并入以便渲染出可取消的选项
             options = group.options + selected.filterNot { it in group.options },
             selected = selected,
         )
     },
 )
 
+private fun FeedCriteria.selectedOptions(group: FilterGroup): List<FilterOption> = when (group) {
+    FilterGroup.Topic -> includedTopics.map(FilterOption::Topic)
+    FilterGroup.ExcludeTopic -> excludedTopics.map(FilterOption::Topic)
+    FilterGroup.Status -> statuses.map { status ->
+        FilterOption.Status(
+            finished = status.finished,
+            label = if (status == ComicStatus.Finished) "完结" else "连载",
+        )
+    }
+
+    FilterGroup.EpsRange -> episodeRanges.map { it.toOption(group) }
+    FilterGroup.PagesRange -> pageRanges.map { it.toOption(group) }
+}
+
+private fun IntRangeSpec.toOption(group: FilterGroup): FilterOption.CountRange =
+    group.options
+        .filterIsInstance<FilterOption.CountRange>()
+        .firstOrNull { it.min == min && it.max == max }
+        ?: FilterOption.CountRange(
+            min = min,
+            max = max,
+            label = when {
+                min != null && max != null -> "指定数量: $min - $max 页"
+                min != null -> "指定数量: >= $min 页"
+                else -> "指定数量: <= $max 页"
+            },
+        )
+
 @Composable
-fun rememberFilterState(selections: FilterSelections): FilterState = remember(selections) {
-    selections.toFilterState()
+fun rememberFilterState(criteria: FeedCriteria): FilterState = remember(criteria) {
+    criteria.toFilterState()
 }
 
 @Immutable
 data class FilterState(val chips: List<FilterChipState>)
+
+sealed interface FeedFilterChange {
+    data class IncludedTopic(val topic: String) : FeedFilterChange
+    data class ExcludedTopic(val topic: String) : FeedFilterChange
+    data class Status(val status: ComicStatus) : FeedFilterChange
+    data class EpisodeRange(val range: IntRangeSpec) : FeedFilterChange
+    data class PageRange(val range: IntRangeSpec) : FeedFilterChange
+}
 
 @Immutable
 data class FilterChipState(
@@ -75,6 +112,27 @@ data class FilterChipState(
 ) {
     val label: String get() = group.label
     val hasSelection: Boolean get() = selected.isNotEmpty()
+
+    fun changeFor(option: FilterOption): FeedFilterChange = when {
+        group is FilterGroup.Topic && option is FilterOption.Topic ->
+            FeedFilterChange.IncludedTopic(option.name)
+
+        group is FilterGroup.ExcludeTopic && option is FilterOption.Topic ->
+            FeedFilterChange.ExcludedTopic(option.name)
+
+        group is FilterGroup.Status && option is FilterOption.Status ->
+            FeedFilterChange.Status(
+                if (option.finished) ComicStatus.Finished else ComicStatus.Ongoing
+            )
+
+        group is FilterGroup.EpsRange && option is FilterOption.CountRange ->
+            FeedFilterChange.EpisodeRange(IntRangeSpec(option.min, option.max))
+
+        group is FilterGroup.PagesRange && option is FilterOption.CountRange ->
+            FeedFilterChange.PageRange(IntRangeSpec(option.min, option.max))
+
+        else -> error("Filter option $option does not belong to group $group")
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

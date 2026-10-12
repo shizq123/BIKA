@@ -11,6 +11,7 @@ import androidx.paging.cachedIn
 import androidx.paging.filter
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.filter.ComicFilterPolicy
+import com.shizq.bika.core.domain.filter.GlobalContentPolicy
 import com.shizq.bika.core.domain.filter.compileFilterPolicy
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
@@ -61,9 +62,11 @@ class FeedViewModel @AssistedInject constructor(
             data = FeedData(
                 query = query,
                 favoriteTags = filter.favoriteTags,
-                excludeTopicsGlobal = filter.globalTopicBlockEnabled,
-                globalBlockedTopics = filter.globalBlockedTopics.toSet(),
-                blockedTags = filter.blockedTags,
+                globalPolicy = GlobalContentPolicy(
+                    blockedTopicsEnabled = filter.globalTopicBlockEnabled,
+                    blockedTopics = filter.globalBlockedTopics.toSet(),
+                    blockedTags = filter.blockedTags,
+                ),
             ),
             preferencesReady = true,
         )
@@ -126,9 +129,7 @@ class FeedViewModel @AssistedInject constructor(
         .map { state ->
             compileFilterPolicy(
                 local = state.data.query.criteria,
-                globalTopicBlockEnabled = state.data.excludeTopicsGlobal,
-                globalBlockedTopics = state.data.globalBlockedTopics,
-                blockedTags = state.data.blockedTags,
+                global = state.data.globalPolicy,
             )
         }
         .distinctUntilChanged()
@@ -156,8 +157,8 @@ class FeedViewModel @AssistedInject constructor(
                 it.copy(criteria = it.criteria.toggleExcludedTopic(action.topic))
             }
 
-            is FeedAction.ToggleFinishedState -> query.update {
-                it.copy(criteria = it.criteria.toggleFinishedState(action.finished))
+            is FeedAction.ToggleStatus -> query.update {
+                it.copy(criteria = it.criteria.toggleStatus(action.status))
             }
 
             is FeedAction.ToggleEpisodeRange -> query.update {

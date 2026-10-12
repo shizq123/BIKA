@@ -62,8 +62,6 @@ import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.R
 import com.shizq.bika.core.domain.filter.FeedCriteria
-import com.shizq.bika.core.domain.filter.FilterGroup
-import com.shizq.bika.core.domain.filter.FilterOption
 import com.shizq.bika.core.model.ComicSummary
 
 import com.shizq.bika.core.model.FavoriteTag
@@ -75,7 +73,9 @@ import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.AddFavoriteTagResult
 import com.shizq.bika.navigation.RenameFavoriteTagResult
+import com.shizq.bika.ui.tag.FeedFilterChange
 import com.shizq.bika.ui.tag.FilterChip
+
 import com.shizq.bika.ui.tag.FilterChipState
 import com.shizq.bika.ui.tag.rememberFilterState
 import kotlin.uuid.Uuid
@@ -272,7 +272,8 @@ private fun FeedContent(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val refreshLoadState = comics.loadState.refresh
     val isRefreshing = refreshLoadState is LoadState.Loading && comics.itemCount > 0
-    val filterState = rememberFilterState(state.filterSelections)
+    val filterState = rememberFilterState(state.query.criteria)
+
     // TODO: 可以考虑移除？ 
     val displayedContentKey = remember(state) {
         DisplayedContentKey(
@@ -324,8 +325,8 @@ private fun FeedContent(
                         }
                         FilterHeader(
                             chips = filterState.chips,
-                            onFilterChanged = { group, option ->
-                                onAction(option.toFeedAction(group))
+                            onFilterChanged = { change ->
+                                onAction(change.toFeedAction())
                             },
                             summary = feedSummary(
                                 state = state,
@@ -349,7 +350,8 @@ private fun FeedContent(
                 metadataLoading = !state.preferencesReady,
 
                 isClientFiltered = state.query.criteria.hasAnySelection ||
-                        state.excludeTopicsGlobal || state.data.blockedTags.isNotEmpty(),
+                        state.data.globalPolicy.blockedTopicsEnabled ||
+                        state.data.globalPolicy.blockedTags.isNotEmpty(),
 
                 onRetry = comics::retry,
                 canClearFilters = state.query.criteria.hasAnySelection,
@@ -377,23 +379,12 @@ private data class DisplayedContentKey(
     val criteria: FeedCriteria,
 )
 
-private fun FilterOption.toFeedAction(group: FilterGroup): FeedAction = when {
-    group is FilterGroup.Topic && this is FilterOption.Topic ->
-        FeedAction.ToggleIncludedTopic(name)
-
-    group is FilterGroup.ExcludeTopic && this is FilterOption.Topic ->
-        FeedAction.ToggleExcludedTopic(name)
-
-    group is FilterGroup.Status && this is FilterOption.Status ->
-        FeedAction.ToggleFinishedState(finished)
-
-    group is FilterGroup.EpsRange && this is FilterOption.CountRange ->
-        FeedAction.ToggleEpisodeRange(this)
-
-    group is FilterGroup.PagesRange && this is FilterOption.CountRange ->
-        FeedAction.TogglePageRange(this)
-
-    else -> error("Filter option $this does not belong to group $group")
+private fun FeedFilterChange.toFeedAction(): FeedAction = when (this) {
+    is FeedFilterChange.IncludedTopic -> FeedAction.ToggleIncludedTopic(topic)
+    is FeedFilterChange.ExcludedTopic -> FeedAction.ToggleExcludedTopic(topic)
+    is FeedFilterChange.Status -> FeedAction.ToggleStatus(status)
+    is FeedFilterChange.EpisodeRange -> FeedAction.ToggleEpisodeRange(range)
+    is FeedFilterChange.PageRange -> FeedAction.TogglePageRange(range)
 }
 
 @OptIn(ExperimentalSharedTransitionApi::class)
@@ -590,7 +581,8 @@ private fun RefreshErrorBanner(onRetry: () -> Unit) {
 @Composable
 private fun FilterHeader(
     chips: List<FilterChipState>,
-    onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
+    onFilterChanged: (FeedFilterChange) -> Unit,
+
     summary: String,
     currentSortOrder: SortOrder,
     excludeTopicsGlobal: Boolean,
@@ -629,7 +621,8 @@ private fun FilterHeader(
                 modifier = Modifier.weight(1f),
             )
 
-            if (selectedCount > 0 || excludeTopicsGlobal) {
+            if (selectedCount > 0) {
+
                 TextButton(onClick = onClearFilters) {
                     Text(stringResource(R.string.feed_clear_filters))
                 }
@@ -650,7 +643,10 @@ private fun FilterHeader(
             ) { chipState ->
                 FilterChip(
                     state = chipState,
-                    onSelectionChanged = { option -> onFilterChanged(chipState.group, option) },
+                    onSelectionChanged = { option ->
+                        onFilterChanged(chipState.changeFor(option))
+                    },
+
                     excludeTopicsGlobal = excludeTopicsGlobal,
                     onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
                 )
@@ -677,8 +673,11 @@ private fun feedSummary(
 ): String = when {
     refreshLoadState is LoadState.Loading -> stringResource(R.string.feed_refreshing)
     refreshLoadState is LoadState.Error && itemCount == 0 -> stringResource(R.string.feed_load_failed)
-    state.filterSelections.isNotEmpty() || state.data.blockedTags.isNotEmpty() ->
+    state.query.criteria.hasAnySelection ||
+            state.data.globalPolicy.blockedTopicsEnabled ||
+            state.data.globalPolicy.blockedTags.isNotEmpty() ->
         stringResource(R.string.feed_filtered_count, itemCount)
+
 
     else -> stringResource(R.string.feed_total_count, itemCount)
 }
