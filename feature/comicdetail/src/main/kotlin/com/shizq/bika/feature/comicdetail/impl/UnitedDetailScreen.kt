@@ -10,17 +10,14 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -58,14 +55,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -87,10 +81,29 @@ import com.valentinilk.shimmer.rememberShimmer
 import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.launch
 
+private data class ComicDetailNavigationActions(
+    val onBack: () -> Unit,
+    val onRead: (id: String, chapterOrder: Int) -> Unit,
+    val onRecommendedComicClick: (String) -> Unit,
+    val onTranslateClick: (String) -> Unit,
+)
+
+private data class ComicDetailInteractionActions(
+    val dispatch: (UnitedDetailsAction) -> Unit,
+    val onTagClick: (String) -> Unit,
+    val onAuthorClick: (String) -> Unit,
+    val onUploaderClick: (String, String) -> Unit,
+)
+
+private data class ComicDetailDownloadActions(
+    val onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
+    val onEpisodeDownload: (String, String, String) -> Unit,
+)
+
 @OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ComicDetailScreen(
-    navigationToReader: (id: String, index: Int) -> Unit,
+    navigationToReader: (id: String, chapterOrder: Int) -> Unit,
     onForYouClick: (String) -> Unit,
     navigationToFeed: (String) -> Unit,
     onTagClick: (String) -> Unit,
@@ -107,7 +120,6 @@ fun ComicDetailScreen(
     viewModel: ComicInfoViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
-    val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
     val downloadTasks by viewModel.downloadTasks.collectAsStateWithLifecycle()
     val chapterProgress by viewModel.chapterProgress.collectAsStateWithLifecycle()
 
@@ -119,41 +131,53 @@ fun ComicDetailScreen(
         titleSharedElementKey = titleSharedElementKey,
         sharedTransitionScope = sharedTransitionScope,
         animatedVisibilityScope = animatedVisibilityScope,
-        episodes = episodes,
-        chapterProgress = chapterProgress,
-        onBackClick = onBackClick,
-        navigationToReader = navigationToReader,
-        onRecommendedComicClick = onForYouClick,
-        dispatch = viewModel::dispatch,
-        onTranslateClick = navigationToFeed,
-        onDownloadWholeComic = { title, cover, epsCount ->
-            viewModel.downloadWholeComic(title, cover, epsCount)
-        },
-        onTagClick = onTagClick,
-        navigationToEpisodeDownload = navigationToEpisodeDownload,
         downloadTasks = downloadTasks,
-        onAuthorClick = onAuthorClick,
-        onUploaderClick = onUploaderClick,
+        chapterProgress = chapterProgress,
+        episodesContent = {
+            val detail = (state as? UnitedDetailsUiState.Content)?.detail
+            if (detail != null) {
+                val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
+                EpisodesPage(
+                    episodes = episodes,
+                    chapterProgress = chapterProgress,
+                    navigateToReader = { order -> navigationToReader(detail.id, order) },
+                    onDownloadSelectionClick = {
+                        navigationToEpisodeDownload(detail.id, detail.title, detail.cover)
+                    },
+                )
+            }
+        },
+        navigationActions = ComicDetailNavigationActions(
+            onBack = onBackClick,
+            onRead = navigationToReader,
+            onRecommendedComicClick = onForYouClick,
+            onTranslateClick = navigationToFeed,
+        ),
+        interactionActions = ComicDetailInteractionActions(
+            dispatch = viewModel::dispatch,
+            onTagClick = onTagClick,
+            onAuthorClick = onAuthorClick,
+            onUploaderClick = onUploaderClick,
+        ),
+        downloadActions = ComicDetailDownloadActions(
+            onDownloadWholeComic = { title, cover, epsCount ->
+                viewModel.downloadWholeComic(title, cover, epsCount)
+            },
+            onEpisodeDownload = navigationToEpisodeDownload,
+        ),
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
-fun ComicDetailContent(
+private fun ComicDetailContent(
     unitedState: UnitedDetailsUiState,
-    episodes: LazyPagingItems<Chapter>,
+    episodesContent: @Composable () -> Unit,
     downloadTasks: List<DownloadTask>,
     chapterProgress: List<ChapterProgressEntity>,
-    onBackClick: () -> Unit,
-    navigationToReader: (id: String, index: Int) -> Unit,
-    onRecommendedComicClick: (String) -> Unit,
-    dispatch: (UnitedDetailsAction) -> Unit,
-    onTranslateClick: (String) -> Unit,
-    onAuthorClick: (String) -> Unit,
-    onUploaderClick: (String, String) -> Unit,
-    onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
-    onTagClick: (String) -> Unit,
-    navigationToEpisodeDownload: (String, String, String) -> Unit,
+    navigationActions: ComicDetailNavigationActions,
+    interactionActions: ComicDetailInteractionActions,
+    downloadActions: ComicDetailDownloadActions,
     modifier: Modifier = Modifier,
     previewCoverUrl: String,
     previewTitle: String,
@@ -182,12 +206,20 @@ fun ComicDetailContent(
             title = previewTitle,
             coverModifier = sharedCoverModifier,
             titleModifier = sharedTitleModifier,
-            onBackClick = onBackClick,
+            onBackClick = navigationActions.onBack,
             modifier = modifier,
         )
 
-        is UnitedDetailsUiState.Error -> ErrorState {
-            dispatch(UnitedDetailsAction.Retry)
+        is UnitedDetailsUiState.Error -> ComicDetailScaffold(
+            onBackClick = navigationActions.onBack,
+            modifier = modifier,
+        ) { innerPadding ->
+            ErrorState(
+                modifier = Modifier.padding(innerPadding),
+                onRetry = {
+                    interactionActions.dispatch(UnitedDetailsAction.Retry)
+                },
+            )
         }
 
         is UnitedDetailsUiState.Content -> ComicDetailLoadedContent(
@@ -198,16 +230,9 @@ fun ComicDetailContent(
             previewTitle = previewTitle,
             coverModifier = sharedCoverModifier,
             titleModifier = sharedTitleModifier,
-            onBackClick = onBackClick,
-            navigationToReader = navigationToReader,
-            onRecommendedComicClick = onRecommendedComicClick,
-            dispatch = dispatch,
-            onTranslateClick = onTranslateClick,
-            onAuthorClick = onAuthorClick,
-            onUploaderClick = onUploaderClick,
-            onDownloadWholeComic = onDownloadWholeComic,
-            onTagClick = onTagClick,
-            navigationToEpisodeDownload = navigationToEpisodeDownload,
+            actions = navigationActions,
+            interactions = interactionActions,
+            downloads = downloadActions,
             modifier = modifier,
         )
     }
@@ -284,22 +309,15 @@ private fun ComicDetailBodyLayout(
 @Composable
 private fun ComicDetailLoadedContent(
     state: UnitedDetailsUiState.Content,
-    episodes: LazyPagingItems<Chapter>,
+    episodesContent: @Composable () -> Unit,
     downloadTasks: List<DownloadTask>,
     chapterProgress: List<ChapterProgressEntity>,
     previewTitle: String,
     coverModifier: Modifier,
     titleModifier: Modifier,
-    onBackClick: () -> Unit,
-    navigationToReader: (id: String, index: Int) -> Unit,
-    onRecommendedComicClick: (String) -> Unit,
-    dispatch: (UnitedDetailsAction) -> Unit,
-    onTranslateClick: (String) -> Unit,
-    onAuthorClick: (String) -> Unit,
-    onUploaderClick: (String, String) -> Unit,
-    onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
-    onTagClick: (String) -> Unit,
-    navigationToEpisodeDownload: (String, String, String) -> Unit,
+    actions: ComicDetailNavigationActions,
+    interactions: ComicDetailInteractionActions,
+    downloads: ComicDetailDownloadActions,
     modifier: Modifier = Modifier,
 ) {
     val detail = state.detail
@@ -314,7 +332,7 @@ private fun ComicDetailLoadedContent(
     val scope = rememberCoroutineScope()
 
     ComicDetailScaffold(
-        onBackClick = onBackClick,
+        onBackClick = actions.onBack,
         topBarTitle = {
             Text(
                 text = previewTitle,
@@ -328,11 +346,15 @@ private fun ComicDetailLoadedContent(
                 isLiked = detail.isLiked,
                 isDownloaded = isDownloaded,
                 hasReadProgress = lastReadChapter != null,
-                onRead = { navigationToReader(detail.id, readOrder) },
-                onToggleFavourite = { dispatch(UnitedDetailsAction.ToggleFavorite) },
-                onToggleLike = { dispatch(UnitedDetailsAction.ToggleLike) },
+                onRead = { actions.onRead(detail.id, readOrder) },
+                onToggleFavourite = {
+                    interactions.dispatch(UnitedDetailsAction.ToggleFavorite)
+                },
+                onToggleLike = {
+                    interactions.dispatch(UnitedDetailsAction.ToggleLike)
+                },
                 onDownloadWholeComic = {
-                    onDownloadWholeComic(detail.title, detail.cover, detail.epsCount)
+                    downloads.onDownloadWholeComic(detail.title, detail.cover, detail.epsCount)
                 },
             )
         },
@@ -349,43 +371,68 @@ private fun ComicDetailLoadedContent(
                 )
             },
             body = {
-                HorizontalPager(
-                    state = pagerState,
-                    modifier = Modifier.fillMaxSize(),
-                    verticalAlignment = Alignment.Top,
-                    key = { it },
-                ) { page ->
-                    when (PageTab.entries[page]) {
-                        PageTab.DETAIL -> DetailTab(
-                            detail = detail,
-                            recommendations = state.recommendations,
-                            coverModifier = coverModifier,
-                            titleModifier = titleModifier,
-                            onRecommendedComicClick = onRecommendedComicClick,
-                            onTranslateClick = onTranslateClick,
-                            navigationToTagBlock = onTagClick,
-                            onAuthorClick = onAuthorClick,
-                            onUploaderClick = onUploaderClick,
-                        )
-
-                        PageTab.EPISODES -> EpisodesPage(
-                            episodes = episodes,
-                            chapterProgress = chapterProgress,
-                            navigateToReader = { navigationToReader(detail.id, it) },
-                            onDownloadSelectionClick = {
-                                navigationToEpisodeDownload(detail.id, detail.title, detail.cover)
-                            },
-                        )
-
-                        PageTab.COMMENT -> CommentsTab(comicId = detail.id)
-                    }
-                }
+                ComicDetailPager(
+                    pagerState = pagerState,
+                    state = state,
+                    episodes = episodes,
+                    chapterProgress = chapterProgress,
+                    coverModifier = coverModifier,
+                    titleModifier = titleModifier,
+                    actions = actions,
+                    interactions = interactions,
+                    downloads = downloads,
+                )
             },
         )
     }
 }
 
-// TODO: 这部分空间要均分，出了开始阅读 
+@Composable
+private fun ComicDetailPager(
+    pagerState: androidx.compose.foundation.pager.PagerState,
+    state: UnitedDetailsUiState.Content,
+    episodesContent: @Composable () -> Unit,
+    chapterProgress: List<ChapterProgressEntity>,
+    coverModifier: Modifier,
+    titleModifier: Modifier,
+    actions: ComicDetailNavigationActions,
+    interactions: ComicDetailInteractionActions,
+    downloads: ComicDetailDownloadActions,
+) {
+    val detail = state.detail
+
+    HorizontalPager(
+        state = pagerState,
+        modifier = Modifier.fillMaxSize(),
+        verticalAlignment = Alignment.Top,
+        key = { it },
+    ) { page ->
+        when (PageTab.entries[page]) {
+            PageTab.DETAIL -> DetailTab(
+                detail = state.detail,
+                recommendations = state.recommendations,
+                coverModifier = coverModifier,
+                titleModifier = titleModifier,
+                onRecommendedComicClick = actions.onRecommendedComicClick,
+                onTranslateClick = actions.onTranslateClick,
+                navigationToTagBlock = interactions.onTagClick,
+                onAuthorClick = interactions.onAuthorClick,
+                onUploaderClick = interactions.onUploaderClick,
+            )
+
+            PageTab.EPISODES -> EpisodesPage(
+                episodes = episodes,
+                chapterProgress = chapterProgress,
+                navigateToReader = { actions.onRead(detail.id, it) },
+                onDownloadSelectionClick = {
+                    downloads.onEpisodeDownload(detail.id, detail.title, detail.cover)
+                },
+            )
+
+            PageTab.COMMENT -> CommentsTab(comicId = detail.id)
+        }
+    }
+}
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ComicDetailBottomAppBar(
@@ -446,9 +493,9 @@ private fun ComicDetailBottomAppBar(
 @Composable
 private fun TooltipIconButton(
     tooltipText: String,
-    icon: ImageVector,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     contentDescription: String,
-    tint: Color,
+    tint: androidx.compose.ui.graphics.Color,
     onClick: () -> Unit,
 ) {
     TooltipBox(
@@ -471,29 +518,6 @@ private fun TooltipIconButton(
         }
     }
 }
-
-@Composable
-private fun ComicDetailBottomAppBarSkeleton(shimmer: Shimmer) {
-    BottomAppBar {
-        repeat(3) {
-            SkeletonBlock(
-                shimmer = shimmer,
-                modifier = Modifier.size(48.dp),
-                shape = CircleShape,
-            )
-            Spacer(Modifier.width(4.dp))
-        }
-        Spacer(Modifier.weight(1f))
-        SkeletonBlock(
-            shimmer = shimmer,
-            modifier = Modifier
-                .width(132.dp)
-                .height(56.dp),
-            shape = RoundedCornerShape(16.dp),
-        )
-    }
-}
-
 @Composable
 private fun ComicDetailInitializeContent(
     coverUrl: String,
@@ -544,133 +568,12 @@ private fun ComicDetailInitializeContent(
 }
 
 @Composable
-private fun ComicDetailHeroSkeleton(
-    coverUrl: String,
-    title: String,
-    coverModifier: Modifier,
-    titleModifier: Modifier,
-    shimmer: Shimmer,
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(318.dp),
-    ) {
-        if (coverUrl.isNotBlank()) {
-            RetryableAsyncImage(
-                model = coverUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .alpha(0.42f),
-            )
-        } else {
-            SkeletonBlock(
-                shimmer = shimmer,
-                modifier = Modifier.fillMaxSize(),
-                shape = RoundedCornerShape(0.dp),
-            )
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.12f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-                            MaterialTheme.colorScheme.surface,
-                        ),
-                    ),
-                ),
-        )
-
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-            verticalAlignment = Alignment.Bottom,
-        ) {
-            if (coverUrl.isNotBlank()) {
-                RetryableAsyncImage(
-                    model = coverUrl,
-                    contentDescription = title,
-                    contentScale = ContentScale.Crop,
-                    modifier = coverModifier
-                        .width(122.dp)
-                        .height(166.dp)
-                        .clip(RoundedCornerShape(14.dp)),
-                )
-            } else {
-                SkeletonBlock(
-                    shimmer = shimmer,
-                    modifier = coverModifier
-                        .width(122.dp)
-                        .height(166.dp),
-                    shape = RoundedCornerShape(14.dp),
-                )
-            }
-
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                SkeletonBlock(
-                    shimmer = shimmer,
-                    modifier = Modifier
-                        .width(58.dp)
-                        .height(26.dp),
-                    shape = RoundedCornerShape(50),
-                )
-                if (title.isNotBlank()) {
-                    Text(
-                        text = title,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.ExtraBold,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = titleModifier,
-                    )
-                } else {
-                    SkeletonBlock(
-                        shimmer = shimmer,
-                        modifier = titleModifier
-                            .fillMaxWidth()
-                            .height(28.dp),
-                    )
-                    SkeletonBlock(
-                        shimmer = shimmer,
-                        modifier = Modifier
-                            .fillMaxWidth(0.68f)
-                            .height(28.dp),
-                    )
-                }
-                SkeletonBlock(
-                    shimmer = shimmer,
-                    modifier = Modifier
-                        .fillMaxWidth(0.76f)
-                        .height(14.dp),
-                )
-                SkeletonBlock(
-                    shimmer = shimmer,
-                    modifier = Modifier
-                        .fillMaxWidth(0.52f)
-                        .height(14.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        SkeletonCard(height = 76.dp) {
+        SkeletonCard {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
@@ -686,7 +589,7 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
             }
         }
 
-        SkeletonCard(height = 132.dp) {
+        SkeletonCard {
             SkeletonBlock(
                 shimmer = shimmer, modifier = Modifier
                     .width(54.dp)
@@ -707,7 +610,7 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
             )
         }
 
-        SkeletonCard(height = 112.dp) {
+        SkeletonCard {
             SkeletonBlock(
                 shimmer = shimmer, modifier = Modifier
                     .width(54.dp)
@@ -725,7 +628,7 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
             }
         }
 
-        SkeletonCard(height = 142.dp) {
+        SkeletonCard {
             SkeletonBlock(
                 shimmer = shimmer, modifier = Modifier
                     .width(72.dp)
@@ -755,13 +658,11 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
 
 @Composable
 private fun SkeletonCard(
-    height: Dp,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .height(height)
             .clip(RoundedCornerShape(20.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerLow)
             .padding(18.dp),

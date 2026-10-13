@@ -32,7 +32,7 @@ fun EpisodesPage(
     episodes: LazyPagingItems<Chapter>,
     modifier: Modifier = Modifier,
     chapterProgress: List<ChapterProgressEntity> = emptyList(),
-    navigateToReader: (index: Int) -> Unit = { _ -> },
+    navigateToReader: (chapterOrder: Int) -> Unit = { _ -> },
     onDownloadSelectionClick: () -> Unit = {},
 ) {
 
