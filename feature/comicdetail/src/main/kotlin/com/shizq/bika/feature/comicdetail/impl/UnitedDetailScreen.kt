@@ -517,7 +517,7 @@ private fun ComicDetailHeroSkeleton(
         AsyncImage(
             model = coverUrl,
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.Fit,
             modifier = coverModifier
                 .width(122.dp)
                 .height(166.dp)

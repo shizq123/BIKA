@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -51,7 +50,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.shizq.bika.core.ui.RetryableAsyncImage
+import coil3.compose.AsyncImage
 import com.shizq.bika.feature.comicdetail.impl.ComicDetail
 import com.shizq.bika.feature.comicdetail.impl.ComicSummary
 import kotlin.time.Instant
@@ -156,18 +155,15 @@ private fun HeroHeader(
     coverModifier: Modifier = Modifier,
     titleModifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 188.dp),
-    ) {
-        // 背景只作为覆盖层，不参与 Hero 的测量，避免共享封面被固定头图高度向下推。
-        RetryableAsyncImage(
+    Box(modifier = Modifier.fillMaxWidth()) {
+        // 背景不参与 Hero 的测量，只在前景内容确定的区域内完整显示。
+        AsyncImage(
             model = detail.cover,
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.Fit,
             modifier = Modifier
                 .matchParentSize()
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
                 .alpha(0.42f),
         )
         Box(
@@ -191,10 +187,10 @@ private fun HeroHeader(
             horizontalArrangement = Arrangement.spacedBy(18.dp),
             verticalAlignment = Alignment.Top,
         ) {
-            RetryableAsyncImage(
+            AsyncImage(
                 model = detail.cover,
                 contentDescription = detail.title,
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
                 modifier = coverModifier
                     .width(122.dp)
                     .height(166.dp)
@@ -355,7 +351,7 @@ private fun RecommendationsCard(
                         .clickable { onComicClick(comic.id) },
                     verticalArrangement = Arrangement.spacedBy(7.dp),
                 ) {
-                    RetryableAsyncImage(
+                    AsyncImage(
                         model = comic.coverUrl,
                         contentDescription = comic.title,
                         contentScale = ContentScale.Crop,
