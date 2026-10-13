@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -158,20 +159,20 @@ private fun HeroHeader(
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(318.dp),
+            .heightIn(min = 188.dp),
     ) {
-        // 用封面做背景，配合渐变遮罩制造沉浸式头图。
+        // 背景只作为覆盖层，不参与 Hero 的测量，避免共享封面被固定头图高度向下推。
         RetryableAsyncImage(
             model = detail.cover,
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .alpha(0.42f),
         )
         Box(
             modifier = Modifier
-                .fillMaxSize()
+                .matchParentSize()
                 .background(
                     Brush.verticalGradient(
                         colors = listOf(
@@ -185,10 +186,10 @@ private fun HeroHeader(
 
         Row(
             modifier = Modifier
-                .align(Alignment.BottomStart)
-                .padding(start = 20.dp, end = 20.dp, bottom = 20.dp),
+                .align(Alignment.TopStart)
+                .padding(horizontal = 20.dp, vertical = 20.dp),
             horizontalArrangement = Arrangement.spacedBy(18.dp),
-            verticalAlignment = Alignment.Bottom,
+            verticalAlignment = Alignment.Top,
         ) {
             RetryableAsyncImage(
                 model = detail.cover,
