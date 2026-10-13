@@ -326,7 +326,7 @@ private fun ComicDetailLoadedContent(
             ComicDetailBottomAppBar(
                 isFavourited = detail.isFavourited,
                 isLiked = detail.isLiked,
-                isDownloaded = controls.isDownloaded,
+                downloadState = controls.downloadState,
                 hasReadProgress = controls.hasReadProgress,
                 onRead = { actions.onRead(detail.id, controls.resumeChapterOrder) },
                 onToggleFavourite = {
@@ -415,7 +415,7 @@ private fun ComicDetailPager(
 private fun ComicDetailBottomAppBar(
     isFavourited: Boolean,
     isLiked: Boolean,
-    isDownloaded: Boolean,
+    downloadState: ComicDownloadState,
     hasReadProgress: Boolean,
     onRead: () -> Unit,
     onToggleFavourite: () -> Unit,
@@ -441,11 +441,22 @@ private fun ComicDetailBottomAppBar(
                 onClick = onToggleLike,
             )
             TooltipIconButton(
-                tooltipText = if (isDownloaded) "漫画已下载，点击重新下载" else "下载整本漫画",
+                tooltipText = when (downloadState) {
+                    ComicDownloadState.NotDownloaded -> "下载整本漫画"
+                    is ComicDownloadState.Partial -> "继续下载（${downloadState.completedChapters}/${downloadState.expectedChapters}）"
+                    is ComicDownloadState.Downloaded -> "漫画已下载，点击重新下载"
+                },
                 icon = Icons.Filled.Download,
-                contentDescription = if (isDownloaded) "重新下载" else "下载整本漫画",
-                tint = if (isDownloaded) MaterialTheme.colorScheme.secondary
-                else LocalContentColor.current,
+                contentDescription = when (downloadState) {
+                    ComicDownloadState.NotDownloaded -> "下载整本漫画"
+                    is ComicDownloadState.Partial -> "继续下载漫画"
+                    is ComicDownloadState.Downloaded -> "重新下载"
+                },
+                tint = when (downloadState) {
+                    ComicDownloadState.NotDownloaded -> LocalContentColor.current
+                    is ComicDownloadState.Partial -> MaterialTheme.colorScheme.primary
+                    is ComicDownloadState.Downloaded -> MaterialTheme.colorScheme.secondary
+                },
                 onClick = onDownloadWholeComic,
             )
         },
