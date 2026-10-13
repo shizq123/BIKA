@@ -62,7 +62,6 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.ui.ComicSharedElementKey
 import com.shizq.bika.core.ui.ErrorState
@@ -71,6 +70,7 @@ import com.shizq.bika.feature.comicdetail.impl.comments.CommentsTab
 import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
 import com.shizq.bika.feature.comicdetail.impl.detail.PageTab
 import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesRoute
+import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesViewModel
 import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.ShimmerBounds
 import com.valentinilk.shimmer.rememberShimmer
@@ -112,7 +112,8 @@ fun ComicDetailScreen(
     titleSharedElementKey: ComicSharedElementKey,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
-    viewModel: ComicInfoViewModel = hiltViewModel(),
+    viewModel: ComicInfoViewModel,
+    episodesViewModel: EpisodesViewModel,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val controls by viewModel.controls.collectAsStateWithLifecycle()
@@ -131,7 +132,7 @@ fun ComicDetailScreen(
             val detail = (state as? UnitedDetailsUiState.Content)?.detail
             if (detail != null) {
                 EpisodesRoute(
-                    episodesFlow = viewModel.episodesFlow,
+                    episodesFlow = episodesViewModel.episodesFlow,
                     chapterProgress = chapterProgress,
                     navigateToReader = { order -> navigationToReader(detail.id, order) },
                     onDownloadSelectionClick = {

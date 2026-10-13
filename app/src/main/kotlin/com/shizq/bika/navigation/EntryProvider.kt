@@ -25,6 +25,7 @@ import com.shizq.bika.feature.comicdetail.impl.ComicDetailScreen
 import com.shizq.bika.feature.comicdetail.impl.ComicInfoViewModel
 import com.shizq.bika.feature.comicdetail.impl.download.EpisodeDownloadSheet
 import com.shizq.bika.feature.comicdetail.impl.download.EpisodeDownloadViewModel
+import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesViewModel
 import com.shizq.bika.feature.comicdetail.impl.tag.TagBlockDialog
 import com.shizq.bika.feature.reader.impl.ReaderScreen
 import com.shizq.bika.feature.reader.impl.ReaderViewModel
@@ -274,7 +275,12 @@ fun EntryProviderScope<NavKey>.featureSection(
         val id = key.id
         ComicDetailScreen(
             viewModel = hiltViewModel<ComicInfoViewModel, ComicInfoViewModel.Factory>(
-                key = id,
+                key = "comic_detail_$id",
+            ) { factory ->
+                factory.create(id)
+            },
+            episodesViewModel = hiltViewModel<EpisodesViewModel, EpisodesViewModel.Factory>(
+                key = "comic_episodes_$id",
             ) { factory ->
                 factory.create(id)
             },
