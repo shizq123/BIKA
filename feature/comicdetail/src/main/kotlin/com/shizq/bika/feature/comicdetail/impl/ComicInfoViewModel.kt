@@ -69,7 +69,11 @@ class ComicInfoViewModel @AssistedInject constructor(
         val detail = (detailState as? UnitedDetailsUiState.Content)?.detail
         val lastRead = progress.maxByOrNull { it.lastReadAt }
         ComicDetailControlsState(
-            isDownloaded = detail != null && isComicFullyDownloaded(tasks, detail.epsCount),
+            downloadState = if (detail == null) {
+                ComicDownloadState.NotDownloaded
+            } else {
+                resolveComicDownloadState(tasks, detail.epsCount)
+            },
             resumeChapterOrder = lastRead?.chapterId ?: 1,
             hasReadProgress = lastRead != null,
         )

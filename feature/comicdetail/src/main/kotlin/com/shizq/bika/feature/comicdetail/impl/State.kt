@@ -9,10 +9,13 @@ import kotlin.time.Clock
 import kotlin.time.Instant
 
 data class ComicDetailControlsState(
-    val isDownloaded: Boolean = false,
+    val downloadState: ComicDownloadState = ComicDownloadState.NotDownloaded,
     val resumeChapterOrder: Int = 1,
     val hasReadProgress: Boolean = false,
-)
+) {
+    val isDownloaded: Boolean
+        get() = downloadState is ComicDownloadState.Downloaded
+}
 
 sealed interface UnitedDetailsUiState {
     data object Initialize : UnitedDetailsUiState

@@ -12,9 +12,43 @@ import com.shizq.bika.core.download.model.DownloadTask
  * @param epsCount 服务端给出的章节总数。<= 1 时按单话漫画处理：
  *   有任意一条完成即视为下载完，与原实现在这一分支上的行为一致。
  */
-internal fun isComicFullyDownloaded(tasks: List<DownloadTask>, epsCount: Int): Boolean {
-    val completedOrders = tasks.filter { it.isCompleted }.mapTo(mutableSetOf()) { it.episodeOrder }
-    if (completedOrders.isEmpty()) return false
-    // 单话漫画的 epsCount 可能是 0 或 1，此时有一条完成即视为下载完
-    return if (epsCount <= 1) true else completedOrders.size >= epsCount
+sealed interface ComicDownloadState {
+    data object NotDownloaded : ComicDownloadState
+
+    data class Partial(
+        val completedChapters: Int,
+        val expectedChapters: Int,
+    ) : ComicDownloadState
+
+    data class Downloaded(val completedChapters: Int) : ComicDownloadState
 }
+
+/**
+ * 将底层章节任务聚合成漫画级下载状态。
+ *
+ * UI 不再理解任务去重和单话规则；其他页面需要展示下载状态时也必须复用这里。
+ */
+internal fun resolveComicDownloadState(
+    tasks: List<DownloadTask>,
+    epsCount: Int,
+): ComicDownloadState {
+    val completedCount = tasks
+        .asSequence()
+        .filter { it.isCompleted }
+        .map { it.episodeOrder }
+        .distinct()
+        .count()
+
+    if (completedCount == 0) return ComicDownloadState.NotDownloaded
+    if (epsCount <= 1 || completedCount >= epsCount) {
+        return ComicDownloadState.Downloaded(completedChapters = completedCount)
+    }
+    return ComicDownloadState.Partial(
+        completedChapters = completedCount,
+        expectedChapters = epsCount,
+    )
+}
+
+internal fun isComicFullyDownloaded(tasks: List<DownloadTask>, epsCount: Int): Boolean =
+    resolveComicDownloadState(tasks, epsCount) is ComicDownloadState.Downloaded
+

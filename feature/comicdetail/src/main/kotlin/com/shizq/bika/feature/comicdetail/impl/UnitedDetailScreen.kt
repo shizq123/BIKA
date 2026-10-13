@@ -64,14 +64,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.ui.ComicSharedElementKey
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.feature.comicdetail.impl.comments.CommentsTab
 import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
 import com.shizq.bika.feature.comicdetail.impl.detail.PageTab
-import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesPage
+import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesRoute
 import com.valentinilk.shimmer.Shimmer
 import com.valentinilk.shimmer.ShimmerBounds
 import com.valentinilk.shimmer.rememberShimmer
@@ -131,9 +130,8 @@ fun ComicDetailScreen(
         episodesContent = {
             val detail = (state as? UnitedDetailsUiState.Content)?.detail
             if (detail != null) {
-                val episodes = viewModel.episodesFlow.collectAsLazyPagingItems()
-                EpisodesPage(
-                    episodes = episodes,
+                EpisodesRoute(
+                    episodesFlow = viewModel.episodesFlow,
                     chapterProgress = chapterProgress,
                     navigateToReader = { order -> navigationToReader(detail.id, order) },
                     onDownloadSelectionClick = {

@@ -25,7 +25,33 @@ import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.database.model.ChapterProgressEntity
 import com.shizq.bika.feature.comicdetail.impl.R
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flowOf
+
+/**
+ * 目录分页的生命周期边界。
+ *
+ * 上层只传递冷 Flow；只有该 Route 真正进入组合时才创建 LazyPagingItems，
+ * 避免详情页初次打开就启动章节分页。
+ */
+@Composable
+fun EpisodesRoute(
+    episodesFlow: Flow<PagingData<Chapter>>,
+    chapterProgress: List<ChapterProgressEntity>,
+    navigateToReader: (chapterOrder: Int) -> Unit,
+    onDownloadSelectionClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val episodes = episodesFlow.collectAsLazyPagingItems()
+    EpisodesPage(
+        episodes = episodes,
+        modifier = modifier,
+        chapterProgress = chapterProgress,
+        navigateToReader = navigateToReader,
+        onDownloadSelectionClick = onDownloadSelectionClick,
+    )
+}
+
 
 @Composable
 fun EpisodesPage(
