@@ -8,6 +8,12 @@ import com.shizq.bika.core.network.model.RecommendationData
 import kotlin.time.Clock
 import kotlin.time.Instant
 
+data class ComicDetailControlsState(
+    val isDownloaded: Boolean = false,
+    val resumeChapterOrder: Int = 1,
+    val hasReadProgress: Boolean = false,
+)
+
 sealed interface UnitedDetailsUiState {
     data object Initialize : UnitedDetailsUiState
 
