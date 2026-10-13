@@ -107,14 +107,41 @@ private fun ComicDetailBody(
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.surface),
     ) {
-        HeroHeader(
-            detail = detail,
-            onAuthorClick = onAuthorClick,
-            onTeamClick = onTeamClick,
-            onTagClick = onTagClick,
-            coverModifier = coverModifier,
-            titleModifier = titleModifier,
-        )
+        Box(modifier = Modifier.fillMaxWidth()) {
+            // 第一层：背景图不参与布局测量，只铺满 Hero 区域。
+            AsyncImage(
+                model = detail.cover,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .alpha(0.42f),
+            )
+            // 第二层：渐变遮罩。
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.12f),
+                                MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+                                MaterialTheme.colorScheme.surface,
+                            ),
+                        ),
+                    ),
+            )
+            // 第三层：Hero 前景内容，负责决定 Box 的高度。
+            HeroHeader(
+                detail = detail,
+                onAuthorClick = onAuthorClick,
+                onTeamClick = onTeamClick,
+                onTagClick = onTagClick,
+                coverModifier = coverModifier,
+                titleModifier = titleModifier,
+            )
+        }
 
         Column(
             modifier = Modifier.padding(horizontal = 16.dp),
@@ -156,30 +183,6 @@ private fun HeroHeader(
     titleModifier: Modifier = Modifier,
 ) {
     Box(modifier = Modifier.fillMaxWidth()) {
-        // 背景不参与 Hero 的测量，只在前景内容确定的区域内完整显示。
-        AsyncImage(
-            model = detail.cover,
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier
-                .matchParentSize()
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .alpha(0.42f),
-        )
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.12f),
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-                            MaterialTheme.colorScheme.surface,
-                        ),
-                    ),
-                ),
-        )
-
         Row(
             modifier = Modifier
                 .align(Alignment.TopStart)
@@ -190,7 +193,7 @@ private fun HeroHeader(
             AsyncImage(
                 model = detail.cover,
                 contentDescription = detail.title,
-                contentScale = ContentScale.Fit,
+                contentScale = ContentScale.Crop,
                 modifier = coverModifier
                     .width(122.dp)
                     .height(166.dp)

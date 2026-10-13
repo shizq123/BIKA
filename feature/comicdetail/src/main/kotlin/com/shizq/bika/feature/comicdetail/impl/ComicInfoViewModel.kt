@@ -2,6 +2,8 @@ package com.shizq.bika.feature.comicdetail.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import androidx.paging.PagingData
+import androidx.paging.cachedIn
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.repository.ChapterRepository
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
@@ -20,6 +22,7 @@ import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
@@ -79,6 +82,15 @@ class ComicInfoViewModel @AssistedInject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = ComicDetailControlsState(),
     )
+
+    /**
+     * 章节列表。
+     *
+     * 分页与页尺寸都由 [ChapterRepository] 决定：原先这里自建 Pager + EpisodePagingSource，
+     * 与 repository 的 getChapterList 打同一个端点做同一件事，两份实现已经分叉。
+     */
+    val episodesFlow: Flow<PagingData<Chapter>> = chapterRepository.getChapterList(comicId)
+        .cachedIn(viewModelScope)
 
     fun dispatch(action: UnitedDetailsAction) {
         viewModelScope.launch {
