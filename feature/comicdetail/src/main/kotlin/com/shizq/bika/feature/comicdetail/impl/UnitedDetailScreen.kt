@@ -1,7 +1,13 @@
 package com.shizq.bika.feature.comicdetail.impl
 
-
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,6 +18,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
@@ -45,7 +52,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -54,16 +63,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.shizq.bika.core.ui.ErrorState
-import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.feature.comicdetail.impl.comments.CommentsTab
 import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
 import com.shizq.bika.feature.comicdetail.impl.detail.PageTab
@@ -88,6 +96,10 @@ private data class ComicDetailDownloadActions(
     val onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
 )
 
+private val LocalSkeletonBrush = compositionLocalOf<Brush> {
+    error("Skeleton brush was not provided")
+}
+
 @Composable
 fun ComicDetailScreen(
     navigationToReader: (id: String, chapterOrder: Int) -> Unit,
@@ -106,8 +118,6 @@ fun ComicDetailScreen(
 
     ComicDetailContent(
         unitedState = state,
-        previewCoverUrl = "",
-        previewTitle = "",
         controls = controls,
         episodesContent = {
             val detail = (state as? UnitedDetailsUiState.Content)?.detail
@@ -152,13 +162,9 @@ private fun ComicDetailContent(
     interactionActions: ComicDetailInteractionActions,
     downloadActions: ComicDetailDownloadActions,
     modifier: Modifier = Modifier,
-    previewCoverUrl: String,
-    previewTitle: String,
 ) {
     when (unitedState) {
         UnitedDetailsUiState.Initialize -> ComicDetailInitializeContent(
-            coverUrl = previewCoverUrl,
-            title = previewTitle,
             onBackClick = navigationActions.onBack,
             modifier = modifier,
         )
@@ -179,7 +185,6 @@ private fun ComicDetailContent(
             state = unitedState,
             episodesContent = episodesContent,
             controls = controls,
-            previewTitle = previewTitle,
             actions = navigationActions,
             interactions = interactionActions,
             downloads = downloadActions,
@@ -262,10 +267,8 @@ private fun ComicDetailLoadedContent(
     state: UnitedDetailsUiState.Content,
     episodesContent: @Composable () -> Unit,
     controls: ComicDetailControlsState,
-    previewTitle: String,
     actions: ComicDetailNavigationActions,
     interactions: ComicDetailInteractionActions,
-
     downloads: ComicDetailDownloadActions,
     modifier: Modifier = Modifier,
 ) {
@@ -277,7 +280,7 @@ private fun ComicDetailLoadedContent(
         onBackClick = actions.onBack,
         topBarTitle = {
             Text(
-                text = previewTitle,
+                text = detail.title,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -318,7 +321,6 @@ private fun ComicDetailLoadedContent(
                     state = state,
                     episodesContent = episodesContent,
                     actions = actions,
-
                     interactions = interactions,
                 )
             },
@@ -332,7 +334,6 @@ private fun ComicDetailPager(
     state: UnitedDetailsUiState.Content,
     episodesContent: @Composable () -> Unit,
     actions: ComicDetailNavigationActions,
-
     interactions: ComicDetailInteractionActions,
 ) {
     val detail = state.detail
@@ -467,97 +468,132 @@ private fun TooltipIconButton(
 
 @Composable
 private fun ComicDetailInitializeContent(
-    coverUrl: String,
-    title: String,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    ComicDetailScaffold(
-        onBackClick = onBackClick,
-        bottomBar = {
-            ComicDetailBottomAppBarSkeleton()
-        },
-        modifier = modifier,
-    ) { innerPadding ->
-        ComicDetailBodyLayout(
-            innerPadding = innerPadding,
-            tabRow = {
-                ComicDetailTabRow(
-                    selectedTabIndex = 0,
-                    enabled = false,
+    val transition = rememberInfiniteTransition(label = "comic-detail-skeleton")
+    val shimmerOffset by transition.animateFloat(
+        initialValue = -600f,
+        targetValue = 1_200f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1_250, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart,
+        ),
+        label = "shimmer-offset",
+    )
+    val baseColor = MaterialTheme.colorScheme.surfaceContainerHighest
+    val highlightColor = MaterialTheme.colorScheme.surfaceVariant
+    val skeletonBrush = Brush.linearGradient(
+        colors = listOf(baseColor, highlightColor, baseColor),
+        start = Offset(shimmerOffset - 280f, 0f),
+        end = Offset(shimmerOffset, 280f),
+    )
+
+    CompositionLocalProvider(LocalSkeletonBrush provides skeletonBrush) {
+        ComicDetailScaffold(
+            onBackClick = onBackClick,
+            topBarTitle = {
+                SkeletonBlock(
+                    modifier = Modifier
+                        .width(148.dp)
+                        .height(20.dp),
                 )
             },
-            body = {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .verticalScroll(rememberScrollState())
-                        .background(MaterialTheme.colorScheme.surface),
-                ) {
-                    ComicDetailHeroSkeleton(
-                        coverUrl = coverUrl,
-                        title = title,
+            bottomBar = { ComicDetailBottomAppBarSkeleton() },
+            modifier = modifier,
+        ) { innerPadding ->
+            ComicDetailBodyLayout(
+                innerPadding = innerPadding,
+                tabRow = {
+                    ComicDetailTabRow(
+                        selectedTabIndex = 0,
+                        enabled = false,
                     )
-                    ComicDetailBodySkeleton()
-                }
-            },
-        )
+                },
+                body = {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .verticalScroll(rememberScrollState())
+                            .background(MaterialTheme.colorScheme.surface),
+                    ) {
+                        ComicDetailHeroSkeleton()
+                        ComicDetailBodySkeleton()
+                    }
+                },
+            )
+        }
     }
 }
 
 @Composable
-private fun ComicDetailHeroSkeleton(
-    coverUrl: String,
-    title: String,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        RetryableAsyncImage(
-            model = coverUrl,
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .width(112.dp)
-
-                .height(156.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+private fun ComicDetailHeroSkeleton() {
+    Box(modifier = Modifier.fillMaxWidth()) {
+        SkeletonBlock(
+            modifier = Modifier.matchParentSize(),
+            shape = RoundedCornerShape(0.dp),
         )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.12f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+                            MaterialTheme.colorScheme.surface,
+                        ),
+                    ),
+                ),
+        )
+        Row(
+            modifier = Modifier.padding(horizontal = 20.dp, vertical = 20.dp),
+            horizontalArrangement = Arrangement.spacedBy(18.dp),
+            verticalAlignment = Alignment.Top,
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge,
-
-                fontWeight = FontWeight.Bold,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
             SkeletonBlock(
-
                 modifier = Modifier
-                    .fillMaxWidth(0.65f)
-                    .height(16.dp),
+                    .width(122.dp)
+                    .height(166.dp),
+                shape = RoundedCornerShape(14.dp),
             )
-            SkeletonBlock(
-
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .height(16.dp),
-            )
-            SkeletonBlock(
-
-                modifier = Modifier
-                    .fillMaxWidth(0.5f)
-                    .height(28.dp),
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                SkeletonBlock(
+                    modifier = Modifier
+                        .width(58.dp)
+                        .height(30.dp),
+                    shape = RoundedCornerShape(50),
+                )
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(27.dp),
+                )
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth(0.78f)
+                        .height(27.dp),
+                )
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth(0.68f)
+                        .height(16.dp),
+                )
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth(0.56f)
+                        .height(16.dp),
+                )
+                SkeletonBlock(
+                    modifier = Modifier
+                        .width(54.dp)
+                        .height(30.dp),
+                    shape = RoundedCornerShape(50),
+                )
+            }
         }
     }
 }
@@ -572,9 +608,7 @@ private fun ComicDetailBottomAppBarSkeleton() {
             ) {
                 repeat(3) {
                     SkeletonBlock(
-                        modifier = Modifier
-                            .width(32.dp)
-                            .height(32.dp),
+                        modifier = Modifier.size(32.dp),
                         shape = RoundedCornerShape(50),
                     )
                 }
@@ -603,12 +637,27 @@ private fun ComicDetailBodySkeleton() {
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
                 repeat(3) {
-                    SkeletonBlock(
-
-                        modifier = Modifier
-                            .width(72.dp)
-                            .height(34.dp),
-                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        SkeletonBlock(
+                            modifier = Modifier.size(18.dp),
+                            shape = RoundedCornerShape(50),
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            SkeletonBlock(
+                                modifier = Modifier
+                                    .width(44.dp)
+                                    .height(16.dp),
+                            )
+                            SkeletonBlock(
+                                modifier = Modifier
+                                    .width(28.dp)
+                                    .height(11.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -616,36 +665,32 @@ private fun ComicDetailBodySkeleton() {
         SkeletonCard {
             SkeletonBlock(
                 modifier = Modifier
-                    .width(54.dp)
-                    .height(20.dp)
+                    .width(42.dp)
+                    .height(20.dp),
             )
-            SkeletonBlock(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(14.dp)
-            )
-            SkeletonBlock(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(14.dp)
-            )
+            repeat(2) {
+                SkeletonBlock(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(14.dp),
+                )
+            }
             SkeletonBlock(
                 modifier = Modifier
                     .fillMaxWidth(0.72f)
-                    .height(14.dp)
+                    .height(14.dp),
             )
         }
 
         SkeletonCard {
             SkeletonBlock(
                 modifier = Modifier
-                    .width(54.dp)
-                    .height(20.dp)
+                    .width(42.dp)
+                    .height(20.dp),
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(64.dp, 82.dp, 58.dp).forEach { width ->
                     SkeletonBlock(
-
                         modifier = Modifier
                             .width(width)
                             .height(30.dp),
@@ -658,25 +703,69 @@ private fun ComicDetailBodySkeleton() {
         SkeletonCard {
             SkeletonBlock(
                 modifier = Modifier
+                    .width(82.dp)
+                    .height(20.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                repeat(3) {
+                    Column(
+                        modifier = Modifier.width(112.dp),
+                        verticalArrangement = Arrangement.spacedBy(7.dp),
+                    ) {
+                        SkeletonBlock(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(150.dp),
+                            shape = RoundedCornerShape(14.dp),
+                        )
+                        SkeletonBlock(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(16.dp),
+                        )
+                        SkeletonBlock(
+                            modifier = Modifier
+                                .fillMaxWidth(0.65f)
+                                .height(11.dp),
+                        )
+                    }
+                }
+            }
+        }
+
+        SkeletonCard {
+            SkeletonBlock(
+                modifier = Modifier
                     .width(72.dp)
-                    .height(20.dp)
+                    .height(20.dp),
             )
             repeat(2) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    SkeletonBlock(
-
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(34.dp)
-                    )
-                    SkeletonBlock(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(34.dp)
-                    )
+                    repeat(2) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(5.dp),
+                        ) {
+                            SkeletonBlock(
+                                modifier = Modifier
+                                    .width(52.dp)
+                                    .height(12.dp),
+                            )
+                            SkeletonBlock(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.72f)
+                                    .height(18.dp),
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -706,6 +795,7 @@ private fun SkeletonBlock(
     Box(
         modifier = modifier
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(LocalSkeletonBrush.current),
     )
 }
+
