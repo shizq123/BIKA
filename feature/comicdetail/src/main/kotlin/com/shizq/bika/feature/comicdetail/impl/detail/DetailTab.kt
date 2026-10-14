@@ -2,6 +2,7 @@ package com.shizq.bika.feature.comicdetail.impl.detail
 
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -21,15 +22,16 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.ChatBubble
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -72,10 +74,14 @@ fun DetailTab(
     onUploaderClick: (String, String) -> Unit,
     navigationToTagBlock: (String) -> Unit,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    tabs: @Composable () -> Unit = {},
 ) {
     ComicDetailBody(
         detail = detail,
         modifier = modifier,
+        listState = listState,
+        tabs = tabs,
         onAuthorClick = { onAuthorClick(detail.author) },
         onTeamClick = { onUploaderClick(detail.chineseTeam, detail.creator.id) },
         onTagClick = onTranslateClick,
@@ -85,6 +91,7 @@ fun DetailTab(
     )
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun ComicDetailBody(
     detail: ComicDetail,
@@ -95,46 +102,17 @@ private fun ComicDetailBody(
     onRecommendedComicClick: (String) -> Unit,
     onTagLongClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    listState: LazyListState = rememberLazyListState(),
+    tabs: @Composable () -> Unit = {},
 ) {
-    Column(
+    LazyColumn(
+        state = listState,
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.surface),
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 300.dp),
-        ) {
-            // 第一层：背景图不参与布局测量。Hero 基础高度为 300dp，
-            // 额外计入顶部 TabRow 约 48dp 占用的视觉空间。
-            // HeroHeader 内容更高时，Box 仍会随前景内容继续增长。
-            AsyncImage(
-                model = detail.cover,
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                    .alpha(0.42f),
-            )
-            // 第二层：渐变遮罩。
-            Box(
-                modifier = Modifier
-                    .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.12f),
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
-                                MaterialTheme.colorScheme.surface,
-                            ),
-                        ),
-                    ),
-            )
-            // 第三层：Hero 前景内容，负责决定 Box 的高度。
-            HeroHeader(
+        item(key = "hero") {
+            ComicHero(
                 detail = detail,
                 onAuthorClick = onAuthorClick,
                 onTeamClick = onTeamClick,
@@ -142,33 +120,105 @@ private fun ComicDetailBody(
             )
         }
 
-        Column(
-            modifier = Modifier.padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            StatsCard(
-                totalViews = detail.totalViews,
-                totalLikes = detail.totalLikes,
-                commentsCount = detail.commentsCount,
-            )
+        stickyHeader(key = "tabs") {
+            Surface(
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 2.dp,
+            ) {
+                tabs()
+            }
+        }
 
-            DescriptionCard(description = detail.description)
-
-            TagsCard(
-                tags = (detail.tags + detail.categories).distinct(),
-                onTagClick = onTagClick,
-                onTagLongClick = onTagLongClick,
-            )
-
-            if (recommendations.isNotEmpty()) {
-                RecommendationsCard(
-                    recommendations = recommendations,
-                    onComicClick = onRecommendedComicClick,
+        item(key = "stats") {
+            ContentSection {
+                StatsSection(
+                    detail.totalViews,
+                    detail.totalLikes,
+                    detail.commentsCount
                 )
             }
-
-            MetadataCard(detail = detail)
         }
+        item(key = "description") {
+            SectionDivider()
+            ContentSection { DescriptionSection(detail.description) }
+        }
+        item(key = "tags") {
+            SectionDivider()
+            ContentSection {
+                TagsSection(
+                    tags = (detail.tags + detail.categories).distinct(),
+                    onTagClick = onTagClick,
+                    onTagLongClick = onTagLongClick,
+                )
+            }
+        }
+        if (recommendations.isNotEmpty()) {
+            item(key = "recommendations") {
+                SectionDivider()
+                ContentSection {
+                    RecommendationsSection(recommendations, onRecommendedComicClick)
+                }
+            }
+        }
+        item(key = "metadata") {
+            SectionDivider()
+            ContentSection { MetadataSection(detail) }
+            Spacer(Modifier.height(32.dp))
+        }
+    }
+}
+
+@Composable
+private fun ContentSection(content: @Composable () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
+    ) {
+        content()
+    }
+}
+
+@Composable
+private fun ComicHero(
+    detail: ComicDetail,
+    onAuthorClick: () -> Unit,
+    onTeamClick: () -> Unit,
+    onTagClick: (String) -> Unit,
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 300.dp),
+    ) {
+        AsyncImage(
+            model = detail.cover,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .matchParentSize()
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .alpha(0.30f),
+        )
+        Box(
+            modifier = Modifier
+                .matchParentSize()
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
+                            MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
+                            MaterialTheme.colorScheme.surface,
+                        ),
+                    ),
+                ),
+        )
+        HeroHeader(
+            detail = detail,
+            onAuthorClick = onAuthorClick,
+            onTeamClick = onTeamClick,
+            onTagClick = onTagClick,
+        )
     }
 }
 
@@ -236,23 +286,16 @@ private fun HeroHeader(
 }
 
 @Composable
-private fun StatsCard(totalViews: Int, totalLikes: Int, commentsCount: Int) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
-        shape = RoundedCornerShape(18.dp),
+private fun StatsSection(totalViews: Int, totalLikes: Int, commentsCount: Int) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 24.dp),
+        horizontalArrangement = Arrangement.SpaceEvenly,
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            StatItem(Icons.Filled.Visibility, formatCount(totalViews), "浏览")
-            StatItem(Icons.Filled.ThumbUp, formatCount(totalLikes.coerceAtLeast(0)), "点赞")
-            StatItem(Icons.Filled.Favorite, formatCount(commentsCount), "评论")
-        }
+        StatItem(Icons.Filled.Visibility, formatCount(totalViews), "浏览")
+        StatItem(Icons.Filled.ThumbUp, formatCount(totalLikes.coerceAtLeast(0)), "点赞")
+        StatItem(Icons.Filled.ChatBubble, formatCount(commentsCount), "评论")
     }
 }
 
@@ -282,11 +325,11 @@ private fun StatItem(
 }
 
 @Composable
-private fun DescriptionCard(description: String) {
+private fun DescriptionSection(description: String) {
     var expanded by rememberSaveable(description) { mutableStateOf(false) }
     var hasOverflow by remember(description) { mutableStateOf(false) }
 
-    DetailCard(title = "简介") {
+    SectionContent(title = "简介") {
         Text(
             text = description.ifBlank { "暂无简介" },
             style = MaterialTheme.typography.bodyMedium,
@@ -308,15 +351,20 @@ private fun DescriptionCard(description: String) {
 }
 
 @Composable
-private fun TagsCard(
+private fun TagsSection(
     tags: List<String>,
     onTagClick: (String) -> Unit,
     onTagLongClick: (String) -> Unit,
 ) {
-    DetailCard(title = "标签") {
+    SectionContent(title = "标签") {
         if (tags.isEmpty()) {
             Text("暂无标签", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
+            Text(
+                text = "点击查看相关内容 · 长按可屏蔽标签",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -334,11 +382,11 @@ private fun TagsCard(
 }
 
 @Composable
-private fun RecommendationsCard(
+private fun RecommendationsSection(
     recommendations: List<ComicSummary>,
     onComicClick: (String) -> Unit,
 ) {
-    DetailCard(title = "猜你喜欢") {
+    SectionContent(title = "猜你喜欢") {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -385,38 +433,43 @@ private fun RecommendationsCard(
 }
 
 @Composable
-private fun MetadataCard(detail: ComicDetail) {
-    DetailCard(title = "作品信息") {
+private fun MetadataSection(detail: ComicDetail) {
+    SectionContent(title = "作品信息") {
         InfoGrid(
             "章节数" to detail.epsCount.toString(),
             "页数" to detail.pagesCount.toString(),
-            "更新时间" to detail.updatedAt.toString(),
-            "创建时间" to detail.createdAt.toString(),
+            "更新时间" to formatDate(detail.updatedAt),
+            "创建时间" to formatDate(detail.createdAt),
         )
     }
 }
 
 @Composable
-private fun DetailCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainerLow,
-        ),
+private fun SectionContent(
+    title: String,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-            content = {
-                Text(
-                    title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                )
-                content()
-            },
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
         )
+        content()
     }
+}
+
+@Composable
+private fun SectionDivider() {
+    HorizontalDivider(
+        modifier = Modifier.padding(horizontal = 16.dp),
+        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f),
+    )
 }
 
 @Composable
@@ -446,14 +499,21 @@ private fun InfoGrid(vararg entries: Pair<String, String>) {
 
 @Composable
 private fun ClickableLine(label: String, value: String, onClick: () -> Unit) {
-    Text(
-        text = "$label · $value",
-        color = MaterialTheme.colorScheme.primary,
-        style = MaterialTheme.typography.bodySmall,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.clickable(onClick = onClick),
-    )
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 48.dp)
+            .clickable(onClick = onClick),
+        contentAlignment = Alignment.CenterStart,
+    ) {
+        Text(
+            text = "$label · $value",
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }
 
 @Composable
@@ -474,7 +534,7 @@ private fun StatusPill(
     }
 
     Surface(
-        modifier = interactionModifier,
+        modifier = interactionModifier.heightIn(min = 40.dp),
         shape = RoundedCornerShape(50),
         color = if (emphasized) MaterialTheme.colorScheme.primaryContainer
         else MaterialTheme.colorScheme.surfaceContainerHighest,
@@ -485,10 +545,12 @@ private fun StatusPill(
             style = MaterialTheme.typography.labelMedium,
             color = if (emphasized) MaterialTheme.colorScheme.onPrimaryContainer
             else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
         )
     }
 }
+
+private fun formatDate(instant: Instant): String = instant.toString().substringBefore('T')
 
 private fun formatCount(value: Int): String = when {
     value >= 100_000_000 -> "%.1f亿".format(value / 100_000_000f)

@@ -1,5 +1,6 @@
 package com.shizq.bika.feature.comicdetail.impl
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -14,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,8 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.pager.HorizontalPager
-import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -54,12 +55,13 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,7 +80,6 @@ import com.shizq.bika.feature.comicdetail.impl.comments.CommentsTab
 import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
 import com.shizq.bika.feature.comicdetail.impl.detail.PageTab
 import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesRoute
-import kotlinx.coroutines.launch
 
 private data class ComicDetailNavigationActions(
     val onBack: () -> Unit,
@@ -202,9 +203,11 @@ private fun ComicDetailScaffold(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     topBarTitle: @Composable () -> Unit = {},
+    topBarActions: @Composable RowScope.() -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
+
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
 
     Scaffold(
@@ -213,9 +216,11 @@ private fun ComicDetailScaffold(
                 title = topBarTitle,
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, null)
+                        Icon(Icons.AutoMirrored.Rounded.ArrowBack, "返回")
                     }
                 },
+                actions = topBarActions,
+
                 scrollBehavior = scrollBehavior,
             )
         },
@@ -275,150 +280,189 @@ private fun ComicDetailLoadedContent(
     modifier: Modifier = Modifier,
 ) {
     val detail = state.detail
-    val pagerState = rememberPagerState { PageTab.entries.size }
-    val scope = rememberCoroutineScope()
+    var selectedTabIndex by rememberSaveable(detail.id) { mutableIntStateOf(0) }
+    val selectedTab = PageTab.entries[selectedTabIndex]
+    val detailListState = rememberLazyListState()
+    val tabStateHolder = rememberSaveableStateHolder()
+    val isDetailHeroExpanded by
+    remember { derivedStateOf { detailListState.firstVisibleItemIndex == 0 && detailListState.firstVisibleItemScrollOffset == 0 } }
 
     ComicDetailScaffold(
         onBackClick = actions.onBack,
         topBarTitle = {
-            Text(
-                text = detail.title,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            // 详情页的 Hero 已经承担主标题；切到功能页后再显示紧凑标题。
+            if (selectedTab != PageTab.DETAIL || !isDetailHeroExpanded) {
+                Text(
+                    text = detail.title,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        },
+        topBarActions = {
+            when (selectedTab) {
+                PageTab.DETAIL -> ComicQuickActions(
+                    isFavourited = detail.isFavourited,
+                    isLiked = detail.isLiked,
+                    downloadState = controls.downloadState,
+                    onToggleFavourite = {
+                        interactions.dispatch(UnitedDetailsAction.ToggleFavorite)
+                    },
+                    onToggleLike = {
+                        interactions.dispatch(UnitedDetailsAction.ToggleLike)
+                    },
+                    onDownloadWholeComic = {
+                        downloads.onDownloadWholeComic(detail.title, detail.cover, detail.epsCount)
+                    },
+                )
+
+                PageTab.EPISODES -> ComicDownloadAction(
+                    downloadState = controls.downloadState,
+                    onDownloadWholeComic = {
+                        downloads.onDownloadWholeComic(detail.title, detail.cover, detail.epsCount)
+                    },
+                )
+
+                PageTab.COMMENT -> Unit
+            }
         },
         bottomBar = {
-            ComicDetailBottomAppBar(
-                isFavourited = detail.isFavourited,
-                isLiked = detail.isLiked,
-                downloadState = controls.downloadState,
-                hasReadProgress = controls.hasReadProgress,
-                onRead = { actions.onRead(detail.id, controls.resumeChapterOrder) },
-                onToggleFavourite = {
-                    interactions.dispatch(UnitedDetailsAction.ToggleFavorite)
-                },
-                onToggleLike = {
-                    interactions.dispatch(UnitedDetailsAction.ToggleLike)
-                },
-                onDownloadWholeComic = {
-                    downloads.onDownloadWholeComic(detail.title, detail.cover, detail.epsCount)
-                },
-            )
+            // 评论页保留自己的输入栏，目录页把空间完整交给章节列表。
+            if (selectedTab == PageTab.DETAIL) {
+                ComicReadBottomBar(
+                    hasReadProgress = controls.hasReadProgress,
+                    episodeCount = detail.epsCount,
+                    onRead = {
+                        actions.onRead(detail.id, controls.resumeChapterOrder)
+                    },
+                )
+            }
         },
         modifier = modifier,
     ) { innerPadding ->
-        ComicDetailBodyLayout(
-            innerPadding = innerPadding,
-            tabRow = {
-                ComicDetailTabRow(
-                    selectedTabIndex = pagerState.currentPage,
-                    onTabClick = { index ->
-                        scope.launch { pagerState.animateScrollToPage(index) }
-                    },
-                )
-            },
-            body = {
-                ComicDetailPager(
-                    pagerState = pagerState,
-                    state = state,
-                    episodesContent = episodesContent,
-                    actions = actions,
-                    interactions = interactions,
-                )
-            },
-        )
-    }
-}
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+        ) {
+            AnimatedContent(
+                targetState = selectedTab,
+                modifier = Modifier.fillMaxSize(),
+                label = "comic-detail-tab",
+            ) { tab ->
+                tabStateHolder.SaveableStateProvider(tab) {
+                    when (tab) {
+                        PageTab.DETAIL -> DetailTab(
+                            detail = detail,
+                            recommendations = state.recommendations,
+                            onRecommendedComicClick = actions.onRecommendedComicClick,
+                            onTranslateClick = actions.onTranslateClick,
+                            navigationToTagBlock = interactions.onTagClick,
+                            onAuthorClick = interactions.onAuthorClick,
+                            onUploaderClick = interactions.onUploaderClick,
+                            listState = detailListState,
+                            tabs = {
+                                ComicDetailTabRow(
+                                    selectedTabIndex = tab.ordinal,
+                                    onTabClick = { selectedTabIndex = it },
+                                )
+                            },
+                        )
 
-@Composable
-private fun ComicDetailPager(
-    pagerState: androidx.compose.foundation.pager.PagerState,
-    state: UnitedDetailsUiState.Content,
-    episodesContent: @Composable () -> Unit,
-    actions: ComicDetailNavigationActions,
-    interactions: ComicDetailInteractionActions,
-) {
-    val detail = state.detail
-    var episodesVisited by rememberSaveable(detail.id) { mutableStateOf(false) }
-    LaunchedEffect(pagerState.currentPage) {
-        if (PageTab.entries[pagerState.currentPage] == PageTab.EPISODES) {
-            episodesVisited = true
-        }
-    }
-
-    HorizontalPager(
-        state = pagerState,
-        modifier = Modifier.fillMaxSize(),
-        verticalAlignment = Alignment.Top,
-        key = { it },
-    ) { page ->
-        when (PageTab.entries[page]) {
-            PageTab.DETAIL -> DetailTab(
-                detail = state.detail,
-                recommendations = state.recommendations,
-                onRecommendedComicClick = actions.onRecommendedComicClick,
-
-                onTranslateClick = actions.onTranslateClick,
-                navigationToTagBlock = interactions.onTagClick,
-                onAuthorClick = interactions.onAuthorClick,
-                onUploaderClick = interactions.onUploaderClick,
-            )
-
-            PageTab.EPISODES -> if (episodesVisited) episodesContent()
-
-            PageTab.COMMENT -> CommentsTab(comicId = detail.id)
+                        else -> Column(Modifier.fillMaxSize()) {
+                            ComicDetailTabRow(
+                                selectedTabIndex = tab.ordinal,
+                                onTabClick = { selectedTabIndex = it },
+                            )
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .fillMaxWidth()
+                            ) {
+                                when (tab) {
+                                    PageTab.EPISODES -> episodesContent()
+                                    PageTab.COMMENT -> CommentsTab(comicId = detail.id)
+                                    PageTab.DETAIL -> Unit
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ComicDetailBottomAppBar(
+private fun ComicQuickActions(
     isFavourited: Boolean,
     isLiked: Boolean,
     downloadState: ComicDownloadState,
-    hasReadProgress: Boolean,
-    onRead: () -> Unit,
     onToggleFavourite: () -> Unit,
     onToggleLike: () -> Unit,
     onDownloadWholeComic: () -> Unit,
 ) {
+    TooltipIconButton(
+        tooltipText = if (isFavourited) "取消收藏" else "收藏漫画",
+        icon = if (isFavourited) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
+        contentDescription = if (isFavourited) "取消收藏" else "收藏漫画",
+        tint = if (isFavourited) MaterialTheme.colorScheme.primary else LocalContentColor.current,
+        onClick = onToggleFavourite,
+    )
+    TooltipIconButton(
+        tooltipText = if (isLiked) "取消点赞" else "点赞",
+        icon = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
+        contentDescription = if (isLiked) "取消点赞" else "点赞",
+        tint = if (isLiked) MaterialTheme.colorScheme.tertiary else LocalContentColor.current,
+        onClick = onToggleLike,
+    )
+    ComicDownloadAction(
+        downloadState = downloadState,
+        onDownloadWholeComic = onDownloadWholeComic,
+    )
+}
+
+@Composable
+private fun ComicDownloadAction(
+    downloadState: ComicDownloadState,
+    onDownloadWholeComic: () -> Unit,
+) {
+    TooltipIconButton(
+        tooltipText = when (downloadState) {
+            ComicDownloadState.NotDownloaded -> "下载整本漫画"
+            is ComicDownloadState.Partial ->
+                "继续下载（${downloadState.completedChapters}/${downloadState.expectedChapters}）"
+
+            is ComicDownloadState.Downloaded -> "漫画已下载，点击重新下载"
+        },
+        icon = Icons.Filled.Download,
+        contentDescription = when (downloadState) {
+            ComicDownloadState.NotDownloaded -> "下载整本漫画"
+            is ComicDownloadState.Partial -> "继续下载漫画"
+            is ComicDownloadState.Downloaded -> "重新下载"
+        },
+        tint = when (downloadState) {
+            ComicDownloadState.NotDownloaded -> LocalContentColor.current
+            is ComicDownloadState.Partial -> MaterialTheme.colorScheme.primary
+            is ComicDownloadState.Downloaded -> MaterialTheme.colorScheme.secondary
+        },
+        onClick = onDownloadWholeComic,
+    )
+}
+
+@Composable
+private fun ComicReadBottomBar(
+    hasReadProgress: Boolean,
+    episodeCount: Int,
+    onRead: () -> Unit,
+) {
     BottomAppBar(
         actions = {
-            TooltipIconButton(
-                tooltipText = if (isFavourited) "取消收藏" else "收藏漫画",
-                icon = if (isFavourited) Icons.Filled.Bookmark else Icons.Outlined.BookmarkBorder,
-                contentDescription = if (isFavourited) "取消收藏" else "收藏漫画",
-                tint = if (isFavourited) MaterialTheme.colorScheme.primary
-                else LocalContentColor.current,
-                onClick = onToggleFavourite,
-            )
-            TooltipIconButton(
-                tooltipText = if (isLiked) "取消点赞" else "点赞",
-                icon = if (isLiked) Icons.Filled.ThumbUp else Icons.Outlined.ThumbUp,
-                contentDescription = if (isLiked) "取消点赞" else "点赞",
-                tint = if (isLiked) MaterialTheme.colorScheme.tertiary
-                else LocalContentColor.current,
-                onClick = onToggleLike,
-            )
-            TooltipIconButton(
-                tooltipText = when (downloadState) {
-                    ComicDownloadState.NotDownloaded -> "下载整本漫画"
-                    is ComicDownloadState.Partial -> "继续下载（${downloadState.completedChapters}/${downloadState.expectedChapters}）"
-                    is ComicDownloadState.Downloaded -> "漫画已下载，点击重新下载"
-                },
-                icon = Icons.Filled.Download,
-                contentDescription = when (downloadState) {
-                    ComicDownloadState.NotDownloaded -> "下载整本漫画"
-                    is ComicDownloadState.Partial -> "继续下载漫画"
-                    is ComicDownloadState.Downloaded -> "重新下载"
-                },
-                tint = when (downloadState) {
-                    ComicDownloadState.NotDownloaded -> LocalContentColor.current
-                    is ComicDownloadState.Partial -> MaterialTheme.colorScheme.primary
-                    is ComicDownloadState.Downloaded -> MaterialTheme.colorScheme.secondary
-                },
-                onClick = onDownloadWholeComic,
+            Text(
+                text = if (hasReadProgress) "继续上次阅读" else "共 $episodeCount 话",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(start = 20.dp),
             )
         },
         floatingActionButton = {
@@ -437,6 +481,7 @@ private fun ComicDetailBottomAppBar(
         },
     )
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -533,7 +578,7 @@ private fun ComicDetailHeroSkeleton() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 348.dp),
+            .heightIn(min = 300.dp),
     ) {
         SkeletonBlock(
             modifier = Modifier.matchParentSize(),
@@ -804,4 +849,3 @@ private fun SkeletonBlock(
             .background(LocalSkeletonBrush.current),
     )
 }
-
