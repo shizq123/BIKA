@@ -63,9 +63,8 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.ui.Alignment
 
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
@@ -291,7 +290,6 @@ private fun ComicDetailLoadedContent(
     val coroutineScope = rememberCoroutineScope()
     val detailListState = rememberLazyListState()
 
-    val tabStateHolder = rememberSaveableStateHolder()
     val density = LocalDensity.current
 
     val isDetailHeroExpanded by remember {
@@ -370,59 +368,43 @@ private fun ComicDetailLoadedContent(
         },
         modifier = modifier,
     ) { innerPadding ->
-        HorizontalPager(
-            state = pagerState,
+        Column(
             modifier = Modifier
                 .padding(innerPadding)
                 .fillMaxSize(),
-            key = { PageTab.entries[it] },
-        ) { pageIndex ->
-            when (val page = PageTab.entries[pageIndex]) {
-                PageTab.DETAIL -> DetailTab(
-                    detail = detail,
-                    recommendations = state.recommendations,
-                    onRecommendedComicClick = actions.onRecommendedComicClick,
-                    onTranslateClick = actions.onTranslateClick,
-                    navigationToTagBlock = interactions.onTagClick,
-                    onAuthorClick = interactions.onAuthorClick,
-                    onUploaderClick = interactions.onUploaderClick,
-                    listState = detailListState,
-                    tabs = {
-                        ComicDetailTabRow(
-                            selectedTabIndex = pagerState.currentPage,
-                            onTabClick = { targetPage ->
-                                coroutineScope.launch {
-                                    pagerState.animateScrollToPage(targetPage)
-                                }
-                            },
-                        )
-                    },
-                )
-
-                else -> Column(Modifier.fillMaxSize()) {
-                    ComicDetailTabRow(
-                        selectedTabIndex = pagerState.currentPage,
-                        onTabClick = { targetPage ->
-                            coroutineScope.launch {
-                                pagerState.animateScrollToPage(targetPage)
-                            }
-                        },
-                    )
-                    Box(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxWidth(),
-                    ) {
-                        when (page) {
-                            PageTab.EPISODES -> episodesContent()
-                            PageTab.COMMENT -> CommentsTab(comicId = detail.id)
-                            PageTab.DETAIL -> Unit
-                            }
-                        }
+        ) {
+            ComicDetailTabRow(
+                selectedTabIndex = pagerState.currentPage,
+                onTabClick = { targetPage ->
+                    coroutineScope.launch {
+                        pagerState.animateScrollToPage(targetPage)
                     }
+                },
+            )
+            HorizontalPager(
+                state = pagerState,
+                modifier = Modifier.weight(1f),
+                key = { PageTab.entries[it] },
+            ) { pageIndex ->
+                when (PageTab.entries[pageIndex]) {
+                    PageTab.DETAIL -> DetailTab(
+                        detail = detail,
+                        recommendations = state.recommendations,
+                        onRecommendedComicClick = actions.onRecommendedComicClick,
+                        onTranslateClick = actions.onTranslateClick,
+                        navigationToTagBlock = interactions.onTagClick,
+                        onAuthorClick = interactions.onAuthorClick,
+                        onUploaderClick = interactions.onUploaderClick,
+                        listState = detailListState,
+                    )
+
+                    PageTab.EPISODES -> episodesContent()
+                    PageTab.COMMENT -> CommentsTab(comicId = detail.id)
                 }
+            }
         }
     }
+
 }
 
 @Composable

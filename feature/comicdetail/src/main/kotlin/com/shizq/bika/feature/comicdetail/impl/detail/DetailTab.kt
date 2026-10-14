@@ -60,12 +60,7 @@ import com.shizq.bika.feature.comicdetail.impl.ComicDetail
 import com.shizq.bika.feature.comicdetail.impl.ComicSummary
 import kotlin.time.Instant
 
-/**
- * 漫画详情页的详情分页。
- *
- * 视觉上采用「沉浸式 Hero + 卡片化内容」：封面、标题和核心数据优先展示，
- * 低频信息下沉到独立卡片，减少传统详情页的表单感。
- */
+/** 漫画详情分页；Tab 导航由外层页面统一承载。 */
 @Composable
 fun DetailTab(
     detail: ComicDetail,
@@ -77,13 +72,11 @@ fun DetailTab(
     navigationToTagBlock: (String) -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
-    tabs: @Composable () -> Unit = {},
 ) {
     ComicDetailBody(
         detail = detail,
         modifier = modifier,
         listState = listState,
-        tabs = tabs,
         onAuthorClick = { onAuthorClick(detail.author) },
         onTeamClick = { onUploaderClick(detail.chineseTeam, detail.creator.id) },
         onTagClick = onTranslateClick,
@@ -105,7 +98,6 @@ private fun ComicDetailBody(
     onTagLongClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
-    tabs: @Composable () -> Unit = {},
 ) {
     LazyColumn(
         state = listState,
@@ -114,30 +106,11 @@ private fun ComicDetailBody(
             .background(MaterialTheme.colorScheme.surface),
     ) {
         item(key = "hero") {
-            ComicHero(
-                detail = detail,
-                onAuthorClick = onAuthorClick,
-                onTeamClick = onTeamClick,
-                onTagClick = onTagClick,
-            )
+            ComicHero(detail, onAuthorClick, onTeamClick, onTagClick)
         }
-
-        stickyHeader(key = "tabs") {
-            Surface(
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
-            ) {
-                tabs()
-            }
-        }
-
         item(key = "stats") {
             ContentSection {
-                StatsSection(
-                    detail.totalViews,
-                    detail.totalLikes,
-                    detail.commentsCount
-                )
+                StatsSection(detail.totalViews, detail.totalLikes, detail.commentsCount)
             }
         }
         item(key = "description") {
@@ -196,7 +169,7 @@ private fun ComicHero(
         AsyncImage(
             model = detail.cover,
             contentDescription = null,
-            contentScale = ContentScale.FillBounds,
+            contentScale = ContentScale.Crop,
             modifier = Modifier
                 .matchParentSize()
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
@@ -207,7 +180,7 @@ private fun ComicHero(
                 .matchParentSize()
                 .background(
                     Brush.verticalGradient(
-                        colors = listOf(
+                        listOf(
                             MaterialTheme.colorScheme.surface.copy(alpha = 0.55f),
                             MaterialTheme.colorScheme.surface.copy(alpha = 0.82f),
                             MaterialTheme.colorScheme.surface,
@@ -215,12 +188,7 @@ private fun ComicHero(
                     ),
                 ),
         )
-        HeroHeader(
-            detail = detail,
-            onAuthorClick = onAuthorClick,
-            onTeamClick = onTeamClick,
-            onTagClick = onTagClick,
-        )
+        HeroHeader(detail, onAuthorClick, onTeamClick, onTagClick)
     }
 }
 
@@ -230,8 +198,6 @@ private fun HeroHeader(
     onAuthorClick: () -> Unit,
     onTeamClick: () -> Unit,
     onTagClick: (String) -> Unit,
-    coverModifier: Modifier = Modifier,
-    titleModifier: Modifier = Modifier,
 ) {
     BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
         if (maxWidth < 360.dp) {
@@ -242,15 +208,15 @@ private fun HeroHeader(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                HeroCover(detail, coverModifier
+                HeroCover(detail, Modifier
                     .width(138.dp)
                     .height(188.dp))
                 HeroMetadata(
-                    detail = detail,
-                    onAuthorClick = onAuthorClick,
-                    onTeamClick = onTeamClick,
-                    onTagClick = onTagClick,
-                    modifier = titleModifier.fillMaxWidth(),
+                    detail,
+                    onAuthorClick,
+                    onTeamClick,
+                    onTagClick,
+                    Modifier.fillMaxWidth(),
                     centered = true,
                 )
             }
@@ -262,15 +228,15 @@ private fun HeroHeader(
                 horizontalArrangement = Arrangement.spacedBy(18.dp),
                 verticalAlignment = Alignment.Top,
             ) {
-                HeroCover(detail, coverModifier
+                HeroCover(detail, Modifier
                     .width(122.dp)
                     .height(166.dp))
                 HeroMetadata(
-                    detail = detail,
-                    onAuthorClick = onAuthorClick,
-                    onTeamClick = onTeamClick,
-                    onTagClick = onTagClick,
-                    modifier = titleModifier.weight(1f),
+                    detail,
+                    onAuthorClick,
+                    onTeamClick,
+                    onTagClick,
+                    Modifier.weight(1f),
                     centered = false,
                 )
             }
@@ -302,10 +268,7 @@ private fun HeroMetadata(
         horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        StatusPill(
-            text = if (detail.finished) "已完结" else "连载中",
-            emphasized = true,
-        )
+        StatusPill(if (detail.finished) "已完结" else "连载中", emphasized = true)
         Text(
             text = detail.title,
             style = MaterialTheme.typography.headlineSmall,
@@ -318,7 +281,7 @@ private fun HeroMetadata(
             ClickableLine("汉化", detail.chineseTeam, onTeamClick, centered)
         }
         detail.categories.firstOrNull()?.let { category ->
-            StatusPill(text = category, onClick = { onTagClick(category) })
+            StatusPill(category, onClick = { onTagClick(category) })
         }
     }
 }
@@ -344,12 +307,7 @@ private fun StatItem(
     label: String,
 ) {
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            icon,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(18.dp),
-        )
+        Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(7.dp))
         Column {
             Text(value, fontWeight = FontWeight.Bold)
@@ -367,7 +325,7 @@ private fun DescriptionSection(description: String) {
     var expanded by rememberSaveable(description) { mutableStateOf(false) }
     var hasOverflow by remember(description) { mutableStateOf(false) }
 
-    SectionContent(title = "简介") {
+    SectionContent("简介") {
         Text(
             text = description.ifBlank { "暂无简介" },
             style = MaterialTheme.typography.bodyMedium,
@@ -388,18 +346,19 @@ private fun DescriptionSection(description: String) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun TagsSection(
     tags: List<String>,
     onTagClick: (String) -> Unit,
     onTagLongClick: (String) -> Unit,
 ) {
-    SectionContent(title = "标签") {
+    SectionContent("标签") {
         if (tags.isEmpty()) {
             Text("暂无标签", color = MaterialTheme.colorScheme.onSurfaceVariant)
         } else {
             Text(
-                text = "点击查看相关内容 · 长按可屏蔽标签",
+                "点击查看相关内容 · 长按可屏蔽标签",
                 style = MaterialTheme.typography.labelMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -424,7 +383,7 @@ private fun RecommendationsSection(
     recommendations: List<ComicSummary>,
     onComicClick: (String) -> Unit,
 ) {
-    SectionContent(title = "猜你喜欢") {
+    SectionContent("猜你喜欢") {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -449,7 +408,7 @@ private fun RecommendationsSection(
                             .clip(RoundedCornerShape(14.dp)),
                     )
                     Text(
-                        text = comic.title,
+                        comic.title,
                         style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
@@ -457,7 +416,7 @@ private fun RecommendationsSection(
                     )
                     if (comic.author.isNotBlank()) {
                         Text(
-                            text = comic.author,
+                            comic.author,
                             style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,
@@ -472,7 +431,7 @@ private fun RecommendationsSection(
 
 @Composable
 private fun MetadataSection(detail: ComicDetail) {
-    SectionContent(title = "作品信息") {
+    SectionContent("作品信息") {
         InfoGrid(
             "章节数" to detail.epsCount.toString(),
             "页数" to detail.pagesCount.toString(),
@@ -493,11 +452,7 @@ private fun SectionContent(
             .padding(vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-        )
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         content()
     }
 }
@@ -550,7 +505,7 @@ private fun ClickableLine(
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            text = "$label · $value",
+            "$label · $value",
             color = MaterialTheme.colorScheme.primary,
             style = MaterialTheme.typography.bodySmall,
             maxLines = 1,
@@ -559,6 +514,7 @@ private fun ClickableLine(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StatusPill(
     text: String,
@@ -571,7 +527,6 @@ private fun StatusPill(
             onClick = onClick ?: {},
             onLongClick = onLongClick,
         )
-
         onClick != null -> Modifier.clickable(onClick = onClick)
         else -> Modifier
     }
@@ -579,15 +534,21 @@ private fun StatusPill(
     Surface(
         modifier = interactionModifier.heightIn(min = 40.dp),
         shape = RoundedCornerShape(50),
-        color = if (emphasized) MaterialTheme.colorScheme.primaryContainer
-        else MaterialTheme.colorScheme.surfaceContainerHighest,
+        color = if (emphasized) {
+            MaterialTheme.colorScheme.primaryContainer
+        } else {
+            MaterialTheme.colorScheme.surfaceContainerHighest
+        },
         border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.65f)),
     ) {
         Text(
             text,
             style = MaterialTheme.typography.labelMedium,
-            color = if (emphasized) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (emphasized) {
+                MaterialTheme.colorScheme.onPrimaryContainer
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
             modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
         )
     }
@@ -601,7 +562,7 @@ private fun formatCount(value: Int): String = when {
     else -> value.toString()
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFF7F7F7)
+@Preview(showBackground = true)
 @Composable
 private fun ComicDetailSuccessPreview() {
     MaterialTheme {
@@ -611,7 +572,7 @@ private fun ComicDetailSuccessPreview() {
                 title = "终将成为你：一段很长很长的漫画标题预览",
                 author = "仲谷鳰",
                 chineseTeam = "示例汉化组",
-                description = "无法对他人产生特别情感的小糸侑，在初中毕业时被关系很好的男生告白，却无法给出回应。升入高中后，她遇见了学生会成员七海灯子，并逐渐理解了喜欢一个人的意义。",
+                description = "无法对他人产生特别情感的小糸侑，在初中毕业时被关系很好的男生告白，却无法给出回应。",
                 categories = listOf("百合", "校园"),
                 tags = listOf("恋爱", "青春", "日常", "剧情"),
                 epsCount = 45,
