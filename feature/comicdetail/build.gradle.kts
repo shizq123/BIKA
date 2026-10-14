@@ -14,8 +14,6 @@ dependencies {
     implementation(libs.coil.compose)
     implementation(libs.flowredux)
 
-    implementation(libs.compose.shimmer)
-
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.robolectric)
     testImplementation(kotlin("test"))

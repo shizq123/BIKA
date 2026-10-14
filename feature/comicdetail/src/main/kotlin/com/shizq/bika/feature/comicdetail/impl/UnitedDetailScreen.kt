@@ -1,8 +1,6 @@
 package com.shizq.bika.feature.comicdetail.impl
 
-import androidx.compose.animation.AnimatedVisibilityScope
-import androidx.compose.animation.ExperimentalSharedTransitionApi
-import androidx.compose.animation.SharedTransitionScope
+
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -64,17 +62,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.shizq.bika.core.ui.ComicSharedElementKey
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.RetryableAsyncImage
 import com.shizq.bika.feature.comicdetail.impl.comments.CommentsTab
 import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
 import com.shizq.bika.feature.comicdetail.impl.detail.PageTab
 import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesRoute
-import com.valentinilk.shimmer.Shimmer
-import com.valentinilk.shimmer.ShimmerBounds
-import com.valentinilk.shimmer.rememberShimmer
-import com.valentinilk.shimmer.shimmer
 import kotlinx.coroutines.launch
 
 private data class ComicDetailNavigationActions(
@@ -95,7 +88,6 @@ private data class ComicDetailDownloadActions(
     val onDownloadWholeComic: (title: String, cover: String, epsCount: Int) -> Unit,
 )
 
-@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun ComicDetailScreen(
     navigationToReader: (id: String, chapterOrder: Int) -> Unit,
@@ -106,12 +98,6 @@ fun ComicDetailScreen(
     onUploaderClick: (String, String) -> Unit,
     navigationToEpisodeDownload: (String, String, String) -> Unit,
     onBackClick: () -> Unit,
-    previewCoverUrl: String,
-    previewTitle: String,
-    coverSharedElementKey: ComicSharedElementKey,
-    titleSharedElementKey: ComicSharedElementKey,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope,
     viewModel: ComicInfoViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -120,12 +106,8 @@ fun ComicDetailScreen(
 
     ComicDetailContent(
         unitedState = state,
-        previewCoverUrl = previewCoverUrl,
-        previewTitle = previewTitle,
-        coverSharedElementKey = coverSharedElementKey,
-        titleSharedElementKey = titleSharedElementKey,
-        sharedTransitionScope = sharedTransitionScope,
-        animatedVisibilityScope = animatedVisibilityScope,
+        previewCoverUrl = "",
+        previewTitle = "",
         controls = controls,
         episodesContent = {
             val detail = (state as? UnitedDetailsUiState.Content)?.detail
@@ -160,7 +142,7 @@ fun ComicDetailScreen(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ComicDetailContent(
     unitedState: UnitedDetailsUiState,
@@ -172,31 +154,11 @@ private fun ComicDetailContent(
     modifier: Modifier = Modifier,
     previewCoverUrl: String,
     previewTitle: String,
-    coverSharedElementKey: ComicSharedElementKey,
-    titleSharedElementKey: ComicSharedElementKey,
-    sharedTransitionScope: SharedTransitionScope,
-    animatedVisibilityScope: AnimatedVisibilityScope,
 ) {
-    val sharedCoverModifier = with(sharedTransitionScope) {
-        Modifier.sharedElement(
-            sharedContentState = rememberSharedContentState(coverSharedElementKey),
-            animatedVisibilityScope = animatedVisibilityScope,
-        )
-    }
-
-    val sharedTitleModifier = with(sharedTransitionScope) {
-        Modifier.sharedBounds(
-            sharedContentState = rememberSharedContentState(titleSharedElementKey),
-            animatedVisibilityScope = animatedVisibilityScope,
-        )
-    }
-
     when (unitedState) {
         UnitedDetailsUiState.Initialize -> ComicDetailInitializeContent(
             coverUrl = previewCoverUrl,
             title = previewTitle,
-            coverModifier = sharedCoverModifier,
-            titleModifier = sharedTitleModifier,
             onBackClick = navigationActions.onBack,
             modifier = modifier,
         )
@@ -218,8 +180,6 @@ private fun ComicDetailContent(
             episodesContent = episodesContent,
             controls = controls,
             previewTitle = previewTitle,
-            coverModifier = sharedCoverModifier,
-            titleModifier = sharedTitleModifier,
             actions = navigationActions,
             interactions = interactionActions,
             downloads = downloadActions,
@@ -227,6 +187,7 @@ private fun ComicDetailContent(
         )
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -302,10 +263,9 @@ private fun ComicDetailLoadedContent(
     episodesContent: @Composable () -> Unit,
     controls: ComicDetailControlsState,
     previewTitle: String,
-    coverModifier: Modifier,
-    titleModifier: Modifier,
     actions: ComicDetailNavigationActions,
     interactions: ComicDetailInteractionActions,
+
     downloads: ComicDetailDownloadActions,
     modifier: Modifier = Modifier,
 ) {
@@ -357,9 +317,8 @@ private fun ComicDetailLoadedContent(
                     pagerState = pagerState,
                     state = state,
                     episodesContent = episodesContent,
-                    coverModifier = coverModifier,
-                    titleModifier = titleModifier,
                     actions = actions,
+
                     interactions = interactions,
                 )
             },
@@ -372,9 +331,8 @@ private fun ComicDetailPager(
     pagerState: androidx.compose.foundation.pager.PagerState,
     state: UnitedDetailsUiState.Content,
     episodesContent: @Composable () -> Unit,
-    coverModifier: Modifier,
-    titleModifier: Modifier,
     actions: ComicDetailNavigationActions,
+
     interactions: ComicDetailInteractionActions,
 ) {
     val detail = state.detail
@@ -395,9 +353,8 @@ private fun ComicDetailPager(
             PageTab.DETAIL -> DetailTab(
                 detail = state.detail,
                 recommendations = state.recommendations,
-                coverModifier = coverModifier,
-                titleModifier = titleModifier,
                 onRecommendedComicClick = actions.onRecommendedComicClick,
+
                 onTranslateClick = actions.onTranslateClick,
                 navigationToTagBlock = interactions.onTagClick,
                 onAuthorClick = interactions.onAuthorClick,
@@ -410,6 +367,7 @@ private fun ComicDetailPager(
         }
     }
 }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ComicDetailBottomAppBar(
@@ -511,19 +469,13 @@ private fun TooltipIconButton(
 private fun ComicDetailInitializeContent(
     coverUrl: String,
     title: String,
-    coverModifier: Modifier,
-    titleModifier: Modifier,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val shimmer = rememberShimmer(
-        shimmerBounds = ShimmerBounds.View,
-    )
-
     ComicDetailScaffold(
         onBackClick = onBackClick,
         bottomBar = {
-            ComicDetailBottomAppBarSkeleton(shimmer = shimmer)
+            ComicDetailBottomAppBarSkeleton()
         },
         modifier = modifier,
     ) { innerPadding ->
@@ -545,11 +497,8 @@ private fun ComicDetailInitializeContent(
                     ComicDetailHeroSkeleton(
                         coverUrl = coverUrl,
                         title = title,
-                        coverModifier = coverModifier,
-                        titleModifier = titleModifier,
-                        shimmer = shimmer,
                     )
-                    ComicDetailBodySkeleton(shimmer = shimmer)
+                    ComicDetailBodySkeleton()
                 }
             },
         )
@@ -560,9 +509,6 @@ private fun ComicDetailInitializeContent(
 private fun ComicDetailHeroSkeleton(
     coverUrl: String,
     title: String,
-    coverModifier: Modifier,
-    titleModifier: Modifier,
-    shimmer: Shimmer,
 ) {
     Row(
         modifier = Modifier
@@ -575,8 +521,9 @@ private fun ComicDetailHeroSkeleton(
             model = coverUrl,
             contentDescription = null,
             contentScale = ContentScale.Crop,
-            modifier = coverModifier
+            modifier = Modifier
                 .width(112.dp)
+
                 .height(156.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest),
@@ -587,26 +534,26 @@ private fun ComicDetailHeroSkeleton(
         ) {
             Text(
                 text = title,
-                modifier = titleModifier,
                 style = MaterialTheme.typography.titleLarge,
+
                 fontWeight = FontWeight.Bold,
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
             SkeletonBlock(
-                shimmer = shimmer,
+
                 modifier = Modifier
                     .fillMaxWidth(0.65f)
                     .height(16.dp),
             )
             SkeletonBlock(
-                shimmer = shimmer,
+
                 modifier = Modifier
                     .fillMaxWidth(0.85f)
                     .height(16.dp),
             )
             SkeletonBlock(
-                shimmer = shimmer,
+
                 modifier = Modifier
                     .fillMaxWidth(0.5f)
                     .height(28.dp),
@@ -616,7 +563,7 @@ private fun ComicDetailHeroSkeleton(
 }
 
 @Composable
-private fun ComicDetailBottomAppBarSkeleton(shimmer: Shimmer) {
+private fun ComicDetailBottomAppBarSkeleton() {
     BottomAppBar(
         actions = {
             Row(
@@ -625,7 +572,6 @@ private fun ComicDetailBottomAppBarSkeleton(shimmer: Shimmer) {
             ) {
                 repeat(3) {
                     SkeletonBlock(
-                        shimmer = shimmer,
                         modifier = Modifier
                             .width(32.dp)
                             .height(32.dp),
@@ -636,7 +582,6 @@ private fun ComicDetailBottomAppBarSkeleton(shimmer: Shimmer) {
         },
         floatingActionButton = {
             SkeletonBlock(
-                shimmer = shimmer,
                 modifier = Modifier
                     .width(120.dp)
                     .height(56.dp),
@@ -647,7 +592,7 @@ private fun ComicDetailBottomAppBarSkeleton(shimmer: Shimmer) {
 }
 
 @Composable
-private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
+private fun ComicDetailBodySkeleton() {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -659,7 +604,7 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
             ) {
                 repeat(3) {
                     SkeletonBlock(
-                        shimmer = shimmer,
+
                         modifier = Modifier
                             .width(72.dp)
                             .height(34.dp),
@@ -670,19 +615,21 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
 
         SkeletonCard {
             SkeletonBlock(
-                shimmer = shimmer, modifier = Modifier
+                modifier = Modifier
                     .width(54.dp)
-                    .height(20.dp))
+                    .height(20.dp)
+            )
             SkeletonBlock(
-                shimmer = shimmer, modifier = Modifier
+                modifier = Modifier
                     .fillMaxWidth()
-                    .height(14.dp))
+                    .height(14.dp)
+            )
             SkeletonBlock(
-                shimmer = shimmer, modifier = Modifier
+                modifier = Modifier
                     .fillMaxWidth()
-                    .height(14.dp))
+                    .height(14.dp)
+            )
             SkeletonBlock(
-                shimmer = shimmer,
                 modifier = Modifier
                     .fillMaxWidth(0.72f)
                     .height(14.dp)
@@ -691,13 +638,14 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
 
         SkeletonCard {
             SkeletonBlock(
-                shimmer = shimmer, modifier = Modifier
+                modifier = Modifier
                     .width(54.dp)
-                    .height(20.dp))
+                    .height(20.dp)
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(64.dp, 82.dp, 58.dp).forEach { width ->
                     SkeletonBlock(
-                        shimmer = shimmer,
+
                         modifier = Modifier
                             .width(width)
                             .height(30.dp),
@@ -709,22 +657,22 @@ private fun ComicDetailBodySkeleton(shimmer: Shimmer) {
 
         SkeletonCard {
             SkeletonBlock(
-                shimmer = shimmer, modifier = Modifier
+                modifier = Modifier
                     .width(72.dp)
-                    .height(20.dp))
+                    .height(20.dp)
+            )
             repeat(2) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
                     SkeletonBlock(
-                        shimmer = shimmer,
+
                         modifier = Modifier
                             .weight(1f)
                             .height(34.dp)
                     )
                     SkeletonBlock(
-                        shimmer = shimmer,
                         modifier = Modifier
                             .weight(1f)
                             .height(34.dp)
@@ -752,15 +700,12 @@ private fun SkeletonCard(
 
 @Composable
 private fun SkeletonBlock(
-    shimmer: Shimmer,
     modifier: Modifier = Modifier,
     shape: Shape = RoundedCornerShape(7.dp),
 ) {
     Box(
         modifier = modifier
             .clip(shape)
-            // shimmer 必须位于 background 之前，才能作用于随后绘制的占位色。
-            .shimmer(shimmer)
             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
     )
 }

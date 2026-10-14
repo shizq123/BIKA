@@ -278,18 +278,6 @@ fun EntryProviderScope<NavKey>.featureSection(
             ) { factory ->
                 factory.create(id)
             },
-            previewCoverUrl = key.previewCoverUrl,
-            previewTitle = key.previewTitle,
-            coverSharedElementKey = ComicSharedElementKey(
-                key.transitionId,
-                ComicSharedElement.Cover,
-            ),
-            titleSharedElementKey = ComicSharedElementKey(
-                key.transitionId,
-                ComicSharedElement.Title,
-            ),
-            sharedTransitionScope = sharedTransitionScope,
-            animatedVisibilityScope = LocalNavAnimatedContentScope.current,
             onBackClick = { navigator.goBack() },
             navigationToReader = { id, index ->
                 navigator.navigate(ConnectedRoute.ReaderRoute(id, index))
