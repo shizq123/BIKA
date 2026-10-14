@@ -169,7 +169,7 @@ private fun ComicHero(
         AsyncImage(
             model = detail.cover,
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.FillBounds,
             modifier = Modifier
                 .matchParentSize()
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
@@ -249,8 +249,10 @@ private fun HeroCover(detail: ComicDetail, modifier: Modifier) {
     AsyncImage(
         model = detail.cover,
         contentDescription = detail.title,
-        contentScale = ContentScale.Crop,
-        modifier = modifier.clip(RoundedCornerShape(16.dp)),
+        contentScale = ContentScale.Fit,
+        modifier = modifier
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
     )
 }
 
