@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -71,14 +72,10 @@ fun DetailTab(
     onUploaderClick: (String, String) -> Unit,
     navigationToTagBlock: (String) -> Unit,
     modifier: Modifier = Modifier,
-    coverModifier: Modifier = Modifier,
-    titleModifier: Modifier = Modifier,
 ) {
     ComicDetailBody(
         detail = detail,
         modifier = modifier,
-        coverModifier = coverModifier,
-        titleModifier = titleModifier,
         onAuthorClick = { onAuthorClick(detail.author) },
         onTeamClick = { onUploaderClick(detail.chineseTeam, detail.creator.id) },
         onTagClick = onTranslateClick,
@@ -98,8 +95,6 @@ private fun ComicDetailBody(
     onRecommendedComicClick: (String) -> Unit,
     onTagLongClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    coverModifier: Modifier = Modifier,
-    titleModifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
@@ -107,8 +102,14 @@ private fun ComicDetailBody(
             .verticalScroll(rememberScrollState())
             .background(MaterialTheme.colorScheme.surface),
     ) {
-        Box(modifier = Modifier.fillMaxWidth()) {
-            // 第一层：背景图不参与布局测量，只铺满 Hero 区域。
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 300.dp),
+        ) {
+            // 第一层：背景图不参与布局测量。Hero 基础高度为 300dp，
+            // 额外计入顶部 TabRow 约 48dp 占用的视觉空间。
+            // HeroHeader 内容更高时，Box 仍会随前景内容继续增长。
             AsyncImage(
                 model = detail.cover,
                 contentDescription = null,
@@ -138,8 +139,6 @@ private fun ComicDetailBody(
                 onAuthorClick = onAuthorClick,
                 onTeamClick = onTeamClick,
                 onTagClick = onTagClick,
-                coverModifier = coverModifier,
-                titleModifier = titleModifier,
             )
         }
 

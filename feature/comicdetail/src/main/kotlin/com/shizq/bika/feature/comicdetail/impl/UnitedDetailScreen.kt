@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -66,6 +67,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -198,9 +200,9 @@ private fun ComicDetailContent(
 @Composable
 private fun ComicDetailScaffold(
     onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
     topBarTitle: @Composable () -> Unit = {},
     bottomBar: @Composable () -> Unit = {},
-    modifier: Modifier = Modifier,
     content: @Composable (PaddingValues) -> Unit,
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior()
@@ -440,7 +442,7 @@ private fun ComicDetailBottomAppBar(
 @Composable
 private fun TooltipIconButton(
     tooltipText: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    icon: ImageVector,
     contentDescription: String,
     tint: androidx.compose.ui.graphics.Color,
     onClick: () -> Unit,
@@ -528,7 +530,11 @@ private fun ComicDetailInitializeContent(
 
 @Composable
 private fun ComicDetailHeroSkeleton() {
-    Box(modifier = Modifier.fillMaxWidth()) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 348.dp),
+    ) {
         SkeletonBlock(
             modifier = Modifier.matchParentSize(),
             shape = RoundedCornerShape(0.dp),
