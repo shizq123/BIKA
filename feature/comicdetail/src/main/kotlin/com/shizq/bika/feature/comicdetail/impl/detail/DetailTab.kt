@@ -9,6 +9,7 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
@@ -22,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -194,7 +196,7 @@ private fun ComicHero(
         AsyncImage(
             model = detail.cover,
             contentDescription = null,
-            contentScale = ContentScale.Crop,
+            contentScale = ContentScale.FillBounds,
             modifier = Modifier
                 .matchParentSize()
                 .background(MaterialTheme.colorScheme.surfaceContainerHighest)
@@ -231,56 +233,92 @@ private fun HeroHeader(
     coverModifier: Modifier = Modifier,
     titleModifier: Modifier = Modifier,
 ) {
-    Box(modifier = Modifier.fillMaxWidth()) {
-        Row(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(horizontal = 20.dp, vertical = 20.dp),
-            horizontalArrangement = Arrangement.spacedBy(18.dp),
-            verticalAlignment = Alignment.Top,
-        ) {
-            AsyncImage(
-                model = detail.cover,
-                contentDescription = detail.title,
-                contentScale = ContentScale.Crop,
-                modifier = coverModifier
-                    .width(122.dp)
-                    .height(166.dp)
-                    .clip(RoundedCornerShape(14.dp)),
-            )
-
+    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+        if (maxWidth < 360.dp) {
             Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                StatusPill(
-                    text = if (detail.finished) "已完结" else "连载中",
-                    emphasized = true,
+                HeroCover(detail, coverModifier
+                    .width(138.dp)
+                    .height(188.dp))
+                HeroMetadata(
+                    detail = detail,
+                    onAuthorClick = onAuthorClick,
+                    onTeamClick = onTeamClick,
+                    onTagClick = onTagClick,
+                    modifier = titleModifier.fillMaxWidth(),
+                    centered = true,
                 )
-                Text(
-                    text = detail.title,
-                    modifier = titleModifier,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                ClickableLine(
-                    label = "作者",
-                    value = detail.author.ifBlank { "未知" },
-                    onClick = onAuthorClick,
-                )
-                if (detail.chineseTeam.isNotBlank()) {
-                    ClickableLine(
-                        label = "汉化",
-                        value = detail.chineseTeam,
-                        onClick = onTeamClick,
-                    )
-                }
-                detail.categories.firstOrNull()?.let { category ->
-                    StatusPill(text = category, onClick = { onTagClick(category) })
-                }
             }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                verticalAlignment = Alignment.Top,
+            ) {
+                HeroCover(detail, coverModifier
+                    .width(122.dp)
+                    .height(166.dp))
+                HeroMetadata(
+                    detail = detail,
+                    onAuthorClick = onAuthorClick,
+                    onTeamClick = onTeamClick,
+                    onTagClick = onTagClick,
+                    modifier = titleModifier.weight(1f),
+                    centered = false,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroCover(detail: ComicDetail, modifier: Modifier) {
+    AsyncImage(
+        model = detail.cover,
+        contentDescription = detail.title,
+        contentScale = ContentScale.Crop,
+        modifier = modifier.clip(RoundedCornerShape(16.dp)),
+    )
+}
+
+@Composable
+private fun HeroMetadata(
+    detail: ComicDetail,
+    onAuthorClick: () -> Unit,
+    onTeamClick: () -> Unit,
+    onTagClick: (String) -> Unit,
+    modifier: Modifier,
+    centered: Boolean,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        StatusPill(
+            text = if (detail.finished) "已完结" else "连载中",
+            emphasized = true,
+        )
+        Text(
+            text = detail.title,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.ExtraBold,
+            maxLines = 3,
+            overflow = TextOverflow.Ellipsis,
+        )
+        ClickableLine("作者", detail.author.ifBlank { "未知" }, onAuthorClick, centered)
+        if (detail.chineseTeam.isNotBlank()) {
+            ClickableLine("汉化", detail.chineseTeam, onTeamClick, centered)
+        }
+        detail.categories.firstOrNull()?.let { category ->
+            StatusPill(text = category, onClick = { onTagClick(category) })
         }
     }
 }
@@ -498,13 +536,18 @@ private fun InfoGrid(vararg entries: Pair<String, String>) {
 }
 
 @Composable
-private fun ClickableLine(label: String, value: String, onClick: () -> Unit) {
+private fun ClickableLine(
+    label: String,
+    value: String,
+    onClick: () -> Unit,
+    centered: Boolean = false,
+) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
+            .then(if (centered) Modifier.wrapContentWidth() else Modifier.fillMaxWidth())
             .heightIn(min = 48.dp)
             .clickable(onClick = onClick),
-        contentAlignment = Alignment.CenterStart,
+        contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "$label · $value",

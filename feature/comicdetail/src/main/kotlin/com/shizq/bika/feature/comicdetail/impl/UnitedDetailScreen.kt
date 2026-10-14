@@ -1,7 +1,7 @@
 package com.shizq.bika.feature.comicdetail.impl
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.LinearEasing
+
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -24,7 +24,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
+
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -58,19 +61,20 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -80,6 +84,8 @@ import com.shizq.bika.feature.comicdetail.impl.comments.CommentsTab
 import com.shizq.bika.feature.comicdetail.impl.detail.DetailTab
 import com.shizq.bika.feature.comicdetail.impl.detail.PageTab
 import com.shizq.bika.feature.comicdetail.impl.episodes.EpisodesRoute
+import kotlinx.coroutines.launch
+
 
 private data class ComicDetailNavigationActions(
     val onBack: () -> Unit,
@@ -280,25 +286,49 @@ private fun ComicDetailLoadedContent(
     modifier: Modifier = Modifier,
 ) {
     val detail = state.detail
-    var selectedTabIndex by rememberSaveable(detail.id) { mutableIntStateOf(0) }
-    val selectedTab = PageTab.entries[selectedTabIndex]
+    val pagerState = rememberPagerState(pageCount = { PageTab.entries.size })
+    val selectedTab = PageTab.entries[pagerState.currentPage]
+    val coroutineScope = rememberCoroutineScope()
     val detailListState = rememberLazyListState()
+
     val tabStateHolder = rememberSaveableStateHolder()
-    val isDetailHeroExpanded by
-    remember { derivedStateOf { detailListState.firstVisibleItemIndex == 0 && detailListState.firstVisibleItemScrollOffset == 0 } }
+    val density = LocalDensity.current
+
+    val isDetailHeroExpanded by remember {
+        derivedStateOf {
+            detailListState.firstVisibleItemIndex == 0 &&
+                    detailListState.firstVisibleItemScrollOffset < 24
+        }
+    }
+    val toolbarAlpha by remember {
+        derivedStateOf {
+            if (selectedTab != PageTab.DETAIL) {
+                1f
+            } else {
+                val revealDistancePx = with(density) { 180.dp.toPx() }
+                val scrollOffset = if (detailListState.firstVisibleItemIndex == 0) {
+                    detailListState.firstVisibleItemScrollOffset.toFloat()
+                } else {
+                    revealDistancePx
+                }
+                (scrollOffset / revealDistancePx).coerceIn(0f, 1f)
+            }
+        }
+    }
 
     ComicDetailScaffold(
         onBackClick = actions.onBack,
         topBarTitle = {
-            // 详情页的 Hero 已经承担主标题；切到功能页后再显示紧凑标题。
             if (selectedTab != PageTab.DETAIL || !isDetailHeroExpanded) {
                 Text(
                     text = detail.title,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.alpha(toolbarAlpha),
                 )
             }
         },
+
         topBarActions = {
             when (selectedTab) {
                 PageTab.DETAIL -> ComicQuickActions(
@@ -340,55 +370,57 @@ private fun ComicDetailLoadedContent(
         },
         modifier = modifier,
     ) { innerPadding ->
-        Box(
+        HorizontalPager(
+            state = pagerState,
             modifier = Modifier
                 .padding(innerPadding)
-                .fillMaxSize()
-        ) {
-            AnimatedContent(
-                targetState = selectedTab,
-                modifier = Modifier.fillMaxSize(),
-                label = "comic-detail-tab",
-            ) { tab ->
-                tabStateHolder.SaveableStateProvider(tab) {
-                    when (tab) {
-                        PageTab.DETAIL -> DetailTab(
-                            detail = detail,
-                            recommendations = state.recommendations,
-                            onRecommendedComicClick = actions.onRecommendedComicClick,
-                            onTranslateClick = actions.onTranslateClick,
-                            navigationToTagBlock = interactions.onTagClick,
-                            onAuthorClick = interactions.onAuthorClick,
-                            onUploaderClick = interactions.onUploaderClick,
-                            listState = detailListState,
-                            tabs = {
-                                ComicDetailTabRow(
-                                    selectedTabIndex = tab.ordinal,
-                                    onTabClick = { selectedTabIndex = it },
-                                )
+                .fillMaxSize(),
+            key = { PageTab.entries[it] },
+        ) { pageIndex ->
+            when (val page = PageTab.entries[pageIndex]) {
+                PageTab.DETAIL -> DetailTab(
+                    detail = detail,
+                    recommendations = state.recommendations,
+                    onRecommendedComicClick = actions.onRecommendedComicClick,
+                    onTranslateClick = actions.onTranslateClick,
+                    navigationToTagBlock = interactions.onTagClick,
+                    onAuthorClick = interactions.onAuthorClick,
+                    onUploaderClick = interactions.onUploaderClick,
+                    listState = detailListState,
+                    tabs = {
+                        ComicDetailTabRow(
+                            selectedTabIndex = pagerState.currentPage,
+                            onTabClick = { targetPage ->
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(targetPage)
+                                }
                             },
                         )
+                    },
+                )
 
-                        else -> Column(Modifier.fillMaxSize()) {
-                            ComicDetailTabRow(
-                                selectedTabIndex = tab.ordinal,
-                                onTabClick = { selectedTabIndex = it },
-                            )
-                            Box(
-                                Modifier
-                                    .weight(1f)
-                                    .fillMaxWidth()
-                            ) {
-                                when (tab) {
-                                    PageTab.EPISODES -> episodesContent()
-                                    PageTab.COMMENT -> CommentsTab(comicId = detail.id)
-                                    PageTab.DETAIL -> Unit
-                                }
+                else -> Column(Modifier.fillMaxSize()) {
+                    ComicDetailTabRow(
+                        selectedTabIndex = pagerState.currentPage,
+                        onTabClick = { targetPage ->
+                            coroutineScope.launch {
+                                pagerState.animateScrollToPage(targetPage)
+                            }
+                        },
+                    )
+                    Box(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        when (page) {
+                            PageTab.EPISODES -> episodesContent()
+                            PageTab.COMMENT -> CommentsTab(comicId = detail.id)
+                            PageTab.DETAIL -> Unit
                             }
                         }
                     }
                 }
-            }
         }
     }
 }
@@ -546,7 +578,7 @@ private fun ComicDetailInitializeContent(
                         .height(20.dp),
                 )
             },
-            bottomBar = { ComicDetailBottomAppBarSkeleton() },
+            bottomBar = { /*ComicDetailBottomAppBarSkeleton()*/ },
             modifier = modifier,
         ) { innerPadding ->
             ComicDetailBodyLayout(
@@ -650,20 +682,15 @@ private fun ComicDetailHeroSkeleton() {
 }
 
 @Composable
-private fun ComicDetailBottomAppBarSkeleton() {
+private fun ComicReadBottomBarSkeleton() {
     BottomAppBar(
         actions = {
-            Row(
-                modifier = Modifier.padding(horizontal = 12.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                repeat(3) {
-                    SkeletonBlock(
-                        modifier = Modifier.size(32.dp),
-                        shape = RoundedCornerShape(50),
-                    )
-                }
-            }
+            SkeletonBlock(
+                modifier = Modifier
+                    .padding(start = 20.dp)
+                    .width(96.dp)
+                    .height(16.dp),
+            )
         },
         floatingActionButton = {
             SkeletonBlock(
