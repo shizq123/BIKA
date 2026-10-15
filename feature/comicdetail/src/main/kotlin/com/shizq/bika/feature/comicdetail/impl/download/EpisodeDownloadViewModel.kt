@@ -14,6 +14,9 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import android.content.Context
+import android.widget.Toast
+import dagger.hilt.android.qualifiers.ApplicationContext
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +31,7 @@ class EpisodeDownloadViewModel @AssistedInject constructor(
     private val chapterRepository: ChapterRepository,
     private val episodeDownloadManager: ComicDownloadEnqueuer,
     private val messageReporter: MessageReporter,
+    @ApplicationContext private val context: Context,
     @Assisted("id") private val comicId: String,
     @Assisted("title") private val comicTitle: String,
     @Assisted("url") private val coverUrl: String,
@@ -55,13 +59,17 @@ class EpisodeDownloadViewModel @AssistedInject constructor(
                 _uiState.value = if (episodes.isEmpty()) {
                     EpisodeDownloadUiState.Empty
                 } else {
-                    EpisodeDownloadUiState.Content(episodes = episodes)
+                    EpisodeDownloadUiState.Content(
+                        episodes = episodes,
+                        selectedIds = episodes.map { it.id }.toSet(),
+                    )
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 logger.error(e) { "获取可选章节失败: comicId=$comicId" }
                 _uiState.value = EpisodeDownloadUiState.LoadError
+                Toast.makeText(context, "获取章节失败，请稍后重试", Toast.LENGTH_SHORT).show()
                 messageReporter.reportError(
                     UiText.of(R.string.download_fetch_chapters_failed),
                     duration = MessageDuration.Long,
@@ -121,6 +129,8 @@ class EpisodeDownloadViewModel @AssistedInject constructor(
         viewModelScope.launch {
             try {
                 episodeDownloadManager.enqueue(comicId, comicTitle, coverUrl, selected)
+                val successMsg = if (selected.size == 1) "已成功将 1 个章节加入下载队列" else "已成功将 ${selected.size} 个章节加入下载队列"
+                Toast.makeText(context, successMsg, Toast.LENGTH_SHORT).show()
                 messageReporter.reportInfo(
                     if (selected.size == 1) {
                         UiText.of(R.string.download_enqueued)
@@ -136,6 +146,7 @@ class EpisodeDownloadViewModel @AssistedInject constructor(
                 throw e
             } catch (e: Exception) {
                 logger.error(e) { "下载章节入队失败: comicId=$comicId" }
+                Toast.makeText(context, "加入下载队列失败，请稍后重试", Toast.LENGTH_SHORT).show()
                 _uiState.update { state ->
                     val current = state as? EpisodeDownloadUiState.Content ?: return@update state
                     current.copy(submission = SubmissionState.Error)

@@ -28,6 +28,13 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
+import android.content.Context
+import android.widget.Toast
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 private val logger = KotlinLogging.logger("ComicInfoViewModel")
 
 /**
@@ -44,8 +51,12 @@ class ComicInfoViewModel @AssistedInject constructor(
     private val historyDao: ReadingHistoryDao,
     private val messageReporter: MessageReporter,
     private val comicDownloadEnqueuer: ComicDownloadEnqueuer,
+    @ApplicationContext private val context: Context,
     @Assisted private val comicId: String,
 ) : ViewModel() {
+
+    private val _isDownloadingWholeComic = MutableStateFlow(false)
+    val isDownloadingWholeComic: StateFlow<Boolean> = _isDownloadingWholeComic.asStateFlow()
 
     private val stateMachine = stateMachineFactory.create(comicId).launchIn(viewModelScope)
 
@@ -119,14 +130,22 @@ class ComicInfoViewModel @AssistedInject constructor(
      * 表现为「显示已下载，但点下载又入队一遍」。
      */
     fun downloadWholeComic(comicTitle: String, coverUrl: String, epsCount: Int) {
+        if (_isDownloadingWholeComic.value) return
         viewModelScope.launch {
+            _isDownloadingWholeComic.value = true
+            Toast.makeText(context, "正在获取章节信息...", Toast.LENGTH_SHORT).show()
+
             if (epsCount <= 1) {
-                enqueueEpisodes(comicTitle, coverUrl, listOf(singleEpisodeChapter()))
-                messageReporter.reportInfo(UiText.of(R.string.download_enqueued))
+                try {
+                    enqueueEpisodes(comicTitle, coverUrl, listOf(singleEpisodeChapter()))
+                    Toast.makeText(context, "已加入下载队列（全一话）", Toast.LENGTH_SHORT).show()
+                    messageReporter.reportInfo(UiText.of(R.string.download_enqueued))
+                } finally {
+                    _isDownloadingWholeComic.value = false
+                }
                 return@launch
             }
 
-            // id 固定：连点「全部下载」时后续上报被合并，不会堆出一串相同提示
             val pendingId = MessageId("download_all_$comicId")
             messageReporter.reportInfo(
                 UiText.of(R.string.download_fetching_chapters),
@@ -136,13 +155,14 @@ class ComicInfoViewModel @AssistedInject constructor(
                 val allEps = fetchAllEpisodes()
                 if (allEps.isEmpty()) {
                     messageReporter.dismiss(pendingId)
+                    Toast.makeText(context, "未获取到可用章节", Toast.LENGTH_SHORT).show()
                     messageReporter.reportError(UiText.of(R.string.download_no_chapters))
                     return@launch
                 }
                 enqueueEpisodes(comicTitle, coverUrl, allEps)
-                // 先撤掉「正在获取」：它没被撤时结果消息要排在其整个展示时长之后，
-                // 章节拉得快的话用户会先盯着过期提示看完才见到结果
                 messageReporter.dismiss(pendingId)
+                val successMsg = "已成功将 ${allEps.size} 个章节加入下载队列"
+                Toast.makeText(context, successMsg, Toast.LENGTH_SHORT).show()
                 messageReporter.reportInfo(
                     UiText.of(R.string.download_all_enqueued, allEps.size),
                     duration = MessageDuration.Long,
@@ -152,6 +172,7 @@ class ComicInfoViewModel @AssistedInject constructor(
             } catch (e: Exception) {
                 logger.error(e) { "获取全部章节失败: comicId=$comicId" }
                 messageReporter.dismiss(pendingId)
+                Toast.makeText(context, "获取章节失败，请稍后重试", Toast.LENGTH_SHORT).show()
                 messageReporter.reportError(
                     UiText.of(R.string.download_fetch_chapters_failed),
                     duration = MessageDuration.Long,
@@ -160,6 +181,8 @@ class ComicInfoViewModel @AssistedInject constructor(
                         onPerformed = { downloadWholeComic(comicTitle, coverUrl, epsCount) },
                     ),
                 )
+            } finally {
+                _isDownloadingWholeComic.value = false
             }
         }
     }

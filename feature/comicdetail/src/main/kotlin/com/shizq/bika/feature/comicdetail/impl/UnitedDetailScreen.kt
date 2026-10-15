@@ -123,10 +123,12 @@ fun ComicDetailScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val controls by viewModel.controls.collectAsStateWithLifecycle()
     val chapterProgress by viewModel.chapterProgress.collectAsStateWithLifecycle()
+    val isDownloading by viewModel.isDownloadingWholeComic.collectAsStateWithLifecycle()
 
     ComicDetailContent(
         unitedState = state,
         controls = controls,
+        isDownloading = isDownloading,
         episodesContent = {
             val detail = (state as? UnitedDetailsUiState.Content)?.detail
             if (detail != null) {
@@ -137,6 +139,7 @@ fun ComicDetailScreen(
                     onDownloadSelectionClick = {
                         navigationToEpisodeDownload(detail.id, detail.title, detail.cover)
                     },
+                    epsCount = detail.epsCount,
                 )
             }
         },
@@ -166,6 +169,7 @@ private fun ComicDetailContent(
     unitedState: UnitedDetailsUiState,
     episodesContent: @Composable () -> Unit,
     controls: ComicDetailControlsState,
+    isDownloading: Boolean,
     navigationActions: ComicDetailNavigationActions,
     interactionActions: ComicDetailInteractionActions,
     downloadActions: ComicDetailDownloadActions,
@@ -193,6 +197,7 @@ private fun ComicDetailContent(
             state = unitedState,
             episodesContent = episodesContent,
             controls = controls,
+            isDownloading = isDownloading,
             actions = navigationActions,
             interactions = interactionActions,
             downloads = downloadActions,
@@ -279,6 +284,7 @@ private fun ComicDetailLoadedContent(
     state: UnitedDetailsUiState.Content,
     episodesContent: @Composable () -> Unit,
     controls: ComicDetailControlsState,
+    isDownloading: Boolean,
     actions: ComicDetailNavigationActions,
     interactions: ComicDetailInteractionActions,
     downloads: ComicDetailDownloadActions,
@@ -333,6 +339,7 @@ private fun ComicDetailLoadedContent(
                     isFavourited = detail.isFavourited,
                     isLiked = detail.isLiked,
                     downloadState = controls.downloadState,
+                    isDownloading = isDownloading,
                     onToggleFavourite = {
                         interactions.dispatch(UnitedDetailsAction.ToggleFavorite)
                     },
@@ -346,6 +353,7 @@ private fun ComicDetailLoadedContent(
 
                 PageTab.EPISODES -> ComicDownloadAction(
                     downloadState = controls.downloadState,
+                    isDownloading = isDownloading,
                     onDownloadWholeComic = {
                         downloads.onDownloadWholeComic(detail.title, detail.cover, detail.epsCount)
                     },
@@ -383,6 +391,7 @@ private fun ComicDetailLoadedContent(
             )
             HorizontalPager(
                 state = pagerState,
+                beyondViewportPageCount = 1,
                 modifier = Modifier.weight(1f),
                 key = { PageTab.entries[it] },
             ) { pageIndex ->
@@ -412,6 +421,7 @@ private fun ComicQuickActions(
     isFavourited: Boolean,
     isLiked: Boolean,
     downloadState: ComicDownloadState,
+    isDownloading: Boolean,
     onToggleFavourite: () -> Unit,
     onToggleLike: () -> Unit,
     onDownloadWholeComic: () -> Unit,
@@ -432,6 +442,7 @@ private fun ComicQuickActions(
     )
     ComicDownloadAction(
         downloadState = downloadState,
+        isDownloading = isDownloading,
         onDownloadWholeComic = onDownloadWholeComic,
     )
 }
@@ -439,29 +450,33 @@ private fun ComicQuickActions(
 @Composable
 private fun ComicDownloadAction(
     downloadState: ComicDownloadState,
+    isDownloading: Boolean,
     onDownloadWholeComic: () -> Unit,
 ) {
-    TooltipIconButton(
-        tooltipText = when (downloadState) {
-            ComicDownloadState.NotDownloaded -> "下载整本漫画"
-            is ComicDownloadState.Partial ->
-                "继续下载（${downloadState.completedChapters}/${downloadState.expectedChapters}）"
-
-            is ComicDownloadState.Downloaded -> "漫画已下载，点击重新下载"
-        },
-        icon = Icons.Filled.Download,
-        contentDescription = when (downloadState) {
-            ComicDownloadState.NotDownloaded -> "下载整本漫画"
-            is ComicDownloadState.Partial -> "继续下载漫画"
-            is ComicDownloadState.Downloaded -> "重新下载"
-        },
-        tint = when (downloadState) {
-            ComicDownloadState.NotDownloaded -> LocalContentColor.current
-            is ComicDownloadState.Partial -> MaterialTheme.colorScheme.primary
-            is ComicDownloadState.Downloaded -> MaterialTheme.colorScheme.secondary
-        },
-        onClick = onDownloadWholeComic,
-    )
+    if (isDownloading) {
+        IconButton(onClick = {}, enabled = false) {
+            androidx.compose.material3.CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+            )
+        }
+    } else {
+        IconButton(onClick = onDownloadWholeComic) {
+            Icon(
+                imageVector = Icons.Filled.Download,
+                contentDescription = when (downloadState) {
+                    ComicDownloadState.NotDownloaded -> "下载整本漫画"
+                    is ComicDownloadState.Partial -> "继续下载漫画"
+                    is ComicDownloadState.Downloaded -> "重新下载"
+                },
+                tint = when (downloadState) {
+                    ComicDownloadState.NotDownloaded -> LocalContentColor.current
+                    is ComicDownloadState.Partial -> MaterialTheme.colorScheme.primary
+                    is ComicDownloadState.Downloaded -> MaterialTheme.colorScheme.secondary
+                },
+            )
+        }
+    }
 }
 
 @Composable
