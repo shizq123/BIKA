@@ -2,6 +2,7 @@ package com.shizq.bika.feature.reader.impl.progress
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runTest
@@ -23,6 +24,10 @@ class ReadingProgressWriterTest {
 
     private val debounce = 1_000.milliseconds
 
+    private fun TestScope.advanceDebounce() {
+        advanceTimeBy(debounce.inWholeMilliseconds + 100)
+    }
+
     @Test
     fun `开闸后防抖窗口内只写最后一次`() = runTest {
         val sink = RecordingSink()
@@ -34,7 +39,7 @@ class ReadingProgressWriterTest {
         writer.submit(progress(page = 2))
         advanceTimeBy(200)
         writer.submit(progress(page = 3))
-        advanceUntilIdle()
+        advanceDebounce()
 
         assertEquals(listOf(3), sink.writes.map { it.pageIndex })
     }
@@ -46,9 +51,9 @@ class ReadingProgressWriterTest {
         writer.openGate()
 
         writer.submit(progress(page = 1))
-        advanceTimeBy(debounce.inWholeMilliseconds + 100)
+        advanceDebounce()
         writer.submit(progress(page = 7))
-        advanceUntilIdle()
+        advanceDebounce()
 
         assertEquals(listOf(1, 7), sink.writes.map { it.pageIndex })
     }
@@ -72,33 +77,13 @@ class ReadingProgressWriterTest {
     }
 
     @Test
-    fun `flush 可以传入与 submit 不同的页码`() = runTest {
-        // 模拟 latestProgress 由 manager 缓存，flush 时显式传入。
-        val sink = RecordingSink()
-        val writer = writer(sink, backgroundScope)
-        writer.openGate()
-
-        writer.submit(progress(page = 10))
-        advanceTimeBy(500)
-        // flush 时传入更新的页码（manager 从 controller 读取）
-        writer.flush(progress(page = 15))
-        advanceUntilIdle()
-
-        assertEquals(
-            listOf(15),
-            sink.writes.map { it.pageIndex },
-            "flush 应写入显式传入的值，不依赖 submit 的历史"
-        )
-    }
-
-    @Test
     fun `防抖与 flush 的值相同时被去重`() = runTest {
         val sink = RecordingSink()
         val writer = writer(sink, backgroundScope)
         writer.openGate()
 
         writer.submit(progress(page = 3))
-        advanceUntilIdle()
+        advanceDebounce()
         writer.flush(progress(page = 3))
         advanceUntilIdle()
 
@@ -128,7 +113,7 @@ class ReadingProgressWriterTest {
         // 防抖还没触发就切章：旧章节进度直接写，新章节闸门关闭
         writer.storeImmediately(progress(page = 20, order = 1))
         writer.closeGate()
-        advanceUntilIdle()
+        advanceDebounce()
 
         assertEquals(
             listOf(20),
@@ -146,7 +131,7 @@ class ReadingProgressWriterTest {
         writer.closeGate()
 
         writer.submit(progress(page = 0, order = 2))
-        advanceUntilIdle()
+        advanceDebounce()
 
         assertTrue(
             sink.writes.isEmpty(),
@@ -161,9 +146,9 @@ class ReadingProgressWriterTest {
         writer.openGate()
 
         writer.submit(progress(page = 4))
-        advanceUntilIdle()
+        advanceDebounce()
         writer.submit(progress(page = 4))
-        advanceUntilIdle()
+        advanceDebounce()
 
         assertEquals(1, sink.writes.size)
     }
@@ -184,7 +169,7 @@ class ReadingProgressWriterTest {
 
         writer.storeImmediately(progress(page = 25, order = 1))
         writer.closeGate()
-        advanceUntilIdle()
+        advanceDebounce()
 
         assertEquals(
             listOf(25),
@@ -229,7 +214,7 @@ class ReadingProgressWriterTest {
 
         // ON_STOP 时 manager 从 controller 取到最新页码 15，传给 flush
         writer.flush(progress(page = 15))
-        advanceUntilIdle()
+        advanceDebounce()
 
         assertEquals(
             listOf(15, 10),

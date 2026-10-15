@@ -420,7 +420,7 @@ class FeedStateMachine internal constructor(
         ).comics.toFeedPage(query.page)
 
         DiscoveryAction.ToRecent -> api.searchComics(
-            sort = SortOrder.NEWEST,
+            sort = query.sort,
             page = query.page,
         ).comics.toFeedPage(query.page)
 

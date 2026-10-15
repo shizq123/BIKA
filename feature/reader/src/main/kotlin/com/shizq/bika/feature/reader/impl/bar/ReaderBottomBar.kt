@@ -72,7 +72,6 @@ internal fun ReaderBottomBar(
                 // 上一章
                 IconButton(
                     onClick = onPrevChapter,
-                    enabled = hasPrevChapter
                 ) {
                     Icon(
                         Icons.Rounded.SkipPrevious,
@@ -96,7 +95,6 @@ internal fun ReaderBottomBar(
                 // 下一章
                 IconButton(
                     onClick = onNextChapter,
-                    enabled = hasNextChapter
                 ) {
                     Icon(
                         Icons.Rounded.SkipNext,

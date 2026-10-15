@@ -258,7 +258,7 @@ class BikaDataSource @Inject constructor(
             parameter("a", authorName)
             parameter("ca", knightId)
             parameter("ct", translationTeam)
-            parameter("s", sort)
+            parameter("s", sort?.value)
             parameter("page", page)
         }.body()
     }
@@ -285,7 +285,7 @@ class BikaDataSource @Inject constructor(
 
     suspend fun getFavouriteComics(sort: SortOrder, page: Int): ComicResource {
         return client.get("users/favourite") {
-            parameter("s", sort)
+            parameter("s", sort.value)
             parameter("page", page)
         }.body()
     }

@@ -68,6 +68,7 @@ class BikaApplication : Application(), SingletonImageLoader.Factory {
         try {
             val logsDir = getLogsDir()
             LoggingConfigurator.configureLogging(logsDir)
+            com.shizq.bika.core.common.BikaLog.init(this, false)
             logger.info { "Logging initialized at: ${logsDir.absolutePath}" }
         } catch (e: Exception) {
             Log.e("BikaApplication", "Failed to initialize logging", e)

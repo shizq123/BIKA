@@ -14,7 +14,11 @@ import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
 
 sealed interface ReaderUiState {
     @Immutable
-    data class Initializing(val id: String, val order: Int) : ReaderUiState
+    data class Initializing(
+        val id: String,
+        val order: Int,
+        val catalog: ChapterCatalog = ChapterCatalog.Empty,
+    ) : ReaderUiState
 
     @Immutable
     data class Ready(

@@ -17,8 +17,10 @@ import javax.crypto.spec.GCMParameterSpec
  * 无 `enc:` 前缀的值视为历史明文数据，[decrypt] 返回 null，由调用方原样透传，
  * 实现旧数据无缝兼容（下次写入时自动升级为密文）。
  */
-class CredentialsCipher @Inject constructor() {
-    private val keyStore: KeyStore = KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+open class CredentialsCipher @Inject constructor() {
+    private val keyStore: KeyStore by lazy {
+        KeyStore.getInstance(ANDROID_KEY_STORE).apply { load(null) }
+    }
 
     // javax.crypto.Cipher 不是线程安全的：init() 会修改实例内部状态（模式、IV），
     // 多个协程并发调用 encrypt/decrypt 共享同一个 Cipher 实例会导致 init 交错，
@@ -43,7 +45,7 @@ class CredentialsCipher @Inject constructor() {
         return generator.generateKey()
     }
 
-    fun encrypt(plain: String): String {
+    open fun encrypt(plain: String): String {
         val cipher = newCipher()
         cipher.init(Cipher.ENCRYPT_MODE, getOrCreateKey())
         val iv = cipher.iv
@@ -52,12 +54,12 @@ class CredentialsCipher @Inject constructor() {
     }
 
     /** 是否为密文格式（enc: 前缀）；用于区分"历史明文"与"解密失败" */
-    fun isEncrypted(value: String): Boolean = value.startsWith(PREFIX)
+    open fun isEncrypted(value: String): Boolean = value.startsWith(PREFIX)
 
     /**
      * @return 明文；若密文无效或值为历史明文（无前缀），返回 null
      */
-    fun decrypt(value: String): String? {
+    open fun decrypt(value: String): String? {
         if (!value.startsWith(PREFIX)) return null
         return try {
             val raw = Base64.decode(value.removePrefix(PREFIX), Base64.NO_WRAP)

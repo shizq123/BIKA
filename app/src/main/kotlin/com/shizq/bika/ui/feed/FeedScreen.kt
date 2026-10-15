@@ -95,6 +95,7 @@ fun FeedRoute(
         title = title,
         state = state,
         currentTag = viewModel.currentAction.toFavoriteTag(),
+        supportsSort = viewModel.currentAction.supportsSort,
         onAction = viewModel::dispatch,
         onNavigate = onNavigate,
     )
@@ -106,6 +107,7 @@ fun FeedScreen(
     title: String,
     state: FeedUiState,
     currentTag: FavoriteTag?,
+    supportsSort: Boolean = true,
     onAction: (FeedAction) -> Unit,
     onNavigate: (FeedDestination) -> Unit,
 ) {
@@ -114,6 +116,7 @@ fun FeedScreen(
     FeedContent(
         title = title,
         state = state,
+        supportsSort = supportsSort,
         onAction = onAction,
         onNavigate = onNavigate,
         onBookmarkClick = { favoriteSheetVisible = true },
@@ -160,6 +163,7 @@ private fun FeedAppBar(
     onBackClick: () -> Unit,
     onBookmarkClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
+    supportsSort: Boolean = true,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -183,39 +187,41 @@ private fun FeedAppBar(
                     contentDescription = stringResource(R.string.feed_action_favorite_tags),
                 )
             }
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Sort,
-                    contentDescription = stringResource(R.string.feed_action_sort),
-                )
-            }
-
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-            ) {
-                SortOrder.entries.fastForEach { sort ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = sort.label,
-                                fontWeight = if (sort == currentSortOrder) {
-                                    FontWeight.Bold
-                                } else {
-                                    FontWeight.Normal
-                                },
-                                color = if (sort == currentSortOrder) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    Color.Unspecified
-                                },
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            onSortOrderChanged(sort)
-                        },
+            if (supportsSort) {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                        contentDescription = stringResource(R.string.feed_action_sort),
                     )
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    SortOrder.entries.fastForEach { sort ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = sort.label,
+                                    fontWeight = if (sort == currentSortOrder) {
+                                        FontWeight.Bold
+                                    } else {
+                                        FontWeight.Normal
+                                    },
+                                    color = if (sort == currentSortOrder) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        Color.Unspecified
+                                    },
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onSortOrderChanged(sort)
+                            },
+                        )
+                    }
                 }
             }
         },
@@ -228,6 +234,7 @@ private fun FeedAppBar(
 private fun FeedContent(
     title: String,
     state: FeedUiState,
+    supportsSort: Boolean = true,
     onAction: (FeedAction) -> Unit,
     onNavigate: (FeedDestination) -> Unit,
     onBookmarkClick: () -> Unit,
@@ -312,6 +319,7 @@ private fun FeedContent(
                 currentSortOrder = state.query.sort,
                 onSortOrderChanged = { onAction(FeedAction.ChangeSort(it)) },
                 onBookmarkClick = onBookmarkClick,
+                supportsSort = supportsSort,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

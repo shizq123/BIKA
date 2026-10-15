@@ -3,12 +3,16 @@ package com.shizq.bika.feature.reader.impl.progress
 import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.merge
 import kotlinx.coroutines.flow.onEach
-import kotlinx.coroutines.flow.sample
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlin.time.Duration
 
 private val logger = KotlinLogging.logger("ProgressWriter")
@@ -32,6 +36,7 @@ private val logger = KotlinLogging.logger("ProgressWriter")
  * rememberCoroutineScope()，组合销毁会掐死尚未触发的防抖 job，这正是
  * persistLastKnownPage 那个同步逃生口存在的唯一理由。
  */
+@OptIn(FlowPreview::class)
 class ReadingProgressWriter(
     private val sink: ChapterProgressSink,
     scope: CoroutineScope,
@@ -52,7 +57,7 @@ class ReadingProgressWriter(
      * 若用 scope.launch 直接调 sink，它与 collector 是两个并发写入者，
      * 切章瞬间可能被一条迟到的防抖写入覆盖。
      */
-    private val immediateWrites = MutableSharedFlow<ChapterProgress>(extraBufferCapacity = 8)
+    private val immediateWrites = Channel<ChapterProgress>(capacity = 16)
 
     /** 写入闸门。恢复未确认前保持 Closed，[submit] 直接丢弃。 */
     @Volatile
@@ -61,8 +66,8 @@ class ReadingProgressWriter(
 
     init {
         merge(
-            submissions.sample(debounce),
-            immediateWrites,
+            submissions.debounce(debounce).filter { gate == PersistGate.Open },
+            immediateWrites.receiveAsFlow(),
         )
             // 只对相邻重复去重。注意不能把 immediateWrites 排除在外——切章写入的
             // chapterOrder 与当前章不同，天然不会被去重掉。
@@ -106,7 +111,7 @@ class ReadingProgressWriter(
      */
     fun flush(progress: ChapterProgress) {
         if (gate != PersistGate.Open) return
-        immediateWrites.tryEmit(progress)
+        immediateWrites.trySend(progress)
     }
 
     /**
@@ -117,7 +122,7 @@ class ReadingProgressWriter(
      * 同一个 sink，因此与防抖写入之间有明确顺序。
      */
     fun storeImmediately(progress: ChapterProgress) {
-        immediateWrites.tryEmit(progress)
+        immediateWrites.trySend(progress)
     }
 
     /**

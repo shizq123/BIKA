@@ -3,8 +3,8 @@ package com.shizq.bika.core.download.scheduler
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import kotlin.math.min
 
 @Singleton
@@ -12,14 +12,14 @@ class DefaultDownloadQueuePolicy @Inject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
 ) : DownloadQueuePolicy {
 
-    override fun maxConcurrentChapters(): Int {
+    override suspend fun maxConcurrentChapters(): Int {
         // 读取用户在设置页配置的"最大并发下载数"。
-        // 该方法由 WorkManager 调度线程低频调用，同步读一次偏好可接受；
+        // 挂起读取偏好流的首个快照，避免 runBlocking 阻塞后台 Worker 线程；
         // 读取失败（DataStore 尚未就绪等）时回退默认值，不让下载调度中断。
         return try {
-            runBlocking {
-                userPreferencesDataSource.userData.first().download.maxConcurrentDownloads
-            }.coerceAtLeast(1)
+            userPreferencesDataSource.userData.first().download.maxConcurrentDownloads.coerceAtLeast(1)
+        } catch (e: CancellationException) {
+            throw e
         } catch (_: Exception) {
             DEFAULT_MAX_CONCURRENT_CHAPTERS
         }
