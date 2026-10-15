@@ -3,6 +3,7 @@ package com.shizq.bika.feature.comicdetail.impl
 import com.shizq.bika.core.database.model.DownloadStatus
 import com.shizq.bika.core.download.model.DownloadTask
 import kotlin.test.Test
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
 import kotlin.time.Instant
@@ -49,11 +50,25 @@ class ComicDownloadStateTest {
     }
 
     @Test
+    fun `部分完成返回部分下载状态`() {
+        val state = resolveComicDownloadState(
+            tasks = listOf(task(1), task(2)),
+            epsCount = 3,
+        )
+
+        assertEquals(
+            ComicDownloadState.Partial(completedChapters = 2, expectedChapters = 3),
+            state,
+        )
+    }
+
+    @Test
     fun `章节没下全时未下载`() {
         val tasks = listOf(task(1), task(2))
 
         assertFalse(isComicFullyDownloaded(tasks, epsCount = 3))
     }
+
 
     @Test
     fun `重复入队的同一章节不被重复计入`() {

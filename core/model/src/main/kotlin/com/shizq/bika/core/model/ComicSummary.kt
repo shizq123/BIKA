@@ -19,7 +19,6 @@ data class ComicSummary(
     @SerialName("thumb")
     val image: RemoteImage,
     val isFavourited: Boolean = false,
-    val lastReadChapterProgress: String? = null,
 )
 
 @Serializable

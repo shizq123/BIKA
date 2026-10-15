@@ -1,5 +1,7 @@
 package com.shizq.bika.ui
 
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionLayout
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides
@@ -21,8 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
-import androidx.activity.ComponentActivity
-import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
@@ -58,6 +58,7 @@ val LocalUseBackAnimation = compositionLocalOf { false }
  * BikaApp、根 NavDisplay、内层 NavDisplay 三层返回处理重叠，靠「内层优先」才没
  * 出现双重出栈。
  */
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun BikaApp(
     appState: AppState,
@@ -80,13 +81,7 @@ fun BikaApp(
     }
 
     CompositionLocalProvider(LocalUseBackAnimation provides usePredictiveBack) {
-        val activity = LocalContext.current as? ComponentActivity
-        val updateViewModel: UpdateViewModel = if (activity != null) {
-            hiltViewModel(activity)
-        } else {
-            hiltViewModel()
-        }
-
+        val updateViewModel: UpdateViewModel = hiltViewModel()
         UpdateHost(
             autoCheckOnLaunch = true,
             viewModel = updateViewModel,
@@ -122,31 +117,34 @@ fun BikaApp(
                     ),
             ) {
                 if (isLoggedIn) {
-                    NavDisplay(
-                        backStack = navigator.contentBackStack,
-                        sceneStrategies = listOf(
-                            BottomSheetSceneStrategy(),
-                            DialogSceneStrategy(),
-                        ),
-                        entryDecorators = listOf(
-                            rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator(),
-                            rememberResultEventBusNavEntryDecorator()
-                        ),
-                        entryProvider = entryProvider {
-                            featureSection(
-                                navigator = navigator,
-                                onLogout = onLogout,
-                                useAnimation = usePredictiveBack,
-                            )
-                        },
-                    )
+                    SharedTransitionLayout {
+                        NavDisplay(
+                            backStack = navigator.contentBackStack,
+                            sceneStrategies = listOf(
+                                BottomSheetSceneStrategy(),
+                                DialogSceneStrategy(),
+                            ),
+                            entryDecorators = listOf(
+                                rememberSaveableStateHolderNavEntryDecorator(),
+                                rememberViewModelStoreNavEntryDecorator(),
+                                rememberResultEventBusNavEntryDecorator()
+                            ),
+                            entryProvider = entryProvider {
+                                featureSection(
+                                    navigator = navigator,
+                                    onLogout = onLogout,
+                                    useAnimation = usePredictiveBack,
+                                    sharedTransitionScope = this@SharedTransitionLayout,
+                                )
+                            },
+                        )
+                    }
                 } else {
                     NavDisplay(
                         backStack = navigator.authenticationBackStack,
                         entryDecorators = listOf(
                             rememberSaveableStateHolderNavEntryDecorator(),
-                            rememberViewModelStoreNavEntryDecorator()
+                            rememberViewModelStoreNavEntryDecorator(),
                         ),
                         entryProvider = entryProvider {
                             authenticationSection(
@@ -163,3 +161,4 @@ fun BikaApp(
         }
     }
 }
+

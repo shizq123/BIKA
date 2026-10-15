@@ -2,15 +2,12 @@ package com.shizq.bika.ui.feed
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
-import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollToNode
-import com.shizq.bika.core.model.SortOrder
+import androidx.paging.PagingData
+import androidx.paging.compose.collectAsLazyPagingItems
+import kotlinx.coroutines.flow.flowOf
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -21,68 +18,35 @@ class FeedScreenTest {
     val composeRule = createComposeRule()
 
     @Test
-    fun initialState_showsLoading_andBackNavigates() {
-        val destinations = mutableListOf<FeedDestination>()
-        setFeed(state = FeedUiState.Initial(), onNavigate = destinations::add)
-
-        composeRule.onNodeWithTag(FeedTestTags.InitialLoading).assertIsDisplayed()
-        composeRule.onNodeWithTag(FeedTestTags.Back).performClick()
-
-        assertEquals(listOf(FeedDestination.Back), destinations)
-    }
-
-    @Test
-    fun emptySuccess_showsEmptyState() {
-        setFeed(state = stateWithSuccess())
+    fun emptyPagingData_showsEmptyState() {
+        setFeed()
 
         composeRule.onNodeWithTag(FeedTestTags.Empty).assertIsDisplayed()
     }
 
     @Test
-    fun refreshingExistingPage_showsProgress_andDisablesPagination() {
-        val targetQuery = FeedQuery(page = 2, sort = SortOrder.NEWEST)
-        setFeed(
-            state = stateWithSuccess(
-                refreshState = FeedRefreshState.Loading(targetQuery),
-            )
-        )
+    fun backButton_navigatesBack() {
+        val destinations = mutableListOf<FeedDestination>()
+        setFeed(onNavigate = destinations::add)
 
-        composeRule.onNodeWithTag(FeedTestTags.RefreshProgress).assertIsDisplayed()
-        composeRule.onNodeWithTag(FeedTestTags.List)
-            .performScrollToNode(hasTestTag(FeedTestTags.Pagination))
-        composeRule.onNodeWithTag(FeedTestTags.Pagination).assertExists()
-        composeRule.onNodeWithContentDescription("下一页").assertIsNotEnabled()
-    }
+        composeRule.onNodeWithTag(FeedTestTags.Back).performClick()
 
-    @Test
-    fun refreshFailure_keepsContentAreaAndShowsRetryBanner() {
-        val actions = mutableListOf<FeedAction>()
-        setFeed(
-            state = stateWithSuccess(
-                refreshState = FeedRefreshState.Failed(
-                    targetQuery = FeedQuery(page = 2),
-                    error = FeedError.LoadFailed,
-                ),
-            ),
-            onAction = actions::add,
-        )
-
-        composeRule.onNodeWithTag(FeedTestTags.RefreshError).assertIsDisplayed()
-        composeRule.onNodeWithText("重试").performClick()
-
-        assertEquals(listOf(FeedAction.Retry), actions)
+        assertEquals(listOf(FeedDestination.Back), destinations)
     }
 
     private fun setFeed(
-        state: FeedUiState,
+        state: FeedUiState = stateWithContent(),
         onAction: (FeedAction) -> Unit = {},
         onNavigate: (FeedDestination) -> Unit = {},
     ) {
         composeRule.setContent {
+            val comics = flowOf(PagingData.empty<com.shizq.bika.core.model.ComicSummary>())
+                .collectAsLazyPagingItems()
             MaterialTheme {
                 FeedScreen(
                     title = "测试列表",
                     state = state,
+                    comics = comics,
                     currentTag = null,
                     onAction = onAction,
                     onNavigate = onNavigate,
@@ -91,17 +55,8 @@ class FeedScreenTest {
         }
     }
 
-    private fun stateWithSuccess(
-        refreshState: FeedRefreshState = FeedRefreshState.Idle,
-    ): FeedUiState = FeedUiState.Content(
-        data = FeedData(query = FeedQuery(page = 1)),
-        page = FeedPage(
-            items = emptyList(),
-            page = 1,
-            totalPages = 3,
-            totalCount = 0,
-        ),
-        displayedQuery = FeedQuery(page = 1),
-        refreshState = refreshState,
+    private fun stateWithContent(): FeedUiState = FeedUiState(
+        data = FeedData(),
+        preferencesReady = true,
     )
 }

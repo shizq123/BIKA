@@ -30,7 +30,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -42,46 +41,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.shizq.bika.R
-import com.shizq.bika.core.domain.filter.FilterGroup
-import com.shizq.bika.core.domain.filter.FilterOption
-import com.shizq.bika.core.domain.filter.FilterSelections
-import com.shizq.bika.core.domain.filter.customPagesRange
-
-fun FilterSelections.toFilterState(): FilterState = FilterState(
-    chips = FilterGroup.all.map { group ->
-        val selected = this[group].orEmpty()
-        FilterChipState(
-            group = group,
-            // 用户自定义区间不在 group.options 里，需并入以便渲染出可取消的选项
-            options = group.options + selected.filterNot { it in group.options },
-            selected = selected,
-        )
-    },
-)
-
-@Composable
-fun rememberFilterState(selections: FilterSelections): FilterState = remember(selections) {
-    selections.toFilterState()
-}
-
-@Immutable
-data class FilterState(val chips: List<FilterChipState>)
-
-@Immutable
-data class FilterChipState(
-    val group: FilterGroup,
-    val options: List<FilterOption>,
-    val selected: List<FilterOption>,
-) {
-    val label: String get() = group.label
-    val hasSelection: Boolean get() = selected.isNotEmpty()
-}
+import com.shizq.bika.core.domain.filter.IntRangeSpec
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun FilterChip(
     state: FilterChipState,
-    onSelectionChanged: (FilterOption) -> Unit,
+    onSelectionChanged: (FeedFilterChange) -> Unit,
     excludeTopicsGlobal: Boolean = false,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
@@ -138,7 +104,7 @@ fun FilterChip(
                         OptionRow(
                             label = option.label,
                             checked = option in state.selected,
-                            onClick = { onSelectionChanged(option) },
+                            onClick = { onSelectionChanged(state.changeFor(option)) },
                         )
                     }
 
@@ -188,9 +154,9 @@ private fun OptionRow(label: String, checked: Boolean, onClick: () -> Unit) {
     }
 }
 
-/** 自定义页数区间输入。label 由 domain 层的 customPagesRange 生成，此处不拼接文案。 */
+/** 自定义页数区间输入；区间校验在 UI 边界完成，领域层仍保持最终约束。 */
 @Composable
-private fun CustomRangeInput(onAdd: (FilterOption) -> Unit) {
+private fun CustomRangeInput(onAdd: (FeedFilterChange) -> Unit) {
     var minText by remember { mutableStateOf("") }
     var maxText by remember { mutableStateOf("") }
 
@@ -221,7 +187,11 @@ private fun CustomRangeInput(onAdd: (FilterOption) -> Unit) {
         Spacer(Modifier.width(8.dp))
         Button(
             onClick = {
-                customPagesRange(minText.toIntOrNull(), maxText.toIntOrNull())?.let(onAdd)
+                val min = minText.toIntOrNull()
+                val max = maxText.toIntOrNull()
+                if ((min != null || max != null) && (min == null || max == null || min <= max)) {
+                    onAdd(FeedFilterChange.PageRange(IntRangeSpec(min, max)))
+                }
                 minText = ""
                 maxText = ""
             },

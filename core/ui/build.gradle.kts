@@ -10,8 +10,9 @@ android {
 dependencies {
     api(projects.core.common)
     api(projects.core.designsystem)
-    api(libs.androidx.metrics)
     api(projects.core.model)
+
+    api(libs.androidx.metrics)
 
     implementation(libs.coil.compose)
     implementation(libs.coil.network.okhttp)

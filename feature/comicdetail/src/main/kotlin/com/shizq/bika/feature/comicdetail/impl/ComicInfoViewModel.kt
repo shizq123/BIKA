@@ -24,6 +24,7 @@ import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -63,6 +64,24 @@ class ComicInfoViewModel @AssistedInject constructor(
             started = SharingStarted.WhileSubscribed(5_000),
             initialValue = emptyList()
         )
+
+    val controls = combine(state, downloadTasks, chapterProgress) { detailState, tasks, progress ->
+        val detail = (detailState as? UnitedDetailsUiState.Content)?.detail
+        val lastRead = progress.maxByOrNull { it.lastReadAt }
+        ComicDetailControlsState(
+            downloadState = if (detail == null) {
+                ComicDownloadState.NotDownloaded
+            } else {
+                resolveComicDownloadState(tasks, detail.epsCount)
+            },
+            resumeChapterOrder = lastRead?.chapterId ?: 1,
+            hasReadProgress = lastRead != null,
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000),
+        initialValue = ComicDetailControlsState(),
+    )
 
     /**
      * 章节列表。

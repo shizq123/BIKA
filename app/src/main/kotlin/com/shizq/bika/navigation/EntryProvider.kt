@@ -2,6 +2,8 @@ package com.shizq.bika.navigation
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -14,8 +16,11 @@ import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.metadata
 import androidx.navigation3.runtime.result.LocalResultEventBus
 import androidx.navigation3.scene.DialogSceneStrategy
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.navigation3.ui.NavDisplay
 import com.shizq.bika.R
+import com.shizq.bika.core.ui.ComicSharedElement
+import com.shizq.bika.core.ui.ComicSharedElementKey
 import com.shizq.bika.feature.comicdetail.impl.ComicDetailScreen
 import com.shizq.bika.feature.comicdetail.impl.ComicInfoViewModel
 import com.shizq.bika.feature.comicdetail.impl.download.EpisodeDownloadSheet
@@ -37,7 +42,6 @@ import com.shizq.bika.ui.dashboard.EditProfileDialog
 import com.shizq.bika.ui.download.DownloadListScreen
 import com.shizq.bika.ui.feed.FavoriteTagNameDialog
 import com.shizq.bika.ui.feed.FeedDestination
-import com.shizq.bika.ui.feed.FeedPageJumpDialog
 import com.shizq.bika.ui.feed.FeedRoute
 import com.shizq.bika.ui.feed.FeedViewModel
 import com.shizq.bika.ui.history.HistoryScreen
@@ -105,11 +109,12 @@ private fun slideTransitionMetadata(useAnimation: Boolean = true) = metadata {
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 fun EntryProviderScope<NavKey>.featureSection(
     navigator: Navigator,
     onLogout: () -> Unit,
-    useAnimation: Boolean = true
+    useAnimation: Boolean = true,
+    sharedTransitionScope: SharedTransitionScope,
 ) {
     fun slideTransitionMetadata() = slideTransitionMetadata(useAnimation)
 
@@ -124,6 +129,8 @@ fun EntryProviderScope<NavKey>.featureSection(
     ) { key ->
         FeedRoute(
             title = key.action.name,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = LocalNavAnimatedContentScope.current,
             viewModel = hiltViewModel<FeedViewModel, FeedViewModel.Factory>(
                 key = key.toString(),
             ) { factory ->
@@ -132,22 +139,20 @@ fun EntryProviderScope<NavKey>.featureSection(
             onNavigate = { destination ->
                 when (destination) {
                     FeedDestination.Back -> navigator.goBack()
-                    is FeedDestination.Comic -> navigator.navigateToUnitedDetail(destination.id)
+                    is FeedDestination.Comic -> navigator.navigate(
+                        ConnectedRoute.UnitedDetailRoute(
+                            id = destination.id,
+                            transitionId = destination.transitionId,
+                            previewCoverUrl = destination.coverUrl,
+                            previewTitle = destination.title,
+                        )
+                    )
                     is FeedDestination.Feed -> {
                         navigator.navigate(ConnectedRoute.FeedRoute(destination.action))
                     }
 
                     FeedDestination.BlockedTags -> {
                         navigator.navigate(ConnectedRoute.BlockedTagsRoute)
-                    }
-
-                    is FeedDestination.PageJump -> {
-                        navigator.navigate(
-                            FeedPageJumpDialogNavKey(
-                                currentPage = destination.currentPage,
-                                totalPages = destination.totalPages,
-                            )
-                        )
                     }
 
                     FeedDestination.AddFavorite -> {
@@ -377,20 +382,6 @@ fun EntryProviderScope<NavKey>.featureSection(
         )
     }
 
-    entry<FeedPageJumpDialogNavKey>(
-        metadata = DialogSceneStrategy.dialog(),
-    ) { key ->
-        val resultBus = LocalResultEventBus.current
-        FeedPageJumpDialog(
-            currentPage = key.currentPage,
-            totalPages = key.totalPages,
-            onConfirm = { page ->
-                resultBus.sendResult(FeedPageJumpResult(page))
-                navigator.goBack()
-            },
-            onDismiss = navigator::goBack,
-        )
-    }
 
     entry<CheckInResultDialogNavKey>(
         metadata = DialogSceneStrategy.dialog(),

@@ -60,7 +60,12 @@ data object ConnectedRoute {
     data object DownloadListRoute : Connected
 
     @Serializable
-    data class UnitedDetailRoute(val id: String) : Connected
+    data class UnitedDetailRoute(
+        val id: String,
+        val transitionId: String = id,
+        val previewCoverUrl: String = "",
+        val previewTitle: String = "",
+    ) : Connected
 
     @Serializable
     data object NotificationsRoute : Connected

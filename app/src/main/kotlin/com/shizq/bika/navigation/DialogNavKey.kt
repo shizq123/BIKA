@@ -31,12 +31,6 @@ data object ChangePasswordNavKey : DialogNavKey
 data class CheckInResultDialogNavKey(val message: String) : DialogNavKey
 
 @Serializable
-data class FeedPageJumpDialogNavKey(
-    val currentPage: Int,
-    val totalPages: Int,
-) : DialogNavKey
-
-@Serializable
 data object AddFavoriteTagDialogNavKey : DialogNavKey
 
 @Serializable

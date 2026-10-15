@@ -1,15 +1,18 @@
 package com.shizq.bika.ui.feed
 
+import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.ExperimentalSharedTransitionApi
+import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -19,10 +22,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
-import androidx.compose.material.icons.automirrored.rounded.NavigateBefore
-import androidx.compose.material.icons.automirrored.rounded.NavigateNext
 import androidx.compose.material.icons.rounded.Bookmarks
-import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -45,7 +46,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,29 +57,38 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.fastForEach
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.result.ResultEffect
-import kotlinx.coroutines.flow.distinctUntilChanged
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.shizq.bika.R
-import com.shizq.bika.core.domain.filter.FilterGroup
-import com.shizq.bika.core.domain.filter.FilterOption
+import com.shizq.bika.core.domain.filter.FeedCriteria
+import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.core.ui.ComicCard
+import com.shizq.bika.core.ui.ComicSharedElement
+import com.shizq.bika.core.ui.ComicSharedElementKey
 import com.shizq.bika.core.ui.ErrorState
 import com.shizq.bika.core.ui.LoadingState
 import com.shizq.bika.navigation.AddFavoriteTagResult
-import com.shizq.bika.navigation.FeedPageJumpResult
 import com.shizq.bika.navigation.RenameFavoriteTagResult
+import com.shizq.bika.ui.tag.FeedFilterChange
 import com.shizq.bika.ui.tag.FilterChip
 import com.shizq.bika.ui.tag.FilterChipState
 import com.shizq.bika.ui.tag.rememberFilterState
+import kotlin.uuid.Uuid
 
+@OptIn(ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedRoute(
     title: String,
     viewModel: FeedViewModel,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onNavigate: (FeedDestination) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val comics = viewModel.comics.collectAsLazyPagingItems()
 
     ResultEffect<AddFavoriteTagResult> { result ->
         viewModel.dispatch(FeedAction.AddCustomFavorite(result.name))
@@ -87,28 +96,31 @@ fun FeedRoute(
     ResultEffect<RenameFavoriteTagResult> { result ->
         viewModel.dispatch(FeedAction.RenameFavorite(result.tag, result.name))
     }
-    ResultEffect<FeedPageJumpResult> { result ->
-        viewModel.dispatch(FeedAction.ChangePage(result.page))
-    }
 
     FeedScreen(
         title = title,
         state = state,
+        comics = comics,
         currentTag = viewModel.currentAction.toFavoriteTag(),
         supportsSort = viewModel.currentAction.supportsSort,
         onAction = viewModel::dispatch,
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
         onNavigate = onNavigate,
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
 @Composable
 fun FeedScreen(
     title: String,
     state: FeedUiState,
+    comics: LazyPagingItems<ComicSummary>,
     currentTag: FavoriteTag?,
     supportsSort: Boolean = true,
     onAction: (FeedAction) -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onNavigate: (FeedDestination) -> Unit,
 ) {
     var favoriteSheetVisible by remember { mutableStateOf(false) }
@@ -116,12 +128,15 @@ fun FeedScreen(
     FeedContent(
         title = title,
         state = state,
+        comics = comics,
         supportsSort = supportsSort,
         onAction = onAction,
+        sharedTransitionScope = sharedTransitionScope,
+        animatedVisibilityScope = animatedVisibilityScope,
         onNavigate = onNavigate,
         onBookmarkClick = { favoriteSheetVisible = true },
     )
-
+    // TODO: 使用navigation 
     if (favoriteSheetVisible) {
         ModalBottomSheet(
             onDismissRequest = { favoriteSheetVisible = false },
@@ -162,6 +177,8 @@ private fun FeedAppBar(
     onSortOrderChanged: (SortOrder) -> Unit,
     onBackClick: () -> Unit,
     onBookmarkClick: () -> Unit,
+    onRefreshClick: () -> Unit,
+    refreshEnabled: Boolean,
     scrollBehavior: TopAppBarScrollBehavior,
     supportsSort: Boolean = true,
 ) {
@@ -181,6 +198,16 @@ private fun FeedAppBar(
             }
         },
         actions = {
+            IconButton(
+                onClick = onRefreshClick,
+                enabled = refreshEnabled,
+                modifier = Modifier.testTag(FeedTestTags.Refresh),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.Refresh,
+                    contentDescription = stringResource(R.string.feed_action_refresh),
+                )
+            }
             IconButton(onClick = onBookmarkClick) {
                 Icon(
                     imageVector = Icons.Rounded.Bookmarks,
@@ -229,85 +256,47 @@ private fun FeedAppBar(
     )
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
+@OptIn(
+    ExperimentalMaterial3Api::class,
+    ExperimentalFoundationApi::class,
+    ExperimentalSharedTransitionApi::class,
+)
 @Composable
 private fun FeedContent(
     title: String,
     state: FeedUiState,
+    comics: LazyPagingItems<ComicSummary>,
     supportsSort: Boolean = true,
     onAction: (FeedAction) -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
     onNavigate: (FeedDestination) -> Unit,
     onBookmarkClick: () -> Unit,
 ) {
     val listState = rememberLazyListState()
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
-    val content = state as? FeedUiState.Content
-    val pagination = state.toPaginationUiState()
-    val displayedContentKey = content?.let {
+    val refreshLoadState = comics.loadState.refresh
+    val isRefreshing = refreshLoadState is LoadState.Loading && comics.itemCount > 0
+    val filterState = rememberFilterState(state.query.criteria)
+
+    // TODO: 可以考虑移除？ 
+    val displayedContentKey = remember(state) {
         DisplayedContentKey(
-            page = it.page.page,
-            sort = it.displayedQuery.sort,
-            itemIds = it.page.items.map { comic -> comic.id },
+            sort = state.query.sort,
+            criteria = state.query.criteria,
         )
     }
-    val refreshState = content?.refreshState ?: FeedRefreshState.Idle
-    val isRefreshing = refreshState is FeedRefreshState.Loading
-    val filterState = rememberFilterState(state.filterSelections)
 
-    var lastPage by rememberSaveable { mutableStateOf<Int?>(null) }
-    var lastSort by rememberSaveable { mutableStateOf<String?>(null) }
-    var lastFirstItemId by rememberSaveable { mutableStateOf<String?>(null) }
+    var lastContentKey by rememberSaveable { mutableStateOf<String?>(null) }
 
-    // 只有在非首次加载、内容真正发生切换（如翻页、切换排序或筛选导致首项变动）且不是追加加载时，才重置列表位置到顶部。
+    // 只有在非初次加载且内容筛选/排序真正发生切换时，才重置列表位置到顶部。
     // 从详情页返回或初次渲染时绝不触发滚顶，以保证原浏览位置能够自然恢复。
     LaunchedEffect(displayedContentKey) {
-        if (displayedContentKey != null) {
-            val currentFirstItemId = content.page.items.firstOrNull()?.id
-            val currentSort = displayedContentKey.sort.name
-            val currentPage = displayedContentKey.page
-
-            val isFirstDisplay = lastPage == null
-            val isContinuous = state.continuousScrollEnabled
-            val isAppending = isContinuous &&
-                    lastPage != null &&
-                    currentPage > lastPage!! &&
-                    currentSort == lastSort &&
-                    currentFirstItemId == lastFirstItemId
-
-            val isContentChanged = !isFirstDisplay && (
-                    currentPage != lastPage ||
-                    currentSort != lastSort ||
-                    currentFirstItemId != lastFirstItemId
-            )
-
-            if (isContentChanged && !isAppending) {
-                listState.scrollToItem(0)
-            }
-            lastPage = currentPage
-            lastSort = currentSort
-            lastFirstItemId = currentFirstItemId
+        val currentKey = "${displayedContentKey.sort.name}_${displayedContentKey.criteria.hashCode()}"
+        if (lastContentKey != null && lastContentKey != currentKey) {
+            listState.scrollToItem(0)
         }
-    }
-
-    if (state.continuousScrollEnabled && content != null) {
-        val totalPages = content.page.totalPages
-        val currentPage = content.page.page
-        val isAppendingOrLoading = content.refreshState is FeedRefreshState.Loading ||
-                content.refreshState is FeedRefreshState.Appending
-
-        LaunchedEffect(listState, currentPage, totalPages, isAppendingOrLoading) {
-            snapshotFlow {
-                val layoutInfo = listState.layoutInfo
-                val totalItems = layoutInfo.totalItemsCount
-                val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
-                totalItems > 0 && lastVisibleIndex >= totalItems - 3
-            }.distinctUntilChanged()
-            .collect { shouldAppend ->
-                if (shouldAppend && currentPage < totalPages && !isAppendingOrLoading) {
-                    onAction(FeedAction.AppendNextPage)
-                }
-            }
-        }
+        lastContentKey = currentKey
     }
 
     Scaffold(
@@ -319,6 +308,9 @@ private fun FeedContent(
                 currentSortOrder = state.query.sort,
                 onSortOrderChanged = { onAction(FeedAction.ChangeSort(it)) },
                 onBookmarkClick = onBookmarkClick,
+                onRefreshClick = comics::refresh,
+                refreshEnabled = state.preferencesReady &&
+                        refreshLoadState !is LoadState.Loading,
                 supportsSort = supportsSort,
             )
         },
@@ -344,173 +336,115 @@ private fun FeedContent(
                                     .testTag(FeedTestTags.RefreshProgress),
                             )
                         }
-                        FilterRow(
+                        FilterHeader(
                             chips = filterState.chips,
-                            onFilterChanged = { group, option ->
-                                onAction(FeedAction.ToggleFilter(group, option))
+                            onFilterChanged = { change ->
+                                onAction(change.toFeedAction())
                             },
-                            summary = feedSummary(state),
+                            summary = feedSummary(
+                                state = state,
+                                itemCount = comics.itemCount,
+                                refreshLoadState = refreshLoadState,
+                            ),
+                            currentSortOrder = state.query.sort,
                             excludeTopicsGlobal = state.excludeTopicsGlobal,
                             onExcludeTopicsGlobalChanged = {
                                 onAction(FeedAction.SetGlobalTopicFilter(it))
                             },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            onClearFilters = { onAction(FeedAction.ClearFilters) },
+                            modifier = Modifier.fillMaxWidth(),
                         )
                     }
                 }
             }
 
             feedContentItems(
-                state = state,
-                onRetry = { onAction(FeedAction.Retry) },
-                onComicClick = { onNavigate(FeedDestination.Comic(it)) },
-            )
+                comics = comics,
+                metadataLoading = !state.preferencesReady,
 
-            if (state.continuousScrollEnabled) {
-                if (content != null && content.page.items.isNotEmpty()) {
-                    when (content.refreshState) {
-                        is FeedRefreshState.Appending -> {
-                            item(key = "feed-append-loading", contentType = "append-status") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp)
-                                        .testTag(FeedTestTags.AppendLoading),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(20.dp),
-                                            strokeWidth = 2.dp,
-                                        )
-                                        Text(
-                                            text = stringResource(R.string.feed_append_loading),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                isClientFiltered = state.query.criteria.hasAnySelection ||
+                        state.data.globalPolicy.blockedTopicsEnabled ||
+                        state.data.globalPolicy.blockedTags.isNotEmpty(),
 
-                        is FeedRefreshState.Failed -> {
-                            item(key = "feed-append-failed", contentType = "append-status") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp)
-                                        .testTag(FeedTestTags.AppendFailed),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.feed_append_failed),
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = MaterialTheme.colorScheme.error,
-                                        )
-                                        TextButton(onClick = { onAction(FeedAction.AppendNextPage) }) {
-                                            Text(stringResource(R.string.feed_retry))
-                                        }
-                                    }
-                                }
-                            }
-                        }
+                onRetry = comics::retry,
+                canClearFilters = state.query.criteria.hasAnySelection,
 
-                        else -> {
-                            if (content.page.page >= content.page.totalPages) {
-                                item(key = "feed-append-end", contentType = "append-status") {
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(24.dp)
-                                            .testTag(FeedTestTags.AppendEnd),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.feed_append_no_more),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.outline,
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            } else {
-                if (pagination != null) {
-                    item(key = "feed-pagination", contentType = "pagination") {
-                        PaginationBar(
-                            state = pagination,
-                            onPageChanged = { onAction(FeedAction.ChangePage(it)) },
-                            onPageIndicatorClick = {
-                                onNavigate(
-                                    FeedDestination.PageJump(
-                                        currentPage = pagination.currentPage,
-                                        totalPages = pagination.totalPages,
-                                    )
-                                )
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
+                onClearFilters = { onAction(FeedAction.ClearFilters) },
+                sharedTransitionScope = sharedTransitionScope,
+                animatedVisibilityScope = animatedVisibilityScope,
+                onComicClick = { comic, transitionId ->
+                    onNavigate(
+                        FeedDestination.Comic(
+                            id = comic.id,
+                            coverUrl = comic.image.originalImageUrl,
+                            title = comic.title,
+                            transitionId = transitionId,
                         )
-                    }
-                }
-            }
+                    )
+                },
+            )
         }
     }
 }
 
 private data class DisplayedContentKey(
-    val page: Int,
     val sort: SortOrder,
-    val itemIds: List<String>,
+    val criteria: FeedCriteria,
 )
 
+private fun FeedFilterChange.toFeedAction(): FeedAction = when (this) {
+    is FeedFilterChange.IncludedTopic -> FeedAction.ToggleIncludedTopic(topic)
+    is FeedFilterChange.ExcludedTopic -> FeedAction.ToggleExcludedTopic(topic)
+    is FeedFilterChange.Status -> FeedAction.ToggleStatus(status)
+    is FeedFilterChange.EpisodeRange -> FeedAction.ToggleEpisodeRange(range)
+    is FeedFilterChange.PageRange -> FeedAction.TogglePageRange(range)
+}
+
+@OptIn(ExperimentalSharedTransitionApi::class)
 private fun LazyListScope.feedContentItems(
-    state: FeedUiState,
+    comics: LazyPagingItems<ComicSummary>,
+    metadataLoading: Boolean,
+    isClientFiltered: Boolean,
     onRetry: () -> Unit,
-    onComicClick: (String) -> Unit,
+    canClearFilters: Boolean,
+    onClearFilters: () -> Unit,
+    sharedTransitionScope: SharedTransitionScope,
+    animatedVisibilityScope: AnimatedVisibilityScope,
+    onComicClick: (ComicSummary, String) -> Unit,
 ) {
-    when (state) {
-        is FeedUiState.Initial -> item(key = "feed-initial-loading", contentType = "loading") {
-            LoadingState(
-                Modifier
-                    .fillMaxWidth()
-                    .height(320.dp)
-                    .testTag(FeedTestTags.InitialLoading)
-            )
+    val refresh = comics.loadState.refresh
+    when {
+        metadataLoading || (refresh is LoadState.Loading && comics.itemCount == 0) -> {
+            item(key = "feed-initial-loading", contentType = "loading") {
+                LoadingState(
+                    Modifier
+                        .fillMaxWidth()
+                        .height(320.dp)
+                        .testTag(FeedTestTags.InitialLoading)
+                )
+            }
         }
 
-        is FeedUiState.Error -> item(key = "feed-initial-error", contentType = "error") {
-            ErrorState(
-                onRetry = onRetry,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(320.dp)
-                    .testTag(FeedTestTags.InitialError),
-            )
+        refresh is LoadState.Error && comics.itemCount == 0 -> {
+            item(key = "feed-initial-error", contentType = "error") {
+                ErrorState(
+                    onRetry = onRetry,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(320.dp)
+                        .testTag(FeedTestTags.InitialError),
+                )
+            }
         }
 
-        is FeedUiState.Content -> {
-            if (state.refreshState is FeedRefreshState.Failed &&
-                (!state.continuousScrollEnabled || state.refreshState.targetQuery.page <= 1)
-            ) {
+        else -> {
+            if (refresh is LoadState.Error) {
                 item(key = "feed-refresh-error", contentType = "error-banner") {
                     RefreshErrorBanner(onRetry = onRetry)
                 }
             }
 
-            if (state.page.items.isEmpty()) {
+            if (comics.itemCount == 0) {
                 item(key = "feed-empty", contentType = "empty") {
                     Box(
                         modifier = Modifier
@@ -519,27 +453,113 @@ private fun LazyListScope.feedContentItems(
                             .testTag(FeedTestTags.Empty),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = stringResource(
-                                if (state.isClientFiltered) {
-                                    R.string.feed_empty_current_page
-                                } else {
-                                    R.string.feed_empty
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Text(
+                                text = stringResource(
+                                    if (isClientFiltered) {
+                                        R.string.feed_empty_current_page
+                                    } else {
+                                        R.string.feed_empty
+                                    }
+                                ),
+                                style = MaterialTheme.typography.bodyLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 24.dp),
+                            )
+                            if (canClearFilters) {
+                                TextButton(onClick = onClearFilters) {
+                                    Text(stringResource(R.string.feed_empty_clear_filters))
                                 }
-                            ),
-                            style = MaterialTheme.typography.bodyLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 24.dp),
-                        )
+                            }
+                        }
                     }
                 }
             } else {
                 items(
-                    items = state.page.items,
-                    key = { comic -> comic.id },
+                    count = comics.itemCount,
+                    // Some endpoints can return duplicate ids across pages; include the index.
+                    key = { index -> "${index}_${comics.peek(index)?.id ?: "placeholder"}" },
                     contentType = { "comic" },
-                ) { comic ->
-                    ComicCard(comic = comic) { onComicClick(comic.id) }
+                ) { index ->
+                    comics[index]?.let { comic ->
+                        val transitionId = rememberSaveable(comic.id, index) {
+                            Uuid.random().toString()
+                        }
+                        with(sharedTransitionScope) {
+                            ComicCard(
+                                comic = comic,
+                                coverModifier = Modifier.sharedElement(
+                                    sharedContentState = rememberSharedContentState(
+                                        ComicSharedElementKey(
+                                            transitionId = transitionId,
+                                            element = ComicSharedElement.Cover,
+                                        )
+                                    ),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                ),
+                                titleModifier = Modifier.sharedBounds(
+                                    sharedContentState = rememberSharedContentState(
+                                        ComicSharedElementKey(
+                                            transitionId = transitionId,
+                                            element = ComicSharedElement.Title,
+                                        )
+                                    ),
+                                    animatedVisibilityScope = animatedVisibilityScope,
+                                ),
+                                onItemClick = { onComicClick(comic, transitionId) },
+                            )
+                        }
+                    }
+                }
+
+                when (comics.loadState.append) {
+                    is LoadState.Loading -> item(
+                        key = "feed-append-loading",
+                        contentType = "append-state",
+                    ) {
+                        Text(
+                            text = stringResource(R.string.feed_loading_more),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(24.dp)
+                                .testTag(FeedTestTags.AppendLoading),
+                        )
+                    }
+
+                    is LoadState.Error -> item(
+                        key = "feed-append-error",
+                        contentType = "append-state",
+                    ) {
+                        TextButton(
+                            onClick = onRetry,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp)
+                                .testTag(FeedTestTags.AppendError),
+                        ) {
+                            Text(stringResource(R.string.footer_error))
+                        }
+                    }
+
+                    is LoadState.NotLoading -> {
+                        if (comics.loadState.append.endOfPaginationReached) {
+                            item(key = "feed-end", contentType = "append-state") {
+                                Text(
+                                    text = stringResource(R.string.feed_no_more),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(24.dp),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -572,32 +592,27 @@ private fun RefreshErrorBanner(onRetry: () -> Unit) {
 }
 
 @Composable
-private fun FilterRow(
+private fun FilterHeader(
     chips: List<FilterChipState>,
-    onFilterChanged: (group: FilterGroup, option: FilterOption) -> Unit,
+    onFilterChanged: (FeedFilterChange) -> Unit,
+
     summary: String,
+    currentSortOrder: SortOrder,
     excludeTopicsGlobal: Boolean,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
+    onClearFilters: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    LazyRow(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items(
-            items = chips,
-            key = { it.group.label },
-        ) { chipState ->
-            FilterChip(
-                state = chipState,
-                onSelectionChanged = { option -> onFilterChanged(chipState.group, option) },
-                excludeTopicsGlobal = excludeTopicsGlobal,
-                onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
-            )
-        }
+    val selectedCount = chips.sumOf { it.selected.size }
 
-        item(key = "feed-summary") {
+    Column(modifier = modifier.padding(vertical = 8.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Surface(
                 shape = RoundedCornerShape(16.dp),
                 color = MaterialTheme.colorScheme.secondaryContainer,
@@ -610,103 +625,84 @@ private fun FilterRow(
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                 )
             }
-        }
-    }
-}
 
-@Composable
-private fun feedSummary(state: FeedUiState): String =
-    when (val summary = state.toSummaryUiState()) {
-        FeedSummaryUiState.Loading -> stringResource(R.string.feed_loading)
-        FeedSummaryUiState.LoadFailed -> stringResource(R.string.feed_load_failed)
-        FeedSummaryUiState.Refreshing -> stringResource(R.string.feed_refreshing)
-        is FeedSummaryUiState.LoadingPage -> stringResource(
-            R.string.feed_loading_page,
-            summary.page,
-        )
-
-        is FeedSummaryUiState.VisibleOnPage -> stringResource(
-            R.string.feed_page_visible_count,
-            summary.page,
-            summary.totalPages,
-            summary.visibleCount,
-        )
-
-        is FeedSummaryUiState.TotalCount -> stringResource(
-            R.string.feed_total_count,
-            summary.count,
-        )
-
-        is FeedSummaryUiState.PageIndicator -> stringResource(
-            R.string.feed_page_indicator,
-            summary.page,
-            summary.totalPages,
-        )
-}
-
-@Composable
-private fun PaginationBar(
-    state: FeedPaginationUiState,
-    onPageChanged: (Int) -> Unit,
-    onPageIndicatorClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier.testTag(FeedTestTags.Pagination),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconButton(
-            onClick = { onPageChanged(state.currentPage - 1) },
-            enabled = state.previousEnabled,
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.NavigateBefore,
-                contentDescription = stringResource(R.string.feed_previous_page),
-            )
-        }
-
-        Surface(
-            onClick = onPageIndicatorClick,
-            enabled = state.indicatorEnabled,
-            shape = RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.secondaryContainer,
-            contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
-        ) {
             Text(
-                text = stringResource(
-                    R.string.feed_page_indicator,
-                    state.currentPage,
-                    state.totalPages,
-                ),
-                style = MaterialTheme.typography.labelLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                text = stringResource(R.string.feed_current_sort, currentSortOrder.label),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                modifier = Modifier.weight(1f),
             )
+
+            if (selectedCount > 0) {
+
+                TextButton(onClick = onClearFilters) {
+                    Text(stringResource(R.string.feed_clear_filters))
+                }
+            }
         }
 
-        IconButton(
-            onClick = { onPageChanged(state.currentPage + 1) },
-            enabled = state.nextEnabled,
+        LazyRow(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.NavigateNext,
-                contentDescription = stringResource(R.string.feed_next_page),
-            )
+            items(
+                items = chips,
+                key = { it.group.label },
+            ) { chipState ->
+                FilterChip(
+                    state = chipState,
+                    onSelectionChanged = onFilterChanged,
+
+
+                    excludeTopicsGlobal = excludeTopicsGlobal,
+                    onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
+                )
+            }
+
+            if (selectedCount > 0) {
+                item(key = "feed-active-filter-count") {
+                    Text(
+                        text = stringResource(R.string.feed_active_filters, selectedCount),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun feedSummary(
+    state: FeedUiState,
+    itemCount: Int,
+    refreshLoadState: LoadState,
+): String = when {
+    refreshLoadState is LoadState.Loading -> stringResource(R.string.feed_refreshing)
+    refreshLoadState is LoadState.Error && itemCount == 0 -> stringResource(R.string.feed_load_failed)
+    state.query.criteria.hasAnySelection ||
+            state.data.globalPolicy.blockedTopicsEnabled ||
+            state.data.globalPolicy.blockedTags.isNotEmpty() ->
+        stringResource(R.string.feed_filtered_count, itemCount)
+
+
+    else -> stringResource(R.string.feed_total_count, itemCount)
 }
 
 internal object FeedTestTags {
     const val Back = "feed-back"
+    const val Refresh = "feed-refresh"
     const val List = "feed-list"
     const val InitialLoading = "feed-initial-loading"
     const val InitialError = "feed-initial-error"
     const val RefreshProgress = "feed-refresh-progress"
     const val RefreshError = "feed-refresh-error"
     const val Empty = "feed-empty"
-    const val Pagination = "feed-pagination"
     const val AppendLoading = "feed-append-loading"
-    const val AppendFailed = "feed-append-failed"
-    const val AppendEnd = "feed-append-end"
+    const val AppendError = "feed-append-error"
 }
