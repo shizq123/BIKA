@@ -34,7 +34,7 @@ class BikaSignatureAuthTest {
     }
 
     @Test
-    fun `带 Query 参数请求签名仅包含相对路径而不包含查询字符串`() = runTest {
+    fun `带 Query 参数请求签名完整保留相对路径与查询字符串`() = runTest {
         val lastRequest = AtomicReference<HttpRequestData>()
         val client = createTestClient(lastRequest)
 
@@ -44,10 +44,10 @@ class BikaSignatureAuthTest {
         }
 
         val request = assertNotNull(lastRequest.get())
-        // 验证签名计算仅针对 "comics"，不包含 "?page=2&c=tag"
+        // 验证签名计算保留完整相对路径与 Query 字符串，对齐服务端校验契约
         assertHeadersAndSignature(
             request = request,
-            expectedPath = "comics",
+            expectedPath = "comics?page=2&c=tag",
             expectedMethod = "GET",
         )
     }

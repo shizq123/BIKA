@@ -8,6 +8,7 @@ import io.ktor.client.request.get
 import io.ktor.client.request.parameter
 import io.ktor.client.request.post
 import io.ktor.http.HttpHeaders
+import io.ktor.http.fullPath
 import kotlinx.coroutines.test.runTest
 import java.util.concurrent.atomic.AtomicReference
 import javax.crypto.Mac
@@ -68,7 +69,7 @@ class BikaSignatureAuthAdversarialTest {
 
         val request = assertNotNull(lastRequest.get())
         // Ktor 的 encodedPath 保留原始路径 "//comics///123"，removePrefix("/") 去掉首个 "/" 剩下 "/comics///123"
-        val expected = request.url.encodedPath.removePrefix("/").lowercase()
+        val expected = request.url.fullPath.removePrefix("/").lowercase()
         assertHeadersAndSignature(
             request = request,
             expectedPath = expected,
@@ -124,10 +125,10 @@ class BikaSignatureAuthAdversarialTest {
         )
     }
 
-    // ── 4. 多层与复杂 Query 参数隔离性检验 ───────────────────────────────
+    // ── 4. 多层与复杂 Query 参数参与签名计算检验 ─────────────────────────
 
     @Test
-    fun `极端复杂多层 Query 参数完全不参与签名计算`() = runTest {
+    fun `极端复杂多层 Query 参数完整参与签名计算`() = runTest {
         val lastRequest = AtomicReference<HttpRequestData>()
         val client = createTestClient(lastRequest)
 
@@ -141,10 +142,10 @@ class BikaSignatureAuthAdversarialTest {
         }
 
         val request = assertNotNull(lastRequest.get())
-        // 签名中只包含 "comics"，不泄漏任何复杂的 query 参数
+        val expected = request.url.fullPath.removePrefix("/").lowercase()
         assertHeadersAndSignature(
             request = request,
-            expectedPath = "comics",
+            expectedPath = expected,
             expectedMethod = "GET",
         )
     }
@@ -233,7 +234,7 @@ class BikaSignatureAuthAdversarialTest {
 
         val request = assertNotNull(lastRequest.get())
         // Ktor 对 URL 会规范化或保留 encodedPath，无论如何均不抛异常，且能产出确定性签名
-        val actualPath = request.url.encodedPath.removePrefix("/").lowercase()
+        val actualPath = request.url.fullPath.removePrefix("/").lowercase()
         assertHeadersAndSignature(
             request = request,
             expectedPath = actualPath,

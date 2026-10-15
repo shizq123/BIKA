@@ -12,7 +12,7 @@ import kotlinx.coroutines.flow.first
 import java.io.IOException
 import kotlin.time.Duration.Companion.milliseconds
 
-private val logger = KotlinLogging.logger("ImageRetry")
+private val logger by lazy { KotlinLogging.logger("ImageRetry") }
 
 private const val MaxAutoRetries = 4
 private const val MaxRetryDurationMillis = 30_000L
