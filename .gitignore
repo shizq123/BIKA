@@ -108,3 +108,6 @@ fabric.properties
 
 # kotlin
 .kotlin
+
+# Distribution
+dist/

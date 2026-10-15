@@ -7,7 +7,7 @@ import io.ktor.client.plugins.api.createClientPlugin
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 import io.ktor.http.contentType
-import io.ktor.http.encodedPath
+import io.ktor.http.fullPath
 import io.ktor.http.withCharset
 import io.ktor.utils.io.KtorDsl
 import io.ktor.utils.io.charsets.Charsets
@@ -57,7 +57,7 @@ val BikaSignatureAuth: ClientPlugin<BikaAuthConfig> =
             val nonce = Uuid.random().toHexString()
             val time = (System.currentTimeMillis() / 1000).toString()
 
-            val fullPath = request.url.encodedPath
+            val fullPath = request.url.build().fullPath
                 .removePrefix("/")
                 .lowercase()
             val method = request.method.value
