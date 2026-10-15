@@ -163,7 +163,7 @@ class AwaitDataRestoreStrategyTest {
         // 章节实际只有 15 页，但数据库记录用户读到第 18 页。
         // 应该快速识别越界（通过 loadState），而不是等 10 秒超时。
         val controller = FakeController(initialPage = 0)
-        val dataSource = FakeDataSource(loadedUpTo = 15, totalPages = 15)
+        val dataSource = FakeDataSource(loadedUpTo = 15, totalPages = 15, isComplete = true)
 
         val outcome = strategy.restore(18, dataSource, controller, config)
 
@@ -176,7 +176,7 @@ class AwaitDataRestoreStrategyTest {
     @Test
     fun `越界时 reason 包含实际页数`() = runTest {
         val controller = FakeController(initialPage = 0)
-        val dataSource = FakeDataSource(loadedUpTo = 20, totalPages = 20)
+        val dataSource = FakeDataSource(loadedUpTo = 20, totalPages = 20, isComplete = true)
 
         val outcome = strategy.restore(25, dataSource, controller, config)
 

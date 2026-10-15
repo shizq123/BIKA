@@ -102,6 +102,7 @@ fun FeedRoute(
         state = state,
         comics = comics,
         currentTag = viewModel.currentAction.toFavoriteTag(),
+        supportsSort = viewModel.currentAction.supportsSort,
         onAction = viewModel::dispatch,
         sharedTransitionScope = sharedTransitionScope,
         animatedVisibilityScope = animatedVisibilityScope,
@@ -116,6 +117,7 @@ fun FeedScreen(
     state: FeedUiState,
     comics: LazyPagingItems<ComicSummary>,
     currentTag: FavoriteTag?,
+    supportsSort: Boolean = true,
     onAction: (FeedAction) -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
@@ -127,6 +129,7 @@ fun FeedScreen(
         title = title,
         state = state,
         comics = comics,
+        supportsSort = supportsSort,
         onAction = onAction,
         sharedTransitionScope = sharedTransitionScope,
         animatedVisibilityScope = animatedVisibilityScope,
@@ -177,6 +180,7 @@ private fun FeedAppBar(
     onRefreshClick: () -> Unit,
     refreshEnabled: Boolean,
     scrollBehavior: TopAppBarScrollBehavior,
+    supportsSort: Boolean = true,
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -210,39 +214,41 @@ private fun FeedAppBar(
                     contentDescription = stringResource(R.string.feed_action_favorite_tags),
                 )
             }
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.Sort,
-                    contentDescription = stringResource(R.string.feed_action_sort),
-                )
-            }
-
-            DropdownMenu(
-                expanded = menuExpanded,
-                onDismissRequest = { menuExpanded = false },
-            ) {
-                SortOrder.entries.fastForEach { sort ->
-                    DropdownMenuItem(
-                        text = {
-                            Text(
-                                text = sort.label,
-                                fontWeight = if (sort == currentSortOrder) {
-                                    FontWeight.Bold
-                                } else {
-                                    FontWeight.Normal
-                                },
-                                color = if (sort == currentSortOrder) {
-                                    MaterialTheme.colorScheme.primary
-                                } else {
-                                    Color.Unspecified
-                                },
-                            )
-                        },
-                        onClick = {
-                            menuExpanded = false
-                            onSortOrderChanged(sort)
-                        },
+            if (supportsSort) {
+                IconButton(onClick = { menuExpanded = true }) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.Sort,
+                        contentDescription = stringResource(R.string.feed_action_sort),
                     )
+                }
+
+                DropdownMenu(
+                    expanded = menuExpanded,
+                    onDismissRequest = { menuExpanded = false },
+                ) {
+                    SortOrder.entries.fastForEach { sort ->
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    text = sort.label,
+                                    fontWeight = if (sort == currentSortOrder) {
+                                        FontWeight.Bold
+                                    } else {
+                                        FontWeight.Normal
+                                    },
+                                    color = if (sort == currentSortOrder) {
+                                        MaterialTheme.colorScheme.primary
+                                    } else {
+                                        Color.Unspecified
+                                    },
+                                )
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                onSortOrderChanged(sort)
+                            },
+                        )
+                    }
                 }
             }
         },
@@ -260,6 +266,7 @@ private fun FeedContent(
     title: String,
     state: FeedUiState,
     comics: LazyPagingItems<ComicSummary>,
+    supportsSort: Boolean = true,
     onAction: (FeedAction) -> Unit,
     sharedTransitionScope: SharedTransitionScope,
     animatedVisibilityScope: AnimatedVisibilityScope,
@@ -280,8 +287,16 @@ private fun FeedContent(
         )
     }
 
+    var lastContentKey by rememberSaveable { mutableStateOf<String?>(null) }
+
+    // 只有在非初次加载且内容筛选/排序真正发生切换时，才重置列表位置到顶部。
+    // 从详情页返回或初次渲染时绝不触发滚顶，以保证原浏览位置能够自然恢复。
     LaunchedEffect(displayedContentKey) {
-        listState.scrollToItem(0)
+        val currentKey = "${displayedContentKey.sort.name}_${displayedContentKey.criteria.hashCode()}"
+        if (lastContentKey != null && lastContentKey != currentKey) {
+            listState.scrollToItem(0)
+        }
+        lastContentKey = currentKey
     }
 
     Scaffold(
@@ -296,7 +311,7 @@ private fun FeedContent(
                 onRefreshClick = comics::refresh,
                 refreshEnabled = state.preferencesReady &&
                         refreshLoadState !is LoadState.Loading,
-
+                supportsSort = supportsSort,
             )
         },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),

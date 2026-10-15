@@ -4,11 +4,14 @@ import androidx.datastore.core.DataStore
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.preferences.DownloadPreferences
 import com.shizq.bika.core.model.preferences.UserPreferences
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.test.runTest
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 
 /**
@@ -96,17 +99,14 @@ class DefaultDownloadQueuePolicyTest {
 
     // ── 并发上限 ────────────────────────────────────────────────────────
 
-    // 这三个用例刻意不套 runTest：maxConcurrentChapters() 是同步方法，内部用
-    // runBlocking 读 DataStore（本身就是 P1-3 报告的问题）。在 runTest 里再嵌一层
-    // 阻塞调用只会把测试和被测实现的调度耦合起来，无法反映真实调用方的行为。
     @Test
-    fun `并发数读取用户偏好`() {
+    fun `并发数读取用户偏好`() = runTest {
         val policy = policyWith(maxConcurrentDownloads = 5)
         assertEquals(5, policy.maxConcurrentChapters())
     }
 
     @Test
-    fun `并发数至少为 1`() {
+    fun `并发数至少为 1`() = runTest {
         // 偏好里存了 0 或负数时若原样返回，Semaphore/claim 的槽位判断会永远不放行，
         // 表现为「下载功能整体不工作」，且用户无法自行恢复。
         assertEquals(1, policyWith(maxConcurrentDownloads = 0).maxConcurrentChapters())
@@ -114,11 +114,21 @@ class DefaultDownloadQueuePolicyTest {
     }
 
     @Test
-    fun `偏好读取失败时回退默认值`() {
+    fun `偏好读取失败时回退默认值`() = runTest {
         val policy = DefaultDownloadQueuePolicy(
             UserPreferencesDataSource(ThrowingPreferencesStore()),
         )
         assertEquals(3, policy.maxConcurrentChapters())
+    }
+
+    @Test
+    fun `协程取消时不吞异常`() = runTest {
+        val policy = DefaultDownloadQueuePolicy(
+            UserPreferencesDataSource(CancellingPreferencesStore()),
+        )
+        assertFailsWith<CancellationException> {
+            policy.maxConcurrentChapters()
+        }
     }
 
     // ── 测试辅助 ────────────────────────────────────────────────────────
@@ -150,6 +160,16 @@ class DefaultDownloadQueuePolicyTest {
     private class ThrowingPreferencesStore : DataStore<UserPreferences> {
         override val data: Flow<UserPreferences> = flow {
             throw IllegalStateException("DataStore 尚未就绪")
+        }
+
+        override suspend fun updateData(
+            transform: suspend (t: UserPreferences) -> UserPreferences,
+        ): UserPreferences = throw UnsupportedOperationException()
+    }
+
+    private class CancellingPreferencesStore : DataStore<UserPreferences> {
+        override val data: Flow<UserPreferences> = flow {
+            throw CancellationException("cancelled")
         }
 
         override suspend fun updateData(

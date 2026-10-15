@@ -9,28 +9,28 @@ import kotlinx.coroutines.flow.map
 
 private val logger = KotlinLogging.logger("Credentials")
 
-class UserCredentialsDataSource @Inject constructor(
+open class UserCredentialsDataSource @Inject constructor(
     private val userCredentials: DataStore<UserCredentials>,
     private val credentialsCipher: CredentialsCipher,
 ) {
     /**
      * 对外暴露解密后的明文凭证；历史明文数据自动透传（解密返回 null 时原样使用）。
      */
-    val userData: Flow<UserCredentials> = userCredentials.data.map { it.decrypt(credentialsCipher) }
+    open val userData: Flow<UserCredentials> = userCredentials.data.map { it.decrypt(credentialsCipher) }
 
-    suspend fun setToken(token: String?) {
+    open suspend fun setToken(token: String?) {
         userCredentials.updateData {
             it.copy(token = token?.encrypt(credentialsCipher))
         }
     }
 
-    suspend fun setUsername(username: String?) {
+    open suspend fun setUsername(username: String?) {
         userCredentials.updateData {
             it.copy(username = username?.encrypt(credentialsCipher))
         }
     }
 
-    suspend fun setPassword(password: String?) {
+    open suspend fun setPassword(password: String?) {
         userCredentials.updateData {
             it.copy(password = password?.encrypt(credentialsCipher))
         }

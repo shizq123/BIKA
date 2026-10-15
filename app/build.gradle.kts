@@ -16,8 +16,8 @@ android {
 
     defaultConfig {
         applicationId = "com.shizq.bika"
-        versionCode = 74
-        versionName = "1.11.24"
+        versionCode = 75
+        versionName = "1.11.25"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -142,6 +142,11 @@ dependencies {
     // 测试框架依赖：仅测试作用域，避免打进 release APK
     testImplementation(kotlin("test"))
     testImplementation(kotlin("test-junit"))
+    testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.robolectric)
+    testImplementation(libs.ktor.client.mock)
+    testImplementation(libs.ktor.client.content.negotiation)
+    testImplementation(libs.ktor.serialization.kotlinx.json)
 
     // Compose UI 交互测试（instrumented）
     androidTestImplementation(libs.androidx.compose.ui.test)

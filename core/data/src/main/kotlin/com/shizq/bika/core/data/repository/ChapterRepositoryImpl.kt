@@ -80,8 +80,10 @@ class ChapterRepositoryImpl @Inject constructor(
                     },
                 )
 
-                // 连第一页都没成功：一条都没发过，下游会一直等在初始值上
+                // 连第一页都没成功：一条都没发过，下游会一直等在初始值上。
+                // 同时从缓存中移除，避免网络偶发失败后永久锁死为空目录
                 if (!emittedAny) {
+                    catalogCache.remove(comicId)
                     emit(ChapterCatalog.Empty)
                 }
             }

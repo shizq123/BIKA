@@ -170,10 +170,16 @@ private fun ReaderReadyContent(
     )
 
     // 上下章导航：由 StateMachine 根据完整目录（state.catalog）解析出相邻章节，
-    // 不再在 UI 层用 chapterList.peek() 推算——分页窗口只加载了首屏，
-    // 当前章不在窗口内时 peek() 会永久找不到相邻章节。
+    // 若目录尚未拉全或加载异常，对当前 order 自动提供 order ± 1 的兜底导航，确保下一章按钮随时可用。
     val navigation = state.navigation
-    val hasNextChapter = navigation.next != null
+    val effectiveNextChapter = navigation.next ?: if (!navigation.isResolved) {
+        Chapter(id = "", order = chapterState.order + 1, title = "第${chapterState.order + 1}话", updatedAt = "")
+    } else null
+    val effectivePrevChapter = navigation.prev ?: if (!navigation.isResolved && chapterState.order > 1) {
+        Chapter(id = "", order = chapterState.order - 1, title = "第${chapterState.order - 1}话", updatedAt = "")
+    } else null
+
+    val hasNextChapter = effectiveNextChapter != null
 
     val autoScroll = rememberAutoScrollState(
         scroller = controller.continuousScroller,
@@ -220,8 +226,7 @@ private fun ReaderReadyContent(
         }
     }
 
-    val nextChapter = navigation.next
-    val onDoublePullTriggered: () -> Unit = remember(nextChapter, isAtLastPage, scope) {
+    val onDoublePullTriggered: () -> Unit = remember(effectiveNextChapter, isAtLastPage, scope) {
         {
             if (isAtLastPage) {
                 when (tracker.onPull()) {
@@ -229,12 +234,12 @@ private fun ReaderReadyContent(
                         showReaderToast("这个是最后一页了")
                     }
                     DoublePullResult.TriggerAdvance -> {
-                        if (nextChapter != null) {
-                            val chapterName = nextChapter.title.ifBlank { "第${nextChapter.order}话" }
+                        if (effectiveNextChapter != null) {
+                            val chapterName = effectiveNextChapter.title.ifBlank { "第${effectiveNextChapter.order}话" }
                             showReaderToast("自动跳转下一章 ($chapterName)")
                             scope.launch {
                                 delay(300)
-                                dispatch(JumpToChapter(nextChapter, startFromBeginning = true, currentPage = 0))
+                                dispatch(JumpToChapter(effectiveNextChapter, startFromBeginning = true, currentPage = 0))
                             }
                         } else {
                             showReaderToast(ReaderScreenMessages.NoMoreContent)
@@ -282,7 +287,8 @@ private fun ReaderReadyContent(
                     currentPage = currentPage,
                     totalPages = chapterState.totalPages,
                     readingMode = config.readingMode,
-                    navigation = navigation,
+                    prevChapter = effectivePrevChapter,
+                    nextChapter = effectiveNextChapter,
                     dispatch = dispatch,
                     scrubState = scrubState,
                     onSeekToPage = { scope.launch { controller.scrollToPage(it) } },
@@ -409,15 +415,13 @@ private fun ReaderBottomBarSection(
     currentPage: Int,
     totalPages: Int,
     readingMode: ReadingMode,
-    navigation: ChapterNavigation,
+    prevChapter: Chapter?,
+    nextChapter: Chapter?,
     dispatch: (ReaderAction) -> Unit,
     scrubState: ScrubState,
     onSeekToPage: (Int) -> Unit,
     onNoMoreContent: () -> Unit,
 ) {
-    val prevChapter = navigation.prev
-    val nextChapter = navigation.next
-
     ReaderBottomBar(
         currentPage = currentPage,
         totalPages = totalPages,

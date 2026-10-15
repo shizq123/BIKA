@@ -60,4 +60,15 @@ sealed interface FeedDestination {
     data class RenameFavorite(val tag: FavoriteTag) : FeedDestination
 }
 
+sealed interface FeedError {
+    data object LoadFailed : FeedError
+}
+
+/** 是否支持排序操作（推荐与随机内容不支持按维度排序）。 */
+val DiscoveryAction.supportsSort: Boolean
+    get() = when (this) {
+        DiscoveryAction.ToCollections,
+        DiscoveryAction.ToRandom -> false
+        else -> true
+    }
 

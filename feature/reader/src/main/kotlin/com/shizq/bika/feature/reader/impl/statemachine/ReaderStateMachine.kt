@@ -48,9 +48,13 @@ class ReaderStateMachine @Inject constructor(
                                 order = order,
                                 initialPage = startPage,
                                 isLoading = true
-                            )
+                            ),
+                            catalog = catalog,
                         )
                     }
+                }
+                on<ReaderAction.ChapterCatalogLoaded> {
+                    mutate { copy(catalog = it.catalog) }
                 }
             }
             inState<ReaderUiState.Ready> {
