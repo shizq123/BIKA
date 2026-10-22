@@ -1,9 +1,10 @@
+@file:OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+
 package com.shizq.bika.feature.comicdetail.impl
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.paging.PagingData
-import androidx.paging.cachedIn
 import com.shizq.bika.core.data.model.Chapter
 import com.shizq.bika.core.data.repository.ChapterRepository
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
@@ -25,7 +26,9 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 import android.content.Context
@@ -99,9 +102,30 @@ class ComicInfoViewModel @AssistedInject constructor(
      *
      * 分页与页尺寸都由 [ChapterRepository] 决定：原先这里自建 Pager + EpisodePagingSource，
      * 与 repository 的 getChapterList 打同一个端点做同一件事，两份实现已经分叉。
+     *
+     * 这里刻意不叠加 `cachedIn`：目录 tab 的订阅者会随详情页一起离开组合（进阅读器时），
+     * 返回时再重新订阅同一份缓存。只要那一代分页在订阅中断时停在 refresh Loading 或 Error
+     * 且一页都没拿到，重放出来的历史就仍然只有「空 + 未结束的加载状态」，而真正推进它的
+     * PageFetcher 已经没有人消费，UI 便会永远停在「正在获取章节列表…」。
+     * 每次订阅都新建 Pager 可以保证回到目录页时一定重新发起一次真实请求；
+     * 代价仅是旋转屏幕等重新组合的场景会重新拉第一页（章节列表就是一个轻量请求）。
      */
-    val episodesFlow: Flow<PagingData<Chapter>> = chapterRepository.getChapterList(comicId)
-        .cachedIn(viewModelScope)
+    private val episodesReloadTrigger = MutableStateFlow(0)
+
+    val episodesFlow: Flow<PagingData<Chapter>> = episodesReloadTrigger
+        .flatMapLatest { chapterRepository.getChapterList(comicId) }
+
+    /**
+     * 重建章节分页流，供目录页的「重试 / 重新加载」使用。
+     *
+     * 卡住或失败的那一代分页可能已经没有活跃的 PageFetcher，此时
+     * `LazyPagingItems.retry()` / `refresh()` 只是把加载提示发给一个不再产出事件的
+     * 数据源，不会真的重新请求。换掉触发值让上层重新收集一条全新的 Pager 流，
+     * 是这类状态下唯一可靠的自救方式。
+     */
+    fun reloadEpisodes() {
+        episodesReloadTrigger.update { it + 1 }
+    }
 
     fun dispatch(action: UnitedDetailsAction) {
         viewModelScope.launch {
