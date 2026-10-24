@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyRow
@@ -42,6 +43,7 @@ import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -88,7 +90,7 @@ fun FeedRoute(
     onNavigate: (FeedDestination) -> Unit,
 ) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
-    val comics = viewModel.comics.collectAsLazyPagingItems()
+    val session by viewModel.pagingSession.collectAsStateWithLifecycle()
 
     ResultEffect<AddFavoriteTagResult> { result ->
         viewModel.dispatch(FeedAction.AddCustomFavorite(result.name))
@@ -97,17 +99,25 @@ fun FeedRoute(
         viewModel.dispatch(FeedAction.RenameFavorite(result.tag, result.name))
     }
 
-    FeedScreen(
-        title = title,
-        state = state,
-        comics = comics,
-        currentTag = viewModel.currentAction.toFavoriteTag(),
-        supportsSort = viewModel.currentAction.supportsSort,
-        onAction = viewModel::dispatch,
-        sharedTransitionScope = sharedTransitionScope,
-        animatedVisibilityScope = animatedVisibilityScope,
-        onNavigate = onNavigate,
-    )
+    val currentSession = session
+    if (currentSession == null || currentSession.request.revision != state.pagination.revision) {
+        LoadingState(Modifier.fillMaxSize())
+        return
+    }
+    key(currentSession.request.revision) {
+        val comics = currentSession.comics.collectAsLazyPagingItems()
+        FeedScreen(
+            title = title,
+            state = state,
+            comics = comics,
+            currentTag = viewModel.currentAction.toFavoriteTag(),
+            supportsSort = viewModel.currentAction.supportsSort,
+            onAction = viewModel::dispatch,
+            sharedTransitionScope = sharedTransitionScope,
+            animatedVisibilityScope = animatedVisibilityScope,
+            onNavigate = onNavigate,
+        )
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalSharedTransitionApi::class)
@@ -314,6 +324,17 @@ private fun FeedContent(
                 supportsSort = supportsSort,
             )
         },
+        bottomBar = {
+            if (state.preferencesReady && state.pagination.isManual) {
+                FeedPaginationBar(
+                    pagination = state.pagination,
+                    loading = refreshLoadState is LoadState.Loading,
+                    onPrevious = { onAction(FeedAction.PreviousPage) },
+                    onNext = { onAction(FeedAction.NextPage) },
+                    onJump = { onAction(FeedAction.JumpToPage(it)) },
+                )
+            }
+        },
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
     ) { innerPadding ->
         LazyColumn(
@@ -361,6 +382,7 @@ private fun FeedContent(
             feedContentItems(
                 comics = comics,
                 metadataLoading = !state.preferencesReady,
+                showAppendState = !state.pagination.isManual,
 
                 isClientFiltered = state.query.criteria.hasAnySelection ||
                         state.data.globalPolicy.blockedTopicsEnabled ||
@@ -387,6 +409,73 @@ private fun FeedContent(
     }
 }
 
+@Composable
+internal fun FeedPaginationBar(
+    pagination: FeedPagination,
+    loading: Boolean,
+    onPrevious: () -> Unit,
+    onNext: () -> Unit,
+    onJump: (Int) -> Unit,
+) {
+    var jumpDialogVisible by rememberSaveable { mutableStateOf(false) }
+    val totalPages = pagination.totalPages
+    val canJump = pagination.isManual && !loading && totalPages != null && totalPages > 0
+    LaunchedEffect(canJump) {
+        if (!canJump) jumpDialogVisible = false
+    }
+
+    if (jumpDialogVisible && canJump) {
+        FeedPageJumpDialog(
+            currentPage = pagination.currentPage,
+            totalPages = totalPages,
+            onConfirm = { page ->
+                jumpDialogVisible = false
+                onJump(page)
+            },
+            onDismiss = { jumpDialogVisible = false },
+        )
+    }
+
+    Surface(tonalElevation = 3.dp, shadowElevation = 3.dp) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .testTag(FeedTestTags.Pagination),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            TextButton(
+                onClick = onPrevious,
+                enabled = !loading && pagination.hasPrevious,
+                modifier = Modifier.testTag(FeedTestTags.PreviousPage),
+            ) {
+                Text(stringResource(R.string.feed_previous_page))
+            }
+            TextButton(
+                onClick = { jumpDialogVisible = true },
+                enabled = canJump,
+                modifier = Modifier.weight(1f).testTag(FeedTestTags.PagePosition),
+            ) {
+                Text(
+                    text = totalPages?.let { total ->
+                        stringResource(R.string.feed_page_position, pagination.currentPage, total)
+                    } ?: stringResource(R.string.feed_page_position_unknown, pagination.currentPage),
+                    style = MaterialTheme.typography.labelLarge,
+                )
+            }
+            TextButton(
+                onClick = onNext,
+                enabled = !loading && pagination.hasNext,
+                modifier = Modifier.testTag(FeedTestTags.NextPage),
+            ) {
+                Text(stringResource(R.string.feed_next_page))
+            }
+        }
+    }
+}
+
 private data class DisplayedContentKey(
     val sort: SortOrder,
     val criteria: FeedCriteria,
@@ -404,6 +493,7 @@ private fun FeedFilterChange.toFeedAction(): FeedAction = when (this) {
 private fun LazyListScope.feedContentItems(
     comics: LazyPagingItems<ComicSummary>,
     metadataLoading: Boolean,
+    showAppendState: Boolean,
     isClientFiltered: Boolean,
     onRetry: () -> Unit,
     canClearFilters: Boolean,
@@ -478,14 +568,25 @@ private fun LazyListScope.feedContentItems(
                     }
                 }
             } else {
+                // Distinguish repeated ids without tying every row to its absolute position.
+                val occurrences = mutableMapOf<String, Int>()
+                val itemKeys = List(comics.itemCount) { index ->
+                    val id = comics.peek(index)?.id
+                    if (id == null) {
+                        "feed-placeholder:$index"
+                    } else {
+                        val occurrence = occurrences.getOrDefault(id, 0)
+                        occurrences[id] = occurrence + 1
+                        "feed-comic:${id.length}:$id:$occurrence"
+                    }
+                }
                 items(
                     count = comics.itemCount,
-                    // Some endpoints can return duplicate ids across pages; include the index.
-                    key = { index -> "${index}_${comics.peek(index)?.id ?: "placeholder"}" },
+                    key = { index -> itemKeys[index] },
                     contentType = { "comic" },
                 ) { index ->
                     comics[index]?.let { comic ->
-                        val transitionId = rememberSaveable(comic.id, index) {
+                        val transitionId = rememberSaveable(itemKeys[index]) {
                             Uuid.random().toString()
                         }
                         with(sharedTransitionScope) {
@@ -515,7 +616,7 @@ private fun LazyListScope.feedContentItems(
                     }
                 }
 
-                when (comics.loadState.append) {
+                if (showAppendState) when (comics.loadState.append) {
                     is LoadState.Loading -> item(
                         key = "feed-append-loading",
                         contentType = "append-state",
@@ -705,4 +806,10 @@ internal object FeedTestTags {
     const val Empty = "feed-empty"
     const val AppendLoading = "feed-append-loading"
     const val AppendError = "feed-append-error"
+    const val Pagination = "feed-pagination"
+    const val PreviousPage = "feed-previous-page"
+    const val NextPage = "feed-next-page"
+    const val PagePosition = "feed-page-position"
+    const val PageInput = "feed-page-input"
+    const val JumpConfirm = "feed-jump-confirm"
 }

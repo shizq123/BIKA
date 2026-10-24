@@ -21,7 +21,8 @@ out/
 .gradle
 .gradle/
 build/
-.agents
+.agents/
+.agent-teams/
 # Signing files
 .signing/
 .vscode/

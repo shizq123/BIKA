@@ -406,6 +406,7 @@ private fun ComicDetailLoadedContent(
                         onAuthorClick = interactions.onAuthorClick,
                         onUploaderClick = interactions.onUploaderClick,
                         listState = detailListState,
+                        readingStatus = controls.readingStatus,
                     )
 
                     PageTab.EPISODES -> episodesContent()

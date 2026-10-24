@@ -12,6 +12,7 @@ data class ComicDetailControlsState(
     val downloadState: ComicDownloadState = ComicDownloadState.NotDownloaded,
     val resumeChapterOrder: Int = 1,
     val hasReadProgress: Boolean = false,
+    val readingStatus: ComicReadingStatus? = null,
 ) {
     val isDownloaded: Boolean
         get() = downloadState is ComicDownloadState.Downloaded

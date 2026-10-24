@@ -90,6 +90,7 @@ class ComicInfoViewModel @AssistedInject constructor(
             },
             resumeChapterOrder = lastRead?.chapterId ?: 1,
             hasReadProgress = lastRead != null,
+            readingStatus = detail?.let { resolveComicReadingStatus(it.epsCount, progress) },
         )
     }.stateIn(
         scope = viewModelScope,

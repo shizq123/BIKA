@@ -3,7 +3,8 @@ package com.shizq.bika.core.ui
 import android.graphics.drawable.ColorDrawable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -24,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -91,7 +93,7 @@ fun ComicCard(
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .height(128.dp),
+                    .heightIn(min = 128.dp),
             ) {
                 StatusBadges(comic)
 
@@ -120,7 +122,7 @@ fun ComicCard(
                     CategoryRow(comic.categories)
                 }
 
-                Spacer(Modifier.weight(1f))
+                Spacer(Modifier.height(8.dp))
 
                 ComicMetadata(comic)
             }
@@ -134,45 +136,49 @@ private fun ComicCover(
     placeholderColor: Color,
     modifier: Modifier = Modifier,
 ) {
-    Box(contentAlignment = Alignment.TopStart) {
-        AsyncImage(
-            model = ImageRequest.Builder(LocalContext.current)
-                .data(comic.image.originalImageUrl)
-                .placeholder(ColorDrawable(placeholderColor.toArgb()))
-                .error(ColorDrawable(placeholderColor.toArgb()))
-                .build(),
-            contentDescription = comic.title,
-            contentScale = ContentScale.Crop,
-            modifier = modifier
-                .width(96.dp)
-                .aspectRatio(3f / 4f)
-                .clip(RoundedCornerShape(10.dp)),
-        )
+    val context = LocalContext.current
+    val imageRequest = remember(context, comic.image.originalImageUrl, placeholderColor) {
+        ImageRequest.Builder(context)
+            .data(comic.image.originalImageUrl)
+            .placeholder(ColorDrawable(placeholderColor.toArgb()))
+            .error(ColorDrawable(placeholderColor.toArgb()))
+            .build()
+    }
 
+    AsyncImage(
+        model = imageRequest,
+        contentDescription = comic.title,
+        contentScale = ContentScale.Crop,
+        modifier = modifier
+            .width(96.dp)
+            .aspectRatio(3f / 4f)
+            .clip(RoundedCornerShape(10.dp)),
+    )
+}
+
+@Composable
+private fun StatusBadges(comic: ComicSummary) {
+    if (!comic.finished && !comic.isFavourited) return
+
+    FlowRow(
+        modifier = Modifier.padding(bottom = 6.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (comic.finished) {
+            StatusBadge(
+                text = "已完结",
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+            )
+        }
         if (comic.isFavourited) {
             StatusBadge(
                 text = "已收藏",
                 containerColor = MaterialTheme.colorScheme.tertiaryContainer,
                 contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-                modifier = Modifier.padding(5.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun StatusBadges(comic: ComicSummary) {
-    if (!comic.finished) return
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
-        modifier = Modifier.padding(bottom = 7.dp),
-    ) {
-        StatusBadge(
-            text = "已完结",
-            containerColor = MaterialTheme.colorScheme.primaryContainer,
-            contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        )
     }
 }
 
@@ -260,7 +266,7 @@ private fun StatusBadge(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
             .background(containerColor)
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
 
@@ -279,7 +285,7 @@ private fun CategoryTag(
             .widthIn(max = 82.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f))
-            .padding(horizontal = 7.dp, vertical = 3.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp),
     )
 }
 
