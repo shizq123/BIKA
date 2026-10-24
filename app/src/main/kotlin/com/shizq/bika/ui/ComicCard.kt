@@ -9,13 +9,13 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.defaultMinSize
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
@@ -38,7 +38,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.shizq.bika.core.data.model.DetailedReadingHistory
 import com.shizq.bika.core.data.model.isCompleted
 import com.shizq.bika.core.ui.RetryableAsyncImage
@@ -68,18 +67,20 @@ fun ComicCard(
             ),
     ) {
         Row(
-            // 不用 IntrinsicSize.Max：它会强制列表项每帧多一轮测量，滚动时拖慢布局
             modifier = Modifier
-                .defaultMinSize(minHeight = 135.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.Top
         ) {
             Box(contentAlignment = Alignment.TopStart) {
                 // 封面图：失败自动退避重试 + 点击重试（网络不稳定时不静默失败）
+                val context = LocalContext.current
                 RetryableAsyncImage(
-                    model = ImageRequest.Builder(LocalContext.current)
-                        .data(detailedReadingHistory.history.coverUrl)
-                        .crossfade(true)
-                        .build(),
+                    model = remember(context, detailedReadingHistory.history.coverUrl) {
+                        ImageRequest.Builder(context)
+                            .data(detailedReadingHistory.history.coverUrl)
+                            .build()
+                    },
                     contentDescription = "${detailedReadingHistory.history.title} Cover",
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -87,66 +88,17 @@ fun ComicCard(
                         .aspectRatio(3f / 4f)
                         .clip(RoundedCornerShape(8.dp))
                 )
-
-                if (detailedReadingHistory.history.isFavourited) {
-                    Text(
-                        text = "已收藏",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onTertiary,
-                        modifier = Modifier
-                            .padding(top = 4.dp, start = 4.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(MaterialTheme.colorScheme.tertiary.copy(alpha = 0.9f))
-                            .padding(horizontal = 4.dp, vertical = 1.dp)
-                    )
-                }
             }
 
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
             Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(top = 10.dp, bottom = 10.dp, end = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                // 状态徽章墙 (标题上方)：列表项内用 Row 避免 FlowRow 的多轮测量
                 val lastProgress = detailedReadingHistory.lastReadChapterProgress
-                val epsCount = detailedReadingHistory.history.epsCount
-                val hasProgressBadge = lastProgress != null
-                val hasFinishedBadge = detailedReadingHistory.history.finished
-                if (hasProgressBadge || hasFinishedBadge) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
-                    ) {
-                        if (lastProgress != null) {
-                            if (epsCount > lastProgress.chapterNumber) {
-                                Badge(
-                                    text = "有更新",
-                                    containerColor = androidx.compose.ui.graphics.Color(0xFFFF9800)
-                                )
-                            } else if (lastProgress.chapterNumber >= epsCount && lastProgress.isCompleted) {
-                                Badge(
-                                    text = "已读完",
-                                    containerColor = androidx.compose.ui.graphics.Color(0xFF4CAF50)
-                                )
-                            } else {
-                                Badge(
-                                    text = "已阅读",
-                                    containerColor = MaterialTheme.colorScheme.secondary
-                                )
-                            }
-                        }
 
-                        if (hasFinishedBadge) {
-                            Badge(
-                                text = "已完结",
-                                containerColor = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                    }
-                }
+                ComicHistoryStatusBadges(detailedReadingHistory)
 
                 Text(
                     text = buildString {
@@ -173,25 +125,26 @@ fun ComicCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // 药丸式分类 Tag 标签（最多 3 个 + 溢出计数，Row 布局保持轻量）
+                // 分类标签在窄屏或大字体下按项换行。
                 val categories = detailedReadingHistory.history.categories
                 if (categories.isNotEmpty()) {
-                    Row(
+                    FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         categories.take(3).forEach { category ->
                             Text(
                                 text = category,
+                                style = MaterialTheme.typography.labelSmall,
                                 fontSize = 10.sp,
+                                lineHeight = 14.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                                 color = MaterialTheme.colorScheme.secondary,
                                 modifier = Modifier
-                                    .clip(CircleShape)
-                                    .background(
-                                        MaterialTheme.colorScheme.secondaryContainer.copy(
-                                            alpha = 0.5f
-                                        )
-                                    )
+                                    .widthIn(max = 88.dp)
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f))
                                     .padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -241,100 +194,91 @@ fun ComicCard(
                     )
                 }
 
-                // 底部：相对时间与数据指标并列
-                Row(
+                // 时间与统计按完整项目换行，避免章节数被逐字挤成竖排。
+                FlowRow(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    // 左侧：最后阅读时间
                     Text(
                         text = formatRelativeTime(detailedReadingHistory.history.lastInteractionAt),
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.outline
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.outline,
                     )
+                    if (detailedReadingHistory.history.totalLikes > 0) {
+                        HistoryMetadata(
+                            icon = Icons.Rounded.FavoriteBorder,
+                            description = "点赞",
+                            text = detailedReadingHistory.history.totalLikes.toString(),
+                        )
+                    }
+                    if (detailedReadingHistory.history.epsCount > 0) {
+                        HistoryMetadata(
+                            icon = Icons.AutoMirrored.Rounded.MenuBook,
+                            description = "章节",
+                            text = "${detailedReadingHistory.history.epsCount}话",
+                        )
+                    }
+                }
 
-                    // 右侧：数据指标展示
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                if (onReadLatestClick != null && lastProgress != null && detailedReadingHistory.history.epsCount > lastProgress.chapterNumber) {
+                    androidx.compose.material3.Button(
+                        onClick = { onReadLatestClick(detailedReadingHistory.history.epsCount) },
+                        contentPadding = androidx.compose.foundation.layout.PaddingValues(
+                            horizontal = 10.dp,
+                            vertical = 4.dp,
+                        ),
+                        colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                        ),
+                        shape = RoundedCornerShape(8.dp),
                     ) {
-                        val lastProgress = detailedReadingHistory.lastReadChapterProgress
-                        if (onReadLatestClick != null && lastProgress != null && detailedReadingHistory.history.epsCount > lastProgress.chapterNumber) {
-                            androidx.compose.material3.Button(
-                                onClick = { onReadLatestClick(detailedReadingHistory.history.epsCount) },
-                                contentPadding = androidx.compose.foundation.layout.PaddingValues(
-                                    horizontal = 8.dp,
-                                    vertical = 2.dp
-                                ),
-                                modifier = Modifier.height(28.dp),
-                                colors = androidx.compose.material3.ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                ),
-                                shape = RoundedCornerShape(8.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.AutoMirrored.Rounded.MenuBook,
-                                        contentDescription = "追更",
-                                        modifier = Modifier.size(12.dp)
-                                    )
-                                    Text(
-                                        text = "追更最新",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        }
-
-                        if (detailedReadingHistory.history.totalLikes > 0) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Rounded.FavoriteBorder,
-                                    contentDescription = "点赞",
-                                    modifier = Modifier.size(12.dp),
-                                    tint = MaterialTheme.colorScheme.outline
-                                )
-                                Text(
-                                    text = detailedReadingHistory.history.totalLikes.toString(),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
-
-                        if (detailedReadingHistory.history.epsCount > 0) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                            ) {
-                                Icon(
-                                    imageVector = Icons.AutoMirrored.Rounded.MenuBook,
-                                    contentDescription = "章节",
-                                    modifier = Modifier.size(12.dp),
-                                    tint = MaterialTheme.colorScheme.outline
-                                )
-                                Text(
-                                    text = "${detailedReadingHistory.history.epsCount}话",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 11.sp,
-                                    color = MaterialTheme.colorScheme.outline
-                                )
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Rounded.MenuBook,
+                            contentDescription = null,
+                            modifier = Modifier.size(14.dp),
+                        )
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            text = "追更最新",
+                            style = MaterialTheme.typography.labelSmall,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun HistoryMetadata(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    description: String,
+    text: String,
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(3.dp),
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = description,
+            modifier = Modifier.size(12.dp),
+            tint = MaterialTheme.colorScheme.outline,
+        )
+        Text(
+            text = text,
+            style = MaterialTheme.typography.bodySmall,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            color = MaterialTheme.colorScheme.outline,
+        )
     }
 }
 
@@ -364,18 +308,61 @@ private fun formatRelativeTime(instant: Instant): String {
 }
 
 @Composable
+private fun ComicHistoryStatusBadges(history: DetailedReadingHistory) {
+    val progress = history.lastReadChapterProgress
+    if (progress == null && !history.history.finished && !history.history.isFavourited) return
+
+    FlowRow(
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (progress != null) {
+            val status = when {
+                history.history.epsCount > progress.chapterNumber -> "有更新"
+                progress.chapterNumber >= history.history.epsCount && progress.isCompleted -> "已读完"
+                else -> "已阅读"
+            }
+            Badge(
+                text = status,
+                containerColor = when (status) {
+                    "有更新" -> androidx.compose.ui.graphics.Color(0xFFFF9800)
+                    "已读完" -> androidx.compose.ui.graphics.Color(0xFF4CAF50)
+                    else -> MaterialTheme.colorScheme.secondary
+                },
+            )
+        }
+        if (history.history.finished) {
+            Badge(
+                text = "已完结",
+                containerColor = MaterialTheme.colorScheme.primary,
+            )
+        }
+        if (history.history.isFavourited) {
+            Badge(
+                text = "已收藏",
+                containerColor = MaterialTheme.colorScheme.tertiary,
+            )
+        }
+    }
+}
+
+@Composable
 private fun Badge(
     text: String,
     containerColor: androidx.compose.ui.graphics.Color
 ) {
     Text(
         text = text,
+        style = MaterialTheme.typography.labelSmall,
         fontSize = 9.sp,
-        fontWeight = FontWeight.Bold,
-        color = MaterialTheme.colorScheme.onPrimary,
+        lineHeight = 12.sp,
+        maxLines = 1,
+        softWrap = false,
+        fontWeight = FontWeight.SemiBold,
+        color = androidx.compose.material3.contentColorFor(containerColor),
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
             .background(containerColor)
-            .padding(horizontal = 4.dp, vertical = 1.dp)
+            .padding(horizontal = 5.dp, vertical = 2.dp)
     )
 }

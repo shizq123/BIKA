@@ -134,6 +134,7 @@ fun ComicDetailScreen(
             if (detail != null) {
                 EpisodesRoute(
                     episodesFlow = viewModel.episodesFlow,
+                    onReloadEpisodes = viewModel::reloadEpisodes,
                     chapterProgress = chapterProgress,
                     navigateToReader = { order -> navigationToReader(detail.id, order) },
                     onDownloadSelectionClick = {
@@ -405,6 +406,7 @@ private fun ComicDetailLoadedContent(
                         onAuthorClick = interactions.onAuthorClick,
                         onUploaderClick = interactions.onUploaderClick,
                         listState = detailListState,
+                        readingStatus = controls.readingStatus,
                     )
 
                     PageTab.EPISODES -> episodesContent()

@@ -86,6 +86,15 @@
     <string name="feed_refreshing">正在刷新…</string>
     <string name="feed_loading_more">正在加载更多…</string>
     <string name="feed_no_more">已经到底了</string>
+    <string name="feed_previous_page">上一页</string>
+    <string name="feed_next_page">下一页</string>
+    <string name="feed_page_position">第 %1$d / %2$d 页</string>
+    <string name="feed_page_position_unknown">第 %1$d 页</string>
+    <string name="feed_jump_page_title">跳转到指定页</string>
+    <string name="feed_jump_page_label">页码</string>
+    <string name="feed_jump_page_range">可输入 1～%1$d 页</string>
+    <string name="feed_jump_page_error">请输入 1～%1$d 之间的整数页码</string>
+    <string name="feed_jump_page_confirm">跳转</string>
     <string name="feed_load_failed">加载失败</string>
     <string name="feed_empty">暂无内容</string>
     <string name="feed_empty_current_page">当前没有符合筛选条件的内容</string>

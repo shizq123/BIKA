@@ -50,9 +50,13 @@ import androidx.paging.compose.LazyPagingItems
 import coil3.compose.AsyncImagePainter
 import coil3.compose.LocalPlatformContext
 import coil3.compose.rememberAsyncImagePainter
+import coil3.compose.rememberConstraintsSizeResolver
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
 import coil3.request.crossfade
+import coil3.size.Dimension
+import coil3.size.Size
+import coil3.size.SizeResolver
 import com.shizq.bika.core.data.paging.ChapterPage
 import com.shizq.bika.core.ui.CircularProgressIndicator
 import com.shizq.bika.core.ui.backoffDelayMillis
@@ -281,9 +285,22 @@ fun ComicPageItem(
         ContentScale.FillWidth
     }
     var imageAspectRatio by remember(page.id) { mutableFloatStateOf(0.75f) }
-    val imageRequest = remember(platformContext, page.url) {
+    val layoutSizeResolver = rememberConstraintsSizeResolver()
+    val decodeSizeResolver = remember(layoutSizeResolver) {
+        SizeResolver {
+            val layoutSize = layoutSizeResolver.size()
+            val width = layoutSize.width
+            // Retain twice the displayed width for zooming; leave long-page height unbounded.
+            Size(
+                width = if (width is Dimension.Pixels) Dimension(width.px * 2) else width,
+                height = Dimension.Undefined,
+            )
+        }
+    }
+    val imageRequest = remember(platformContext, page.url, decodeSizeResolver) {
         ImageRequest.Builder(platformContext)
             .data(page.url)
+            .size(decodeSizeResolver)
             .crossfade(false)
             .diskCacheKey(page.url)
             .diskCachePolicy(CachePolicy.ENABLED)
@@ -317,7 +334,7 @@ fun ComicPageItem(
             painter = painter,
             contentDescription = "Page ${index + 1}",
             contentScale = contentScale,
-            modifier = Modifier.fillMaxSize()
+            modifier = Modifier.fillMaxSize().then(layoutSizeResolver)
         )
         when (state) {
             is AsyncImagePainter.State.Loading -> {

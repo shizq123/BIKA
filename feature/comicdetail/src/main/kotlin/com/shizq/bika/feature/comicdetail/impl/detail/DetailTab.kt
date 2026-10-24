@@ -6,16 +6,17 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,11 +24,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChatBubble
@@ -39,6 +40,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,13 +53,17 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import com.shizq.bika.core.designsystem.theme.BikaTheme
 import com.shizq.bika.feature.comicdetail.impl.ComicDetail
 import com.shizq.bika.feature.comicdetail.impl.ComicSummary
+import com.shizq.bika.feature.comicdetail.impl.ComicReadingStatus
 import kotlin.time.Instant
 
 /** 漫画详情分页；Tab 导航由外层页面统一承载。 */
@@ -72,11 +78,13 @@ fun DetailTab(
     navigationToTagBlock: (String) -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
+    readingStatus: ComicReadingStatus? = null,
 ) {
     ComicDetailBody(
         detail = detail,
         modifier = modifier,
         listState = listState,
+        readingStatus = readingStatus,
         onAuthorClick = { onAuthorClick(detail.author) },
         onTeamClick = { onUploaderClick(detail.chineseTeam, detail.creator.id) },
         onTagClick = onTranslateClick,
@@ -98,6 +106,7 @@ private fun ComicDetailBody(
     onTagLongClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState(),
+    readingStatus: ComicReadingStatus? = null,
 ) {
     LazyColumn(
         state = listState,
@@ -106,7 +115,7 @@ private fun ComicDetailBody(
             .background(MaterialTheme.colorScheme.surface),
     ) {
         item(key = "hero") {
-            ComicHero(detail, onAuthorClick, onTeamClick, onTagClick)
+            ComicHero(detail, readingStatus, onAuthorClick, onTeamClick, onTagClick)
         }
         item(key = "stats") {
             ContentSection {
@@ -157,14 +166,14 @@ private fun ContentSection(content: @Composable () -> Unit) {
 @Composable
 private fun ComicHero(
     detail: ComicDetail,
+    readingStatus: ComicReadingStatus?,
     onAuthorClick: () -> Unit,
     onTeamClick: () -> Unit,
     onTagClick: (String) -> Unit,
 ) {
     Box(
         modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 300.dp),
+            .fillMaxWidth(),
     ) {
         AsyncImage(
             model = detail.cover,
@@ -188,103 +197,125 @@ private fun ComicHero(
                     ),
                 ),
         )
-        HeroHeader(detail, onAuthorClick, onTeamClick, onTagClick)
+        HeroHeader(detail, readingStatus, onAuthorClick, onTeamClick, onTagClick)
     }
 }
 
 @Composable
 private fun HeroHeader(
     detail: ComicDetail,
+    readingStatus: ComicReadingStatus?,
     onAuthorClick: () -> Unit,
     onTeamClick: () -> Unit,
     onTagClick: (String) -> Unit,
 ) {
-    BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-        if (maxWidth < 360.dp) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                HeroCover(detail, Modifier
-                    .width(138.dp)
-                    .height(188.dp))
-                HeroMetadata(
-                    detail,
-                    onAuthorClick,
-                    onTeamClick,
-                    onTagClick,
-                    Modifier.fillMaxWidth(),
-                    centered = true,
-                )
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+    ) {
+        val stacked = maxWidth < 300.dp || LocalDensity.current.fontScale >= 1.3f
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (stacked) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    HeroCover(detail, Modifier.width(128.dp).height(176.dp))
+                    HeroMetadata(detail, readingStatus, onTagClick, Modifier.fillMaxWidth())
+                }
+            } else {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HeroCover(detail, Modifier.width(128.dp).height(176.dp))
+                    HeroMetadata(detail, readingStatus, onTagClick, Modifier.weight(1f))
+                }
             }
-        } else {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 24.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
-                verticalAlignment = Alignment.Top,
-            ) {
-                HeroCover(detail, Modifier
-                    .width(122.dp)
-                    .height(166.dp))
-                HeroMetadata(
-                    detail,
-                    onAuthorClick,
-                    onTeamClick,
-                    onTagClick,
-                    Modifier.weight(1f),
-                    centered = false,
-                )
-            }
+            CreatorCredits(detail, stacked, onAuthorClick, onTeamClick)
         }
     }
 }
 
 @Composable
 private fun HeroCover(detail: ComicDetail, modifier: Modifier) {
+    var showCoverPreview by rememberSaveable(detail.id, detail.cover) { mutableStateOf(false) }
     AsyncImage(
         model = detail.cover,
         contentDescription = detail.title,
         contentScale = ContentScale.Fit,
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .clickable(
+                enabled = detail.cover.isNotBlank(),
+                onClickLabel = "查看封面大图",
+                role = Role.Button,
+            ) { showCoverPreview = true },
     )
+    if (showCoverPreview && detail.cover.isNotBlank()) {
+        CoverPreviewDialog(
+            cover = detail.cover,
+            title = detail.title,
+            onDismiss = { showCoverPreview = false },
+        )
+    }
 }
 
 @Composable
 private fun HeroMetadata(
     detail: ComicDetail,
-    onAuthorClick: () -> Unit,
-    onTeamClick: () -> Unit,
+    readingStatus: ComicReadingStatus?,
     onTagClick: (String) -> Unit,
     modifier: Modifier,
-    centered: Boolean,
 ) {
+    val category = detail.categories.firstOrNull { it.isNotBlank() }
     Column(
         modifier = modifier,
-        horizontalAlignment = if (centered) Alignment.CenterHorizontally else Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(6.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        StatusPill(if (detail.finished) "已完结" else "连载中", emphasized = true)
+        StatusPill(
+            text = if (detail.finished) "已完结" else "连载中",
+            emphasized = true,
+        )
         Text(
             text = detail.title,
-            style = MaterialTheme.typography.headlineSmall,
-            fontWeight = FontWeight.ExtraBold,
-            maxLines = 3,
-            overflow = TextOverflow.Ellipsis,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurface,
         )
-        ClickableLine("作者", detail.author.ifBlank { "未知" }, onAuthorClick, centered)
-        if (detail.chineseTeam.isNotBlank()) {
-            ClickableLine("汉化", detail.chineseTeam, onTeamClick, centered)
+        if (readingStatus != null || category != null) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                readingStatus?.let { status ->
+                    ReadingStatusBadge(status, Modifier.align(Alignment.CenterVertically))
+                }
+                category?.let {
+                    StatusPill(
+                        text = it,
+                        onClick = { onTagClick(it) },
+                        modifier = Modifier.align(Alignment.CenterVertically),
+                    )
+                }
+            }
         }
-        detail.categories.firstOrNull()?.let { category ->
-            StatusPill(category, onClick = { onTagClick(category) })
-        }
+    }
+}
+
+@Composable
+private fun ReadingStatusBadge(status: ComicReadingStatus, modifier: Modifier = Modifier) {
+    val colors = MaterialTheme.colorScheme
+    val (label, container, foreground) = when (status) {
+        ComicReadingStatus.HasUpdates -> Triple("有更新", colors.tertiaryContainer, colors.onTertiaryContainer)
+        ComicReadingStatus.Completed -> Triple("已读完", colors.secondaryContainer, colors.onSecondaryContainer)
+        ComicReadingStatus.Read -> Triple("已阅读", colors.surfaceContainerHighest, colors.onSurfaceVariant)
+    }
+    Surface(modifier = modifier, shape = RoundedCornerShape(8.dp), color = container, contentColor = foreground) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        )
     }
 }
 
@@ -385,14 +416,13 @@ private fun RecommendationsSection(
     recommendations: List<ComicSummary>,
     onComicClick: (String) -> Unit,
 ) {
+    val uniqueRecommendations = remember(recommendations) { recommendations.distinctBy { it.id } }
     SectionContent("猜你喜欢") {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
+        LazyRow(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            recommendations.forEach { comic ->
+            items(uniqueRecommendations, key = { it.id }, contentType = { "recommendation" }) { comic ->
                 Column(
                     modifier = Modifier
                         .width(112.dp)
@@ -493,25 +523,84 @@ private fun InfoGrid(vararg entries: Pair<String, String>) {
 }
 
 @Composable
-private fun ClickableLine(
+private fun CreatorCredits(
+    detail: ComicDetail,
+    stacked: Boolean,
+    onAuthorClick: () -> Unit,
+    onTeamClick: () -> Unit,
+) {
+    val dividerColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerLow.copy(alpha = 0.92f),
+        border = BorderStroke(1.dp, dividerColor),
+    ) {
+        if (stacked || detail.chineseTeam.isBlank()) {
+            Column {
+                CreatorCredit(
+                    label = "作者",
+                    value = detail.author,
+                    onClick = onAuthorClick,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                if (detail.chineseTeam.isNotBlank()) {
+                    HorizontalDivider(modifier = Modifier.padding(horizontal = 14.dp), color = dividerColor)
+                    CreatorCredit(
+                        label = "汉化",
+                        value = detail.chineseTeam,
+                        onClick = onTeamClick,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
+            }
+        } else {
+            Row(modifier = Modifier.height(IntrinsicSize.Min)) {
+                CreatorCredit(
+                    label = "作者",
+                    value = detail.author,
+                    onClick = onAuthorClick,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                )
+                VerticalDivider(
+                    modifier = Modifier.padding(vertical = 14.dp),
+                    color = dividerColor,
+                )
+                CreatorCredit(
+                    label = "汉化",
+                    value = detail.chineseTeam,
+                    onClick = onTeamClick,
+                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreatorCredit(
     label: String,
     value: String,
     onClick: () -> Unit,
-    centered: Boolean = false,
+    modifier: Modifier = Modifier,
 ) {
-    Box(
-        modifier = Modifier
-            .then(if (centered) Modifier.wrapContentWidth() else Modifier.fillMaxWidth())
-            .heightIn(min = 48.dp)
-            .clickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
+    Column(
+        modifier = modifier
+            .heightIn(min = 72.dp)
+            .clickable(enabled = value.isNotBlank(), role = Role.Button, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
-            "$label · $value",
-            color = MaterialTheme.colorScheme.primary,
-            style = MaterialTheme.typography.bodySmall,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
+            text = label,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelMedium,
+        )
+        Text(
+            text = value.ifBlank { "未知" },
+            color = if (value.isNotBlank()) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.Medium,
         )
     }
 }
@@ -523,6 +612,7 @@ private fun StatusPill(
     emphasized: Boolean = false,
     onClick: (() -> Unit)? = null,
     onLongClick: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val interactionModifier = when {
         onLongClick != null -> Modifier.combinedClickable(
@@ -534,8 +624,8 @@ private fun StatusPill(
     }
 
     Surface(
-        modifier = interactionModifier.heightIn(min = 40.dp),
-        shape = RoundedCornerShape(50),
+        modifier = modifier.then(interactionModifier).heightIn(min = if (onClick != null || onLongClick != null) 36.dp else 28.dp),
+        shape = RoundedCornerShape(8.dp),
         color = if (emphasized) {
             MaterialTheme.colorScheme.primaryContainer
         } else {
@@ -551,7 +641,7 @@ private fun StatusPill(
             } else {
                 MaterialTheme.colorScheme.onSurfaceVariant
             },
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+            modifier = Modifier.padding(horizontal = 9.dp, vertical = if (onClick != null || onLongClick != null) 8.dp else 6.dp),
         )
     }
 }
@@ -564,35 +654,72 @@ private fun formatCount(value: Int): String = when {
     else -> value.toString()
 }
 
-@Preview(showBackground = true)
+@Preview(name = "详情 · 普通标题", showBackground = true, widthDp = 360)
 @Composable
 private fun ComicDetailSuccessPreview() {
-    MaterialTheme {
-        ComicDetailBody(
-            detail = ComicDetail(
-                id = "preview",
-                title = "终将成为你：一段很长很长的漫画标题预览",
-                author = "仲谷鳰",
-                chineseTeam = "示例汉化组",
-                description = "无法对他人产生特别情感的小糸侑，在初中毕业时被关系很好的男生告白，却无法给出回应。",
-                categories = listOf("百合", "校园"),
-                tags = listOf("恋爱", "青春", "日常", "剧情"),
-                epsCount = 45,
-                pagesCount = 2180,
-                finished = true,
-                isFavourited = true,
-                totalViews = 1_286_420,
-                totalLikes = 32_680,
-                commentsCount = 1_204,
-                updatedAt = Instant.parse("2026-09-20"),
-                createdAt = Instant.parse("2024-03-15"),
-            ),
-            onAuthorClick = {},
-            onTeamClick = {},
-            onTagClick = {},
-            recommendations = emptyList(),
-            onRecommendedComicClick = {},
-            onTagLongClick = {},
-        )
+    ComicDetailPreview()
+}
+
+@Preview(name = "详情 · 长文本", showBackground = true, widthDp = 360)
+@Preview(name = "详情 · 窄屏大字号", showBackground = true, widthDp = 320, fontScale = 1.5f)
+@Composable
+private fun ComicDetailLongTextPreview() {
+    ComicDetailPreview(
+        title = "星海旅人：穿越遥远星系寻找失落文明的漫长旅程",
+        author = "星野工作室（原作与联合绘画创作团队）",
+        chineseTeam = "星光汉化组与远方联合翻译团队",
+        readingStatus = ComicReadingStatus.HasUpdates,
+    )
+}
+
+@Preview(name = "详情 · 无汉化信息", showBackground = true, widthDp = 360)
+@Composable
+private fun ComicDetailWithoutTeamPreview() {
+    ComicDetailPreview(author = "", chineseTeam = "")
+}
+
+@Preview(name = "详情 · 深色", showBackground = true, widthDp = 360)
+@Composable
+private fun ComicDetailDarkPreview() {
+    ComicDetailPreview(darkTheme = true, readingStatus = ComicReadingStatus.Completed)
+}
+
+@Composable
+private fun ComicDetailPreview(
+    title: String = "星海旅人",
+    author: String = "星野工作室",
+    chineseTeam: String = "星光汉化组",
+    readingStatus: ComicReadingStatus? = null,
+    darkTheme: Boolean = false,
+) {
+    BikaTheme(darkTheme = darkTheme, dynamicColor = false) {
+        Surface {
+            ComicDetailBody(
+                detail = ComicDetail(
+                    id = "preview",
+                    title = title,
+                    author = author,
+                    chineseTeam = chineseTeam,
+                    description = "一段关于星空、旅途与相遇的故事。",
+                    categories = listOf("长篇", "冒险"),
+                    tags = listOf("科幻", "旅行", "日常", "剧情"),
+                    epsCount = 45,
+                    pagesCount = 2180,
+                    finished = true,
+                    totalViews = 1_286_420,
+                    totalLikes = 32_680,
+                    commentsCount = 1_204,
+                    updatedAt = Instant.parse("2026-09-20T00:00:00Z"),
+                    createdAt = Instant.parse("2024-03-15T00:00:00Z"),
+                ),
+                onAuthorClick = {},
+                onTeamClick = {},
+                onTagClick = {},
+                recommendations = emptyList(),
+                onRecommendedComicClick = {},
+                onTagLongClick = {},
+                readingStatus = readingStatus,
+            )
+        }
     }
 }

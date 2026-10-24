@@ -11,9 +11,9 @@ import com.shizq.bika.core.model.ComicSummary
  */
 fun List<ComicSummary>.injectLocalStatusFrom(histories: List<DetailedHistory>): List<ComicSummary> {
     if (histories.isEmpty()) return this
-    // 建立 id -> DetailedHistory 的映射，避免对每个 comic 都线性扫描
+    // 建立 id -> DetailedHistory 的映射，避免对每个 comic 都线性扫描。
     val historyMap = histories.associateBy { it.history.id }
-    return this.map { comic -> comic.injectFromHistoryMap(historyMap) }
+    return map { comic -> comic.injectFromHistoryMap(historyMap) }
 }
 
 /**

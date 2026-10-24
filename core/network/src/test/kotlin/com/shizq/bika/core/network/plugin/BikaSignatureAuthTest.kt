@@ -108,8 +108,9 @@ class BikaSignatureAuthTest {
         expectedMethod: String,
     ) {
         val headers = request.headers
-        val apiKey = "C69BAF41DA5ABD1FFEDC6D2FEA56B"
-        val secretKey = "~d}\$Q7\$eIni=V)9\\RK/P.RM4;9[7|@/CA}b~OW!3?EV`:<>M7pddUBL5n|0/*Cn"
+        val config = BikaAuthConfig()
+        val apiKey = config.apiKey
+        val secretKey = config.secretKey
 
         assertEquals(apiKey, headers["api-key"])
         assertEquals("okhttp/3.8.1", headers["User-Agent"])

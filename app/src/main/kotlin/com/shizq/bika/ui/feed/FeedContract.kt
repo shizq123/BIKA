@@ -20,9 +20,22 @@ data class FeedData(
     val globalPolicy: GlobalContentPolicy = GlobalContentPolicy(),
 )
 
+data class FeedPagination(
+    val continuousScrollEnabled: Boolean = true,
+    val currentPage: Int = 1,
+    val totalPages: Int? = null,
+    val supportsPagination: Boolean = true,
+    val revision: Long = 0,
+) {
+    val isManual: Boolean get() = supportsPagination && !continuousScrollEnabled
+    val hasPrevious: Boolean get() = isManual && currentPage > 1
+    val hasNext: Boolean get() = isManual && totalPages?.let { currentPage < it } == true
+}
+
 data class FeedUiState(
     val data: FeedData = FeedData(),
     val preferencesReady: Boolean = false,
+    val pagination: FeedPagination = FeedPagination(),
 ) {
     val query: FeedQuery get() = data.query
     val favoriteTags: List<FavoriteTag> get() = data.favoriteTags
@@ -32,6 +45,9 @@ data class FeedUiState(
 sealed interface FeedAction {
     data object ClearFilters : FeedAction
     data class ChangeSort(val sort: SortOrder) : FeedAction
+    data object PreviousPage : FeedAction
+    data object NextPage : FeedAction
+    data class JumpToPage(val page: Int) : FeedAction
     data class ToggleIncludedTopic(val topic: String) : FeedAction
     data class ToggleExcludedTopic(val topic: String) : FeedAction
     data class ToggleStatus(val status: ComicStatus) : FeedAction

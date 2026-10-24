@@ -45,7 +45,12 @@ class AdvancedSearchPagingSource @AssistedInject constructor(
         }
     }
 
-    override fun getRefreshKey(state: PagingState<Int, ComicSummary>): Int? = null
+    override fun getRefreshKey(state: PagingState<Int, ComicSummary>): Int? =
+        state.anchorPosition?.let { position ->
+            state.closestPageToPosition(position)?.let { page ->
+                page.prevKey?.plus(1) ?: page.nextKey?.minus(1)
+            }
+        }
 
     @AssistedFactory
     interface Factory {

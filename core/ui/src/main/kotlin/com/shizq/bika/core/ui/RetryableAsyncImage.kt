@@ -27,6 +27,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import coil3.compose.AsyncImagePainter
 import coil3.compose.rememberAsyncImagePainter
 
 /**
@@ -43,8 +44,13 @@ fun RetryableAsyncImage(
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
     alignment: Alignment = Alignment.Center,
+    onSuccess: ((AsyncImagePainter.State.Success) -> Unit)? = null,
 ) {
-    val painter = rememberAsyncImagePainter(model = model)
+    val painter = rememberAsyncImagePainter(
+        model = model,
+        contentScale = contentScale,
+        onSuccess = onSuccess,
+    )
     val controller = remember(painter) {
         ImageRetryController(painter)
     }

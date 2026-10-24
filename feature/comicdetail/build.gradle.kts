@@ -13,6 +13,7 @@ dependencies {
     implementation(libs.androidx.paging.compose)
     implementation(libs.coil.compose)
     implementation(libs.flowredux)
+    implementation(libs.telephoto)
 
     testImplementation(libs.androidx.test.core)
     testImplementation(libs.robolectric)
