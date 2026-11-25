@@ -6,6 +6,10 @@ import androidx.paging.LoadState
 import androidx.paging.PagingDataEvent
 import androidx.paging.PagingDataPresenter
 import androidx.paging.PagingSource
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.ChapterProgressEntity
+import com.shizq.bika.core.database.model.DetailedHistory
+import com.shizq.bika.core.database.model.ReadingHistoryEntity
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.RemoteImage
@@ -47,6 +51,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -71,6 +76,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertNotSame
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
+import kotlin.time.Instant
 
 // Paging's Android artifact calls android.util.Log; use the existing JVM Robolectric dependency.
 @RunWith(ParameterizedRobolectricTestRunner::class)
@@ -423,6 +429,7 @@ class FeedPaginationIntegrationTest(private val feed: String) {
         private val api = BikaDataSource(client)
         val vm = FeedViewModel(
             userPreferencesDataSource = preferences,
+            historyDao = EmptyReadingHistoryDao,
             api = api,
             channelPagingSourceFactory = object : ChannelPagingSource.Factory {
                 override fun create(channel: String, sort: SortOrder) =
@@ -503,6 +510,23 @@ class FeedPaginationIntegrationTest(private val feed: String) {
 
         override suspend fun updateData(transform: suspend (UserPreferences) -> UserPreferences): UserPreferences =
             mutex.withLock { transform(state.value).also { state.value = it } }
+    }
+
+    private object EmptyReadingHistoryDao : ReadingHistoryDao {
+        override suspend fun upsertHistory(history: ReadingHistoryEntity) = Unit
+        override suspend fun upsertHistories(histories: List<ReadingHistoryEntity>) = Unit
+        override suspend fun deleteHistory(history: ReadingHistoryEntity) = Unit
+        override suspend fun deleteHistoryById(id: String) = Unit
+        override suspend fun clearAllHistories() = Unit
+        override suspend fun upsertChapterProgress(progress: ChapterProgressEntity) = Unit
+        override suspend fun upsertChapterProgressList(progressList: List<ChapterProgressEntity>) = Unit
+        override fun getDetailedHistories(): Flow<List<DetailedHistory>> = flowOf(emptyList())
+        override fun getLatestDetailedHistory(): Flow<DetailedHistory?> = flowOf(null)
+        override suspend fun getDetailedHistoryById(id: String): DetailedHistory? = null
+        override suspend fun updateLastReadAt(id: String, newTimestamp: Instant): Int = 0
+        override suspend fun updateIsFavourited(id: String, isFavourited: Boolean): Int = 0
+        override fun getChapterProgressByComic(comicId: String): Flow<List<ChapterProgressEntity>> = flowOf(emptyList())
+        override fun getAllChapterProgress(): Flow<List<ChapterProgressEntity>> = flowOf(emptyList())
     }
 
     private class PendingSecondPage {
