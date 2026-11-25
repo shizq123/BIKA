@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -89,6 +90,8 @@ fun DownloadListScreen(
     val context = LocalContext.current
     val currentComicId = (navState as? DownloadNavState.ComicDetail)?.comicId
     val isInDetail = currentComicId != null
+    // 一级漫画列表状态提升到条件分支外，避免进入章节详情再返回时重建 LazyColumn 回到顶部。
+    val comicListState = rememberLazyListState()
     var isSelectMode by remember { mutableStateOf(false) }
     val selectedEpisodeOrders = remember { mutableStateListOf<Int>() }
     var showBatchDeleteDialog by remember { mutableStateOf(false) }
@@ -313,6 +316,7 @@ fun DownloadListScreen(
 
             !isInDetail -> {
                 LazyColumn(
+                    state = comicListState,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(paddingValues),

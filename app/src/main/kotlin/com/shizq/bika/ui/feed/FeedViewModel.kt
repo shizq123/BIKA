@@ -9,6 +9,8 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import androidx.paging.filter
+import com.shizq.bika.core.database.dao.ReadingHistoryDao
+import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.filter.ComicFilterPolicy
 import com.shizq.bika.core.domain.filter.GlobalContentPolicy
@@ -36,6 +38,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
@@ -50,6 +53,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel(assistedFactory = FeedViewModel.Factory::class)
 class FeedViewModel @AssistedInject constructor(
     private val userPreferencesDataSource: UserPreferencesDataSource,
+    private val historyDao: ReadingHistoryDao,
     private val api: BikaDataSource,
     private val channelPagingSourceFactory: ChannelPagingSource.Factory,
     private val knightPagingSourceFactory: KnightPagingSource.Factory,
@@ -110,6 +114,15 @@ class FeedViewModel @AssistedInject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = FeedUiState(),
     )
+
+    /** 独立订阅本地阅读历史映射，在 UI 渲染卡片时 O(1) 注入，避免触发 Paging 流重建影响滚动位置。 */
+    val historyByComicId: StateFlow<Map<String, DetailedHistory>> = historyDao.getDetailedHistories()
+        .map { histories -> histories.associateBy { it.history.id } }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.Lazily,
+            initialValue = emptyMap(),
+        )
 
     private val filterPolicy: Flow<ComicFilterPolicy> = uiState
         .filter { it.preferencesReady }

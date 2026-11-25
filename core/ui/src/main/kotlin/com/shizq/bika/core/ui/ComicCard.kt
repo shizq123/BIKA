@@ -42,6 +42,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.error
 import coil3.request.placeholder
+import com.shizq.bika.core.model.ComicReadingStatus
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.RemoteImage
 
@@ -158,13 +159,30 @@ private fun ComicCover(
 
 @Composable
 private fun StatusBadges(comic: ComicSummary) {
-    if (!comic.finished && !comic.isFavourited) return
+    val readingStatus = comic.readingStatus
+    if (readingStatus == null && !comic.finished && !comic.isFavourited) return
 
     FlowRow(
         modifier = Modifier.padding(bottom = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        if (readingStatus != null) {
+            val (label, containerColor, contentColor) = when (readingStatus) {
+                ComicReadingStatus.HasUpdates -> Triple("有更新", Color(0xFFFF9800), Color.White)
+                ComicReadingStatus.Completed -> Triple("已读完", Color(0xFF4CAF50), Color.White)
+                ComicReadingStatus.Read -> Triple(
+                    "已阅读",
+                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.onSecondary,
+                )
+            }
+            StatusBadge(
+                text = label,
+                containerColor = containerColor,
+                contentColor = contentColor,
+            )
+        }
         if (comic.finished) {
             StatusBadge(
                 text = "已完结",

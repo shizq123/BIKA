@@ -3,6 +3,14 @@ package com.shizq.bika.core.model
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
+/** 列表卡片本地阅读状态，与作品是否完结独立。 */
+@Serializable
+enum class ComicReadingStatus {
+    HasUpdates,
+    Completed,
+    Read,
+}
+
 @Serializable
 data class ComicSummary(
     @SerialName("_id")
@@ -19,6 +27,7 @@ data class ComicSummary(
     @SerialName("thumb")
     val image: RemoteImage,
     val isFavourited: Boolean = false,
+    val readingStatus: ComicReadingStatus? = null,
 )
 
 @Serializable
