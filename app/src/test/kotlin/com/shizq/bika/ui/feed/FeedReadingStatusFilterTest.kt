@@ -61,6 +61,8 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
 import kotlin.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
@@ -84,7 +86,7 @@ class FeedReadingStatusFilterTest {
                 history("comic-read", chapterId = 5, currentPage = 2, pageCount = 20),
             )
         )
-        val harness = Harness(this, historiesFlow)
+        val harness = Harness(this, InMemoryPreferences(), historiesFlow)
         try {
             runCurrent()
             assertEquals(
@@ -145,8 +147,78 @@ class FeedReadingStatusFilterTest {
         }
     }
 
+    @Test
+    fun `先选阅读状态再开启全局开关会持久化并跨列表生效`() = runTest(dispatcher) {
+        val dataStore = InMemoryPreferences()
+        val historiesFlow = MutableStateFlow(
+            listOf(
+                history("comic-updates", chapterId = 3, currentPage = 20, pageCount = 20),
+                history("comic-completed", chapterId = 5, currentPage = 20, pageCount = 20),
+                history("comic-read", chapterId = 5, currentPage = 2, pageCount = 20),
+            )
+        )
+        val first = Harness(this, dataStore, historiesFlow)
+        try {
+            runCurrent()
+
+            // 1. 先选局部「已读完」
+            first.vm.dispatch(FeedAction.ToggleReadingStatus(ReadingProgressFilter.Completed))
+            runCurrent()
+            assertEquals(listOf("comic-completed"), first.ids)
+            assertFalse(first.vm.uiState.value.readingStatusGlobal)
+
+            // 2. 开启全局开关：自动升级「Completed」到全局，并清空局部 readingStatuses
+            first.vm.dispatch(FeedAction.SetGlobalReadingStatusFilter(true))
+            runCurrent()
+            assertTrue(first.vm.uiState.value.readingStatusGlobal)
+            assertEquals(setOf("Completed"), dataStore.current.filter.globalReadingStatuses)
+            assertTrue(first.vm.uiState.value.query.criteria.readingStatuses.isEmpty())
+            assertEquals(listOf("comic-completed"), first.ids)
+
+            // 3. 全局开启状态下再选「未读」直接持久化并生效
+            first.vm.dispatch(FeedAction.ToggleReadingStatus(ReadingProgressFilter.Unread))
+            runCurrent()
+            assertEquals(setOf("Completed", "Unread"), dataStore.current.filter.globalReadingStatuses)
+            assertEquals(listOf("comic-completed", "comic-unread"), first.ids)
+
+            // 4. 新建第二个列表页自动继承全局阅读状态筛选；清除局部筛选不影响全局
+            val second = Harness(this, dataStore, historiesFlow)
+            try {
+                runCurrent()
+                assertTrue(second.vm.uiState.value.readingStatusGlobal)
+                assertEquals(listOf("comic-completed", "comic-unread"), second.ids)
+
+                second.vm.dispatch(FeedAction.ToggleIncludedTopic("不存在"))
+                runCurrent()
+                second.vm.dispatch(FeedAction.ClearFilters)
+                runCurrent()
+                assertEquals(listOf("comic-completed", "comic-unread"), second.ids)
+                assertEquals(setOf("Completed", "Unread"), dataStore.current.filter.globalReadingStatuses)
+            } finally {
+                second.close()
+            }
+
+            // 5. 关闭全局开关：停止过滤但保留历史；重开直接恢复
+            first.vm.dispatch(FeedAction.SetGlobalReadingStatusFilter(false))
+            runCurrent()
+            assertFalse(first.vm.uiState.value.readingStatusGlobal)
+            assertEquals(
+                listOf("comic-updates", "comic-completed", "comic-read", "comic-unread"),
+                first.ids,
+            )
+            assertEquals(setOf("Completed", "Unread"), dataStore.current.filter.globalReadingStatuses)
+
+            first.vm.dispatch(FeedAction.SetGlobalReadingStatusFilter(true))
+            runCurrent()
+            assertEquals(listOf("comic-completed", "comic-unread"), first.ids)
+        } finally {
+            first.close()
+        }
+    }
+
     private inner class Harness(
         scope: TestScope,
+        dataStore: DataStore<UserPreferences>,
         historiesFlow: Flow<List<DetailedHistory>>,
     ) {
         var comicsEmissions = 0
@@ -192,7 +264,7 @@ class FeedReadingStatusFilterTest {
         private val api = BikaDataSource(client)
 
         val vm = FeedViewModel(
-            userPreferencesDataSource = UserPreferencesDataSource(InMemoryPreferences()),
+            userPreferencesDataSource = UserPreferencesDataSource(dataStore),
             historyDao = FakeReadingHistoryDao(historiesFlow),
             api = api,
             channelPagingSourceFactory = object : ChannelPagingSource.Factory {
@@ -239,6 +311,7 @@ class FeedReadingStatusFilterTest {
 
     private class InMemoryPreferences : DataStore<UserPreferences> {
         private val state = MutableStateFlow(UserPreferences())
+        val current: UserPreferences get() = state.value
         override val data: Flow<UserPreferences> = state
         override suspend fun updateData(transform: suspend (UserPreferences) -> UserPreferences): UserPreferences =
             state.updateAndGet { transform(it) }

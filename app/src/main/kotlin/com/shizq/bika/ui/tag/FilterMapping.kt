@@ -4,11 +4,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
+import com.shizq.bika.core.domain.filter.GlobalContentPolicy
 import com.shizq.bika.core.domain.filter.IntRangeSpec
 
-fun FeedCriteria.toFilterState(): FilterState = FilterState(
+fun FeedCriteria.toFilterState(
+    globalPolicy: GlobalContentPolicy = GlobalContentPolicy(),
+): FilterState = FilterState(
     chips = FilterGroup.all.map { group ->
-        val selected = selectedOptions(group)
+        val selected = selectedOptions(group, globalPolicy)
         FilterChipState(
             group = group,
             options = group.options + selected.filterNot { it in group.options },
@@ -17,9 +20,19 @@ fun FeedCriteria.toFilterState(): FilterState = FilterState(
     },
 )
 
-private fun FeedCriteria.selectedOptions(group: FilterGroup): List<FilterOption> = when (group) {
+private fun FeedCriteria.selectedOptions(
+    group: FilterGroup,
+    globalPolicy: GlobalContentPolicy,
+): List<FilterOption> = when (group) {
     FilterGroup.Topic -> includedTopics.map(FilterOption::Topic)
-    FilterGroup.ExcludeTopic -> excludedTopics.map(FilterOption::Topic)
+    FilterGroup.ExcludeTopic -> {
+        val effective = if (globalPolicy.blockedTopicsEnabled) {
+            excludedTopics + globalPolicy.blockedTopics
+        } else {
+            excludedTopics
+        }
+        effective.map(FilterOption::Topic)
+    }
     FilterGroup.Status -> statuses.map { status ->
         FilterOption.Status(
             finished = status.finished,
@@ -27,9 +40,16 @@ private fun FeedCriteria.selectedOptions(group: FilterGroup): List<FilterOption>
         )
     }
 
-    FilterGroup.ReadingStatus -> FilterGroup.ReadingStatus.options
-        .filterIsInstance<FilterOption.ReadingStatus>()
-        .filter { it.status in readingStatuses }
+    FilterGroup.ReadingStatus -> {
+        val effective = if (globalPolicy.readingStatusEnabled) {
+            readingStatuses + globalPolicy.globalReadingStatuses
+        } else {
+            readingStatuses
+        }
+        FilterGroup.ReadingStatus.options
+            .filterIsInstance<FilterOption.ReadingStatus>()
+            .filter { it.status in effective }
+    }
 
     FilterGroup.EpsRange -> episodeRanges.map { it.toOption(group) }
     FilterGroup.PagesRange -> pageRanges.map { it.toOption(group) }
@@ -50,6 +70,9 @@ private fun IntRangeSpec.toOption(group: FilterGroup): FilterOption.CountRange =
         )
 
 @Composable
-fun rememberFilterState(criteria: FeedCriteria): FilterState = remember(criteria) {
-    criteria.toFilterState()
+fun rememberFilterState(
+    criteria: FeedCriteria,
+    globalPolicy: GlobalContentPolicy = GlobalContentPolicy(),
+): FilterState = remember(criteria, globalPolicy) {
+    criteria.toFilterState(globalPolicy)
 }

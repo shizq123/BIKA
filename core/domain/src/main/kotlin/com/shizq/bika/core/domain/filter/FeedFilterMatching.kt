@@ -21,6 +21,14 @@ enum class ReadingProgressFilter {
         Read -> status == ComicReadingStatus.Read
         Unread -> status == null
     }
+
+    companion object {
+        private val byName = entries.associateBy { it.name }
+
+        /** 安全解析持久化名称集合，忽略未知或已废弃枚举值以避免反序列化异常。 */
+        fun parseSet(names: Iterable<String>): Set<ReadingProgressFilter> =
+            names.mapNotNullTo(linkedSetOf()) { byName[it] }
+    }
 }
 
 data class IntRangeSpec(
@@ -80,8 +88,15 @@ data class FeedCriteria(
 data class GlobalContentPolicy(
     val blockedTopicsEnabled: Boolean = false,
     val blockedTopics: Set<String> = emptySet(),
+    val readingStatusEnabled: Boolean = false,
+    val globalReadingStatuses: Set<ReadingProgressFilter> = emptySet(),
     val blockedTags: Set<String> = emptySet(),
-)
+) {
+    val hasActiveGlobalFilter: Boolean
+        get() = (blockedTopicsEnabled && blockedTopics.isNotEmpty()) ||
+                (readingStatusEnabled && globalReadingStatuses.isNotEmpty()) ||
+                blockedTags.isNotEmpty()
+}
 
 /** 页面条件与全局规则编译后的不可变过滤策略。 */
 data class ComicFilterPolicy(
@@ -139,7 +154,8 @@ fun compileFilterPolicy(
     excludedTopics = local.excludedTopics +
             if (global.blockedTopicsEnabled) global.blockedTopics else emptySet(),
     statuses = local.statuses,
-    readingStatuses = local.readingStatuses,
+    readingStatuses = local.readingStatuses +
+            if (global.readingStatusEnabled) global.globalReadingStatuses else emptySet(),
     episodeRanges = local.episodeRanges,
     pageRanges = local.pageRanges,
     blockedTags = global.blockedTags,

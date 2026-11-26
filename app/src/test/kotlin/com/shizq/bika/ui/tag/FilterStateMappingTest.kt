@@ -2,6 +2,7 @@ package com.shizq.bika.ui.tag
 
 import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
+import com.shizq.bika.core.domain.filter.GlobalContentPolicy
 import com.shizq.bika.core.domain.filter.IntRangeSpec
 import com.shizq.bika.core.domain.filter.ReadingProgressFilter
 import kotlin.test.Test
@@ -79,5 +80,43 @@ class FilterStateMappingTest {
             FeedFilterChange.ReadingStatus(ReadingProgressFilter.HasUpdates),
             readingChip.changeFor(hasUpdates),
         )
+    }
+
+    @Test
+    fun `全局排除主题仅在开启全局开关时回显到排除主题芯片`() {
+        val global = GlobalContentPolicy(
+            blockedTopicsEnabled = true,
+            blockedTopics = setOf("NTR", "重口地帶"),
+        )
+        val enabledChip = FeedCriteria(excludedTopics = setOf("全彩"))
+            .toFilterState(global)
+            .chips
+            .single { it.group == FilterGroup.ExcludeTopic }
+        assertEquals(listOf("全彩", "NTR", "重口地帶"), enabledChip.selected.map { it.label })
+
+        val disabledChip = FeedCriteria(excludedTopics = setOf("全彩"))
+            .toFilterState(global.copy(blockedTopicsEnabled = false))
+            .chips
+            .single { it.group == FilterGroup.ExcludeTopic }
+        assertEquals(listOf("全彩"), disabledChip.selected.map { it.label })
+    }
+
+    @Test
+    fun `全局阅读状态仅在开启全局开关时回显到阅读状态芯片`() {
+        val global = GlobalContentPolicy(
+            readingStatusEnabled = true,
+            globalReadingStatuses = setOf(ReadingProgressFilter.Completed, ReadingProgressFilter.Unread),
+        )
+        val enabledChip = FeedCriteria(readingStatuses = setOf(ReadingProgressFilter.HasUpdates))
+            .toFilterState(global)
+            .chips
+            .single { it.group == FilterGroup.ReadingStatus }
+        assertEquals(listOf("有更新", "已读完", "未读"), enabledChip.selected.map { it.label })
+
+        val disabledChip = FeedCriteria(readingStatuses = setOf(ReadingProgressFilter.HasUpdates))
+            .toFilterState(global.copy(readingStatusEnabled = false))
+            .chips
+            .single { it.group == FilterGroup.ReadingStatus }
+        assertEquals(listOf("有更新"), disabledChip.selected.map { it.label })
     }
 }

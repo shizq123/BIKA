@@ -292,7 +292,7 @@ private fun FeedContent(
     val scrollBehavior = TopAppBarDefaults.enterAlwaysScrollBehavior()
     val refreshLoadState = comics.loadState.refresh
     val isRefreshing = refreshLoadState is LoadState.Loading && comics.itemCount > 0
-    val filterState = rememberFilterState(state.query.criteria)
+    val filterState = rememberFilterState(state.query.criteria, state.data.globalPolicy)
 
     val displayedContentKey = remember(state.query.sort, state.query.criteria) {
         DisplayedContentKey(
@@ -343,8 +343,7 @@ private fun FeedContent(
     ) { innerPadding ->
         val metadataLoading = !state.preferencesReady
         val isClientFiltered = state.query.criteria.hasAnySelection ||
-                state.data.globalPolicy.blockedTopicsEnabled ||
-                state.data.globalPolicy.blockedTags.isNotEmpty()
+                state.data.globalPolicy.hasActiveGlobalFilter
         val showOverlayState = metadataLoading || comics.itemCount == 0
 
         Column(
@@ -381,6 +380,11 @@ private fun FeedContent(
                         onExcludeTopicsGlobalChanged = {
                             onAction(FeedAction.SetGlobalTopicFilter(it))
                         },
+                        readingStatusGlobal = state.readingStatusGlobal,
+                        onReadingStatusGlobalChanged = {
+                            onAction(FeedAction.SetGlobalReadingStatusFilter(it))
+                        },
+                        canClearFilters = state.query.criteria.hasAnySelection,
                         onClearFilters = { onAction(FeedAction.ClearFilters) },
                         modifier = Modifier.fillMaxWidth(),
                     )
@@ -745,6 +749,9 @@ private fun FilterHeader(
     currentSortOrder: SortOrder,
     excludeTopicsGlobal: Boolean,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit,
+    readingStatusGlobal: Boolean,
+    onReadingStatusGlobalChanged: (Boolean) -> Unit,
+    canClearFilters: Boolean,
     onClearFilters: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -779,7 +786,7 @@ private fun FilterHeader(
                 modifier = Modifier.weight(1f),
             )
 
-            if (selectedCount > 0) {
+            if (canClearFilters) {
 
                 TextButton(onClick = onClearFilters) {
                     Text(stringResource(R.string.feed_clear_filters))
@@ -802,10 +809,10 @@ private fun FilterHeader(
                 FilterChip(
                     state = chipState,
                     onSelectionChanged = onFilterChanged,
-
-
                     excludeTopicsGlobal = excludeTopicsGlobal,
                     onExcludeTopicsGlobalChanged = onExcludeTopicsGlobalChanged,
+                    readingStatusGlobal = readingStatusGlobal,
+                    onReadingStatusGlobalChanged = onReadingStatusGlobalChanged,
                 )
             }
 
@@ -831,8 +838,7 @@ private fun feedSummary(
     refreshLoadState is LoadState.Loading -> stringResource(R.string.feed_refreshing)
     refreshLoadState is LoadState.Error && itemCount == 0 -> stringResource(R.string.feed_load_failed)
     state.query.criteria.hasAnySelection ||
-            state.data.globalPolicy.blockedTopicsEnabled ||
-            state.data.globalPolicy.blockedTags.isNotEmpty() ->
+            state.data.globalPolicy.hasActiveGlobalFilter ->
         stringResource(R.string.feed_filtered_count, itemCount)
 
 

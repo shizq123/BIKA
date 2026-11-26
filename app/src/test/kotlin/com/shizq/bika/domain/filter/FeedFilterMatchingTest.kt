@@ -103,6 +103,32 @@ class FeedFilterMatchingTest {
     }
 
     @Test
+    fun `全局阅读状态开启时与本地条件合并且安全忽略未知持久化值`() {
+        val parsed = ReadingProgressFilter.parseSet(listOf("Completed", "UNKNOWN_VALUE", "Unread"))
+        assertEquals(setOf(ReadingProgressFilter.Completed, ReadingProgressFilter.Unread), parsed)
+
+        val enabled = policy(
+            local = FeedCriteria(readingStatuses = setOf(ReadingProgressFilter.HasUpdates)),
+            global = GlobalContentPolicy(
+                readingStatusEnabled = true,
+                globalReadingStatuses = setOf(ReadingProgressFilter.Completed),
+            ),
+        )
+        assertTrue(enabled.matches(comic(readingStatus = ComicReadingStatus.HasUpdates)))
+        assertTrue(enabled.matches(comic(readingStatus = ComicReadingStatus.Completed)))
+        assertFalse(enabled.matches(comic(readingStatus = null)))
+
+        val disabled = policy(
+            global = GlobalContentPolicy(
+                readingStatusEnabled = false,
+                globalReadingStatuses = setOf(ReadingProgressFilter.Completed),
+            ),
+        )
+        assertTrue(disabled.isEmpty)
+        assertTrue(disabled.matches(comic(readingStatus = null)))
+    }
+
+    @Test
     fun `章节区间是闭区间且同组内取 OR`() {
         val policy = policy(
             local = FeedCriteria(
