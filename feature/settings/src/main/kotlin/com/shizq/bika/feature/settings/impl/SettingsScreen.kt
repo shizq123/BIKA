@@ -1,9 +1,12 @@
 package com.shizq.bika.feature.settings.impl
 
 import android.content.ClipData
+import android.content.ClipDescription
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.PersistableBundle
 import android.provider.Settings
 import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +27,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.filled.Block
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Code
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.FormatSize
@@ -161,6 +165,26 @@ fun SettingsScreen(
                 showToast(context, "日志为空，请先开启日志开关并操作产生日志后再来查看")
             }
         },
+        onCopyTokenClick = {
+            scope.launch {
+                val token = viewModel.getAuthToken()
+                if (token == null) {
+                    showToast(context, "当前未登录或暂无 Token")
+                } else {
+                    val clipboard =
+                        context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                    val clip = ClipData.newPlainText("token", token).apply {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            description.extras = PersistableBundle().apply {
+                                putBoolean(ClipDescription.EXTRA_IS_SENSITIVE, true)
+                            }
+                        }
+                    }
+                    clipboard.setPrimaryClip(clip)
+                    showToast(context, "Token 已复制到剪贴板")
+                }
+            }
+        },
         onLogoutClicked = {
             viewModel.logout()
             navigationToLogin()
@@ -197,6 +221,7 @@ fun SettingsContent(
     onToggleContinuousScrollEnabled: (enabled: Boolean) -> Unit = {},
     onViewLogs: () -> Unit = {},
     onExportLogs: () -> Unit = {},
+    onCopyTokenClick: () -> Unit = {},
     onLogoutClicked: () -> Unit = {},
     onBackClick: () -> Unit = {},
     onCheckForUpdates: () -> Unit = {},
@@ -341,6 +366,12 @@ fun SettingsContent(
 
                     item {
                         PreferenceGroup(title = { Text("账号") }) {
+                            Preference(
+                                title = "复制登录凭证 (Token)",
+                                summary = "复制当前账号的认证 Token 到剪贴板",
+                                iconVector = Icons.Default.ContentCopy,
+                                onClick = onCopyTokenClick
+                            )
                             Preference(
                                 title = "退出登录",
                                 summary = "退出当前账号",
