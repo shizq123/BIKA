@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -42,6 +43,7 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.error
 import coil3.request.placeholder
+import com.shizq.bika.core.model.ComicReadingStatus
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.RemoteImage
 
@@ -158,13 +160,30 @@ private fun ComicCover(
 
 @Composable
 private fun StatusBadges(comic: ComicSummary) {
-    if (!comic.finished && !comic.isFavourited) return
+    val readingStatus = comic.readingStatus
+    if (readingStatus == null && !comic.finished && !comic.isFavourited) return
 
     FlowRow(
         modifier = Modifier.padding(bottom = 6.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
+        if (readingStatus != null) {
+            val (label, containerColor, contentColor) = when (readingStatus) {
+                ComicReadingStatus.HasUpdates -> Triple("有更新", Color(0xFFFF9800), Color.White)
+                ComicReadingStatus.Completed -> Triple("已读完", Color(0xFF4CAF50), Color.White)
+                ComicReadingStatus.Read -> Triple(
+                    "已阅读",
+                    MaterialTheme.colorScheme.secondary,
+                    MaterialTheme.colorScheme.onSecondary,
+                )
+            }
+            StatusBadge(
+                text = label,
+                containerColor = containerColor,
+                contentColor = contentColor,
+            )
+        }
         if (comic.finished) {
             StatusBadge(
                 text = "已完结",
@@ -207,16 +226,25 @@ private fun ComicMetadata(comic: ComicSummary) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (comic.leaderboardCount > 0) {
+            MetadataItem(
+                icon = Icons.Rounded.LocalFireDepartment,
+                contentDescription = "本期热度",
+                text = comic.leaderboardCount.toString(),
+            )
+        }
         MetadataItem(
             icon = Icons.Rounded.FavoriteBorder,
             contentDescription = "点赞数",
             text = comic.totalLikes.toString(),
         )
-        MetadataItem(
-            icon = Icons.AutoMirrored.Rounded.MenuBook,
-            contentDescription = "章节数",
-            text = "${comic.epsCount}话",
-        )
+        if (comic.epsCount > 0) {
+            MetadataItem(
+                icon = Icons.AutoMirrored.Rounded.MenuBook,
+                contentDescription = "章节数",
+                text = "${comic.epsCount}话",
+            )
+        }
         if (comic.pagesCount > 0) {
             Text(
                 text = "${comic.pagesCount}P",

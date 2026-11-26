@@ -112,7 +112,8 @@ class LeaderboardViewModel @Inject constructor(
             }
         }.stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000),
+            // 排行榜由 ViewModelStoreNavEntryDecorator 管理生命周期；改用 Lazily 避免进入详情页超过 5 秒返回时重建上游流并重新拉取
+            started = SharingStarted.Lazily,
             initialValue = LeaderboardUiState.Loading
         )
 

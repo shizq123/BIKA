@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -75,6 +76,9 @@ class SettingsViewModel @Inject constructor(
                 .onFailure { logger.warn(it) { "登出时清理资料缓存失败" } }
         }
     }
+
+    suspend fun getAuthToken(): String? =
+        userCredentialsDataSource.userData.firstOrNull()?.token?.takeIf { it.isNotBlank() }
 
     fun updateDarkThemeConfig(config: DarkThemeConfig) {
         viewModelScope.launch {
