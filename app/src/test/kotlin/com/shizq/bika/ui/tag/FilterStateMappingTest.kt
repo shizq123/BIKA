@@ -3,6 +3,7 @@ package com.shizq.bika.ui.tag
 import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.IntRangeSpec
+import com.shizq.bika.core.domain.filter.ReadingProgressFilter
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
@@ -56,5 +57,27 @@ class FilterStateMappingTest {
 
         assertEquals(1, statusChip.options.count { it == preset })
         assertFalse(statusChip.selected.isEmpty())
+    }
+
+    @Test
+    fun `阅读状态筛选映射包含四项并正确转为强类型变更`() {
+        val state = FeedCriteria(
+            readingStatuses = setOf(ReadingProgressFilter.Completed, ReadingProgressFilter.Unread),
+        ).toFilterState()
+        val readingChip = state.chips.single { it.group == FilterGroup.ReadingStatus }
+
+        assertEquals(
+            listOf("有更新", "已读完", "已阅读", "未读"),
+            readingChip.options.map { it.label },
+        )
+        assertEquals(listOf("已读完", "未读"), readingChip.selected.map { it.label })
+
+        val hasUpdates = readingChip.options
+            .filterIsInstance<FilterOption.ReadingStatus>()
+            .single { it.status == ReadingProgressFilter.HasUpdates }
+        assertEquals(
+            FeedFilterChange.ReadingStatus(ReadingProgressFilter.HasUpdates),
+            readingChip.changeFor(hasUpdates),
+        )
     }
 }

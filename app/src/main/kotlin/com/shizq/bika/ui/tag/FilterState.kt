@@ -3,6 +3,7 @@ package com.shizq.bika.ui.tag
 import androidx.compose.runtime.Immutable
 import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.IntRangeSpec
+import com.shizq.bika.core.domain.filter.ReadingProgressFilter
 
 @Immutable
 data class FilterState(val chips: List<FilterChipState>)
@@ -11,6 +12,7 @@ sealed interface FeedFilterChange {
     data class IncludedTopic(val topic: String) : FeedFilterChange
     data class ExcludedTopic(val topic: String) : FeedFilterChange
     data class Status(val status: ComicStatus) : FeedFilterChange
+    data class ReadingStatus(val status: ReadingProgressFilter) : FeedFilterChange
     data class EpisodeRange(val range: IntRangeSpec) : FeedFilterChange
     data class PageRange(val range: IntRangeSpec) : FeedFilterChange
 }
@@ -35,6 +37,9 @@ data class FilterChipState(
             FeedFilterChange.Status(
                 if (option.finished) ComicStatus.Finished else ComicStatus.Ongoing
             )
+
+        group is FilterGroup.ReadingStatus && option is FilterOption.ReadingStatus ->
+            FeedFilterChange.ReadingStatus(option.status)
 
         group is FilterGroup.EpsRange && option is FilterOption.CountRange ->
             FeedFilterChange.EpisodeRange(IntRangeSpec(option.min, option.max))

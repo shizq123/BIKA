@@ -27,6 +27,10 @@ private fun FeedCriteria.selectedOptions(group: FilterGroup): List<FilterOption>
         )
     }
 
+    FilterGroup.ReadingStatus -> FilterGroup.ReadingStatus.options
+        .filterIsInstance<FilterOption.ReadingStatus>()
+        .filter { it.status in readingStatuses }
+
     FilterGroup.EpsRange -> episodeRanges.map { it.toOption(group) }
     FilterGroup.PagesRange -> pageRanges.map { it.toOption(group) }
 }

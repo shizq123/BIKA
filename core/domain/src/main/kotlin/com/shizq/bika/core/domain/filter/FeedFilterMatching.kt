@@ -1,10 +1,26 @@
 package com.shizq.bika.core.domain.filter
 
+import com.shizq.bika.core.model.ComicReadingStatus
 import com.shizq.bika.core.model.ComicSummary
 
 enum class ComicStatus(val finished: Boolean) {
     Ongoing(false),
     Finished(true),
+}
+
+enum class ReadingProgressFilter {
+    HasUpdates,
+    Completed,
+    Read,
+    Unread,
+    ;
+
+    fun matches(status: ComicReadingStatus?): Boolean = when (this) {
+        HasUpdates -> status == ComicReadingStatus.HasUpdates
+        Completed -> status == ComicReadingStatus.Completed
+        Read -> status == ComicReadingStatus.Read
+        Unread -> status == null
+    }
 }
 
 data class IntRangeSpec(
@@ -27,6 +43,7 @@ data class FeedCriteria(
     val includedTopics: Set<String> = emptySet(),
     val excludedTopics: Set<String> = emptySet(),
     val statuses: Set<ComicStatus> = emptySet(),
+    val readingStatuses: Set<ReadingProgressFilter> = emptySet(),
     val episodeRanges: Set<IntRangeSpec> = emptySet(),
     val pageRanges: Set<IntRangeSpec> = emptySet(),
 ) {
@@ -34,6 +51,7 @@ data class FeedCriteria(
         get() = includedTopics.isNotEmpty() ||
                 excludedTopics.isNotEmpty() ||
                 statuses.isNotEmpty() ||
+                readingStatuses.isNotEmpty() ||
                 episodeRanges.isNotEmpty() ||
                 pageRanges.isNotEmpty()
 
@@ -47,6 +65,9 @@ data class FeedCriteria(
 
     fun toggleStatus(status: ComicStatus): FeedCriteria =
         copy(statuses = statuses.toggle(status))
+
+    fun toggleReadingStatus(status: ReadingProgressFilter): FeedCriteria =
+        copy(readingStatuses = readingStatuses.toggle(status))
 
     fun toggleEpisodeRange(range: IntRangeSpec): FeedCriteria =
         copy(episodeRanges = episodeRanges.toggle(range))
@@ -67,6 +88,7 @@ data class ComicFilterPolicy(
     val includedTopics: Set<String> = emptySet(),
     val excludedTopics: Set<String> = emptySet(),
     val statuses: Set<ComicStatus> = emptySet(),
+    val readingStatuses: Set<ReadingProgressFilter> = emptySet(),
     val episodeRanges: Set<IntRangeSpec> = emptySet(),
     val pageRanges: Set<IntRangeSpec> = emptySet(),
     val blockedTags: Set<String> = emptySet(),
@@ -75,6 +97,7 @@ data class ComicFilterPolicy(
         get() = includedTopics.isEmpty() &&
                 excludedTopics.isEmpty() &&
                 statuses.isEmpty() &&
+                readingStatuses.isEmpty() &&
                 episodeRanges.isEmpty() &&
                 pageRanges.isEmpty() &&
                 blockedTags.isEmpty()
@@ -87,6 +110,9 @@ data class ComicFilterPolicy(
             return false
         }
         if (statuses.isNotEmpty() && statuses.none { it.finished == comic.finished }) {
+            return false
+        }
+        if (readingStatuses.isNotEmpty() && readingStatuses.none { it.matches(comic.readingStatus) }) {
             return false
         }
         if (episodeRanges.isNotEmpty() && episodeRanges.none { comic.epsCount in it }) {
@@ -113,6 +139,7 @@ fun compileFilterPolicy(
     excludedTopics = local.excludedTopics +
             if (global.blockedTopicsEnabled) global.blockedTopics else emptySet(),
     statuses = local.statuses,
+    readingStatuses = local.readingStatuses,
     episodeRanges = local.episodeRanges,
     pageRanges = local.pageRanges,
     blockedTags = global.blockedTags,

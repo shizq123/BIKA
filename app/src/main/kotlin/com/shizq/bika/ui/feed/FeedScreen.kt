@@ -515,6 +515,8 @@ private data class DisplayedContentKey(
         append(criteria.excludedTopics.sorted().joinToString(","))
         append("|st=")
         append(criteria.statuses.map { it.name }.sorted().joinToString(","))
+        append("|rs=")
+        append(criteria.readingStatuses.map { it.name }.sorted().joinToString(","))
         append("|ep=")
         append(criteria.episodeRanges.map { "${it.min ?: ""}-${it.max ?: ""}" }.sorted().joinToString(","))
         append("|pg=")
@@ -526,6 +528,7 @@ private fun FeedFilterChange.toFeedAction(): FeedAction = when (this) {
     is FeedFilterChange.IncludedTopic -> FeedAction.ToggleIncludedTopic(topic)
     is FeedFilterChange.ExcludedTopic -> FeedAction.ToggleExcludedTopic(topic)
     is FeedFilterChange.Status -> FeedAction.ToggleStatus(status)
+    is FeedFilterChange.ReadingStatus -> FeedAction.ToggleReadingStatus(status)
     is FeedFilterChange.EpisodeRange -> FeedAction.ToggleEpisodeRange(range)
     is FeedFilterChange.PageRange -> FeedAction.TogglePageRange(range)
 }

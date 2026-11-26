@@ -9,6 +9,7 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import androidx.paging.filter
+import androidx.paging.map
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
@@ -27,6 +28,7 @@ import com.shizq.bika.paging.FixedPagePagingSource
 import com.shizq.bika.paging.KnightPagingSource
 import com.shizq.bika.paging.RecentUpdatesPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
+import com.shizq.bika.util.injectFromHistoryMap
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -43,6 +45,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -134,6 +138,14 @@ class FeedViewModel @AssistedInject constructor(
         }
         .distinctUntilChanged()
 
+    // 仅在启用阅读状态筛选时才订阅历史库参与过滤，平时维持单次空映射，避免阅读记录变更重建 Paging 流影响滚动恢复。
+    private val activeReadingHistory: Flow<Map<String, DetailedHistory>> = filterPolicy
+        .map { it.readingStatuses.isNotEmpty() }
+        .distinctUntilChanged()
+        .flatMapLatest { needHistory ->
+            if (needHistory) historyByComicId else flowOf(emptyMap())
+        }
+
     private var pagingScope: CoroutineScope? = null
 
     internal val pagingSession = pagingController.state
@@ -164,8 +176,18 @@ class FeedViewModel @AssistedInject constructor(
             ).flow.cachedIn(scope)
             FeedPagingSession(
                 request = request,
-                comics = combine(remotePages, filterPolicy) { pagingData, policy ->
-                    if (policy.isEmpty) pagingData else pagingData.filter(policy::matches)
+                comics = combine(
+                    remotePages,
+                    filterPolicy,
+                    activeReadingHistory,
+                ) { pagingData, policy, historyMap ->
+                    when {
+                        policy.isEmpty -> pagingData
+                        policy.readingStatuses.isEmpty() -> pagingData.filter(policy::matches)
+                        else -> pagingData
+                            .map { it.injectFromHistoryMap(historyMap) }
+                            .filter(policy::matches)
+                    }
                 }.cachedIn(scope),
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -213,6 +235,10 @@ class FeedViewModel @AssistedInject constructor(
 
             is FeedAction.ToggleStatus -> query.update {
                 it.copy(criteria = it.criteria.toggleStatus(action.status))
+            }
+
+            is FeedAction.ToggleReadingStatus -> query.update {
+                it.copy(criteria = it.criteria.toggleReadingStatus(action.status))
             }
 
             is FeedAction.ToggleEpisodeRange -> query.update {

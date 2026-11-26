@@ -4,6 +4,7 @@ import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.GlobalContentPolicy
 import com.shizq.bika.core.domain.filter.IntRangeSpec
+import com.shizq.bika.core.domain.filter.ReadingProgressFilter
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.navigation.DiscoveryAction
@@ -51,6 +52,7 @@ sealed interface FeedAction {
     data class ToggleIncludedTopic(val topic: String) : FeedAction
     data class ToggleExcludedTopic(val topic: String) : FeedAction
     data class ToggleStatus(val status: ComicStatus) : FeedAction
+    data class ToggleReadingStatus(val status: ReadingProgressFilter) : FeedAction
     data class ToggleEpisodeRange(val range: IntRangeSpec) : FeedAction
     data class TogglePageRange(val range: IntRangeSpec) : FeedAction
 
