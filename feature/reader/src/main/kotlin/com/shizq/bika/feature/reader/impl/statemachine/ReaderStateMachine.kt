@@ -7,6 +7,7 @@ import com.freeletics.flowredux2.FlowReduxStateMachineFactory
 import com.shizq.bika.core.data.model.asExternalModel
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
+import com.shizq.bika.core.model.preferences.UserPreferences
 import com.shizq.bika.feature.reader.impl.layout.ReaderConfig
 import com.shizq.bika.feature.reader.impl.progress.ChapterProgress
 import com.shizq.bika.feature.reader.impl.progress.ProgressWriteCoordinator
@@ -18,6 +19,9 @@ import com.shizq.bika.feature.reader.impl.state.UiControlState
 import io.github.oshai.kotlinlogging.KotlinLogging
 import jakarta.inject.Inject
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 
 private val logger = KotlinLogging.logger("ReaderProgress")
@@ -39,7 +43,12 @@ class ReaderStateMachine @Inject constructor(
         spec {
             inState<ReaderUiState.Initializing> {
                 onEnter {
-                    val startPage = getStartPage(snapshot.id, snapshot.order)
+                    // 首帧即与 startPage 并发读取持久化配置，避免先以 preloadCount = 0 / 默认模式进入 Ready 再二次重建
+                    val (startPage, preferences) = coroutineScope {
+                        val pageDeferred = async { getStartPage(snapshot.id, snapshot.order) }
+                        val prefsDeferred = async { userPreferencesDataSource.userData.first() }
+                        pageDeferred.await() to prefsDeferred.await()
+                    }
 
                     override {
                         ReaderUiState.Ready(
@@ -50,6 +59,7 @@ class ReaderStateMachine @Inject constructor(
                                 isLoading = true
                             ),
                             catalog = catalog,
+                            config = preferences.toReaderConfig(),
                         )
                     }
                 }
@@ -147,21 +157,7 @@ class ReaderStateMachine @Inject constructor(
                     userPreferencesDataSource.setStatusBarCapsuleEnabled(it.enable)
                 }
                 collectWhileInState(userPreferencesDataSource.userData) {
-                    val newConfig = ReaderConfig(
-                        volumeKeyNavigation = it.reader.volumeKeyNavigationEnabled,
-                        readingMode = it.reader.readingMode,
-                        screenOrientation = it.reader.screenOrientation,
-                        tapZoneLayout = it.reader.tapZoneLayout,
-                        preloadCount = it.reader.preloadCount,
-                        eyeCareEnabled = it.reader.eyeCare.enabled,
-                        eyeCareDarkness = it.reader.eyeCare.darkness,
-                        autoScrollEnabled = it.reader.autoScroll.enabled,
-                        autoScrollSpeed = it.reader.autoScroll.speed,
-                        bookSpreadsMode = it.reader.bookSpreadsMode,
-                        magnifierEnabled = it.reader.magnifierEnabled,
-                        statusBarCapsuleEnabled = it.reader.statusBarCapsuleEnabled,
-                    )
-                    mutate { copy(config = newConfig) }
+                    mutate { copy(config = it.toReaderConfig()) }
                 }
 
                 on<ReaderAction.ToggleBarsVisibility> {
@@ -205,3 +201,18 @@ class ReaderStateMachine @Inject constructor(
         }
     }
 }
+
+private fun UserPreferences.toReaderConfig(): ReaderConfig = ReaderConfig(
+    volumeKeyNavigation = reader.volumeKeyNavigationEnabled,
+    readingMode = reader.readingMode,
+    screenOrientation = reader.screenOrientation,
+    tapZoneLayout = reader.tapZoneLayout,
+    preloadCount = reader.preloadCount,
+    eyeCareEnabled = reader.eyeCare.enabled,
+    eyeCareDarkness = reader.eyeCare.darkness,
+    autoScrollEnabled = reader.autoScroll.enabled,
+    autoScrollSpeed = reader.autoScroll.speed,
+    bookSpreadsMode = reader.bookSpreadsMode,
+    magnifierEnabled = reader.magnifierEnabled,
+    statusBarCapsuleEnabled = reader.statusBarCapsuleEnabled,
+)

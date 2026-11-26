@@ -303,6 +303,7 @@ fun ComicPageItem(
             .size(decodeSizeResolver)
             .crossfade(false)
             .diskCacheKey(page.url)
+            .memoryCacheKey(page.url)
             .diskCachePolicy(CachePolicy.ENABLED)
             .memoryCachePolicy(CachePolicy.ENABLED)
             .build()

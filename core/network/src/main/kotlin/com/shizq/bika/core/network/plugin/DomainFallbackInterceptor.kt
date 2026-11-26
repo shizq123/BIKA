@@ -1,9 +1,12 @@
 package com.shizq.bika.core.network.plugin
 
+import coil3.Extras
 import coil3.annotation.ExperimentalCoilApi
 import coil3.decode.BlackholeDecoder
+import coil3.getExtra
 import coil3.intercept.Interceptor
 import coil3.request.ErrorResult
+import coil3.request.ImageRequest
 import coil3.request.ImageResult
 import coil3.request.SuccessResult
 import io.github.oshai.kotlinlogging.KotlinLogging
@@ -28,6 +31,19 @@ private val logger = KotlinLogging.logger("DomainFallbackCoil")
 /** 主请求慢于此值就启动降级竞速。 */
 private const val SLOW_MAIN_THRESHOLD_MS = 2500L
 
+/** 预加载在未知最优备用域名时允许稍长的首包等待，避免移动网络轻微抖动触发冗余请求。 */
+private const val SLOW_PRELOAD_THRESHOLD_MS = 4000L
+
+private val preloadRequestKey = Extras.Key(default = false)
+
+/** 标记该请求为后台预加载请求，供 [DomainFallbackInterceptor] 控制超时与串行降级策略。 */
+fun ImageRequest.Builder.preloadRequest(enabled: Boolean = true): ImageRequest.Builder =
+    apply { extras[preloadRequestKey] = enabled }
+
+@OptIn(ExperimentalCoilApi::class)
+internal val ImageRequest.isPreloadRequest: Boolean
+    get() = getExtra(preloadRequestKey) || decoderFactory is BlackholeDecoder.Factory
+
 /**
  * 4xx 是永久性失败：资源在这个 path 上就是不存在（404）或无权限（403），
  * 换域名重试同一个 path 不会有不同结果，只会放大成 N 倍无效请求。
@@ -45,7 +61,10 @@ internal class FallbackMarker : AbstractCoroutineContextElement(FallbackMarker) 
 }
 
 @OptIn(ExperimentalCoilApi::class)
-class DomainFallbackInterceptor : Interceptor {
+class DomainFallbackInterceptor(
+    private val slowMainThresholdMs: Long = SLOW_MAIN_THRESHOLD_MS,
+    private val slowPreloadThresholdMs: Long = SLOW_PRELOAD_THRESHOLD_MS,
+) : Interceptor {
     @Volatile
     private var optimalFallbackHost: String? = null
     private val fallbackSlots = Semaphore(2)
@@ -82,15 +101,15 @@ class DomainFallbackInterceptor : Interceptor {
             }
         }
 
-        // 等一小会儿：主请求可能很快成功，也可能很快失败。
-        // Disk preloads must not multiply into several downloads just because the mobile
-        // connection is slow. Only try mirrors after the primary actually fails.
-        val diskPreload = chain.request.decoderFactory is BlackholeDecoder.Factory
-        val earlyResult = if (diskPreload) {
-            mainRequest.await()
-        } else {
-            withTimeoutOrNull(SLOW_MAIN_THRESHOLD_MS.milliseconds) { mainRequest.await() }
+        // 主请求超过阈值后启动降级：预加载仍保持串行备用域名尝试（避免多域名并发放大流量），
+        // 但不再无限死等慢速主域名超时阻塞预加载队列；已有更优备用域名时按主请求阈值快速切换。
+        val isPreload = chain.request.isPreloadRequest
+        val mainTimeoutMs = when {
+            !isPreload -> slowMainThresholdMs
+            optimalFallbackHost != null && optimalFallbackHost != failedHost -> slowMainThresholdMs
+            else -> slowPreloadThresholdMs
         }
+        val earlyResult = withTimeoutOrNull(mainTimeoutMs.milliseconds) { mainRequest.await() }
 
         if (earlyResult is SuccessResult) {
             return@coroutineScope earlyResult
@@ -124,7 +143,7 @@ class DomainFallbackInterceptor : Interceptor {
         }
 
         val fallbackRequest = async {
-            performFallbackRace(chain, httpUrl, failedHost, sequential = diskPreload)
+            performFallbackRace(chain, httpUrl, failedHost, sequential = isPreload)
         }
         // Keep observing the primary while mirrors run. Previously a completed primary
         // waited for the entire mirror race (and sometimes another timeout) to finish.

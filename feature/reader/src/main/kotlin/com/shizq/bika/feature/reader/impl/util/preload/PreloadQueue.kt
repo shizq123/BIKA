@@ -41,6 +41,11 @@ internal class PreloadQueue<K : Any, T : Any>(
         drain()
     }
 
+    /** 清除当前窗口内的失败标记，允许下次 [update] 时重新尝试。 */
+    fun clearFailures() {
+        failedInWindow.clear()
+    }
+
     fun close() {
         closed = true
         wanted.clear()
