@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.MenuBook
 import androidx.compose.material.icons.rounded.FavoriteBorder
+import androidx.compose.material.icons.rounded.LocalFireDepartment
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.Icon
@@ -225,16 +226,25 @@ private fun ComicMetadata(comic: ComicSummary) {
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
+        if (comic.leaderboardCount > 0) {
+            MetadataItem(
+                icon = Icons.Rounded.LocalFireDepartment,
+                contentDescription = "本期热度",
+                text = comic.leaderboardCount.toString(),
+            )
+        }
         MetadataItem(
             icon = Icons.Rounded.FavoriteBorder,
             contentDescription = "点赞数",
             text = comic.totalLikes.toString(),
         )
-        MetadataItem(
-            icon = Icons.AutoMirrored.Rounded.MenuBook,
-            contentDescription = "章节数",
-            text = "${comic.epsCount}话",
-        )
+        if (comic.epsCount > 0) {
+            MetadataItem(
+                icon = Icons.AutoMirrored.Rounded.MenuBook,
+                contentDescription = "章节数",
+                text = "${comic.epsCount}话",
+            )
+        }
         if (comic.pagesCount > 0) {
             Text(
                 text = "${comic.pagesCount}P",
