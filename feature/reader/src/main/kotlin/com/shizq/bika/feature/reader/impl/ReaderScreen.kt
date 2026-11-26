@@ -79,7 +79,6 @@ import kotlinx.coroutines.launch
 import com.shizq.bika.feature.reader.impl.util.ScrubState
 import com.shizq.bika.feature.reader.impl.util.preload.ChapterPagePreloadProvider
 import com.shizq.bika.feature.reader.impl.util.preload.PagingPreload
-import com.shizq.bika.feature.reader.impl.util.preload.rememberAdaptivePreloadCount
 import com.shizq.bika.feature.reader.impl.util.rememberScrubState
 import com.shizq.bika.feature.reader.impl.util.rememberTopEndSystemAwarePadding
 import kotlinx.coroutines.delay
@@ -250,11 +249,6 @@ private fun ReaderReadyContent(
         }
     }
 
-    val preloadCount = rememberAdaptivePreloadCount(
-        currentPage = currentPage,
-        baselineCount = config.preloadCount,
-    )
-
     val scrubState = rememberScrubState(chapterState.initialPage)
     LaunchedEffect(currentPage) { scrubState.syncToPage(currentPage) }
 
@@ -263,7 +257,7 @@ private fun ReaderReadyContent(
         pagingItems = pageItems,
         scrollStateProvider = readerContext.scrollStateProvider,
         modelProvider = preloadModelProvider,
-        preloadCount = preloadCount
+        preloadCount = config.preloadCount
     )
 
     Box(

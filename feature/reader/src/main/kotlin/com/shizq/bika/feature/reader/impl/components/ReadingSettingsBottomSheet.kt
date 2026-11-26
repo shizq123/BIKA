@@ -98,7 +98,7 @@ fun ReadingSettingsBottomSheet(
 
                         // 右侧显示当前数值
                         Text(
-                            text = "${config.preloadCount}张",
+                            text = "${localPreloadCount.roundToInt()}张",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurface,
                             textAlign = TextAlign.End,
