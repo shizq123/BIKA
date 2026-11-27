@@ -4,6 +4,7 @@ import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.GlobalContentPolicy
 import com.shizq.bika.core.domain.filter.IntRangeSpec
+import com.shizq.bika.core.domain.filter.ReadingProgressFilter
 import com.shizq.bika.core.model.FavoriteTag
 import com.shizq.bika.core.model.SortOrder
 import com.shizq.bika.navigation.DiscoveryAction
@@ -40,6 +41,7 @@ data class FeedUiState(
     val query: FeedQuery get() = data.query
     val favoriteTags: List<FavoriteTag> get() = data.favoriteTags
     val excludeTopicsGlobal: Boolean get() = data.globalPolicy.blockedTopicsEnabled
+    val readingStatusGlobal: Boolean get() = data.globalPolicy.readingStatusEnabled
 }
 
 sealed interface FeedAction {
@@ -51,10 +53,12 @@ sealed interface FeedAction {
     data class ToggleIncludedTopic(val topic: String) : FeedAction
     data class ToggleExcludedTopic(val topic: String) : FeedAction
     data class ToggleStatus(val status: ComicStatus) : FeedAction
+    data class ToggleReadingStatus(val status: ReadingProgressFilter) : FeedAction
     data class ToggleEpisodeRange(val range: IntRangeSpec) : FeedAction
     data class TogglePageRange(val range: IntRangeSpec) : FeedAction
 
     data class SetGlobalTopicFilter(val enabled: Boolean) : FeedAction
+    data class SetGlobalReadingStatusFilter(val enabled: Boolean) : FeedAction
     data class AddFavorite(val tag: FavoriteTag) : FeedAction
     data class RemoveFavorite(val tag: FavoriteTag) : FeedAction
     data class RenameFavorite(val tag: FavoriteTag, val name: String) : FeedAction

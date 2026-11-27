@@ -4,7 +4,9 @@ import com.shizq.bika.core.domain.filter.ComicStatus
 import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.GlobalContentPolicy
 import com.shizq.bika.core.domain.filter.IntRangeSpec
+import com.shizq.bika.core.domain.filter.ReadingProgressFilter
 import com.shizq.bika.core.domain.filter.compileFilterPolicy
+import com.shizq.bika.core.model.ComicReadingStatus
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.RemoteImage
 import kotlin.test.Test
@@ -74,6 +76,56 @@ class FeedFilterMatchingTest {
         )
         assertTrue(all.matches(comic(finished = true)))
         assertTrue(all.matches(comic(finished = false)))
+    }
+
+    @Test
+    fun `阅读状态支持有更新已读完已阅读与未读及组内 OR`() {
+        val completedOnly = policy(
+            local = FeedCriteria(readingStatuses = setOf(ReadingProgressFilter.Completed)),
+        )
+        assertTrue(completedOnly.matches(comic(readingStatus = ComicReadingStatus.Completed)))
+        assertFalse(completedOnly.matches(comic(readingStatus = ComicReadingStatus.HasUpdates)))
+        assertFalse(completedOnly.matches(comic(readingStatus = ComicReadingStatus.Read)))
+        assertFalse(completedOnly.matches(comic(readingStatus = null)))
+
+        val unreadOrUpdates = policy(
+            local = FeedCriteria(
+                readingStatuses = setOf(
+                    ReadingProgressFilter.Unread,
+                    ReadingProgressFilter.HasUpdates,
+                ),
+            ),
+        )
+        assertTrue(unreadOrUpdates.matches(comic(readingStatus = null)))
+        assertTrue(unreadOrUpdates.matches(comic(readingStatus = ComicReadingStatus.HasUpdates)))
+        assertFalse(unreadOrUpdates.matches(comic(readingStatus = ComicReadingStatus.Completed)))
+        assertFalse(unreadOrUpdates.matches(comic(readingStatus = ComicReadingStatus.Read)))
+    }
+
+    @Test
+    fun `全局阅读状态开启时与本地条件合并且安全忽略未知持久化值`() {
+        val parsed = ReadingProgressFilter.parseSet(listOf("Completed", "UNKNOWN_VALUE", "Unread"))
+        assertEquals(setOf(ReadingProgressFilter.Completed, ReadingProgressFilter.Unread), parsed)
+
+        val enabled = policy(
+            local = FeedCriteria(readingStatuses = setOf(ReadingProgressFilter.HasUpdates)),
+            global = GlobalContentPolicy(
+                readingStatusEnabled = true,
+                globalReadingStatuses = setOf(ReadingProgressFilter.Completed),
+            ),
+        )
+        assertTrue(enabled.matches(comic(readingStatus = ComicReadingStatus.HasUpdates)))
+        assertTrue(enabled.matches(comic(readingStatus = ComicReadingStatus.Completed)))
+        assertFalse(enabled.matches(comic(readingStatus = null)))
+
+        val disabled = policy(
+            global = GlobalContentPolicy(
+                readingStatusEnabled = false,
+                globalReadingStatuses = setOf(ReadingProgressFilter.Completed),
+            ),
+        )
+        assertTrue(disabled.isEmpty)
+        assertTrue(disabled.matches(comic(readingStatus = null)))
     }
 
     @Test
@@ -195,9 +247,12 @@ class FeedFilterMatchingTest {
             includedTopics = setOf("全彩"),
             excludedTopics = setOf("NTR"),
             statuses = setOf(ComicStatus.Ongoing),
+            readingStatuses = setOf(ReadingProgressFilter.Completed),
         )
 
         assertEquals(FeedCriteria(), criteria.clear())
+        assertTrue(criteria.hasAnySelection)
+        assertFalse(criteria.toggleReadingStatus(ReadingProgressFilter.Completed).readingStatuses.contains(ReadingProgressFilter.Completed))
     }
 
     @Test
@@ -218,6 +273,7 @@ class FeedFilterMatchingTest {
         epsCount: Int = 1,
         pagesCount: Int = 0,
         tags: List<String> = emptyList(),
+        readingStatus: ComicReadingStatus? = null,
     ) = ComicSummary(
         id = "test-id",
         title = "测试漫画",
@@ -228,5 +284,6 @@ class FeedFilterMatchingTest {
         epsCount = epsCount,
         pagesCount = pagesCount,
         tags = tags,
+        readingStatus = readingStatus,
     )
 }

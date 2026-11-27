@@ -1,5 +1,7 @@
 package com.shizq.bika.ui.tag
 
+import com.shizq.bika.core.domain.filter.ReadingProgressFilter
+
 /** 仅供筛选控件使用的展示分组。 */
 sealed interface FilterGroup {
     val label: String
@@ -20,6 +22,16 @@ sealed interface FilterGroup {
         override val options = listOf(
             FilterOption.Status(finished = true, label = "完结"),
             FilterOption.Status(finished = false, label = "连载"),
+        )
+    }
+
+    data object ReadingStatus : FilterGroup {
+        override val label = "阅读状态"
+        override val options = listOf(
+            FilterOption.ReadingStatus(ReadingProgressFilter.HasUpdates, label = "有更新"),
+            FilterOption.ReadingStatus(ReadingProgressFilter.Completed, label = "已读完"),
+            FilterOption.ReadingStatus(ReadingProgressFilter.Read, label = "已阅读"),
+            FilterOption.ReadingStatus(ReadingProgressFilter.Unread, label = "未读"),
         )
     }
 
@@ -45,7 +57,7 @@ sealed interface FilterGroup {
     }
 
     companion object {
-        val all: List<FilterGroup> = listOf(Topic, ExcludeTopic, Status, EpsRange, PagesRange)
+        val all: List<FilterGroup> = listOf(Topic, ExcludeTopic, Status, ReadingStatus, EpsRange, PagesRange)
     }
 }
 
@@ -58,6 +70,11 @@ sealed interface FilterOption {
 
     data class Status(
         val finished: Boolean,
+        override val label: String,
+    ) : FilterOption
+
+    data class ReadingStatus(
+        val status: ReadingProgressFilter,
         override val label: String,
     ) : FilterOption
 

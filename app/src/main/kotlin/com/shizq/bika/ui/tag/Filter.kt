@@ -50,6 +50,8 @@ fun FilterChip(
     onSelectionChanged: (FeedFilterChange) -> Unit,
     excludeTopicsGlobal: Boolean = false,
     onExcludeTopicsGlobalChanged: (Boolean) -> Unit = {},
+    readingStatusGlobal: Boolean = false,
+    onReadingStatusGlobalChanged: (Boolean) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var showSheet by remember { mutableStateOf(false) }
@@ -93,11 +95,18 @@ fun FilterChip(
                         modifier = Modifier.padding(16.dp),
                     )
 
-                    if (state.group is FilterGroup.ExcludeTopic) {
-                        GlobalToggleRow(
+                    when (state.group) {
+                        FilterGroup.ExcludeTopic -> GlobalToggleRow(
                             enabled = excludeTopicsGlobal,
                             onEnabledChange = onExcludeTopicsGlobalChanged,
                         )
+
+                        FilterGroup.ReadingStatus -> GlobalToggleRow(
+                            enabled = readingStatusGlobal,
+                            onEnabledChange = onReadingStatusGlobalChanged,
+                        )
+
+                        else -> Unit
                     }
 
                     state.options.forEach { option ->

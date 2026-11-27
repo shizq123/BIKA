@@ -10,6 +10,8 @@ data class ContentFilterPreferences(
     val globalTopicBlockEnabled: Boolean = false,
     @SerialName("globalExcludedTopics")
     val globalBlockedTopics: List<String> = emptyList(),
+    val globalReadingStatusEnabled: Boolean = false,
+    val globalReadingStatuses: Set<String> = emptySet(),
     val favoriteTags: List<FavoriteTag> = emptyList(),
     val blockedTags: Set<String> = emptySet(),
 )

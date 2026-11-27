@@ -31,6 +31,9 @@ interface PreloadRequestEnqueuer {
         requests: List<PreloadRequest>,
         visibleRequests: List<PreloadRequest> = emptyList(),
     )
+
+    /** 清除历史失败标记，允许当前窗口内的失败页面在下次更新时重试。 */
+    fun clearFailures() {}
 }
 
 /**
@@ -48,22 +51,28 @@ internal class CoilPreloadRequestEnqueuer(
     context: Context,
     scope: CoroutineScope,
 ) : PreloadRequestEnqueuer {
-    private val logger = KotlinLogging.logger {}
+    private val logger = KotlinLogging.logger("ReaderPreload")
     private val imageLoader = context.imageLoader
     private val queue = PreloadQueue(
         scope = scope,
+        maxConcurrent = 3,
         keyOf = PreloadRequest::key,
         execute = { preload ->
             try {
-                when (imageLoader.execute(preload.request)) {
+                when (val result = imageLoader.execute(preload.request)) {
                     is SuccessResult -> true
-                    is ErrorResult -> false
+                    is ErrorResult -> {
+                        logger.debug(result.throwable) {
+                            "预载页加载失败: index=${preload.index} key=${preload.key}"
+                        }
+                        false
+                    }
                 }
             } catch (cancelled: CancellationException) {
                 throw cancelled
             } catch (error: Exception) {
                 logger.warn(error) {
-                    "预载失败，留给可见页请求重试"
+                    "预载失败，留给可见页请求重试: index=${preload.index}"
                 }
                 false
             }
@@ -79,6 +88,8 @@ internal class CoilPreloadRequestEnqueuer(
             retainRunning = visibleRequests.mapTo(mutableSetOf(), PreloadRequest::key),
         )
     }
+
+    override fun clearFailures() = queue.clearFailures()
 
     fun close() = queue.close()
 }

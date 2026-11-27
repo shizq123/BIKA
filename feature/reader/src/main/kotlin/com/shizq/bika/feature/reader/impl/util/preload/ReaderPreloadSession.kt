@@ -1,11 +1,14 @@
 package com.shizq.bika.feature.reader.impl.util.preload
 
+import io.github.oshai.kotlinlogging.KotlinLogging
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+private val logger = KotlinLogging.logger("ReaderPreload")
 
 /**
  * 一个章节阅读会话内的预载协调器。
@@ -40,6 +43,7 @@ internal class ReaderPreloadSession<T : Any>(
     private var closed = false
     private var latestGeneration = 0L
     private var highestSubmittedGeneration = 0L
+    private var lastPreloadCount: Int? = null
 
     private val worker: Job = scope.launch {
         for (event in events) {
@@ -67,6 +71,15 @@ internal class ReaderPreloadSession<T : Any>(
         }
 
         val visibleRange = snapshot.visibleRange
+        if (lastPreloadCount != event.preloadCount) {
+            if (lastPreloadCount != null && event.preloadCount > 0) {
+                enqueuer.clearFailures()
+            }
+            logger.debug {
+                "预载数量更新: count=${event.preloadCount} (此前=$lastPreloadCount)"
+            }
+            lastPreloadCount = event.preloadCount
+        }
         if (visibleRange == null || event.preloadCount <= 0 || dataProvider.itemCount <= 0) {
             clearWindow()
             return
@@ -77,6 +90,9 @@ internal class ReaderPreloadSession<T : Any>(
             preloadCount = event.preloadCount,
             itemCount = dataProvider.itemCount,
         )
+        logger.debug {
+            "预载窗口规划: visible=$visibleRange count=${event.preloadCount} cause=${snapshot.cause} planned=${plan.indices}"
+        }
         updateWindow(plan.indices, visibleRange)
     }
 

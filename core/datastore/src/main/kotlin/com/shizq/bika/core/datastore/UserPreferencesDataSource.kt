@@ -141,14 +141,19 @@ class UserPreferencesDataSource @Inject constructor(
     }
 
     /**
-     * 一次性开启全局主题屏蔽并写入初始主题列表。
-     * 拆成两次写入会让观察者看到「已开启但主题仍是旧值」的中间态。
+     * 一次性开启全局主题屏蔽并合并写入当前页面待升级的主题列表。
+     * 拆成两次写入会让观察者看到「已开启但主题仍是旧值」的中间态；保留已有全局主题避免意外覆盖。
      */
     suspend fun enableGlobalTopicBlock(topics: List<String>) = edit {
+        val merged = if (topics.isEmpty()) {
+            it.filter.globalBlockedTopics
+        } else {
+            (it.filter.globalBlockedTopics + topics).distinct()
+        }
         it.copy(
             filter = it.filter.copy(
                 globalTopicBlockEnabled = true,
-                globalBlockedTopics = topics,
+                globalBlockedTopics = merged,
             ),
         )
     }
@@ -174,6 +179,34 @@ class UserPreferencesDataSource @Inject constructor(
     /** 切换单个全局排除主题的选中状态。 */
     suspend fun toggleGlobalExcludedTopic(topic: String) = updateGlobalExcludedTopics { topics ->
         if (topic in topics) topics - topic else topics + topic
+    }
+
+    suspend fun setReadingStatusGlobal(enabled: Boolean) = edit {
+        it.copy(filter = it.filter.copy(globalReadingStatusEnabled = enabled))
+    }
+
+    /**
+     * 一次性开启全局阅读状态筛选并合并写入当前页面已选状态集合，避免覆盖历史选择或产生中间态。
+     */
+    suspend fun enableGlobalReadingStatus(statuses: Set<String>) = edit {
+        val merged = if (statuses.isEmpty()) {
+            it.filter.globalReadingStatuses
+        } else {
+            it.filter.globalReadingStatuses + statuses
+        }
+        it.copy(
+            filter = it.filter.copy(
+                globalReadingStatusEnabled = true,
+                globalReadingStatuses = merged,
+            ),
+        )
+    }
+
+    /** 原子切换单个全局阅读状态的选中状态。 */
+    suspend fun toggleGlobalReadingStatus(status: String) = edit {
+        val current = it.filter.globalReadingStatuses
+        val updated = if (status in current) current - status else current + status
+        it.copy(filter = it.filter.copy(globalReadingStatuses = updated))
     }
 
     suspend fun updateFavoriteTags(tags: List<FavoriteTag>) = edit {

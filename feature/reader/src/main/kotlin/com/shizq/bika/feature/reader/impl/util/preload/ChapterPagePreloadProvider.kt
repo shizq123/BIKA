@@ -1,28 +1,30 @@
 package com.shizq.bika.feature.reader.impl.util.preload
 
 import android.content.Context
-import coil3.annotation.ExperimentalCoilApi
-import coil3.decode.BlackholeDecoder
 import coil3.request.CachePolicy
 import coil3.request.ImageRequest
+import coil3.size.Dimension
 import coil3.size.Size
 import com.shizq.bika.core.data.paging.ChapterPage
+import com.shizq.bika.core.network.plugin.preloadRequest
 
-@OptIn(ExperimentalCoilApi::class)
 class ChapterPagePreloadProvider(private val context: Context) : PreloadModelProvider<ChapterPage> {
+    // 与 ComicItem 保持一致：宽度限制在 2 倍屏幕宽度，防止超宽/超长原图解码进内存导致 OOM
+    private val preloadDecodeWidthPx =
+        (context.resources.displayMetrics.widthPixels * 2).coerceAtLeast(1080)
+
     override fun getPreloadKey(item: ChapterPage, request: ImageRequest): String =
         "chapter-page:${item.id}:${item.url}"
 
     override fun getPreloadRequest(item: ChapterPage): ImageRequest {
         return ImageRequest.Builder(context)
             .data(item.url)
-            .size(Size.ORIGINAL)
+            .size(Size(Dimension(preloadDecodeWidthPx), Dimension.Undefined))
             .diskCacheKey(item.url)
+            .memoryCacheKey(item.url)
             .diskCachePolicy(CachePolicy.ENABLED)
-            .memoryCachePolicy(CachePolicy.DISABLED)
-            // Only warm disk cache. Decoding full comic pages here wastes memory and CPU;
-            // the visible-page request will decode using its own rendering options.
-            .decoderFactory(BlackholeDecoder.Factory())
+            .memoryCachePolicy(CachePolicy.ENABLED)
+            .preloadRequest()
             .build()
     }
 }

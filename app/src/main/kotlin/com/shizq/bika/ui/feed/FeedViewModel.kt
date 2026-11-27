@@ -9,11 +9,14 @@ import androidx.paging.PagingConfig
 import androidx.paging.PagingSource
 import androidx.paging.cachedIn
 import androidx.paging.filter
+import androidx.paging.map
 import com.shizq.bika.core.database.dao.ReadingHistoryDao
 import com.shizq.bika.core.database.model.DetailedHistory
 import com.shizq.bika.core.datastore.UserPreferencesDataSource
 import com.shizq.bika.core.domain.filter.ComicFilterPolicy
+import com.shizq.bika.core.domain.filter.FeedCriteria
 import com.shizq.bika.core.domain.filter.GlobalContentPolicy
+import com.shizq.bika.core.domain.filter.ReadingProgressFilter
 import com.shizq.bika.core.domain.filter.compileFilterPolicy
 import com.shizq.bika.core.model.ComicSummary
 import com.shizq.bika.core.model.FavoriteTag
@@ -27,6 +30,7 @@ import com.shizq.bika.paging.FixedPagePagingSource
 import com.shizq.bika.paging.KnightPagingSource
 import com.shizq.bika.paging.RecentUpdatesPagingSource
 import com.shizq.bika.paging.SinglePagePagingSource
+import com.shizq.bika.util.injectFromHistoryMap
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedFactory
 import dagger.assisted.AssistedInject
@@ -43,6 +47,8 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.stateIn
@@ -93,6 +99,8 @@ class FeedViewModel @AssistedInject constructor(
                 globalPolicy = GlobalContentPolicy(
                     blockedTopicsEnabled = filter.globalTopicBlockEnabled,
                     blockedTopics = filter.globalBlockedTopics.toSet(),
+                    readingStatusEnabled = filter.globalReadingStatusEnabled,
+                    globalReadingStatuses = ReadingProgressFilter.parseSet(filter.globalReadingStatuses),
                     blockedTags = filter.blockedTags,
                 ),
             ),
@@ -134,6 +142,14 @@ class FeedViewModel @AssistedInject constructor(
         }
         .distinctUntilChanged()
 
+    // 仅在启用阅读状态筛选时才订阅历史库参与过滤，平时维持单次空映射，避免阅读记录变更重建 Paging 流影响滚动恢复。
+    private val activeReadingHistory: Flow<Map<String, DetailedHistory>> = filterPolicy
+        .map { it.readingStatuses.isNotEmpty() }
+        .distinctUntilChanged()
+        .flatMapLatest { needHistory ->
+            if (needHistory) historyByComicId else flowOf(emptyMap())
+        }
+
     private var pagingScope: CoroutineScope? = null
 
     internal val pagingSession = pagingController.state
@@ -164,8 +180,18 @@ class FeedViewModel @AssistedInject constructor(
             ).flow.cachedIn(scope)
             FeedPagingSession(
                 request = request,
-                comics = combine(remotePages, filterPolicy) { pagingData, policy ->
-                    if (policy.isEmpty) pagingData else pagingData.filter(policy::matches)
+                comics = combine(
+                    remotePages,
+                    filterPolicy,
+                    activeReadingHistory,
+                ) { pagingData, policy, historyMap ->
+                    when {
+                        policy.isEmpty -> pagingData
+                        policy.readingStatuses.isEmpty() -> pagingData.filter(policy::matches)
+                        else -> pagingData
+                            .map { it.injectFromHistoryMap(historyMap) }
+                            .filter(policy::matches)
+                    }
                 }.cachedIn(scope),
             )
         }.stateIn(viewModelScope, SharingStarted.Eagerly, null)
@@ -207,13 +233,29 @@ class FeedViewModel @AssistedInject constructor(
                 it.copy(criteria = it.criteria.toggleIncludedTopic(action.topic))
             }
 
-            is FeedAction.ToggleExcludedTopic -> query.update {
-                it.copy(criteria = it.criteria.toggleExcludedTopic(action.topic))
-            }
+            is FeedAction.ToggleExcludedTopic -> toggleFilterOption(
+                isGlobal = uiState.value.excludeTopicsGlobal,
+                value = action.topic,
+                removeLocal = { topic ->
+                    if (topic in excludedTopics) copy(excludedTopics = excludedTopics - topic) else this
+                },
+                toggleLocal = FeedCriteria::toggleExcludedTopic,
+                toggleGlobal = { userPreferencesDataSource.toggleGlobalExcludedTopic(action.topic) },
+            )
 
             is FeedAction.ToggleStatus -> query.update {
                 it.copy(criteria = it.criteria.toggleStatus(action.status))
             }
+
+            is FeedAction.ToggleReadingStatus -> toggleFilterOption(
+                isGlobal = uiState.value.readingStatusGlobal,
+                value = action.status,
+                removeLocal = { status ->
+                    if (status in readingStatuses) copy(readingStatuses = readingStatuses - status) else this
+                },
+                toggleLocal = FeedCriteria::toggleReadingStatus,
+                toggleGlobal = { userPreferencesDataSource.toggleGlobalReadingStatus(action.status.name) },
+            )
 
             is FeedAction.ToggleEpisodeRange -> query.update {
                 it.copy(criteria = it.criteria.toggleEpisodeRange(action.range))
@@ -223,9 +265,27 @@ class FeedViewModel @AssistedInject constructor(
                 it.copy(criteria = it.criteria.togglePageRange(action.range))
             }
 
-            is FeedAction.SetGlobalTopicFilter -> persist {
-                userPreferencesDataSource.setExcludeTopicsGlobal(action.enabled)
-            }
+            is FeedAction.SetGlobalTopicFilter -> setGlobalFilterEnabled(
+                enabled = action.enabled,
+                drainLocal = {
+                    val drained = excludedTopics
+                    (if (drained.isEmpty()) this else copy(excludedTopics = emptySet())) to drained
+                },
+                enableGlobal = { topics -> userPreferencesDataSource.enableGlobalTopicBlock(topics.toList()) },
+                disableGlobal = { userPreferencesDataSource.setExcludeTopicsGlobal(false) },
+            )
+
+            is FeedAction.SetGlobalReadingStatusFilter -> setGlobalFilterEnabled(
+                enabled = action.enabled,
+                drainLocal = {
+                    val drained = readingStatuses
+                    (if (drained.isEmpty()) this else copy(readingStatuses = emptySet())) to drained
+                },
+                enableGlobal = { statuses ->
+                    userPreferencesDataSource.enableGlobalReadingStatus(statuses.mapTo(linkedSetOf()) { it.name })
+                },
+                disableGlobal = { userPreferencesDataSource.setReadingStatusGlobal(false) },
+            )
 
             is FeedAction.AddFavorite -> persist {
                 userPreferencesDataSource.updateFavoriteTags { tags ->
@@ -268,6 +328,43 @@ class FeedViewModel @AssistedInject constructor(
                     }
                 }
             }
+        }
+    }
+
+    private inline fun <T> toggleFilterOption(
+        isGlobal: Boolean,
+        value: T,
+        crossinline removeLocal: FeedCriteria.(T) -> FeedCriteria,
+        crossinline toggleLocal: FeedCriteria.(T) -> FeedCriteria,
+        crossinline toggleGlobal: suspend () -> Unit,
+    ) {
+        if (isGlobal) {
+            query.update { current ->
+                val updated = current.criteria.removeLocal(value)
+                if (updated === current.criteria) current else current.copy(criteria = updated)
+            }
+            persist { toggleGlobal() }
+        } else {
+            query.update { it.copy(criteria = it.criteria.toggleLocal(value)) }
+        }
+    }
+
+    private inline fun <T> setGlobalFilterEnabled(
+        enabled: Boolean,
+        crossinline drainLocal: FeedCriteria.() -> Pair<FeedCriteria, Set<T>>,
+        crossinline enableGlobal: suspend (Set<T>) -> Unit,
+        crossinline disableGlobal: suspend () -> Unit,
+    ) {
+        if (enabled) {
+            var local = emptySet<T>()
+            query.update { current ->
+                val (nextCriteria, drained) = current.criteria.drainLocal()
+                local = drained
+                if (drained.isEmpty()) current else current.copy(criteria = nextCriteria)
+            }
+            persist { enableGlobal(local) }
+        } else {
+            persist { disableGlobal() }
         }
     }
 

@@ -163,6 +163,30 @@ class PreloadQueueTest {
         assertEquals(listOf(1, 1), started, "离开窗口再返回时应允许重试")
     }
 
+    @Test
+    fun `clearFailures allows retrying a failed page inside the same window`() = runTest {
+        val started = mutableListOf<Int>()
+        val queue = PreloadQueue(
+            scope = backgroundScope,
+            keyOf = { page: Int -> page },
+            execute = { page ->
+                started += page
+                false
+            },
+        )
+
+        queue.update(listOf(1))
+        runCurrent()
+        queue.update(listOf(1))
+        runCurrent()
+        assertEquals(listOf(1), started)
+
+        queue.clearFailures()
+        queue.update(listOf(1))
+        runCurrent()
+        assertEquals(listOf(1, 1), started, "显式清除失败标记后同一窗口内应允许重试")
+    }
+
     private class Fixture(scope: TestScope) {
         val started = mutableListOf<Int>()
         val cancelled = mutableListOf<Int>()

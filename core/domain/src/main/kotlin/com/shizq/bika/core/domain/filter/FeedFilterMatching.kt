@@ -1,10 +1,34 @@
 package com.shizq.bika.core.domain.filter
 
+import com.shizq.bika.core.model.ComicReadingStatus
 import com.shizq.bika.core.model.ComicSummary
 
 enum class ComicStatus(val finished: Boolean) {
     Ongoing(false),
     Finished(true),
+}
+
+enum class ReadingProgressFilter {
+    HasUpdates,
+    Completed,
+    Read,
+    Unread,
+    ;
+
+    fun matches(status: ComicReadingStatus?): Boolean = when (this) {
+        HasUpdates -> status == ComicReadingStatus.HasUpdates
+        Completed -> status == ComicReadingStatus.Completed
+        Read -> status == ComicReadingStatus.Read
+        Unread -> status == null
+    }
+
+    companion object {
+        private val byName = entries.associateBy { it.name }
+
+        /** 安全解析持久化名称集合，忽略未知或已废弃枚举值以避免反序列化异常。 */
+        fun parseSet(names: Iterable<String>): Set<ReadingProgressFilter> =
+            names.mapNotNullTo(linkedSetOf()) { byName[it] }
+    }
 }
 
 data class IntRangeSpec(
@@ -27,6 +51,7 @@ data class FeedCriteria(
     val includedTopics: Set<String> = emptySet(),
     val excludedTopics: Set<String> = emptySet(),
     val statuses: Set<ComicStatus> = emptySet(),
+    val readingStatuses: Set<ReadingProgressFilter> = emptySet(),
     val episodeRanges: Set<IntRangeSpec> = emptySet(),
     val pageRanges: Set<IntRangeSpec> = emptySet(),
 ) {
@@ -34,6 +59,7 @@ data class FeedCriteria(
         get() = includedTopics.isNotEmpty() ||
                 excludedTopics.isNotEmpty() ||
                 statuses.isNotEmpty() ||
+                readingStatuses.isNotEmpty() ||
                 episodeRanges.isNotEmpty() ||
                 pageRanges.isNotEmpty()
 
@@ -48,6 +74,9 @@ data class FeedCriteria(
     fun toggleStatus(status: ComicStatus): FeedCriteria =
         copy(statuses = statuses.toggle(status))
 
+    fun toggleReadingStatus(status: ReadingProgressFilter): FeedCriteria =
+        copy(readingStatuses = readingStatuses.toggle(status))
+
     fun toggleEpisodeRange(range: IntRangeSpec): FeedCriteria =
         copy(episodeRanges = episodeRanges.toggle(range))
 
@@ -59,14 +88,22 @@ data class FeedCriteria(
 data class GlobalContentPolicy(
     val blockedTopicsEnabled: Boolean = false,
     val blockedTopics: Set<String> = emptySet(),
+    val readingStatusEnabled: Boolean = false,
+    val globalReadingStatuses: Set<ReadingProgressFilter> = emptySet(),
     val blockedTags: Set<String> = emptySet(),
-)
+) {
+    val hasActiveGlobalFilter: Boolean
+        get() = (blockedTopicsEnabled && blockedTopics.isNotEmpty()) ||
+                (readingStatusEnabled && globalReadingStatuses.isNotEmpty()) ||
+                blockedTags.isNotEmpty()
+}
 
 /** 页面条件与全局规则编译后的不可变过滤策略。 */
 data class ComicFilterPolicy(
     val includedTopics: Set<String> = emptySet(),
     val excludedTopics: Set<String> = emptySet(),
     val statuses: Set<ComicStatus> = emptySet(),
+    val readingStatuses: Set<ReadingProgressFilter> = emptySet(),
     val episodeRanges: Set<IntRangeSpec> = emptySet(),
     val pageRanges: Set<IntRangeSpec> = emptySet(),
     val blockedTags: Set<String> = emptySet(),
@@ -75,6 +112,7 @@ data class ComicFilterPolicy(
         get() = includedTopics.isEmpty() &&
                 excludedTopics.isEmpty() &&
                 statuses.isEmpty() &&
+                readingStatuses.isEmpty() &&
                 episodeRanges.isEmpty() &&
                 pageRanges.isEmpty() &&
                 blockedTags.isEmpty()
@@ -87,6 +125,9 @@ data class ComicFilterPolicy(
             return false
         }
         if (statuses.isNotEmpty() && statuses.none { it.finished == comic.finished }) {
+            return false
+        }
+        if (readingStatuses.isNotEmpty() && readingStatuses.none { it.matches(comic.readingStatus) }) {
             return false
         }
         if (episodeRanges.isNotEmpty() && episodeRanges.none { comic.epsCount in it }) {
@@ -113,6 +154,8 @@ fun compileFilterPolicy(
     excludedTopics = local.excludedTopics +
             if (global.blockedTopicsEnabled) global.blockedTopics else emptySet(),
     statuses = local.statuses,
+    readingStatuses = local.readingStatuses +
+            if (global.readingStatusEnabled) global.globalReadingStatuses else emptySet(),
     episodeRanges = local.episodeRanges,
     pageRanges = local.pageRanges,
     blockedTags = global.blockedTags,

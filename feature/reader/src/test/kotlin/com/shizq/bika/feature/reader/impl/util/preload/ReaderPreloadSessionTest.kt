@@ -281,6 +281,43 @@ class ReaderPreloadSessionTest {
         assertTrue(requested.isEmpty())
     }
 
+    @Test
+    fun `changing preload count clears prior failures and plans with new count`() = runTest {
+        val enqueuer = RecordingEnqueuer()
+        val session = ReaderPreloadSession(
+            scope = backgroundScope,
+            dataProvider = FakeDataProvider(100),
+            modelProvider = RecordingRequestModelProvider,
+            enqueuer = enqueuer,
+            closeEnqueuer = {},
+        )
+
+        session.submitViewport(
+            ViewportSnapshot(
+                visibleRange = 0..0,
+                direction = ScrollDirection.Forward,
+                cause = ViewportChangeCause.UserScroll,
+            ),
+            preloadCount = 2,
+        )
+        runCurrent()
+        assertEquals(0, enqueuer.clearFailuresCount)
+        assertEquals(listOf(1, 2), enqueuer.windows.last().map(PreloadRequest::index))
+
+        session.submitViewport(
+            ViewportSnapshot(
+                visibleRange = 0..0,
+                direction = ScrollDirection.Forward,
+                cause = ViewportChangeCause.UserScroll,
+            ),
+            preloadCount = 4,
+        )
+        runCurrent()
+        assertEquals(1, enqueuer.clearFailuresCount)
+        assertEquals(listOf(1, 2, 3, 4), enqueuer.windows.last().map(PreloadRequest::index))
+        session.close()
+    }
+
     private class FakeDataProvider(
         override val itemCount: Int,
         private val unavailable: Set<Int> = emptySet(),
@@ -327,6 +364,7 @@ class ReaderPreloadSessionTest {
     private class RecordingEnqueuer : PreloadRequestEnqueuer {
         val windows = mutableListOf<List<PreloadRequest>>()
         val visibleWindows = mutableListOf<List<PreloadRequest>>()
+        var clearFailuresCount = 0
 
         override fun updateWindow(
             requests: List<PreloadRequest>,
@@ -334,6 +372,10 @@ class ReaderPreloadSessionTest {
         ) {
             windows += requests
             visibleWindows += visibleRequests
+        }
+
+        override fun clearFailures() {
+            clearFailuresCount++
         }
     }
 }
